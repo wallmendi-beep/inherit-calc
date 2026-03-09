@@ -4,10 +4,11 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  color: #37352f;
-  background-color: #f1f1ef;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+@layer base {
+  body {
+    @apply text-[#37352f] bg-[#f1f1ef] transition-colors duration-200 dark:text-neutral-200 dark:bg-neutral-900;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
 }
 
 .designer-sign {
@@ -19,3 +20,13 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #d3d1cb; border-radius: 5px; border: 2px solid white; }
 ::-webkit-scrollbar-thumb:hover { background: #aeaca6; }
+/* 인쇄 최적화 스타일 */
+@media print {
+  .no-print { display: none !important; }
+  body { background-color: white !important; color: black !important; padding: 0 !important; margin: 0 !important; }
+  .print-p-0 { padding: 0 !important; }
+  .print-compact { margin-top: 0 !important; padding-top: 0 !important; border: none !important; box-shadow: none !important; }
+  
+  /* 인쇄 시 배경색 강제 해제 및 텍스트 강조 */
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+}

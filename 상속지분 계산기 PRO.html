@@ -10,8 +10,16 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   
-  <!-- Tailwind CSS 로드 -->
+  <!-- Tailwind CSS 로드 및 다크모드 설정 -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {}
+      }
+    }
+  </script>
 
   <!-- 멋진 필기체 폰트 로드 (워터마크용) -->
   <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@500;600&display=swap" rel="stylesheet">
@@ -20,8 +28,15 @@
     /* 💡 베이스 설정: 폴더 디자인이 돋보이도록 배경색을 옅은 회색으로 변경 */
     body {
       color: #37352f;
-      background-color: #f1f1ef; 
+      background-color: #ffffff; 
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      transition: background-color 0.2s, color 0.2s;
+    }
+
+    /* 다크모드 기본 배경/글자색 강제 적용 (Tailwind와 별개로 베이스 보정) */
+    .dark body {
+      background-color: #202020; /* Dark Gray base */
+      color: #ffffff; /* High contrast white */
     }
 
     /* 포커스 시 노션 특유의 블루 링 */
@@ -51,43 +66,57 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #d3d1cb; border-radius: 5px; border: 2px solid white; }
     ::-webkit-scrollbar-thumb:hover { background: #aeaca6; }
+    
+    .dark ::-webkit-scrollbar-thumb { background: #475569; border-color: #1e293b; }
 
-    /* 💡 브라우저 인쇄 레이아웃 최적화 (상30 하20 좌우25) */
+    /* 💡 브라우저 인쇄 레이아웃 최적화 - 전용 보고서만 인쇄 */
     @media print {
-      body { 
+      /* 기본: 모든 요소 흰 배경 강제 */
+      *, *::before, *::after { 
+        background-color: transparent !important; 
+        color: black !important; 
+        box-shadow: none !important; 
+        text-shadow: none !important; 
+      }
+      html, body { 
         background-color: white !important; 
+        color: #000000 !important;
         -webkit-print-color-adjust: exact; 
         print-color-adjust: exact; 
         font-size: 11pt !important;
-        color: #000000 !important;
+        padding: 0 !important; margin: 0 !important;
+        min-width: 100% !important;
+      }
+      .dark body { background-color: white !important; color: black !important; }
+      
+      @page { margin: 15mm 12mm; }
+      
+      /* 화면 UI 전부 숨기기 */
+      .no-print, .screen-only { display: none !important; }
+      
+      /* 인쇄 전용 영역만 표시 */
+      .print-report-container { 
+        display: block !important; 
+        width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
       }
       
-      @page { margin: 30mm 25mm 20mm 25mm; }
+      /* 인쇄 전용 표 스타일 */
+      .print-report-container table { border-collapse: collapse !important; width: 100% !important; }
+      .print-report-container th, .print-report-container td { border: 1px solid #333 !important; padding: 6px 10px !important; color: black !important; }
+      .print-report-container th { background-color: #f0f0f0 !important; font-weight: bold !important; }
+      .print-report-container .sub-group-header td { background-color: #f8f8f8 !important; }
       
-      .no-print { display: none !important; }
-      .print-compact { padding: 0 !important; margin: 0 !important; }
-      .print-p-0 { padding: 0 !important; }
-      
-      table { page-break-inside: auto; width: 100% !important; border-collapse: collapse; }
-      tr { page-break-inside: avoid; page-break-after: auto; }
-      thead { display: table-header-group; }
-      tfoot { display: table-footer-group; }
-      
-      .print-table th, .print-table td { border-bottom: 1px solid #d4d4d4 !important; }
-      .print-table-top { border-top: 2px solid #37352f !important; border-bottom: 1px solid #37352f !important; }
-      
-      .break-inside-avoid { break-inside: avoid; page-break-inside: avoid; }
-      .shadow-sm, .shadow-md, .shadow-lg, .shadow-inner { box-shadow: none !important; }
-
       #print-footer {
         position: fixed; bottom: 0; right: 0;
         font-family: 'Dancing Script', cursive; font-size: 14pt;
-        color: #d4d4d4; text-align: right; display: block !important;
+        color: #bbb !important; text-align: right; display: block !important;
       }
     }
   </style>
 </head>
-<body class="min-w-[1200px] print:min-w-0">
+<body class="min-w-[1200px] print:min-w-0 transition-colors duration-200">
   <div id="root"></div>
 
   <script type="text/babel">
@@ -107,8 +136,140 @@
     const IconTable = ({className}) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0H5a2 2 0 0 1-2-2V9m6 12h10a2 2 0 0 0 2-2V9m-18 0h20"/></svg>;
     const IconList = ({className}) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>;
     const IconReset = ({className}) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>;
+    const IconSun = ({className}) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41m12.72-12.72l-1.41 1.41"/></svg>;
+    const IconMoon = ({className}) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>;
     const IconFileText = ({className}) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>;
     const IconXCircle = ({className}) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><path strokeLinecap="round" strokeLinejoin="round" d="m15 9-6 6m0-6 6 6"/></svg>;
+
+    // --- 💡 간이 입력 + 아이콘 컴포넌트 ---
+    const IconPlus = ({className}) => <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path d="M12 5v14m-7-7h14"/></svg>;
+
+    // --- 가계도 요약 사이드바 컴포넌트 (간이 입력 버튼 포함) ---
+    const MiniTreeSidebar = ({ node, level = 0, onQuickAdd }) => {
+      if (!node) return null;
+
+      // 🎨 항렬별/상태별 색상 정의
+      const getLevelColor = (lvl, isDead) => {
+        if (isDead) return 'text-[#ef4444] dark:text-red-500 font-black'; // 사망자는 무조건 빨간색
+        if (lvl === 0) return 'text-[#0ea5e9] dark:text-sky-400 font-black'; // 피상속인
+        if (lvl === 1) return 'text-[#22c55e] dark:text-green-400 font-bold'; // 1대
+        if (lvl === 2) return 'text-[#f97316] dark:text-orange-400 font-bold'; // 2대
+        return 'text-[#a855f7] dark:text-purple-400 font-bold'; // 3대 이상
+      };
+
+      const nameColorClass = getLevelColor(level, node.isDeceased);
+      // 💡 피상속인(root) 또는 사망자 노드에만 + 버튼 표시
+      const showAddBtn = (level === 0 || node.isDeceased);
+
+      return (
+        <div className={`flex flex-col ${level > 0 ? 'ml-3' : ''}`}>
+          <div className="flex items-center gap-1.5 py-0.5 group/sidebar">
+            {level > 0 && <span className="text-[#d4d4d4] dark:text-[#555555] text-[11px] shrink-0 font-bold">└</span>}
+            <span className={`text-[12px] truncate transition-colors ${nameColorClass} ${node.isDeceased ? 'line-through opacity-80' : ''}`}>
+              {node.name || (level === 0 ? '피상속인' : '(이름 없음)')}
+            </span>
+            {level > 0 && <span className={`text-[10px] font-medium shrink-0 ${node.isDeceased ? 'text-[#ef4444]/70 dark:text-red-500/70' : 'text-[#787774] dark:text-[#777777]'}`}>({relStr[node.relation] || '자녀'})</span>}
+            {/* 💡 간이 입력 + 버튼 */}
+            {showAddBtn && onQuickAdd && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onQuickAdd(node.id, node.name); }}
+                className="opacity-0 group-hover/sidebar:opacity-100 w-4 h-4 flex items-center justify-center rounded bg-[#2383e2] dark:bg-[#0e639c] text-white hover:bg-[#0073ea] dark:hover:bg-[#1177bb] transition-all shrink-0 ml-1"
+                title={`${node.name || '피상속인'}의 상속인 간이 추가`}
+              >
+                <IconPlus className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+          {node.heirs && node.heirs.length > 0 && (
+            <div className="border-l border-[#e9e9e7] dark:border-[#444444] ml-1.5 pl-1.5 pb-0.5 transition-colors">
+              {node.heirs.map((h, i) => (
+                <MiniTreeSidebar key={h.id || i} node={h} level={level + 1} onQuickAdd={onQuickAdd} />
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    // --- 💡 간이 입력 팝업 컴포넌트 ---
+    const QuickAddPopup = ({ targetId, targetName, onClose, onAdd, gender }) => {
+      const [inputValue, setInputValue] = useState('');
+      const inputRef = React.useRef(null);
+
+      // 💡 포커스 자동 이동
+      useEffect(() => {
+        if (inputRef.current) inputRef.current.focus();
+      }, []);
+
+      // 💡 입력 파싱: "이름숫자" → { name, relation }
+      // 1=배우자, 2=아들, 3=딸, 4=형제자매
+      const parseInput = (line) => {
+        const trimmed = line.trim();
+        if (!trimmed) return null;
+        const lastChar = trimmed.slice(-1);
+        const numMap = { '1': 'spouse', '2': 'son', '3': 'daughter', '4': 'sibling' };
+        if (numMap[lastChar]) {
+          const name = trimmed.slice(0, -1).trim();
+          let relation = numMap[lastChar];
+          // 💡 배우자인 경우 성별에 따라 처/남편 구분
+          if (relation === 'spouse') {
+            relation = (gender === 'female') ? 'husband' : 'wife';
+          }
+          return { name, relation };
+        }
+        // 숫자가 없으면 기본적으로 아들(son)로 인식
+        return { name: trimmed, relation: 'son' };
+      };
+
+      const handleSubmit = () => {
+        const lines = inputValue.split('\n');
+        const parsed = lines.map(parseInput).filter(Boolean);
+        if (parsed.length === 0) return;
+        parsed.forEach(p => onAdd(targetId, p.name, p.relation));
+        onClose();
+      };
+
+      const handleKeyDown = (e) => {
+        if (e.key === 'Escape') { e.preventDefault(); onClose(); }
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(); }
+      };
+
+      return (
+        <div className="fixed inset-0 bg-black/30 dark:bg-black/60 z-[9999] flex items-center justify-center backdrop-blur-sm" onClick={onClose}>
+          <div className="bg-white dark:bg-[#2b2b2b] rounded-lg shadow-2xl border border-[#e9e9e7] dark:border-[#444444] p-5 w-[380px] animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-[15px] font-bold text-[#37352f] dark:text-[#ffffff] flex items-center gap-2">
+                <IconUserPlus className="w-4 h-4 text-[#2383e2] dark:text-[#60a5fa]" />
+                <span className="text-[#0b6e99] dark:text-[#7dd3fc]">{targetName || '피상속인'}</span>의 상속인 간이 추가
+              </h3>
+              <button onClick={onClose} className="text-[#a3a3a3] dark:text-[#777] hover:text-[#c93f3a] dark:hover:text-red-400 transition-colors">
+                <IconXCircle className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="bg-[#f7f7f5] dark:bg-[#333333] rounded-md p-3 mb-3 text-[12px] text-[#787774] dark:text-[#cccccc] leading-relaxed border border-[#e9e9e7] dark:border-[#444444]">
+              <strong className="text-[#37352f] dark:text-[#ffffff]">입력 형식:</strong> 이름 + 숫자 (한 줄에 한 명)<br/>
+              <span className="text-[#2383e2] dark:text-[#60a5fa] font-bold">1</span>=배우자 &nbsp;
+              <span className="text-[#22c55e] dark:text-[#4ade80] font-bold">2</span>=아들 &nbsp;
+              <span className="text-[#f97316] dark:text-[#fb923c] font-bold">3</span>=딸 &nbsp;
+              <span className="text-[#a855f7] dark:text-[#c084fc] font-bold">4</span>=형제자매<br/>
+              예: <code className="bg-white dark:bg-[#2b2b2b] px-1 rounded text-[#0b6e99] dark:text-[#7dd3fc] font-bold">이몽분1</code> → 이몽분(배우자), <code className="bg-white dark:bg-[#2b2b2b] px-1 rounded text-[#0b6e99] dark:text-[#7dd3fc] font-bold">이용임2</code> → 이용임(아들)
+            </div>
+            <textarea
+              ref={inputRef}
+              value={inputValue}
+              onChange={e => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="이몽분1&#10;이용임2&#10;이용남3"
+              className="w-full h-24 border border-[#cccccc] dark:border-[#555555] rounded-md p-3 text-[14px] font-bold text-[#37352f] dark:text-[#ffffff] bg-white dark:bg-[#333333] outline-none focus:border-[#2383e2] dark:focus:border-[#0e639c] resize-none placeholder:text-[#c4c4c4] dark:placeholder:text-[#666666] transition-colors"
+            />
+            <div className="flex justify-end gap-2 mt-3">
+              <button onClick={onClose} className="px-4 py-2 bg-white dark:bg-[#333333] border border-[#d4d4d4] dark:border-[#555555] text-[#504f4c] dark:text-[#ffffff] font-bold rounded-md hover:bg-[#f1f1ef] dark:hover:bg-[#444444] transition-colors text-[13px]">취소</button>
+              <button onClick={handleSubmit} className="px-4 py-2 bg-[#2383e2] dark:bg-[#0e639c] text-white font-bold rounded-md hover:bg-[#0073ea] dark:hover:bg-[#1177bb] transition-colors text-[13px] shadow-md">추가</button>
+            </div>
+          </div>
+        </div>
+      );
+    };
 
     // --- 수학 및 법률 엔진 ---
     const math = {
@@ -171,28 +332,28 @@
         if (val.length > 4) return `${val.slice(0, 4)}-${val.slice(4)}`;
         return val;
       };
-      return <input type="text" value={value || ''} onKeyDown={onKeyDown} onChange={e => onChange(format(e.target.value))} onFocus={e => e.target.select()} placeholder={placeholder || "YYYY-MM-DD"} className={className} />;
+      return <input type="text" value={value || ''} onKeyDown={onKeyDown} onChange={e => onChange(format(e.target.value))} onFocus={e => e.target.select()} placeholder={placeholder || "YYYY-MM-DD"} className={`${className} dark:bg-[#333333] dark:border-[#555555] dark:text-[#ffffff] transition-colors`} />;
     };
 
     // 💡 부드러운 파스텔 녹색 -> 파란색 -> 보라색 -> 핑크색 그라데이션 확장 적용 (계층 구분)
     const getLevelStyle = (level) => {
-      if (level === 1) return "bg-[#f0fdf4] border-[#bbf7d0]"; // 1차: 연녹색 (Green)
-      if (level === 2) return "bg-[#ecfeff] border-[#a5f3fc]"; // 2차: 연청록 (Cyan)
-      if (level === 3) return "bg-[#eff6ff] border-[#bfdbfe]"; // 3차: 연파랑 (Blue)
-      if (level === 4) return "bg-[#eef2ff] border-[#c7d2fe]"; // 4차: 연남색 (Indigo)
-      if (level === 5) return "bg-[#faf5ff] border-[#e9d5ff]"; // 5차: 연보라 (Purple)
-      if (level === 6) return "bg-[#fdf4ff] border-[#fbcfe8]"; // 6차: 연분홍 (Fuchsia)
-      return "bg-[#fff1f2] border-[#fecdd3]";                  // 7차 이상: 연장미 (Rose)
+      if (level === 1) return "bg-[#f0fdf4] dark:bg-green-900/20 border-[#bbf7d0] dark:border-green-800/30"; // 1차: 연녹색
+      if (level === 2) return "bg-[#ecfeff] dark:bg-cyan-900/20 border-[#a5f3fc] dark:border-cyan-800/30"; // 2차: 연청록
+      if (level === 3) return "bg-[#eff6ff] dark:bg-blue-900/20 border-[#bfdbfe] dark:border-blue-800/30"; // 3차: 연파랑
+      if (level === 4) return "bg-[#eef2ff] dark:bg-indigo-900/20 border-[#c7d2fe] dark:border-indigo-800/30"; // 4차: 연남색
+      if (level === 5) return "bg-[#faf5ff] dark:bg-purple-900/20 border-[#e9d5ff] dark:border-purple-800/30"; // 5차: 연보라
+      if (level === 6) return "bg-[#fdf4ff] dark:bg-fuchsia-900/20 border-[#fbcfe8] dark:border-fuchsia-800/30"; // 6차: 연분홍
+      return "bg-[#fff1f2] dark:bg-rose-900/20 border-[#fecdd3] dark:border-rose-800/30";                  // 7차 이상: 연장미
     };
 
     // 💡 계층 깊이에 따른 연결선 색상 지정 (5~6단계 이상 확장)
     const getLineStyle = (level) => {
-      if (level === 2) return "border-[#22d3ee]"; // 2차 연결선: 청록색
-      if (level === 3) return "border-[#60a5fa]"; // 3차 연결선: 파란색
-      if (level === 4) return "border-[#818cf8]"; // 4차 연결선: 남색
-      if (level === 5) return "border-[#a855f7]"; // 5차 연결선: 보라색
-      if (level === 6) return "border-[#e879f9]"; // 6차 연결선: 분홍색
-      return "border-[#fb7185]";                  // 7차 이상 연결선: 장미색
+      if (level === 2) return "border-[#22d3ee] dark:border-cyan-700"; // 2차 연결선: 청록색
+      if (level === 3) return "border-[#60a5fa] dark:border-blue-700"; // 3차 연결선: 파란색
+      if (level === 4) return "border-[#818cf8] dark:border-indigo-700"; // 4차 연결선: 남색
+      if (level === 5) return "border-[#a855f7] dark:border-purple-700"; // 5차 연결선: 보라색
+      if (level === 6) return "border-[#e879f9] dark:border-fuchsia-700"; // 6차 연결선: 분홍색
+      return "border-[#fb7185] dark:border-rose-700";                  // 7차 이상 연결선: 장미색
     };
 
     // --- 상속인 입력 블록 ---
@@ -241,7 +402,7 @@
             {/* 💡 기존 삭제 버튼 자리에 펼치기/접기 버튼 배치 (사망 시에만 표시) */}
             <div className="w-7 flex justify-center shrink-0 mr-1">
               {node.isDeceased && (
-                <button type="button" onClick={() => setIsExpanded(!isExpanded)} className="text-[#787774] hover:bg-black/5 p-1 rounded transition-colors" title={isExpanded ? "접기" : "펼치기"}>
+                <button type="button" onClick={() => setIsExpanded(!isExpanded)} className="text-[#787774] dark:text-[#ffffff] hover:bg-black/5 dark:hover:bg-white/10 p-1 rounded transition-colors" title={isExpanded ? "접기" : "펼치기"}>
                   <IconChevronRight className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
                 </button>
               )}
@@ -251,31 +412,31 @@
             <div className="flex items-center gap-2 flex-nowrap w-full">
               
               {/* 성명 */}
-              <div className="flex items-center bg-white border border-[#cccccc] rounded overflow-hidden input-combo">
-                <span className="bg-[#f1f1ef] text-[#504f4c] font-semibold px-3 py-1.5 text-[13px] border-r border-[#cccccc]">성명</span>
+              <div className="flex items-center bg-white dark:bg-[#2b2b2b] border border-[#cccccc] dark:border-[#555555] rounded-md overflow-hidden input-combo transition-colors">
+                <span className="bg-[#f1f1ef] dark:bg-[#333333] text-[#504f4c] dark:text-[#ffffff] font-semibold px-3 py-1.5 text-[13px] border-r border-[#cccccc] dark:border-[#555555] transition-colors">성명</span>
                 <input type="text" placeholder="성명" value={node.name} onKeyDown={onKeyDown} onChange={e => handleUpdate(node.id, 'name', e.target.value)} onFocus={e => e.target.select()} 
-                  className="w-24 px-3 py-1.5 text-[14px] font-bold text-[#0b6e99] outline-none" />
+                  className="w-24 px-3 py-1.5 text-[14px] font-bold text-[#0b6e99] dark:text-[#7dd3fc] outline-none bg-transparent" />
               </div>
               
               {/* 관계 */}
-              <div className="flex items-center bg-white border border-[#cccccc] rounded overflow-hidden relative input-combo">
-                <span className="bg-[#f1f1ef] text-[#504f4c] font-semibold px-3 py-1.5 text-[13px] border-r border-[#cccccc]">관계</span>
+              <div className="flex items-center bg-white dark:bg-[#2b2b2b] border border-[#cccccc] dark:border-[#555555] rounded-md overflow-hidden relative input-combo transition-colors">
+                <span className="bg-[#f1f1ef] dark:bg-[#333333] text-[#504f4c] dark:text-[#ffffff] font-semibold px-3 py-1.5 text-[13px] border-r border-[#cccccc] dark:border-[#555555] transition-colors">관계</span>
                 <select value={node.relation} onKeyDown={onKeyDown} onChange={e => handleUpdate(node.id, 'relation', e.target.value)} 
-                  className="w-24 px-3 py-1.5 text-[14px] font-semibold text-[#37352f] bg-white outline-none cursor-pointer appearance-none">
-                  <option value="wife">처</option><option value="husband">남편</option><option value="son">아들</option><option value="daughter">딸</option><option value="sibling">형제자매</option>
+                  className="w-24 px-3 py-1.5 text-[14px] font-semibold text-[#37352f] dark:text-[#ffffff] bg-transparent outline-none cursor-pointer appearance-none">
+                  <option value="wife" className="dark:bg-[#2b2b2b]">처</option><option value="husband" className="dark:bg-[#2b2b2b]">남편</option><option value="son" className="dark:bg-[#2b2b2b]">아들</option><option value="daughter" className="dark:bg-[#2b2b2b]">딸</option><option value="sibling" className="dark:bg-[#2b2b2b]">형제자매</option>
                 </select>
-                <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-[#787774]"><IconChevronRight className="w-4 h-4 rotate-90" /></div>
+                <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-[#787774] dark:text-[#ffffff]"><IconChevronRight className="w-4 h-4 rotate-90" /></div>
               </div>
 
               {/* 호주 / 동일가적 옵션 */}
               <div className="flex items-center gap-2 pl-1">
                 {showHoju && (
-                  <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded border transition-colors select-none ${
+                  <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border transition-colors select-none ${
                     node.isHoju 
-                      ? 'bg-[#fce7f3] border-[#fbcfe8] text-[#be185d] cursor-pointer' 
+                      ? 'bg-[#bfdbfe] dark:bg-sky-900/40 border-[#93c5fd] dark:border-sky-800/50 text-[#1d4ed8] dark:text-[#7dd3fc] cursor-pointer' 
                       : hasOtherHoju 
-                        ? 'bg-[#f1f1ef] border-[#e9e9e7] text-[#a3a3a3] cursor-not-allowed opacity-70' 
-                        : 'bg-white border-[#cccccc] hover:bg-[#f1f1ef] text-[#787774] cursor-pointer'
+                        ? 'bg-[#f1f1ef] dark:bg-[#333333] border-[#e9e9e7] dark:border-[#555555] text-[#a3a3a3] dark:text-[#cccccc] cursor-not-allowed opacity-70' 
+                        : 'bg-white dark:bg-[#333333] border-[#cccccc] dark:border-[#555555] hover:bg-[#f1f1ef] dark:hover:bg-[#3c3c3c] text-[#787774] dark:text-[#ffffff] cursor-pointer'
                   }`}>
                     <input 
                       type="checkbox" 
@@ -290,43 +451,44 @@
                 )}
                 
                 {showMarriedDaughter && (
-                  <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded border transition-colors cursor-pointer select-none ${node.isSameRegister !== false ? 'bg-[#f3f0ff] border-[#d9cfff] text-[#402c84]' : 'bg-white border-[#cccccc] hover:bg-[#f1f1ef] text-[#787774]'}`}>
-                    <input type="checkbox" checked={node.isSameRegister !== false} onKeyDown={onKeyDown} onChange={e => handleUpdate(node.id, 'isSameRegister', e.target.checked)} className="w-3.5 h-3.5 cursor-pointer accent-[#402c84]" />
+                  <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border transition-colors cursor-pointer select-none ${node.isSameRegister !== false ? 'bg-[#f3f0ff] dark:bg-fuchsia-900/40 border-[#d9cfff] dark:border-fuchsia-800/50 text-[#402c84] dark:text-fuchsia-300' : 'bg-[#ffedd5] dark:bg-amber-900/40 border-[#fed7aa] dark:border-amber-800/50 text-[#ea580c] dark:text-[#fcd34d]'}`}>
+                    <input type="checkbox" checked={node.isSameRegister !== false} onKeyDown={onKeyDown} onChange={e => handleUpdate(node.id, 'isSameRegister', e.target.checked)} className={`w-3.5 h-3.5 cursor-pointer ${node.isSameRegister !== false ? 'accent-[#402c84]' : 'accent-[#ea580c]'}`} />
                     <span className="text-[13px] font-bold">동일가적</span>
                   </label>
                 )}
 
                 {showMarriedDaughter && node.isSameRegister === false && (
-                  <div className="flex items-center bg-white border border-[#cccccc] rounded overflow-hidden input-combo ml-1">
-                    <span className="bg-[#ffedd5] text-[#c2410c] font-semibold px-3 py-1.5 text-[13px] border-r border-[#fed7aa]">혼인일</span>
-                    <DateInput value={node.marriageDate} onKeyDown={onKeyDown} onChange={v => handleUpdate(node.id, 'marriageDate', v)} className="w-28 px-3 py-1.5 text-[14px] font-semibold outline-none text-[#37352f]" />
+                  <div className="flex items-center bg-white dark:bg-[#2b2b2b] border border-[#fed7aa] dark:border-amber-800/50 rounded-md overflow-hidden input-combo ml-1 transition-colors">
+                    <span className="bg-[#ffedd5] dark:bg-amber-900/40 text-[#ea580c] dark:text-[#fcd34d] font-semibold px-3 py-1.5 text-[13px] border-r border-[#fed7aa] dark:border-amber-800/50 transition-colors">혼인일</span>
+                    <DateInput value={node.marriageDate} onKeyDown={onKeyDown} onChange={v => handleUpdate(node.id, 'marriageDate', v)} className="w-28 px-3 py-1.5 text-[14px] font-semibold outline-none text-[#37352f] dark:text-[#ffffff] bg-transparent" />
                   </div>
                 )}
               </div>
 
               {/* 💡 눈 아프지 않은 옅은 사망 버튼 (크기 통일) */}
-              <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded border cursor-pointer transition-colors ml-auto select-none ${node.isDeceased ? 'bg-[#ffe2dd] border-[#f0c0b9] text-[#c93f3a]' : 'bg-white border-[#cccccc] text-[#787774] hover:bg-[#f1f1ef]'}`}>
+              <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border cursor-pointer transition-colors ml-auto select-none ${node.isDeceased ? 'bg-[#ffe2dd] dark:bg-rose-900/40 border-[#f0c0b9] dark:border-rose-800/50 text-[#c93f3a] dark:text-[#fb7185]' : 'bg-white dark:bg-[#333333] border-[#cccccc] dark:border-[#555555] hover:bg-[#f1f1ef] dark:hover:bg-[#3c3c3c] text-[#787774] dark:text-[#ffffff]'}`}>
                 <input type="checkbox" checked={node.isDeceased || false} onKeyDown={onKeyDown} onChange={e => handleUpdate(node.id, 'isDeceased', e.target.checked)} className="w-4 h-4 cursor-pointer accent-[#c93f3a]" />
                 <span className="text-[13px] font-bold">사망</span>
               </label>
 
               {node.isDeceased && (
-                <div className="flex items-center bg-white border border-[#f0c0b9] rounded overflow-hidden input-combo">
-                  <span className="bg-[#ffe2dd] text-[#c93f3a] font-semibold px-3 py-1.5 text-[13px] border-r border-[#f0c0b9]">사망일</span>
-                  <DateInput value={node.deathDate} onKeyDown={onKeyDown} onChange={v => handleUpdate(node.id, 'deathDate', v)} className="w-28 px-3 py-1.5 text-[14px] font-semibold outline-none text-[#37352f]" />
+                <div className="flex items-center bg-white dark:bg-[#2b2b2b] border border-[#f0c0b9] dark:border-rose-800/50 rounded-md overflow-hidden input-combo transition-colors">
+                  <span className="bg-[#ffe2dd] dark:bg-rose-900/40 text-[#c93f3a] dark:text-[#fb7185] font-semibold px-3 py-1.5 text-[13px] border-r border-[#f0c0b9] dark:border-rose-800/50 transition-colors">사망일</span>
+                  <DateInput value={node.deathDate} onKeyDown={onKeyDown} onChange={v => handleUpdate(node.id, 'deathDate', v)} className="w-28 px-3 py-1.5 text-[14px] font-semibold outline-none text-[#37352f] dark:text-[#ffffff] bg-transparent" />
                 </div>
               )}
 
               {isSp && level > 1 && (
-                <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded border transition-colors cursor-pointer select-none ${node.isRemarried ? 'bg-[#e3e2e0] border-[#d4d4d4] text-[#37352f]' : 'bg-white border-[#cccccc] hover:bg-[#f1f1ef] text-[#787774]'}`}>
-                  <input type="checkbox" checked={node.isRemarried || false} onKeyDown={onKeyDown} onChange={e => handleUpdate(node.id, 'isRemarried', e.target.checked)} className="w-3.5 h-3.5 cursor-pointer accent-[#37352f]" />
+                <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border transition-colors cursor-pointer select-none ${node.isRemarried ? 'bg-[#ffebd2] dark:bg-amber-900/40 border-[#e9a23b] dark:border-amber-800/50 text-[#975c0b] dark:text-[#fcd34d]' : 'bg-white dark:bg-[#333333] border-[#cccccc] dark:border-[#555555] hover:bg-[#f1f1ef] dark:hover:bg-[#3c3c3c] text-[#787774] dark:text-[#ffffff]'}`}>
+                  <input type="checkbox" checked={node.isRemarried || false} onKeyDown={onKeyDown} onChange={e => handleUpdate(node.id, 'isRemarried', e.target.checked)} className="w-3.5 h-3.5 cursor-pointer accent-[#e9a23b]" />
                   <span className="text-[13px] font-bold">재혼</span>
                 </label>
               )}
+
             </div>
 
             {/* 💡 삭제 버튼을 해당 카드 가장 뒷쪽으로 이동 */}
-            <button type="button" onClick={() => removeHeir(node.id)} onKeyDown={onKeyDown} className="text-[#d4d4d4] hover:text-[#c93f3a] p-1.5 ml-2 shrink-0 rounded transition-colors opacity-0 group-hover:opacity-100" title="삭제">
+            <button type="button" onClick={() => removeHeir(node.id)} onKeyDown={onKeyDown} className="text-[#d4d4d4] dark:text-[#cccccc] hover:text-[#c93f3a] dark:hover:text-red-400 p-1.5 ml-2 shrink-0 rounded opacity-0 group-hover:opacity-100 transition-all" title="삭제">
               <IconTrash2 className="w-5 h-5" />
             </button>
           </div>
@@ -335,21 +497,21 @@
           {node.isDeceased && isExpanded && (
             <div className="mt-2 ml-4 animate-in fade-in slide-in-from-top-2 duration-200">
               {canAutoFill && (
-                <div className="mb-2 p-3 bg-[#f7f7f5] border border-[#d4d4d4] rounded-md text-[13px] flex items-center justify-between no-print shadow-sm">
-                  <span className="text-[#504f4c] font-semibold flex items-center gap-2"><IconFileText className="w-4 h-4"/> 이 배우자의 상속인을 피상속인의 자녀에서 복사하시겠습니까?</span>
+                <div className="mb-2 p-3 bg-[#f7f7f5] dark:bg-[#2b2b2b] border border-[#d4d4d4] dark:border-[#444444] rounded-md text-[13px] flex items-center justify-between no-print shadow-sm transition-colors">
+                  <span className="text-[#504f4c] dark:text-[#ffffff] font-semibold flex items-center gap-2 transition-colors"><IconFileText className="w-4 h-4"/> 이 배우자의 상속인을 피상속인의 자녀에서 복사하시겠습니까?</span>
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => addHeir(node.id)} className="px-3 py-1 bg-white border border-[#cccccc] text-[#37352f] font-semibold rounded hover:bg-[#f1f1ef] transition-colors">직접입력</button>
-                    <button type="button" onClick={autoFill} className="px-3 py-1 bg-[#37352f] text-white font-semibold rounded hover:bg-[#2f2d27] transition-colors">자동불러오기</button>
+                    <button type="button" onClick={() => addHeir(node.id)} className="px-3 py-1 bg-white dark:bg-[#333333] border border-[#cccccc] dark:border-[#555555] text-[#37352f] dark:text-[#ffffff] font-bold rounded hover:bg-[#f1f1ef] dark:hover:bg-[#444444] transition-colors">직접입력</button>
+                    <button type="button" onClick={autoFill} className="px-3 py-1 bg-[#37352f] dark:bg-[#0e639c] text-white font-bold rounded hover:bg-[#2f2d27] dark:hover:bg-[#1177bb] transition-colors">자동불러오기</button>
                   </div>
                 </div>
               )}
               
               <div className="flex justify-between items-center mb-1 no-print">
-                <span className="text-[13px] font-bold text-[#787774] flex items-center pl-2">
+                <span className="text-[13px] font-bold text-[#787774] dark:text-[#ffffff] flex items-center pl-2 transition-colors">
                   <IconChevronRight className="h-4 w-4 mr-1" /> 대습/순차 상속인
                 </span>
                 {!canAutoFill && (
-                  <button type="button" onClick={() => addHeir(node.id)} onKeyDown={onKeyDown} className="text-[13px] text-[#504f4c] font-semibold hover:bg-[#e9e9e7] px-2 py-1 rounded transition-colors flex items-center border border-transparent hover:border-[#cccccc]">
+                  <button type="button" onClick={() => addHeir(node.id)} onKeyDown={onKeyDown} className="text-[13px] text-[#504f4c] dark:text-[#ffffff] font-bold hover:bg-[#e9e9e7] dark:hover:bg-[#333333] px-2 py-1 rounded transition-colors flex items-center border border-transparent hover:border-[#cccccc] dark:hover:border-[#555555]">
                     + {node.name ? `${node.name}의 상속인 추가` : '상속인 추가'}
                   </button>
                 )}
@@ -364,56 +526,55 @@
     // --- 가계도 렌더링 (반응형/토글형 트리로 업그레이드) ---
     const TreeReportNode = ({ node, level, treeToggleSignal }) => {
       const hasHeirs = node.heirs && node.heirs.length > 0;
-      // 💡 피상속인(root)만 기본으로 펼치고, 나머지는 접어둠
       const [isExpanded, setIsExpanded] = useState(level === 0);
 
-      // 💡 모두 펼치기/접기 신호 감지
       useEffect(() => {
         if (treeToggleSignal > 0) setIsExpanded(true);
-        else if (treeToggleSignal < 0) setIsExpanded(level === 0); // 접을 때 최상위 피상속인은 열어둠
+        else if (treeToggleSignal < 0) setIsExpanded(level === 0);
       }, [treeToggleSignal, level]);
 
+      const getLevelColor = (lvl, isDead) => {
+        if (isDead) return 'text-[#ef4444] dark:text-red-500 font-black'; 
+        if (lvl === 0) return 'text-[#0ea5e9] dark:text-sky-400 font-black';
+        if (lvl === 1) return 'text-[#22c55e] dark:text-green-400 font-bold';
+        if (lvl === 2) return 'text-[#f97316] dark:text-orange-400 font-bold';
+        return 'text-[#a855f7] dark:text-purple-400 font-bold';
+      };
+
       return (
-        <div className={`relative ${level > 0 ? 'ml-6 pl-4 border-l-2 border-[#d4d4d4]' : ''} py-1`}>
-          {/* 클릭 가능한 카드 영역 */}
+        <div className={`relative ${level > 0 ? 'ml-6 pl-4 border-l-2 border-[#d4d4d4] dark:border-[#444444]' : ''} py-1 transition-colors`}>
           <div 
             onClick={() => { if (hasHeirs) setIsExpanded(!isExpanded); }}
-            className={`flex items-center gap-2 w-fit py-1.5 px-2 rounded-md transition-all select-none ${hasHeirs ? 'cursor-pointer hover:bg-[#e9e9e7] active:scale-[0.98]' : ''} ${isExpanded && hasHeirs && level > 0 ? 'bg-[#f1f1ef]' : ''}`}
+            className={`flex items-center gap-2 w-fit py-1.5 px-3 rounded-md transition-all select-none ${hasHeirs ? 'cursor-pointer hover:bg-[#e9e9e7] dark:hover:bg-[#333333] active:scale-[0.98]' : ''} ${isExpanded && hasHeirs && level > 0 ? 'bg-[#f1f1ef] dark:bg-[#333333]' : ''}`}
           >
-            {/* 펼침/접힘 화살표 아이콘 */}
-            <div className={`flex items-center justify-center w-5 h-5 rounded ${hasHeirs ? 'bg-white border border-[#d4d4d4] shadow-sm' : ''}`}>
+            <div className={`flex items-center justify-center w-5 h-5 rounded ${hasHeirs ? 'bg-white dark:bg-[#2b2b2b] border border-[#d4d4d4] dark:border-[#555555] shadow-sm' : ''}`}>
               {hasHeirs ? (
-                <IconChevronRight className={`w-3.5 h-3.5 text-[#504f4c] transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
+                <IconChevronRight className={`w-3.5 h-3.5 text-[#504f4c] dark:text-[#ffffff] transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
               ) : (
-                <div className="w-1.5 h-1.5 rounded-full bg-[#d4d4d4]" /> // 자식이 없는 마지막 노드
+                <div className="w-1.5 h-1.5 rounded-full bg-[#d4d4d4] dark:border-[#555555]" />
               )}
             </div>
             
-            {/* 이름 */}
-            <span className={`font-bold tracking-wide transition-colors ${level === 0 ? 'text-[#37352f] text-[18px]' : 'text-[#0b6e99] text-[16px]'} ${!isExpanded && hasHeirs ? 'hover:text-[#2383e2]' : ''}`}>
+            <span className={`tracking-wide transition-colors ${level === 0 ? 'text-[18px]' : 'text-[16px]'} ${getLevelColor(level, node.isDeceased)} ${!isExpanded && hasHeirs ? 'underline decoration-2 underline-offset-4' : ''}`}>
               {node.name}
             </span>
             
-            {/* 각종 상태 뱃지 */}
             <div className="flex items-center gap-1.5 ml-1">
-              <span className="text-[12px] text-[#504f4c] font-medium border border-[#d4d4d4] bg-[#fbfcfb] px-1.5 py-0.5 rounded shadow-sm">
+              <span className="text-[12px] text-[#504f4c] dark:text-[#ffffff] font-bold border border-[#d4d4d4] dark:border-[#555555] bg-[#fbfcfb] dark:bg-[#333333] px-2 py-0.5 rounded shadow-sm">
                 {level === 0 ? '피상속인' : relStr[node.relation] || '자녀'}
               </span>
-              
-              {node.relation === 'son' && node.isHoju && <span className="text-[12px] text-[#be185d] bg-[#fce7f3] border border-[#fbcfe8] px-1.5 py-0.5 rounded font-bold">호주상속</span>}
-              {node.relation === 'daughter' && node.isSameRegister === false && <span className="text-[12px] text-[#c2410c] bg-[#ffedd5] border border-[#fed7aa] px-1.5 py-0.5 rounded font-bold">출가녀</span>}
-              {node.isDeceased && <span className="text-[12px] text-[#c93f3a] bg-[#ffe2dd] border border-[#f0c0b9] px-1.5 py-0.5 rounded font-bold">{node.deathDate} 사망</span>}
+              {node.relation === 'son' && node.isHoju && <span className="text-[12px] text-[#1d4ed8] dark:text-[#7dd3fc] bg-[#bfdbfe] dark:bg-sky-900/40 border border-[#93c5fd] dark:border-sky-800/50 px-2 py-0.5 rounded font-extrabold">호주상속</span>}
+              {node.relation === 'daughter' && node.isSameRegister === false && <span className="text-[12px] text-[#b91c1c] dark:text-rose-300 bg-[#fee2e2] dark:bg-rose-900/40 border border-[#fecaca] dark:border-rose-800/50 px-2 py-0.5 rounded font-extrabold">출가녀</span>}
+              {node.isDeceased && <span className="text-[12px] text-[#c93f3a] dark:text-[#fb7185] bg-white dark:bg-[#333333] border border-[#c93f3a] dark:border-rose-800/50 px-2 py-0.5 rounded font-extrabold">{node.deathDate} 사망</span>}
             </div>
 
-            {/* 접혀있을 때 하위 상속인 명수 안내 뱃지 */}
             {hasHeirs && !isExpanded && (
-               <span className="ml-2 text-[12px] text-[#2383e2] font-bold bg-[#e8f3ff] border border-[#bfe0ff] px-2 py-0.5 rounded-full animate-in fade-in zoom-in duration-200 shadow-sm print:hidden">
+               <span className="ml-3 text-[12px] text-[#2383e2] dark:text-[#7dd3fc] font-extrabold bg-[#e8f3ff] dark:bg-sky-900/40 border border-[#bfe0ff] dark:border-sky-800/50 px-2.5 py-0.5 rounded-full animate-in fade-in zoom-in duration-200 shadow-sm print:hidden">
                  상속인 {node.heirs.length}명 보기
                </span>
             )}
           </div>
           
-          {/* 하위 상속인 렌더링 영역 (부드러운 슬라이드 애니메이션 적용, 인쇄 시에는 무조건 펼침) */}
           <div className={`grid transition-all duration-300 ease-in-out print:grid-rows-[1fr] print:opacity-100 print:mt-1 ${isExpanded ? 'grid-rows-[1fr] opacity-100 mt-1' : 'grid-rows-[0fr] opacity-0'}`}>
             <div className="overflow-hidden print:overflow-visible">
               {node.heirs && node.heirs.map(h => <TreeReportNode key={h.id} node={h} level={level + 1} treeToggleSignal={treeToggleSignal} />)}
@@ -422,6 +583,103 @@
         </div>
       );
     };
+
+    // --- 인쇄 전용 보고서 컴포넌트 (전용표 방식 - 항상 흰 배경) ---
+    const PrintReport = ({ tree, finalShares, calcSteps, formatMoney, formatKorDate, isAmountActive, propertyValue }) => (
+      <div className="print-report-container" style={{display:'none'}}>
+        <div style={{padding:'0 10px'}}>
+          {/* 보고서 헤더 */}
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:'30px', borderBottom:'3px solid black', paddingBottom:'15px'}}>
+            <div>
+              <h1 style={{fontSize:'22pt', fontWeight:'bold', margin:'0 0 8px 0', color:'black'}}>상속지분 계산 결과 보고서</h1>
+              <div style={{fontSize:'11pt', lineHeight:'1.8'}}>
+                <div><strong>사건번호:</strong> {tree.caseNo || '(미입력)'}</div>
+                <div><strong>피상속인:</strong> <span style={{fontWeight:'bold', textDecoration:'underline'}}>{tree.name || '(미입력)'}</span> ({formatKorDate(tree.deathDate)} 사망)</div>
+                {isAmountActive && propertyValue > 0 && <div><strong>총 상속재산:</strong> <span style={{fontWeight:'bold'}}>{formatMoney(propertyValue)} 원</span></div>}
+              </div>
+            </div>
+            <div style={{textAlign:'right', fontSize:'9pt', color:'#888'}}>인쇄일: {new Date().toLocaleDateString('ko-KR')}</div>
+          </div>
+
+          {/* 1. 최종 상속 지분 요약 */}
+          <section style={{marginBottom:'30px'}}>
+            <h2 style={{fontSize:'14pt', fontWeight:'bold', marginBottom:'12px', borderLeft:'4px solid black', paddingLeft:'10px', color:'black'}}>1. 최종 상속 지분 요약</h2>
+            <table style={{width:'100%', borderCollapse:'collapse', border:'1px solid #333'}}>
+              <thead>
+                <tr style={{backgroundColor:'#f0f0f0'}}>
+                  <th style={{border:'1px solid #333', padding:'8px 12px', textAlign:'center', fontWeight:'bold'}}>상속인 성명</th>
+                  <th style={{border:'1px solid #333', padding:'8px 12px', textAlign:'center', fontWeight:'bold'}}>최종 지분 (기본)</th>
+                  <th style={{border:'1px solid #333', padding:'8px 12px', textAlign:'center', fontWeight:'bold'}}>최종 지분 (통분)</th>
+                  {isAmountActive && propertyValue > 0 && <th style={{border:'1px solid #333', padding:'8px 12px', textAlign:'center', fontWeight:'bold'}}>상속 금액</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {finalShares.direct?.map((f, i) => {
+                  const amount = propertyValue ? Math.floor((Number(propertyValue) * f.un) / f.ud) : 0;
+                  return (
+                    <tr key={'p-d'+i}>
+                      <td style={{border:'1px solid #333', padding:'6px 12px', textAlign:'center', fontWeight:'bold'}}>{f.name}</td>
+                      <td style={{border:'1px solid #333', padding:'6px 12px', textAlign:'center'}}>{f.n} / {f.d}</td>
+                      <td style={{border:'1px solid #333', padding:'6px 12px', textAlign:'center', fontWeight:'bold'}}>{f.un} / {f.ud}</td>
+                      {isAmountActive && propertyValue > 0 && <td style={{border:'1px solid #333', padding:'6px 12px', textAlign:'right', fontWeight:'bold'}}>{formatMoney(amount)} 원</td>}
+                    </tr>
+                  );
+                })}
+                {finalShares.subGroups?.map((group, gIdx) => (
+                  <React.Fragment key={'p-g'+gIdx}>
+                    <tr className="sub-group-header"><td colSpan={isAmountActive && propertyValue > 0 ? '4' : '3'} style={{border:'1px solid #333', padding:'5px 12px', fontSize:'10pt', fontStyle:'italic', fontWeight:'500', backgroundColor:'#f8f8f8'}}>※ {group.ancestor.name}의 대습/순차 상속분</td></tr>
+                    {group.shares.map((f, i) => {
+                      const amount = propertyValue ? Math.floor((Number(propertyValue) * f.un) / f.ud) : 0;
+                      return (
+                        <tr key={'p-gs'+gIdx+'-'+i}>
+                          <td style={{border:'1px solid #333', padding:'6px 12px', textAlign:'center', paddingLeft:'24px'}}>└ {f.name}</td>
+                          <td style={{border:'1px solid #333', padding:'6px 12px', textAlign:'center'}}>{f.n} / {f.d}</td>
+                          <td style={{border:'1px solid #333', padding:'6px 12px', textAlign:'center', fontWeight:'bold'}}>{f.un} / {f.ud}</td>
+                          {isAmountActive && propertyValue > 0 && <td style={{border:'1px solid #333', padding:'6px 12px', textAlign:'right', fontWeight:'bold'}}>{formatMoney(amount)} 원</td>}
+                        </tr>
+                      );
+                    })}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          </section>
+
+          {/* 2. 상세 계산 근거 */}
+          <section style={{pageBreakBefore:'always', paddingTop:'10px'}}>
+            <h2 style={{fontSize:'14pt', fontWeight:'bold', marginBottom:'12px', borderLeft:'4px solid black', paddingLeft:'10px', color:'black'}}>2. 상세 계산 근거</h2>
+            {calcSteps.map((s, i) => (
+              <div key={'p-s'+i} style={{border:'1px solid #ccc', padding:'12px', borderRadius:'4px', marginBottom:'12px'}}>
+                <div style={{fontWeight:'bold', fontSize:'11pt', marginBottom:'10px', borderBottom:'1px solid #ccc', paddingBottom:'6px'}}>단계 {i+1}. 피상속인 {s.dec.name} ({s.dec.deathDate} 사망) ─ 피상속지분: {s.inN}/{s.inD}</div>
+                <table style={{width:'100%', borderCollapse:'collapse', border:'1px solid #ccc', fontSize:'10pt'}}>
+                  <thead>
+                    <tr style={{backgroundColor:'#f5f5f5', borderBottom:'1px solid #ccc'}}>
+                      <th style={{padding:'5px 8px', textAlign:'left', width:'20%', fontWeight:'bold'}}>수유자</th>
+                      <th style={{padding:'5px 8px', textAlign:'center', width:'30%', fontWeight:'bold'}}>비율</th>
+                      <th style={{padding:'5px 8px', textAlign:'left', width:'50%', fontWeight:'bold'}}>적용 법리</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {s.dists.map((d, di) => (
+                      <tr key={di} style={{borderBottom:'1px solid #eee'}}>
+                        <td style={{padding:'4px 8px', fontWeight:'bold'}}>{d.h.name}</td>
+                        <td style={{padding:'4px 8px', textAlign:'center'}}>{d.n}/{d.d} <br/><span style={{color:'#999', fontSize:'9pt'}}>({s.inN}/{s.inD}×{d.sn}/{d.sd})</span></td>
+                        <td style={{padding:'4px 8px', fontSize:'9pt'}}>{d.mod || '본위 상속'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </section>
+
+          {/* 하단 고지문 */}
+          <div style={{marginTop:'30px', fontSize:'9pt', color:'#999', textAlign:'center', fontStyle:'italic', borderTop:'1px solid #ddd', paddingTop:'12px'}}>
+            본 보고서는 상속지분 계산기 PRO (Designed by J.H. Lee)를 통해 대한민국 민법에 기초하여 자동 생성되었습니다.
+          </div>
+        </div>
+      </div>
+    );
 
     // --- 메인 앱 ---
     function App() {
@@ -529,7 +787,7 @@
         };
 
         return {
-          id: 'root', caseNo: '975261', name: '이영재', 
+          id: 'root', caseNo: '975261', name: '이영재', gender: 'male',
           isDeceased: true, deathDate: '1975-07-15', shareN: 1, shareD: 1,
           heirs: [
             { id: 'c1', name: '이몽분', relation: 'wife', isDeceased: true, deathDate: '1980-05-14', heirs: initialChildren.map(cloneForMongbun) },
@@ -539,12 +797,42 @@
       };
 
       const getEmptyTree = () => ({
-        id: 'root', caseNo: '', name: '', 
+        id: 'root', caseNo: '', name: '', gender: 'male',
         isDeceased: true, deathDate: '', shareN: 1, shareD: 1,
         heirs: []
       });
 
       const [tree, setTree] = useState(getInitialTree());
+
+      // 💡 사이드바 상태
+      const [sidebarOpen, setSidebarOpen] = useState(true);
+      const [sidebarWidth, setSidebarWidth] = useState(240);
+      const isResizing = React.useRef(false);
+      const startX = React.useRef(0);
+      const startWidth = React.useRef(0);
+
+      const handleResizeMouseDown = (e) => {
+        isResizing.current = true;
+        startX.current = e.clientX;
+        startWidth.current = sidebarWidth;
+        e.preventDefault();
+      };
+
+      useEffect(() => {
+        const onMouseMove = (e) => {
+          if (!isResizing.current) return;
+          const delta = e.clientX - startX.current;
+          const newWidth = Math.min(480, Math.max(160, startWidth.current + delta));
+          setSidebarWidth(newWidth);
+        };
+        const onMouseUp = () => { isResizing.current = false; };
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+        return () => {
+          window.removeEventListener('mousemove', onMouseMove);
+          window.removeEventListener('mouseup', onMouseUp);
+        };
+      }, []);
       const [finalShares, setFinalShares] = useState({ direct: [], subGroups: [] });
       const [calcSteps, setCalcSteps] = useState([]);
       const [treeToggleSignal, setTreeToggleSignal] = useState(0); // 💡 모두 펼치기/접기 신호 상태 추가
@@ -553,20 +841,21 @@
       const [isInputAllExpanded, setIsInputAllExpanded] = useState(true); // 💡 데이터 입력탭 토글 텍스트 상태 (기본 펼침)
       const [propertyValue, setPropertyValue] = useState(''); // 💡 상속재산가액 상태
       const [isAmountActive, setIsAmountActive] = useState(false); // 💡 금액 계산 활성화 토글
+      const [quickAddTarget, setQuickAddTarget] = useState(null); // 💡 간이 입력 팝업 대상 { id, name }
 
       // 💡 폴더 탭 구조 및 색상 테마 정의 (실제 물리적 폴더 메타포, 배경은 화이트 유지)
       const tabData = [
         { id: 'input', label: '데이터 입력', icon: <IconFileText className="w-4 h-4"/>, 
-          style: { activeBorder: 'border-[#2383e2]', activeText: 'text-[#2383e2]', inactiveBg: 'bg-[#eef4fb]', inactiveBorder: 'border-[#d0e2f5]', inactiveText: 'text-[#6080a0]' } 
+          style: { activeBorder: 'border-[#2383e2]', activeText: 'text-[#2383e2] dark:text-[#60a5fa]', inactiveBg: 'bg-[#eef4fb]', inactiveBorder: 'border-[#d0e2f5] dark:border-[#444444]', inactiveText: 'text-[#6080a0]' } 
         },
         { id: 'tree', label: '가계도', icon: <IconNetwork className="w-4 h-4"/>, 
-          style: { activeBorder: 'border-[#16a34a]', activeText: 'text-[#16a34a]', inactiveBg: 'bg-[#eaf5ec]', inactiveBorder: 'border-[#cbe6d2]', inactiveText: 'text-[#5a8065]' } 
+          style: { activeBorder: 'border-[#16a34a]', activeText: 'text-[#16a34a] dark:text-[#4ade80]', inactiveBg: 'bg-[#eaf5ec]', inactiveBorder: 'border-[#cbe6d2] dark:border-[#444444]', inactiveText: 'text-[#5a8065]' } 
         },
         { id: 'calc', label: '계산표', icon: <IconTable className="w-4 h-4"/>, 
-          style: { activeBorder: 'border-[#eab308]', activeText: 'text-[#ca8a04]', inactiveBg: 'bg-[#fef8e6]', inactiveBorder: 'border-[#fbeba6]', inactiveText: 'text-[#9c8238]' } 
+          style: { activeBorder: 'border-[#eab308]', activeText: 'text-[#ca8a04] dark:text-yellow-400', inactiveBg: 'bg-[#fef8e6]', inactiveBorder: 'border-[#fbeba6] dark:border-[#444444]', inactiveText: 'text-[#9c8238]' } 
         },
         { id: 'summary', label: '요약표', icon: <IconList className="w-4 h-4"/>, 
-          style: { activeBorder: 'border-[#a855f7]', activeText: 'text-[#9333ea]', inactiveBg: 'bg-[#f6effa]', inactiveBorder: 'border-[#e5d4f5]', inactiveText: 'text-[#7e609c]' } 
+          style: { activeBorder: 'border-[#a855f7]', activeText: 'text-[#9333ea] dark:text-purple-400', inactiveBg: 'bg-[#f6effa]', inactiveBorder: 'border-[#e5d4f5] dark:border-[#444444]', inactiveText: 'text-[#7e609c]' } 
         },
       ];
       
@@ -625,6 +914,21 @@
           return { ...n, heirs: n.heirs?.map(addFn) || [] };
         };
         setTree(prev => addFn(prev));
+      };
+
+      // 💡 간이 입력에서 사용하는 상속인 추가 (이름+관계 직접 지정)
+      const addHeirWithData = (parentId, name, relation) => {
+        const newHeir = { id: `h_${Date.now()}_${Math.random().toString(36).substr(2,5)}`, name, relation, isDeceased: false, isSameRegister: true, heirs: [] };
+        const addFn = (n) => {
+          if (n.id === parentId) return { ...n, heirs: [...(n.heirs || []), newHeir] };
+          return { ...n, heirs: n.heirs?.map(addFn) || [] };
+        };
+        setTree(prev => addFn(prev));
+      };
+
+      // 💡 사이드바 간이 입력 팝업 열기
+      const handleQuickAdd = (nodeId, nodeName) => {
+        setQuickAddTarget({ id: nodeId, name: nodeName });
       };
 
       const removeHeir = (id) => {
@@ -771,11 +1075,8 @@
 
       useEffect(() => { calculate(); }, [tree]);
 
+      // 💡 인쇄: 모든 탭에서 전용 보고서로 인쇄 가능
       const handlePrint = () => {
-        if (activeTab === 'input') {
-          alert('보고서 탭(가계도, 계산표, 요약표) 중 하나를 선택한 후 인쇄해주세요.');
-          return;
-        }
         if (flushSync) flushSync(() => { calculate(); });
         else calculate();
         setTimeout(() => window.print(), 100);
@@ -815,67 +1116,126 @@
       };
 
       return (
-        <div className="w-full min-h-screen relative flex flex-col items-center pb-24">
+        <div className="w-full min-h-screen relative flex flex-col bg-[#ffffff] dark:bg-[#202020] print:bg-white text-[#37352f] dark:text-[#ffffff] transition-colors font-sans overflow-x-hidden screen-only">
           
-          <div id="print-footer" className="hidden print:block">
+          <div id="print-footer" className="hidden print:block absolute bottom-0 right-0 font-['Dancing_Script'] text-slate-300 text-sm">
             Designed by J.H. Lee
           </div>
 
+          {/* 💡 사이드 패널 - 탭에 상관없이 항상 고정 표시 */}
+          {sidebarOpen && (
+            <div 
+              className="fixed left-0 top-[54px] bottom-0 flex flex-col bg-white dark:bg-[#181818] border-r border-[#e9e9e7] dark:border-[#444444] z-[60] no-print overflow-hidden transition-colors select-none"
+              style={{ width: sidebarWidth }}
+            >
+              <div className="text-[13px] font-bold text-[#37352f] dark:text-[#ffffff] flex items-center gap-2 border-b border-[#e9e9e7] dark:border-[#444444] px-4 py-3 shrink-0 transition-colors">
+                <IconNetwork className="w-3.5 h-3.5 text-[#787774] dark:text-[#a0a0a0] shrink-0"/> 가계도 요약
+              </div>
+              <div className="flex-1 overflow-y-auto px-3 py-2 pb-10 text-[13px]">
+                <MiniTreeSidebar node={tree} level={0} onQuickAdd={handleQuickAdd} />
+              </div>
+              {/* 드래그 리사이즈 핸들 */}
+              <div
+                onMouseDown={handleResizeMouseDown}
+                className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-[#2383e2]/60 active:bg-[#2383e2] transition-colors"
+                title="드래그하여 폭 조절"
+              />
+            </div>
+          )}
+
+          {/* 💡 간이 입력 팝업 */}
+          {quickAddTarget && (
+            <QuickAddPopup
+              targetId={quickAddTarget.id}
+              targetName={quickAddTarget.name}
+              onClose={() => setQuickAddTarget(null)}
+              onAdd={addHeirWithData}
+              gender={tree.gender}
+            />
+          )}
+
           {isResetModalOpen && (
-            <div className="fixed inset-0 bg-black/40 z-[9999] flex items-center justify-center no-print">
-              <div className="bg-white p-8 rounded-lg shadow-xl max-w-sm w-full mx-4 animate-in fade-in zoom-in duration-200 border border-[#e9e9e7]">
-                <h2 className="text-xl font-bold mb-2 text-[#37352f]">새 작업 시작</h2>
-                <p className="text-[14px] text-[#787774] mb-6">현재 작성 중인 모든 데이터가 삭제됩니다.<br/>어떻게 처리할까요?</p>
+            <div className="fixed inset-0 bg-black/40 dark:bg-black/80 z-[9999] flex items-center justify-center no-print backdrop-blur-sm">
+              <div className="bg-white dark:bg-[#2b2b2b] p-8 rounded-lg shadow-2xl max-w-sm w-full mx-4 animate-in fade-in zoom-in duration-200 border border-[#e9e9e7] dark:border-[#444444] transition-colors">
+                <h2 className="text-xl font-bold mb-2 text-[#37352f] dark:text-[#ffffff]">새 작업 시작</h2>
+                <p className="text-[14px] text-[#787774] dark:text-[#ffffff] mb-6">현재 작성 중인 모든 데이터가 삭제됩니다.<br/>어떻게 처리할까요?</p>
                 <div className="flex flex-col gap-2">
-                  <button onClick={() => performReset(true)} className="w-full py-2.5 bg-[#2383e2] hover:bg-[#0073ea] text-white font-medium rounded transition-colors text-[14px]">백업 저장 후 초기화</button>
-                  <button onClick={() => performReset(false)} className="w-full py-2.5 bg-[#ffe2dd] hover:bg-[#ffc1b8] text-[#d44c47] font-medium rounded transition-colors text-[14px]">저장 없이 그냥 초기화</button>
-                  <button onClick={() => setIsResetModalOpen(false)} className="w-full py-2.5 mt-2 bg-white border border-[#d4d4d4] hover:bg-[#efefed] text-[#37352f] font-medium rounded transition-colors text-[14px]">취소</button>
+                  <button onClick={() => performReset(true)} className="w-full py-2.5 bg-[#2383e2] dark:bg-[#0e639c] hover:bg-[#0073ea] dark:hover:bg-[#1177bb] text-white font-medium rounded transition-colors text-[14px]">백업 저장 후 초기화</button>
+                  <button onClick={() => performReset(false)} className="w-full py-2.5 bg-[#ffe2dd] dark:bg-[#4d1616] hover:bg-[#ffc1b8] dark:hover:bg-[#6e2020] text-[#d44c47] dark:text-[#f48771] font-medium rounded transition-colors text-[14px]">저장 없이 그냥 초기화</button>
+                  <button onClick={() => setIsResetModalOpen(false)} className="w-full py-2.5 mt-2 bg-white dark:bg-[#333333] border border-[#d4d4d4] dark:border-transparent hover:bg-[#efefed] dark:hover:bg-[#444444] text-[#37352f] dark:text-[#ffffff] font-medium rounded transition-colors text-[14px]">취소</button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* 💡 최상단 글로벌 헤더 바 (위아래 간격 확보 및 시그니처 복구) */}
-          <div className="bg-white border-b border-[#e9e9e7] h-[76px] sticky top-0 z-50 no-print w-full flex justify-center shadow-sm">
-            <div className="w-full max-w-[1200px] px-6 flex items-center justify-between h-full">
-              
-              {/* 앱 타이틀 및 시그니처 */}
-              <div className="flex items-baseline">
-                <div className="flex items-center text-[#37352f] font-bold text-[20px] tracking-tight">
-                  <IconCalculator className="w-6 h-6 mr-2 text-[#787774]" />
-                  상속지분 계산기 PRO
+          {/* 💡 메인 캔버스 영역 */}
+          <div className="w-full max-w-[1200px] mx-auto flex flex-col min-h-screen relative dark:bg-[#202020]">
+            
+            {/* 최고상단 가짜 광고 배너 자리 (나중을 위해) */}
+            <div className="w-full bg-[#f1f1ef] dark:bg-[#2b2b2b] h-[90px] flex items-center justify-center text-[#a3a3a3] dark:text-[#a0a0a0] text-sm font-bold no-print border-b border-[#e9e9e7] dark:border-[#444444]">
+              웹 상단 광고 배너 위치 (구글 애드센스 등)
+            </div>
+            {/* 최상단 글로벌 헤더 바 (높이 축소 54px) */}
+            <div className="bg-white/90 dark:bg-[#202020]/90 backdrop-blur-md border border-[#e9e9e7] dark:border-[#444444] border-t-0 sticky top-0 z-[100] no-print w-full flex items-center justify-between px-8 shadow-sm transition-colors rounded-b-xl h-[54px]">
+              <div className="flex items-center gap-3 shrink-0">
+                {/* 사이드바 토글 버튼 */}
+                <button
+                  onClick={() => setSidebarOpen(v => !v)}
+                  className={`w-7 h-7 flex flex-col justify-center items-center rounded-md gap-1 transition-all no-print ${
+                    sidebarOpen 
+                      ? 'bg-[#f0f0ee] dark:bg-[#333333] text-[#2383e2] dark:text-[#38bdf8]' 
+                      : 'text-[#787774] dark:text-[#a0a0a0] hover:bg-[#efefed] dark:hover:bg-[#333333]'
+                  }`}
+                  title={sidebarOpen ? '가계도 패널 닫기' : '가계도 패널 열기'}
+                >
+                  <span className="w-3.5 h-0.5 bg-current rounded-full transition-all" />
+                  <span className="w-3.5 h-0.5 bg-current rounded-full transition-all" />
+                  <span className="w-3.5 h-0.5 bg-current rounded-full transition-all" />
+                </button>
+                <div className="flex items-baseline shrink-0 gap-2">
+                  <div className="flex items-center text-[#37352f] dark:text-[#ffffff] font-bold text-[18px] tracking-tight transition-colors">
+                    <IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-[#38bdf8]" />
+                    상속지분 계산기 PRO
+                  </div>
+                  <span className="designer-sign text-[#a3a3a3] dark:text-[#cccccc] text-[14px] transition-colors">Designed by J.H. Lee</span>
                 </div>
-                <span className="designer-sign text-[#a3a3a3] ml-3 text-[17px]">Designed by J.H. Lee</span>
               </div>
               
-              <div className="flex items-center gap-1.5">
-                {/* 💡 피상속인 정보 요약 뱃지 (헤더에 고정 노출) */}
-                <div className="flex items-center gap-2 bg-[#f7f7f5] px-3 py-1.5 rounded border border-[#e9e9e7] mr-3">
-                  <span className="text-[12px] font-bold text-[#787774]">사건: <span className="text-[#37352f]">{tree.caseNo || '미입력'}</span></span>
-                  <div className="w-px h-3 bg-[#d4d4d4] mx-1"></div>
-                  <span className="text-[12px] font-bold text-[#787774]">피상속인:</span>
-                  <span className="text-[14px] font-black text-[#0b6e99]">{tree.name || '미입력'}</span>
+              <div className="flex items-center gap-1.5 ml-auto">
+                {/* 피상속인 정보 요약 뱃지 */}
+                <div className="flex items-center gap-2.5 bg-[#f7f7f5] dark:bg-[#333333] px-3 py-1.5 rounded-md border border-[#e9e9e7] dark:border-[#404040] mr-2 transition-colors shadow-inner shrink-0">
+                  <span className="text-[11px] font-bold text-[#787774] dark:text-[#ffffff] whitespace-nowrap">사건: <span className="text-[#37352f] dark:text-[#ffffff]">{tree.caseNo || '미입력'}</span></span>
+                  <div className="w-px h-2.5 bg-[#d4d4d4] dark:bg-[#555555]"></div>
+                  <span className="text-[11px] font-bold text-[#787774] dark:text-[#ffffff] whitespace-nowrap">피상속인:</span>
+                  <span className="text-[13px] font-black text-[#0b6e99] dark:text-[#7dd3fc] whitespace-nowrap">{tree.name || '미입력'}</span>
                 </div>
 
-                <button onClick={() => setIsResetModalOpen(true)} className="text-[#787774] hover:text-[#37352f] hover:bg-[#efefed] px-3 py-1.5 rounded border border-transparent hover:border-[#d4d4d4] text-[13px] font-bold transition-colors flex items-center gap-1.5">
-                  <IconReset className="h-4 w-4" /> 초기화
+                <button onClick={() => setIsDarkMode(!isDarkMode)} className="w-7 h-7 flex justify-center items-center rounded-md text-[#787774] dark:text-[#a0a0a0] hover:bg-[#efefed] dark:hover:bg-[#333333] hover:text-[#37352f] dark:hover:text-[#ffffff] transition-all">
+                  {isDarkMode ? <IconSun className="w-4 h-4 text-amber-300" /> : <IconMoon className="w-4 h-4 text-slate-600" />}
                 </button>
-                <div className="w-px h-4 bg-[#e9e9e7] mx-1"></div>
-                <label className="text-[#787774] hover:text-[#37352f] hover:bg-[#efefed] px-3 py-1.5 rounded border border-transparent hover:border-[#d4d4d4] text-[13px] font-bold transition-colors flex items-center gap-1.5 cursor-pointer">
-                  <IconFolderOpen className="h-4 w-4" /> 불러오기<input type="file" accept=".json" onChange={loadFile} className="hidden" />
+                <div className="w-px h-3.5 bg-[#e9e9e7] dark:bg-[#444444] mx-1"></div>
+                <button onClick={() => setIsResetModalOpen(true)} className="text-[#787774] dark:text-[#ffffff] hover:text-[#37352f] dark:hover:text-white hover:bg-[#efefed] dark:hover:bg-[#333333] px-2 py-1.5 rounded-md border border-transparent hover:border-[#d4d4d4] dark:hover:border-[#444444] text-[12px] font-bold transition-all flex items-center gap-1 align-middle">
+                  <IconReset className="h-3.5 w-3.5" /> 초기화
+                </button>
+                <div className="w-px h-3.5 bg-[#e9e9e7] dark:bg-[#404040] mx-0.5"></div>
+                <label className="text-[#787774] dark:text-[#ffffff] hover:text-[#37352f] dark:hover:text-white hover:bg-[#efefed] dark:hover:bg-[#333333] px-2 py-1.5 rounded-md border border-transparent hover:border-[#d4d4d4] dark:hover:border-[#444444] text-[12px] font-bold transition-all flex items-center gap-1 cursor-pointer align-middle">
+                  <IconFolderOpen className="h-3.5 w-3.5" /> 불러오기<input type="file" accept=".json" onChange={loadFile} className="hidden" />
                 </label>
-                <button onClick={saveFile} className="text-[#787774] hover:text-[#37352f] hover:bg-[#efefed] px-3 py-1.5 rounded border border-transparent hover:border-[#d4d4d4] text-[13px] font-bold transition-colors flex items-center gap-1.5">
-                  <IconSave className="h-4 w-4" /> 저장
+                <button onClick={saveFile} className="text-[#787774] dark:text-[#ffffff] hover:text-[#37352f] dark:hover:text-white hover:bg-[#efefed] dark:hover:bg-[#333333] px-2 py-1.5 rounded-md border border-transparent hover:border-[#d4d4d4] dark:hover:border-[#444444] text-[12px] font-bold transition-all flex items-center gap-1 align-middle">
+                  <IconSave className="h-3.5 w-3.5" /> 저장
                 </button>
-                <div className="w-px h-4 bg-[#e9e9e7] mx-1"></div>
-                <button onClick={handlePrint} className="text-white bg-[#2383e2] hover:bg-[#0073ea] px-3 py-1.5 rounded text-[13px] font-bold transition-colors flex items-center gap-1.5 shadow-sm">
-                  <IconPrinter className="h-4 w-4" /> 현재 탭 인쇄
+                <div className="w-px h-3.5 bg-[#e9e9e7] dark:bg-[#404040] mx-0.5"></div>
+                <button onClick={handlePrint} className="text-white bg-[#2383e2] dark:bg-[#0e639c] hover:bg-[#0073ea] dark:hover:bg-[#1177bb] px-3 py-1.5 rounded-md text-[12px] font-bold transition-colors flex items-center gap-1 shadow-md whitespace-nowrap">
+                  <IconPrinter className="h-3.5 w-3.5" /> 인쇄
                 </button>
               </div>
             </div>
-          </div>
 
-          <div className="w-full max-w-[1200px] mx-auto pt-8 px-6 print-compact">
+            {/* 💡 풀 와이드 캔버스 영역 (사이드바 폭 연동) */}
+            <div 
+              className="w-full mx-auto pt-6 px-8 print-compact pb-24 flex-1 flex flex-col transition-all duration-300 print:!ml-0 print:!max-w-none"
+              style={{ marginLeft: sidebarOpen ? sidebarWidth : 0, maxWidth: sidebarOpen ? `calc(100% - ${sidebarWidth}px)` : '1400px' }}
+            >
             
             {/* 💡 물리적 폴더 형태의 탭 네비게이션 (미리 색상 부여, 바탕색 화이트 연결) */}
             <div className="flex items-end pl-6 gap-1.5 no-print relative z-10">
@@ -883,10 +1243,10 @@
                 const isActive = activeTab === t.id;
                 return (
                   <button key={t.id} onClick={() => setActiveTab(t.id)}
-                     className={`px-6 py-2.5 rounded-t-xl font-bold text-[14px] flex items-center gap-2 transition-all relative cursor-pointer border-2 border-b-0 ${
+                     className={`px-6 py-2.5 rounded-t-xl font-bold text-[14px] flex items-center gap-2 transition-all relative cursor-pointer border border-[#e9e9e7] dark:border-[#444444] border-b-0 outline-none ${
                        isActive
-                         ? `bg-white ${t.style.activeBorder} ${t.style.activeText} pb-3 top-[2px] z-20` /* 활성화 시 튀어나오고 본문과 화이트로 이어짐 */
-                         : `${t.style.inactiveBg} ${t.style.inactiveBorder} ${t.style.inactiveText} pb-2.5 top-[1px] z-10 hover:brightness-95`
+                         ? `bg-white dark:bg-[#2b2b2b] ${t.style.activeText} pb-3 top-[2px] z-20` /* 활성화 시 본문과 동일 배경색으로 융합 */
+                         : `bg-[#fcfcfa] dark:bg-[#2b2b2b] ${t.style.inactiveText} dark:text-[#ffffff] pb-2.5 top-[1px] z-10 hover:bg-white dark:hover:bg-[#2d2d2d] hover:text-[#37352f] dark:hover:text-slate-200`
                      }`}
                   >
                      {t.icon} {t.label}
@@ -895,67 +1255,67 @@
               })}
             </div>
 
-            {/* 💡 폴더 본문 (배경을 깔끔한 화이트로 변경하고 테두리 색상만 유지하여 촌스러움 방지) */}
-            <div className={`border-2 rounded-xl shadow-sm print-compact print:border-none print:shadow-none min-h-[500px] bg-white ${activeStyle.activeBorder} p-10 relative z-0 print-p-0`}>
-              
-              {/* 💡 인쇄 전용 헤더 (웹 화면에서는 숨김 처리됨) */}
-              {activeTab !== 'input' && (
-                <div className="hidden print:flex justify-between items-end mb-8 border-b-2 border-[#37352f] pb-4">
-                  <div>
-                    <h1 className="text-3xl font-bold text-[#37352f] mb-4">
-                      {activeTab === 'tree' ? '상 속 인 관 계 표' : activeTab === 'calc' ? '상 속 분 계 산 표' : '최 종 상 속 지 분 요 약'}
-                    </h1>
-                    <div className="flex items-center gap-6 text-[15px] text-[#37352f]">
-                      <span><strong className="font-semibold">사건번호:</strong> {tree.caseNo}</span>
-                      <span><strong className="font-semibold">피상속인:</strong> <span className="font-bold">{tree.name}</span></span>
-                    </div>
-                  </div>
-                  {/* 인쇄 시 요약표 우측 상단에 총 상속재산 명시 */}
-                  {activeTab === 'summary' && isAmountActive && propertyValue > 0 && (
-                    <div className="text-right">
-                       <span className="text-[14px] font-bold text-[#504f4c] mr-2">총 상속재산:</span>
-                       <span className="text-[20px] font-black text-[#0b6e99]">{formatMoney(propertyValue)} 원</span>
-                    </div>
-                  )}
-                </div>
-              )}
+            {/* 💡 폴더 본문 (VS Code Editor 스타일) */}
+            <div className={`border border-[#e9e9e7] dark:border-[#444444] rounded-xl rounded-tl-none shadow-sm print:hidden min-h-[600px] bg-white dark:bg-[#2b2b2b] p-8 lg:p-12 relative z-0 transition-colors flex flex-col flex-1`}>
 
               {/* 탭 1: 입력 */}
               {activeTab === 'input' && (
-                <div className="no-print space-y-6">
-                  {/* 입력 폼 카드는 가독성을 위해 흰색 배경 유지 */}
-                  <div className="bg-white border border-[#d4d4d4] rounded-md p-6 shadow-sm">
-                    <div className="text-[15px] font-bold text-[#37352f] mb-4 flex items-center gap-2 border-b border-[#e9e9e7] pb-2">
+                <div className="no-print space-y-8 flex-1">
+                  {/* 입력 폼 카드 */}
+                  <div className="bg-white dark:bg-[#2b2b2b] border border-[#d4d4d4] dark:border-[#444444] rounded-md p-6 shadow-sm transition-colors">
+                    <div className="text-[15px] font-bold text-[#37352f] dark:text-[#ffffff] mb-4 flex items-center gap-2 border-b border-[#e9e9e7] dark:border-[#444444] pb-2 transition-colors">
                       <IconFileText className="w-4 h-4"/> 기본정보 입력
                     </div>
-                    <div className="grid grid-cols-4 gap-6">
+                    <div className="grid grid-cols-5 gap-6">
                       <div>
-                        <label className="block text-[13px] text-[#504f4c] mb-1.5 font-bold">사건번호</label>
-                        <input type="text" onKeyDown={handleKeyDown} value={tree.caseNo} onChange={e=>handleRootUpdate('caseNo',e.target.value)} className="w-full border border-[#cccccc] rounded p-2 text-[15px] font-bold focus:bg-white transition-all" />
+                        <label className="block text-[13px] text-[#504f4c] dark:text-[#ffffff] mb-1.5 font-bold">사건번호</label>
+                        <input type="text" onKeyDown={handleKeyDown} value={tree.caseNo} onChange={e=>handleRootUpdate('caseNo',e.target.value)} className="w-full border border-[#cccccc] dark:border-[#555555] rounded p-2 text-[15px] font-bold bg-white dark:bg-[#333333] text-[#37352f] dark:text-[#ffffff] focus:bg-[#fcfcfa] dark:focus:bg-slate-600 transition-all outline-none" />
                       </div>
                       <div>
-                        <label className="block text-[13px] text-[#504f4c] mb-1.5 font-bold">피상속인 성명</label>
-                        <input type="text" onKeyDown={handleKeyDown} value={tree.name} onChange={e=>handleRootUpdate('name',e.target.value)} className="w-full border border-[#cccccc] rounded p-2 text-[15px] font-black text-[#0b6e99] focus:bg-white transition-all" />
+                        <label className="block text-[13px] text-[#504f4c] dark:text-[#ffffff] mb-1.5 font-bold">피상속인 성명</label>
+                        <input type="text" onKeyDown={handleKeyDown} value={tree.name} onChange={e=>handleRootUpdate('name',e.target.value)} className="w-full border border-[#cccccc] dark:border-[#555555] rounded p-2 text-[15px] font-black text-[#0b6e99] dark:text-[#60a5fa] bg-white dark:bg-[#333333] focus:bg-[#fcfcfa] dark:focus:bg-slate-600 transition-all outline-none" />
+                      </div>
+                      {/* 💡 피상속인 성별 선택 */}
+                      <div>
+                        <label className="block text-[13px] text-[#504f4c] dark:text-[#ffffff] mb-1.5 font-bold">성별</label>
+                        <div className="flex items-center gap-2 h-[42px]">
+                          <button type="button" onClick={()=>handleRootUpdate('gender','male')}
+                            className={`flex-1 py-2 rounded font-bold text-[14px] transition-all border ${
+                              tree.gender === 'male'
+                                ? 'bg-[#dbeafe] dark:bg-sky-900/40 border-[#93c5fd] dark:border-sky-800/50 text-[#1d4ed8] dark:text-[#7dd3fc] shadow-sm'
+                                : 'bg-white dark:bg-[#333333] border-[#cccccc] dark:border-[#555555] text-[#787774] dark:text-[#ffffff] hover:bg-[#f1f1ef] dark:hover:bg-[#3c3c3c]'
+                            }`}>
+                            ♂ 남
+                          </button>
+                          <button type="button" onClick={()=>handleRootUpdate('gender','female')}
+                            className={`flex-1 py-2 rounded font-bold text-[14px] transition-all border ${
+                              tree.gender === 'female'
+                                ? 'bg-[#fce7f3] dark:bg-pink-900/40 border-[#fbcfe8] dark:border-pink-800/50 text-[#be185d] dark:text-pink-300 shadow-sm'
+                                : 'bg-white dark:bg-[#333333] border-[#cccccc] dark:border-[#555555] text-[#787774] dark:text-[#ffffff] hover:bg-[#f1f1ef] dark:hover:bg-[#3c3c3c]'
+                            }`}>
+                            ♀ 여
+                          </button>
+                        </div>
                       </div>
                       <div>
-                        <label className="block text-[13px] text-[#c93f3a] mb-1.5 font-bold">사망일자</label>
-                        <DateInput value={tree.deathDate} onKeyDown={handleKeyDown} onChange={v=>handleRootUpdate('deathDate',v)} className="w-full border border-[#cccccc] rounded p-2 text-[15px] font-bold focus:bg-white transition-all" />
+                        <label className="block text-[13px] text-[#c93f3a] dark:text-[#f87171] mb-1.5 font-bold">사망일자</label>
+                        <DateInput value={tree.deathDate} onKeyDown={handleKeyDown} onChange={v=>handleRootUpdate('deathDate',v)} className="w-full border border-[#cccccc] dark:border-[#555555] rounded p-2 text-[15px] font-bold bg-white dark:bg-[#333333] focus:bg-[#fcfcfa] dark:focus:bg-slate-600 transition-all outline-none" />
                       </div>
                       <div>
-                        <label className="block text-[13px] text-[#504f4c] mb-1.5 font-bold">상속지분 (분자 / 분모)</label>
+                        <label className="block text-[13px] text-[#504f4c] dark:text-[#ffffff] mb-1.5 font-bold">상속지분 (분자 / 분모)</label>
                         <div className="flex items-center gap-2">
-                          <input type="number" min="1" onKeyDown={handleKeyDown} value={tree.shareN} onChange={e=>handleRootUpdate('shareN', Math.max(1, parseInt(e.target.value)||1))} className="w-full border border-[#cccccc] rounded p-2 text-[15px] text-center font-bold focus:bg-white transition-all" />
-                          <span className="text-[#d4d4d4] font-bold">/</span>
-                          <input type="number" min="1" onKeyDown={handleKeyDown} value={tree.shareD} onChange={e=>handleRootUpdate('shareD', Math.max(1, parseInt(e.target.value)||1))} className="w-full border border-[#cccccc] rounded p-2 text-[15px] text-center font-bold focus:bg-white transition-all" />
+                          <input type="number" min="1" onKeyDown={handleKeyDown} value={tree.shareN} onChange={e=>handleRootUpdate('shareN', Math.max(1, parseInt(e.target.value)||1))} className="w-full border border-[#cccccc] dark:border-[#555555] rounded p-2 text-[15px] text-center font-bold bg-white dark:bg-[#333333] text-[#37352f] dark:text-[#ffffff] focus:bg-[#fcfcfa] dark:focus:bg-slate-600 transition-all outline-none" />
+                          <span className="text-[#d4d4d4] dark:text-[#cccccc] font-bold">/</span>
+                          <input type="number" min="1" onKeyDown={handleKeyDown} value={tree.shareD} onChange={e=>handleRootUpdate('shareD', Math.max(1, parseInt(e.target.value)||1))} className="w-full border border-[#cccccc] dark:border-[#555555] rounded p-2 text-[15px] text-center font-bold bg-white dark:bg-[#333333] text-[#37352f] dark:text-[#ffffff] focus:bg-[#fcfcfa] dark:focus:bg-slate-600 transition-all outline-none" />
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="bg-white border border-[#d4d4d4] rounded-md p-6 shadow-sm">
-                    <div className="flex justify-between border-b border-[#e9e9e7] pb-3 mb-4 items-center">
+                  <div className="bg-white dark:bg-[#2b2b2b] border border-[#d4d4d4] dark:border-[#444444] rounded-md p-8 shadow-sm transition-colors flex-1">
+                    <div className="flex justify-between border-b border-[#e9e9e7] dark:border-[#444444] pb-3 mb-6 items-center">
                       <div className="flex items-center gap-3">
-                        <h2 className="text-[15px] font-bold text-[#37352f] flex items-center gap-2"><IconUserPlus className="w-4 h-4"/> 1순위 상속인 명단</h2>
+                        <h2 className="text-[16px] font-bold text-[#37352f] dark:text-[#ffffff] flex items-center gap-2"><IconUserPlus className="w-5 h-5 text-[#0b6e99] dark:text-[#38bdf8]"/> 1순위 상속인 명단</h2>
                         <button 
                           onClick={() => {
                             if (isInputAllExpanded) {
@@ -965,12 +1325,12 @@
                             }
                             setIsInputAllExpanded(!isInputAllExpanded);
                           }} 
-                          className="px-3 py-1 bg-white border border-[#d4d4d4] hover:bg-[#efefed] text-[#504f4c] rounded transition-colors text-[12px] font-bold shadow-sm whitespace-nowrap"
+                          className="px-3 py-1.5 bg-white dark:bg-[#333333] border border-[#d4d4d4] dark:border-transparent hover:bg-[#efefed] dark:hover:bg-[#444444] text-[#504f4c] dark:text-[#ffffff] rounded transition-colors text-[13px] font-bold shadow-sm whitespace-nowrap"
                         >
                           {isInputAllExpanded ? '모두 접기' : '모두 펼치기'}
                         </button>
                       </div>
-                      <button type="button" onClick={() => addHeir('root')} className="text-[#504f4c] border border-[#d4d4d4] hover:text-[#37352f] hover:bg-[#efefed] px-3 py-1.5 rounded text-[13px] font-bold transition-colors flex items-center gap-1 shadow-sm">
+                      <button type="button" onClick={() => addHeir('root')} className="text-[#504f4c] dark:text-[#ffffff] bg-white dark:bg-[#0e639c] border border-[#d4d4d4] dark:border-transparent hover:text-[#37352f] dark:hover:text-white hover:bg-[#efefed] dark:hover:bg-[#1177bb] px-4 py-2 rounded text-[14px] font-bold transition-all flex items-center gap-1.5 shadow-sm">
                         + {tree.name ? `${tree.name}의 상속인 추가` : '상속인 추가'}
                       </button>
                     </div>
@@ -984,7 +1344,7 @@
               {/* 💡 탭 2: 가계도 (안내 문구 추가 및 컨테이너 디자인 개선) */}
               {activeTab === 'tree' && (
                 <div className="py-2 flex flex-col h-full">
-                  <div className="mb-5 p-3.5 bg-[#f0fdf4] border border-[#bbf7d0] text-[#166534] rounded-lg text-[14px] font-semibold flex justify-between items-center shadow-sm no-print">
+                  <div className="mb-5 p-3.5 bg-[#f0fdf4] dark:bg-green-900/30 border border-[#bbf7d0] dark:border-green-800/50 text-[#166534] dark:text-[#86efac] rounded-lg text-[14px] font-semibold flex justify-between items-center shadow-sm no-print transition-colors">
                     <div className="flex items-center gap-2">
                       <IconNetwork className="w-5 h-5 shrink-0" />
                       <span>사람 이름을 클릭하면 해당 인물의 상속인(배우자/자녀)을 접거나 펼쳐서 관계도를 직관적으로 확인할 수 있습니다.</span>
@@ -1000,13 +1360,13 @@
                           }
                           setIsAllExpanded(!isAllExpanded);
                         }} 
-                        className="px-4 py-1.5 bg-white border border-[#bbf7d0] hover:bg-[#dcfce7] text-[#166534] rounded transition-colors text-[13px] font-bold shadow-sm whitespace-nowrap"
+                        className="px-4 py-1.5 bg-white dark:bg-[#2b2b2b] border border-[#bbf7d0] dark:border-green-800/50 hover:bg-[#dcfce7] dark:hover:bg-slate-700 text-[#166534] dark:text-[#86efac] rounded transition-all text-[13px] font-bold shadow-sm whitespace-nowrap"
                       >
                         {isAllExpanded ? '모두 접기' : '모두 펼치기'}
                       </button>
                     </div>
                   </div>
-                  <div className="bg-[#fafafa] p-6 rounded-xl border border-[#e9e9e7] shadow-inner overflow-hidden">
+                  <div className="bg-[#fafafa] dark:bg-[#2b2b2b] p-6 rounded-xl border border-[#e9e9e7] dark:border-[#444444] shadow-inner overflow-hidden transition-colors">
                     <TreeReportNode node={tree} level={0} treeToggleSignal={treeToggleSignal} />
                   </div>
                 </div>
@@ -1019,31 +1379,31 @@
                     {calcSteps.map((s, i) => (
                       <div key={i} className="break-inside-avoid">
                         {/* 계산표 헤더: 피상속인 이름 및 우측 끝에 상속재산 입력란 배치 */}
-                        <div className="bg-white/80 border-y border-[#d4d4d4] px-4 py-2 flex justify-between items-center print-table-top">
+                        <div className="bg-white/80 dark:bg-[#2b2b2b] border-y border-[#d4d4d4] dark:border-[#444444] px-4 py-2 flex justify-between items-center print-table-top transition-colors">
                           <div className="flex items-center gap-3">
-                            <span className="text-[16px] font-bold text-[#37352f]">
-                              피상속인 <span className="text-[#0b6e99] font-black mx-1">{s.dec.name}</span> 
-                              <span className="ml-2 font-medium text-[#787774] text-[14px]">[피상속지분: {s.inN}/{s.inD}]</span>
+                            <span className="text-[16px] font-bold text-[#37352f] dark:text-[#ffffff]">
+                              피상속인 <span className="text-[#0b6e99] dark:text-[#60a5fa] font-black mx-1">{s.dec.name}</span> 
+                              <span className="ml-2 font-medium text-[#787774] dark:text-[#ffffff] text-[14px]">[피상속지분: {s.inN}/{s.inD}]</span>
                             </span>
-                            <span className="text-[#c93f3a] font-bold text-[14px]">({s.dec.deathDate} 사망)</span>
+                            <span className="text-[#c93f3a] dark:text-[#f87171] font-bold text-[14px]">({s.dec.deathDate} 사망)</span>
                           </div>
                           
                           {/* 💡 피상속인(이영재 등 맨 처음 망인) 줄 가장 끝에 금액 계산 활성화 토글 및 상속재산 입력창 고정 */}
                           <div className="flex items-center gap-3">
                             {s.dec.id === 'root' ? (
                               <>
-                                <label className="flex items-center gap-1.5 cursor-pointer text-[#504f4c] font-bold text-[13px] hover:text-[#37352f] select-none no-print">
+                                <label className="flex items-center gap-1.5 cursor-pointer text-[#504f4c] dark:text-[#ffffff] font-bold text-[13px] hover:text-[#37352f] dark:hover:text-slate-100 select-none no-print transition-colors">
                                   <input type="checkbox" checked={isAmountActive} onChange={(e) => { setIsAmountActive(e.target.checked); if (!e.target.checked) setPropertyValue(''); }} className="w-4 h-4 cursor-pointer accent-[#2383e2]" />
                                   금액 계산
                                 </label>
                                 {isAmountActive && (
-                                  <div className="flex items-center gap-2 bg-white px-3 py-1 rounded border border-[#cccccc] shadow-sm focus-within:border-[#2383e2] transition-all no-print animate-in fade-in zoom-in duration-200">
-                                    <span className="text-[13px] font-bold text-[#504f4c]">총 상속재산</span>
+                                  <div className="flex items-center gap-2 bg-white dark:bg-[#2b2b2b] px-3 py-1 rounded border border-[#cccccc] dark:border-[#555555] shadow-sm focus-within:border-[#2383e2] transition-all no-print animate-in fade-in zoom-in duration-200">
+                                    <span className="text-[13px] font-bold text-[#504f4c] dark:text-[#ffffff]">총 상속재산</span>
                                     {/* 💡 입력칸 폭 확대 (w-52) : 100조 이상의 숫자도 거뜬히 표시 */}
-                                    <input type="text" value={formatMoney(propertyValue)} onChange={(e) => setPropertyValue(e.target.value.replace(/[^0-9]/g, ''))} onFocus={e => e.target.select()} className="w-52 px-2 text-right text-[15px] font-black text-[#0b6e99] outline-none bg-transparent" placeholder="0" />
-                                    <span className="text-[13px] font-bold text-[#504f4c]">원</span>
+                                    <input type="text" value={formatMoney(propertyValue)} onChange={(e) => setPropertyValue(e.target.value.replace(/[^0-9]/g, ''))} onFocus={e => e.target.select()} className="w-52 px-2 text-right text-[15px] font-black text-[#0b6e99] dark:text-[#60a5fa] outline-none bg-transparent" placeholder="0" />
+                                    <span className="text-[13px] font-bold text-[#504f4c] dark:text-[#ffffff]">원</span>
                                     {propertyValue && (
-                                      <button onClick={() => setPropertyValue('')} className="text-[#a3a3a3] hover:text-[#c93f3a] transition-colors ml-1 p-0.5 rounded-full" title="금액 지우기">
+                                      <button onClick={() => setPropertyValue('')} className="text-[#a3a3a3] dark:text-[#cccccc] hover:text-[#c93f3a] dark:hover:text-red-400 transition-colors ml-1 p-0.5 rounded-full" title="금액 지우기">
                                         <IconXCircle className="w-4 h-4" />
                                       </button>
                                     )}
@@ -1058,10 +1418,10 @@
                               </>
                             ) : (
                               isAmountActive && propertyValue > 0 && (
-                                <div className="flex items-center gap-2 bg-black/5 px-3 py-1 rounded border border-[#d4d4d4]">
-                                  <span className="text-[13px] font-bold text-[#504f4c]">승계 대상 금액</span>
-                                  <span className="text-[15px] font-black text-[#37352f]">{formatMoney(Math.floor((Number(propertyValue) * s.inN) / s.inD))}</span>
-                                  <span className="text-[13px] font-bold text-[#504f4c]">원</span>
+                                <div className="flex items-center gap-2 bg-black/5 dark:bg-white/5 px-3 py-1 rounded border border-[#d4d4d4] dark:border-[#444444] transition-colors">
+                                  <span className="text-[13px] font-bold text-[#504f4c] dark:text-[#ffffff]">승계 대상 금액</span>
+                                  <span className="text-[15px] font-black text-[#37352f] dark:text-[#ffffff]">{formatMoney(Math.floor((Number(propertyValue) * s.inN) / s.inD))}</span>
+                                  <span className="text-[13px] font-bold text-[#504f4c] dark:text-[#ffffff]">원</span>
                                 </div>
                               )
                             )}
@@ -1073,29 +1433,29 @@
                               // 💡 금액 계산 로직 (단위 원 미만 버림 처리)
                               const amount = propertyValue && d.n > 0 ? Math.floor((Number(propertyValue) * d.n) / d.d) : 0;
                               return (
-                                <tr key={di} className="border-b border-[#d4d4d4] print:border-[#d4d4d4]">
-                                  <td className="w-[120px] py-1.5 pl-4 font-bold text-[16px] text-[#0b6e99]">{d.h.name}</td>
+                                <tr key={di} className="border-b border-[#d4d4d4] dark:border-[#444444] print:border-[#d4d4d4] transition-colors">
+                                  <td className="w-[120px] py-1.5 pl-4 font-bold text-[16px] text-[#0b6e99] dark:text-[#7dd3fc]">{d.h.name}</td>
                                   {/* 💡 관계 폭 축소: 70px */}
-                                  <td className="w-[70px] py-1.5 text-[15px] font-semibold text-[#504f4c]">{relStr[d.h.relation] || '자녀'}</td>
+                                  <td className="w-[70px] py-1.5 text-[15px] font-semibold text-[#504f4c] dark:text-[#ffffff]">{relStr[d.h.relation] || '자녀'}</td>
                                   {/* 💡 지분 및 가산/감산 폭 조정: 480px (요청하신 수치) */}
-                                  <td className="w-[480px] py-1.5 text-[#37352f]">
+                                  <td className="w-[480px] py-1.5 text-[#37352f] dark:text-[#ffffff]">
                                     <div className="grid grid-cols-[70px_160px_1fr] items-center gap-2 w-full">
                                       {d.ex ? (
                                         <div className="col-span-3 flex justify-start">
-                                          <span className="text-[#c93f3a] text-[13px] font-bold bg-white/50 px-1.5 py-0.5 rounded border border-[#f0c0b9]">{d.ex}</span>
+                                          <span className="text-[#c93f3a] dark:text-[#fb7185] text-[13px] font-bold bg-white/50 dark:bg-rose-900/20 px-1.5 py-0.5 rounded border border-[#f0c0b9] dark:border-rose-800/40">※ {d.ex}</span>
                                         </div>
                                       ) : (
                                         <>
-                                          <span className="font-bold text-[16px] text-[#37352f] text-right pr-2">{d.n} / {d.d}</span>
-                                          <span className="text-[14px] text-[#787774] font-medium whitespace-nowrap">(= {s.inN}/{s.inD} × {d.sn}/{d.sd})</span>
+                                          <span className="font-bold text-[16px] text-[#37352f] dark:text-[#ffffff] text-right pr-2">{d.n} / {d.d}</span>
+                                          <span className="text-[14px] text-[#787774] dark:text-[#ffffff] font-medium whitespace-nowrap">(= {s.inN}/{s.inD} × {d.sn}/{d.sd})</span>
                                           <div className="flex justify-start">
                                             {d.mod && (
-                                              <span className={`text-[13px] font-semibold px-2 py-0.5 rounded border whitespace-nowrap ${
-                                                d.mod.includes('호주') ? 'text-[#be185d] bg-[#fce7f3] border-[#fbcfe8]' :
-                                                d.mod.includes('출가녀') ? 'text-[#c2410c] bg-[#ffedd5] border-[#fed7aa]' :
-                                                d.mod.includes('가산') ? 'text-[#0369a1] bg-[#e0f2fe] border-[#bae6fd]' :
-                                                d.mod.includes('감산') ? 'text-[#be185d] bg-[#fce7f3] border-[#fbcfe8]' :
-                                                'text-[#402c84] bg-[#f3f0ff] border-[#d9cfff]'
+                                              <span className={`text-[13px] font-bold px-2 py-0.5 rounded border whitespace-nowrap shadow-sm ${
+                                                d.mod.includes('호주') ? 'text-[#be185d] dark:text-fuchsia-300 bg-[#fce7f3] dark:bg-fuchsia-900/30 border-[#fbcfe8] dark:border-fuchsia-800/40' :
+                                                d.mod.includes('출가녀') ? 'text-[#c2410c] dark:text-[#fcd34d] bg-[#ffedd5] dark:bg-amber-900/30 border-[#fed7aa] dark:border-amber-800/40' :
+                                                d.mod.includes('가산') ? 'text-[#0369a1] dark:text-[#7dd3fc] bg-[#e0f2fe] dark:bg-sky-900/30 border-[#bae6fd] dark:border-sky-800/40' :
+                                                d.mod.includes('감산') ? 'text-[#be185d] dark:text-rose-300 bg-[#fce7f3] dark:bg-rose-900/30 border-[#fbcfe8] dark:border-rose-800/40' :
+                                                'text-[#402c84] dark:text-indigo-300 bg-[#f3f0ff] dark:bg-indigo-900/30 border-[#d9cfff] dark:border-indigo-800/40'
                                               }`}>
                                                 ※ {d.mod}
                                               </span>
@@ -1107,7 +1467,7 @@
                                   </td>
                                   
                                   {/* 💡 사망 텍스트 영역: 120px */}
-                                  <td className="w-[120px] py-1.5 text-left pl-4 text-[#c93f3a] text-[13px] font-bold whitespace-nowrap">
+                                  <td className="w-[120px] py-1.5 text-left pl-4 text-[#c93f3a] dark:text-[#f87171] text-[13px] font-bold whitespace-nowrap">
                                     {d.h.isDeceased ? `(${d.h.deathDate} 사망)` : ''}
                                   </td>
 
@@ -1115,7 +1475,7 @@
                                   {isAmountActive && (
                                     <td className="w-[300px] py-1.5 text-right pr-4">
                                       {!d.ex && (
-                                        <span className="font-black text-[16px] text-[#0b6e99] tracking-tight">{formatMoney(amount)}<span className="text-[13px] font-normal text-[#787774] ml-0.5">원</span></span>
+                                        <span className="font-black text-[16px] text-[#0b6e99] dark:text-[#60a5fa] tracking-tight">{formatMoney(amount)}<span className="text-[13px] font-normal text-[#787774] dark:text-[#ffffff] ml-0.5">원</span></span>
                                       )}
                                     </td>
                                   )}
@@ -1137,20 +1497,20 @@
               {activeTab === 'summary' && (
                 <div className="flex flex-col h-full">
                   {/* 💡 요약표 전용 상속재산가액 입력 바 */}
-                  <div className="mb-4 flex justify-end no-print">
+                  <div className="mb-4 flex justify-end no-print transition-colors">
                     <div className="flex items-center gap-3">
-                      <label className="flex items-center gap-1.5 cursor-pointer text-[#504f4c] font-bold text-[13px] hover:text-[#37352f] select-none">
+                      <label className="flex items-center gap-1.5 cursor-pointer text-[#504f4c] dark:text-[#ffffff] font-bold text-[13px] hover:text-[#37352f] dark:hover:text-slate-100 select-none transition-colors">
                         <input type="checkbox" checked={isAmountActive} onChange={(e) => { setIsAmountActive(e.target.checked); if (!e.target.checked) setPropertyValue(''); }} className="w-4 h-4 cursor-pointer accent-[#2383e2]" />
                         금액 계산 활성화
                       </label>
                       {isAmountActive && (
-                        <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded border border-[#cccccc] shadow-sm focus-within:border-[#2383e2] transition-all animate-in fade-in zoom-in duration-200">
-                          <span className="text-[13px] font-bold text-[#504f4c]">총 상속재산</span>
+                        <div className="flex items-center gap-2 bg-white dark:bg-[#2b2b2b] px-3 py-1.5 rounded border border-[#cccccc] dark:border-[#555555] shadow-sm focus-within:border-[#2383e2] transition-all animate-in fade-in zoom-in duration-200">
+                          <span className="text-[13px] font-bold text-[#504f4c] dark:text-[#ffffff]">총 상속재산</span>
                           {/* 💡 요약표 입력칸 폭 확대 (w-60) */}
-                          <input type="text" value={formatMoney(propertyValue)} onChange={(e) => setPropertyValue(e.target.value.replace(/[^0-9]/g, ''))} onFocus={e => e.target.select()} className="w-60 px-2 text-right text-[15px] font-black text-[#0b6e99] outline-none bg-transparent" placeholder="금액 입력" />
-                          <span className="text-[13px] font-bold text-[#504f4c]">원</span>
+                          <input type="text" value={formatMoney(propertyValue)} onChange={(e) => setPropertyValue(e.target.value.replace(/[^0-9]/g, ''))} onFocus={e => e.target.select()} className="w-60 px-2 text-right text-[15px] font-black text-[#0b6e99] dark:text-[#60a5fa] outline-none bg-transparent" placeholder="금액 입력" />
+                          <span className="text-[13px] font-bold text-[#504f4c] dark:text-[#ffffff]">원</span>
                           {propertyValue && (
-                            <button onClick={() => setPropertyValue('')} className="text-[#a3a3a3] hover:text-[#c93f3a] transition-colors ml-1 p-0.5 rounded-full" title="금액 지우기">
+                            <button onClick={() => setPropertyValue('')} className="text-[#a3a3a3] dark:text-[#cccccc] hover:text-[#c93f3a] dark:hover:text-red-400 transition-colors ml-1 p-0.5 rounded-full" title="금액 지우기">
                               <IconXCircle className="w-4 h-4" />
                             </button>
                           )}
@@ -1159,27 +1519,27 @@
                     </div>
                   </div>
 
-                  <div className="print-mt-4 break-inside-avoid">
-                    <table className="w-full text-left print-table border border-[#d4d4d4]">
+                  <div className="print-mt-4 break-inside-avoid transition-colors">
+                    <table className="w-full text-left print-table border border-[#d4d4d4] dark:border-[#444444] transition-colors">
                       <thead>
-                        <tr className="print-table-top text-[#37352f] text-[15px] font-bold bg-white/80">
-                          <th className={`py-3 px-4 ${isAmountActive ? 'w-[20%]' : 'w-[30%]'} border-r border-[#d4d4d4]`}>상속인 성명</th>
-                          <th className={`py-3 px-4 ${isAmountActive ? 'w-[25%]' : 'w-[35%]'} text-center border-r border-[#d4d4d4]`}>최종 지분 (통분 전)</th>
-                          <th className={`py-3 px-4 ${isAmountActive ? 'w-[25%]' : 'w-[35%]'} text-center ${isAmountActive ? 'border-r border-[#d4d4d4]' : ''}`}>최종 지분 (통분 후)</th>
+                        <tr className="print-table-top text-[#37352f] dark:text-[#ffffff] text-[15px] font-bold bg-white/80 dark:bg-[#2b2b2b] transition-colors">
+                          <th className={`py-3 px-4 ${isAmountActive ? 'w-[20%]' : 'w-[30%]'} border-r border-[#d4d4d4] dark:border-[#444444]`}>상속인 성명</th>
+                          <th className={`py-3 px-4 ${isAmountActive ? 'w-[25%]' : 'w-[35%]'} text-center border-r border-[#d4d4d4] dark:border-[#444444]`}>최종 지분 (통분 전)</th>
+                          <th className={`py-3 px-4 ${isAmountActive ? 'w-[25%]' : 'w-[35%]'} text-center ${isAmountActive ? 'border-r border-[#d4d4d4] dark:border-[#444444]' : ''}`}>최종 지분 (통분 후)</th>
                           {isAmountActive && <th className="py-3 px-4 w-[30%] text-center">상속 금액</th>}
                         </tr>
                       </thead>
-                      <tbody className="text-[#37352f]">
+                      <tbody className="text-[#37352f] dark:text-[#ffffff] transition-colors">
                         
                         {finalShares.direct && finalShares.direct.length > 0 && (
                           finalShares.direct.map((f, i) => {
                             const amount = propertyValue ? Math.floor((Number(propertyValue) * f.un) / f.ud) : 0;
                             return (
-                              <tr key={'d'+i} className="border-b border-[#d4d4d4]">
-                                <td className="py-2.5 px-4 font-bold text-[16px] border-r border-[#d4d4d4] text-[#0b6e99] bg-white/50">{f.name}</td>
-                                <td className="py-2.5 px-4 text-center border-r border-[#d4d4d4] font-bold text-[16px] text-[#37352f]">{f.n} / {f.d}</td>
-                                <td className={`py-2.5 px-4 text-center font-bold text-[16px] text-[#37352f] ${isAmountActive ? 'border-r border-[#d4d4d4]' : ''}`}>{f.un} / {f.ud}</td>
-                                {isAmountActive && <td className="py-2.5 px-4 text-right pr-6 font-black text-[16px] text-[#0b6e99] bg-[#eff6ff]">{formatMoney(amount)}<span className="text-[13px] font-normal text-[#787774] ml-1">원</span></td>}
+                              <tr key={'d'+i} className="border-b border-[#eee] dark:border-[#444444] hover:bg-[#fafafa] dark:hover:bg-[#2a2a2a] transition-all group">
+                                <td className="py-2.5 px-4 font-black text-[18px] border-r border-[#eee] dark:border-[#444444] text-[#0b6e99] dark:text-[#7dd3fc] bg-white/50 dark:bg-sky-900/10 transition-colors">{f.name}</td>
+                                <td className="py-2.5 px-4 text-center border-r border-[#eee] dark:border-[#444444] font-bold text-[16px] text-[#37352f] dark:text-[#ffffff]">{f.n} / {f.d}</td>
+                                <td className={`py-2.5 px-4 text-center font-bold text-[16px] text-[#37352f] dark:text-[#ffffff] ${isAmountActive ? 'border-r border-[#eee] dark:border-[#444444]' : ''}`}>{f.un} / {f.ud}</td>
+                                {isAmountActive && <td className="py-2.5 px-4 text-right pr-6 font-black text-[18px] text-[#0b6e99] dark:text-[#7dd3fc] bg-[#f8fbff] dark:bg-sky-900/20 group-hover:dark:bg-sky-900/30 transition-colors">{formatMoney(amount)}<span className="text-[12px] font-normal text-[#787774] dark:text-[#ffffff] ml-1">원</span></td>}
                               </tr>
                             );
                           })
@@ -1191,19 +1551,21 @@
                           
                           return (
                             <React.Fragment key={'g'+gIdx}>
-                              <tr className="border-b border-[#d4d4d4] bg-[#37352f]/5 print:bg-[#f1f1ef]">
-                                <td colSpan={isAmountActive ? "4" : "3"} className="py-2.5 px-4 text-[14px] font-bold text-[#504f4c]">
+                              <tr className="border-b border-[#eee] dark:border-[#444444] bg-[#f8f9fa] dark:bg-[#333333] transition-colors">
+                                <td colSpan={isAmountActive ? "4" : "3"} className="py-3 px-8 text-[14px] font-bold text-[#504f4c] dark:text-[#ffffff]">
                                   ※ {reasonText}
                                 </td>
                               </tr>
                               {group.shares.map((f, i) => {
                                 const amount = propertyValue ? Math.floor((Number(propertyValue) * f.un) / f.ud) : 0;
                                 return (
-                                  <tr key={'gs'+gIdx+'-'+i} className="border-b border-[#d4d4d4]">
-                                    <td className="py-2.5 px-4 font-bold pl-10 flex items-center gap-2 border-r border-[#d4d4d4] text-[16px] text-[#0b6e99]"><span className="text-[#a1a1aa] font-normal">└</span>{f.name}</td>
-                                    <td className="py-2.5 px-4 text-center border-r border-[#d4d4d4] font-bold text-[16px] text-[#37352f]">{f.n} / {f.d}</td>
-                                    <td className={`py-2.5 px-4 text-center font-bold text-[16px] text-[#37352f] ${isAmountActive ? 'border-r border-[#d4d4d4]' : ''}`}>{f.un} / {f.ud}</td>
-                                    {isAmountActive && <td className="py-2.5 px-4 text-right pr-6 font-black text-[16px] text-[#0b6e99] bg-[#eff6ff]">{formatMoney(amount)}<span className="text-[13px] font-normal text-[#787774] ml-1">원</span></td>}
+                                  <tr key={'gs'+gIdx+'-'+i} className="border-b border-[#eee] dark:border-[#444444] hover:bg-[#fafafa] dark:hover:bg-[#2a2a2a] transition-all group">
+                                    <td className="py-4 px-8 font-black pl-12 flex items-center gap-2 border-r border-[#eee] dark:border-[#444444] text-[17px] text-[#0b6e99] dark:text-[#7dd3fc] group-hover:dark:text-sky-200 transition-colors">
+                                      <span className="text-[#a1a1aa] dark:text-[#555555] font-normal">└</span>{f.name}
+                                    </td>
+                                    <td className="py-4 px-8 text-center border-r border-[#eee] dark:border-[#444444] font-bold text-[16px] text-[#37352f] dark:text-[#ffffff]">{f.n} / {f.d}</td>
+                                    <td className={`py-4 px-8 text-center font-bold text-[16px] text-[#37352f] dark:text-[#ffffff] ${isAmountActive ? 'border-r border-[#eee] dark:border-[#444444]' : ''}`}>{f.un} / {f.ud}</td>
+                                    {isAmountActive && <td className="py-4 px-8 text-right pr-6 font-black text-[18px] text-[#0b6e99] dark:text-[#7dd3fc] bg-[#f8fbff] dark:bg-sky-900/20 group-hover:dark:bg-sky-900/30 transition-colors">{formatMoney(amount)}<span className="text-[12px] font-normal text-[#787774] dark:text-[#ffffff] ml-1">원</span></td>}
                                   </tr>
                                 );
                               })}
@@ -1213,19 +1575,31 @@
                         
                       </tbody>
                     </table>
-                    <div className="mt-8 text-[13px] text-[#787774] space-y-1 text-right font-medium">
+                    <div className="mt-8 text-[13px] text-[#787774] dark:text-[#cccccc] space-y-1 text-right font-medium transition-colors">
                       <p>※ 본 계산서는 대습 및 순차 상속 법리를 기초로 산출되었습니다.</p>
                       <p>※ 상속 개시 시점(사망일)에 따른 1960년, 1979년, 1991년 개정 민법 비율이 자동 적용되었습니다.</p>
-                      {isAmountActive && <p className="text-[#0b6e99] font-bold mt-2">※ 계산된 상속 금액은 원 단위 이하를 내림하여 표기하였습니다.</p>}
+                      {isAmountActive && <p className="text-[#0b6e99] dark:text-[#60a5fa] font-bold mt-2">※ 계산된 상속 금액은 원 단위 이하를 내림하여 표기하였습니다.</p>}
                     </div>
                   </div>
                 </div>
               )}
             </div>
           </div>
+          <PrintReport 
+            tree={tree} 
+            finalShares={finalShares} 
+            calcSteps={calcSteps} 
+            formatMoney={formatMoney} 
+            formatKorDate={formatKorDate} 
+            isAmountActive={isAmountActive}
+            propertyValue={propertyValue}
+          />
+        </div>
         </div>
       );
     }
+
+
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);

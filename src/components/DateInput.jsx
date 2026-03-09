@@ -33,7 +33,7 @@ export const DateInput = ({ value, onChange, placeholder, className, onKeyDown }
       onBlur={handleBlur}
       onFocus={e => e.target.select()} 
       placeholder={placeholder || "YYYY-MM-DD"} 
-      className={className} 
+      className={`${className} dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200`}
     />
   );
 };

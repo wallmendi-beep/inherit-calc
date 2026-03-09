@@ -1,13 +1,19 @@
-import { math, getLawEra, isBefore } from './utils';
+import { math, getLawEra, isBefore } from './utils.js';
 
 export const calculateInheritance = (tree, propertyValue) => {
   let results = [];
   let steps = [];
+  let warnings = [];
+  let appliedLaws = new Set();
   
   const traverse = (node, inN, inD, inheritedDate) => {
-    if (node.isRemarried) return;
+    // 유효성 검사: 피상속인/선사망자 사망일 누락 확인
+    if (node.isDeceased && !node.deathDate) {
+      warnings.push(`${node.name || '이름 미입력'} 님의 사망일자가 입력되지 않았습니다.`);
+    }
+
     if (!node.isDeceased || node.id === 'root') {
-      if (node.id !== 'root') results.push({ name: node.name, n: inN, d: inD });
+      if (node.id !== 'root') results.push({ name: node.name, n: inN, d: inD, relation: node.relation });
       if (!node.isDeceased) return;
     }
     if (!node.heirs || node.heirs.length === 0) return;
@@ -22,43 +28,57 @@ export const calculateInheritance = (tree, propertyValue) => {
     }
     
     const law = getLawEra(distributionDate);
+    appliedLaws.add(law);
+
     let total = 0;
     
     node.heirs.forEach(h => {
+      // 유효성 검사: 재혼자 재혼일 누락 확인
+      if (h.isRemarried && !h.remarriageDate) {
+        warnings.push(`${h.name || '이름 미입력'} 님의 재혼일자가 입력되지 않아 대습상속권 유지를 판단할 수 없습니다.`);
+      }
+
       const isSp = h.relation === 'wife' || h.relation === 'husband';
       const isPre = h.isDeceased && h.deathDate && isBefore(h.deathDate, distributionDate);
       let modifier = ''; 
 
       if (isSp && isPre) { h.r = 0; h.ex = `${h.deathDate} 피상속인보다 먼저 사망`; }
-      else if (isSp && node.id !== 'root' && h.isRemarried && h.remarriageDate && isBefore(h.remarriageDate, distributionDate)) { 
-        h.r = 0; h.ex = '상속 개시 전 재혼 (대습상속권 소멸)'; 
+      else if (isSp && node.id !== 'root' && h.isRemarried && h.remarriageDate && isBefore(h.remarriageDate, distributionDate) && law === '1991') { 
+        h.r = 0; h.ex = '상속 개시 전 재혼 (1991년 이후 대습상속권 소멸)'; 
       }
-      else if (node.id !== 'root' && h.relation === 'husband' && (law === '1960' || law === '1979') && isSubstitution) {
-        h.r = 0; h.ex = '1991년 이전 사위 대습상속권 없음';
-      }
-      else if (!isSp && isPre && (!h.heirs || h.heirs.length === 0)) { h.r = 0; h.ex = '대습상속인 없음'; }
-      else if (h.relation === 'wife') { 
+      else if (node.id !== 'root' && h.relation === 'husband' && isSubstitution) {
+        // (나-①) 처의 사망일자가 91.1.1. 전이면 남편의 대습상속권 없음
+        if (isBefore(node.deathDate, '1991-01-01')) {
+          h.r = 0; h.ex = '1991년 이전 처 사망으로 사위 대습상속권 없음';
+        } else if (law === '1960' || law === '1979') {
+          h.r = 0; h.ex = '1991년 이전 피상속인 사망으로 남편 대습권 없음';
+        } else {
+          h.r = 1.5; modifier = '남편 5할 가산';
+        }
+      } else if (h.relation === 'wife') { 
          if (law === '1991' || law === '1979') { h.r = 1.5; modifier = '처 5할 가산'; }
          else { h.r = 0.5; modifier = '처 감산 (자녀의 1/2)'; } 
       } else if (h.relation === 'husband') {
+         // 직접 상속 시
          if (law === '1991') { h.r = 1.5; modifier = '남편 5할 가산'; }
          else { h.r = 1.0; } 
       } else {
-         if (law === '1991') { h.r = 1.0; }
-         else if (law === '1979') {
+         if (law === '1991') {
+           h.r = 1.0;
+         } else if (law === '1979') {
            if (h.relation === 'daughter') {
              if (h.isSameRegister !== false) { h.r = 1.0; }
              else { h.r = 0.25; modifier = '출가녀 감산 (아들의 1/4)'; }
            } else if (h.relation === 'son') {
-             if (h.isHoju && tree.isHoju !== false) { h.r = 1.5; modifier = '호주상속 5할 가산'; }
+             if (h.isHoju) { h.r = 1.5; modifier = isSubstitution ? '대습 호주가산 (선례 2-285호)' : '호주상속 5할 가산'; }
              else { h.r = 1.0; }
            } else h.r = 1.0;
-         } else { 
+         } else { // 1960년 구법
            if (h.relation === 'daughter') {
              if (h.isSameRegister !== false) { h.r = 0.5; modifier = '여자 감산 (남자의 1/2)'; }
              else { h.r = 0.25; modifier = '출가녀 감산 (남자의 1/4)'; }
            } else if (h.relation === 'son') {
-             if (h.isHoju && tree.isHoju !== false) { h.r = 1.5; modifier = '호주상속 5할 가산'; }
+             if (h.isHoju) { h.r = 1.5; modifier = isSubstitution ? '대습 호주가산 (선례 2-285호)' : '호주상속 5할 가산'; }
              else { h.r = 1.0; }
            } else h.r = 1.0;
          }
@@ -68,7 +88,7 @@ export const calculateInheritance = (tree, propertyValue) => {
     });
 
     if (total > 0) {
-      const step = { dec: node, inN, inD, dists: [] };
+      const step = { dec: node, inN, inD, dists: [], lawEra: law };
       const childrenToTraverse = [];
 
       node.heirs.forEach(h => {
@@ -144,6 +164,8 @@ export const calculateInheritance = (tree, propertyValue) => {
   
   return {
     finalShares: { direct: directShares, subGroups: subGroups },
-    calcSteps: steps
+    calcSteps: steps,
+    warnings: Array.from(new Set(warnings)),
+    appliedLaws: Array.from(appliedLaws).sort()
   };
 };
