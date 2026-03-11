@@ -360,12 +360,15 @@ function App() {
     if (!lineage || lineage.length === 0) return { pathStr: '', shareStr: '', sources: [] };
 
     const targetNode = lineage[lineage.length - 1];
-    if (!targetNode) return { name: '', relation: '', shareStr: '0', sources: [] };
+    if (!targetNode) return { name: '', relationInfo: '', shareStr: '0', sources: [], isRoot: false };
     
-    // 성명 및 부모와의 관계 추출
-    const name = targetNode.name || '(이름없음)';
+    const isRoot = activeDeceasedTab === 'root';
+    const name = targetNode.name || (isRoot ? '피상속인' : '(이름없음)');
     let relationInfo = '';
-    if (lineage.length > 1) {
+    
+    if (isRoot) {
+      relationInfo = '(피상속인)';
+    } else if (lineage.length > 1) {
       const parent = lineage[lineage.length - 2];
       const rel = relStr[targetNode.relation] || '상속인';
       relationInfo = `(${parent.name || '피상속인'}의 ${rel})`;
@@ -393,8 +396,8 @@ function App() {
       });
     }
 
-    const shareStr = totalN > 0 ? `${totalD}분의 ${totalN}` : '0';
-    return { name, relationInfo, shareStr, sources: sourceList };
+    const shareStr = isRoot ? '1분의 1' : (totalN > 0 ? `${totalD}분의 ${totalN}` : '0');
+    return { name, relationInfo, shareStr, sources: sourceList, isRoot };
   }, [tree, activeDeceasedTab, calcSteps]);
 
   // 탭 변경 시 자동 스크롤 (활성 탭이 화면 중앙에 오도록)
@@ -596,9 +599,8 @@ function App() {
     <div className="w-full min-h-screen relative flex flex-col items-center pb-24 transition-colors duration-200 bg-[#f7f7f5] dark:bg-neutral-900">
       
       <div id="print-footer" className="hidden print:block fixed bottom-0 right-0 font-['Dancing_Script'] text-neutral-300 text-sm">
-        Designed by J.H. Lee (v1.0.4)
+        Designed by J.H. Lee (v1.0.5)
       </div>
-
 
       {/* 💡 사이드 패널 - 탭에 상관없이 항상 고정 표시 */}
       {sidebarOpen && (
@@ -614,9 +616,37 @@ function App() {
             <MiniTreeView node={tree} level={0}
               onSelectNode={(id) => {
                 const tabIds = deceasedTabs.map(t => t.id);
+                
+                // 1. 만약 클릭된 ID가 직접적인 탭 ID라면 즉시 이동
                 if (tabIds.includes(id)) {
                   setActiveDeceasedTab(id);
                   setActiveTab('input');
+                  return;
+                }
+
+                // 2. 만약 직접 탭이 아니라면, 부모를 거슬러 올라가 탭 소유자 찾기
+                const getOwnerTabId = (root, targetId, path = []) => {
+                  if (root.id === targetId) return path;
+                  if (root.heirs) {
+                    for (const h of root.heirs) {
+                      const foundPath = getOwnerTabId(h, targetId, [...path, root.id]);
+                      if (foundPath) return foundPath;
+                    }
+                  }
+                  return null;
+                };
+
+                const ancestorPath = getOwnerTabId(tree, id);
+                if (ancestorPath && ancestorPath.length > 0) {
+                  // 역순으로 훑으며 가장 가까운(최하위) 조상 중 탭으로 등록된 ID 찾기
+                  for (let i = ancestorPath.length - 1; i >= 0; i--) {
+                    const aid = ancestorPath[i];
+                    if (tabIds.includes(aid)) {
+                      setActiveDeceasedTab(aid);
+                      setActiveTab('input');
+                      return;
+                    }
+                  }
                 }
               }}
               visitedHeirs={new Set()}
@@ -682,9 +712,9 @@ function App() {
             <div className="flex items-baseline gap-2">
               <div className="flex items-center text-[#37352f] dark:text-neutral-100 font-bold text-[18px] tracking-tight">
                 <IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-neutral-400" />
-                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400">v1.0.4</span>
+                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400">v1.0.5</span>
               </div>
-              <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px]">Designed by J.H. Lee · <span className="opacity-60">v1.0.4</span></span>
+              <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px]">Designed by J.H. Lee · <span className="opacity-60">v1.0.5</span></span>
             </div>
           </div>
           
@@ -868,7 +898,9 @@ function App() {
                                   {getBriefingInfo.name}
                                   <span className="text-[13px] text-neutral-400 font-bold ml-1">{getBriefingInfo.relationInfo}</span>
                                 </span>
-                                <span className="text-[14px] font-black text-blue-600 dark:text-blue-400 ml-3">상속 지분 : {getBriefingInfo.shareStr}</span>
+                                <span className="text-[14px] font-black text-blue-600 dark:text-blue-400 ml-3">
+                                  {getBriefingInfo.isRoot ? '상속할 지분' : '상속 지분'} : {getBriefingInfo.shareStr}
+                                </span>
                               </div>
                               <div className="flex flex-wrap gap-x-4 gap-y-1 pl-4">
                                 {getBriefingInfo.sources.map((src, sidx) => (
