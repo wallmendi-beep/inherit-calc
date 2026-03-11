@@ -15,6 +15,7 @@ import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, us
 import { SortableContext, verticalListSortingStrategy, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 
 const MiniTreeView = ({ node, level = 0, onSelectNode, visitedHeirs = new Set() }) => {
+  const [isExpanded, setIsExpanded] = React.useState(level === 0); // 루트는 기본 확장
   if (!node) return null;
   
   // 🎨 항렬별/상태별 색상 정의
@@ -29,7 +30,7 @@ const MiniTreeView = ({ node, level = 0, onSelectNode, visitedHeirs = new Set() 
   const nameColorClass = getLevelColor(level, node.isDeceased);
   const hasHeirs = node.heirs && node.heirs.length > 0;
 
-  // 중복 노출 방지: 이미 본 이름이면 하위 트리 렌더링 생략 (가계도 요약 간소화)
+  // 중복 노출 방지 로직 (간소화 유지)
   const isDuplicate = node.name && visitedHeirs.has(node.name) && level > 0;
   if (node.name && level > 0) visitedHeirs.add(node.name);
 
@@ -38,7 +39,10 @@ const MiniTreeView = ({ node, level = 0, onSelectNode, visitedHeirs = new Set() 
       <div className="flex items-center gap-1.5 py-1 pr-1 group">
         {level > 0 && <span className="text-[#d4d4d4] dark:text-neutral-600 text-[12px] shrink-0 font-bold opacity-40">└</span>}
         <span 
-          onClick={() => onSelectNode && onSelectNode(node.id)}
+          onClick={() => {
+            if (hasHeirs) setIsExpanded(!isExpanded);
+            onSelectNode && onSelectNode(node.id);
+          }}
           className={`text-[13px] truncate transition-all flex-1 min-w-0 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 px-1 rounded ${nameColorClass} ${hasHeirs ? 'underline underline-offset-4 decoration-current decoration-1' : ''}`}
         >
           {node.name || (level === 0 ? '피상속인' : '(이름 없음)')}
@@ -46,7 +50,7 @@ const MiniTreeView = ({ node, level = 0, onSelectNode, visitedHeirs = new Set() 
         {level > 0 && <span className={`text-[10px] font-bold shrink-0 opacity-40 uppercase tracking-tighter ${node.isDeceased ? 'text-[#ef4444]' : 'text-[#787774]'}`}>[{relStr[node.relation] || '자녀'}]</span>}
       </div>
       
-      {!isDuplicate && hasHeirs && (
+      {isExpanded && !isDuplicate && hasHeirs && (
         <div className="border-l border-[#e9e9e7] dark:border-neutral-700 ml-1.5 pl-1.5 pb-1 transition-colors">
           {node.heirs.map((h, i) => (
             <MiniTreeView key={h.id || i} node={h} level={level + 1}
@@ -599,7 +603,7 @@ function App() {
     <div className="w-full min-h-screen relative flex flex-col items-center pb-24 transition-colors duration-200 bg-[#f7f7f5] dark:bg-neutral-900">
       
       <div id="print-footer" className="hidden print:block fixed bottom-0 right-0 font-['Dancing_Script'] text-neutral-300 text-sm">
-        Designed by J.H. Lee (v1.0.5)
+        Designed by J.H. Lee (v1.0.6)
       </div>
 
       {/* 💡 사이드 패널 - 탭에 상관없이 항상 고정 표시 */}
@@ -712,9 +716,9 @@ function App() {
             <div className="flex items-baseline gap-2">
               <div className="flex items-center text-[#37352f] dark:text-neutral-100 font-bold text-[18px] tracking-tight">
                 <IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-neutral-400" />
-                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400">v1.0.5</span>
+                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400">v1.0.6</span>
               </div>
-              <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px]">Designed by J.H. Lee · <span className="opacity-60">v1.0.5</span></span>
+              <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px]">Designed by J.H. Lee · <span className="opacity-60">v1.0.6</span></span>
             </div>
           </div>
           
@@ -1242,7 +1246,6 @@ function App() {
               본 보고서는 상속지분 계산기 PRO (Designed by J.H. Lee)를 통해 법령에 기초하여 자동 생성되었습니다.
             </div>
           </div>
-
         </div>
       </div>
     </div>
