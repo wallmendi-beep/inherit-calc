@@ -14,7 +14,7 @@ import { getInitialTree, getEmptyTree } from './utils/initialData';
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 
-const MiniTreeView = ({ node, level = 0, onSelectNode }) => {
+const MiniTreeView = ({ node, level = 0, onSelectNode, visitedHeirs = new Set() }) => {
   if (!node) return null;
   
   // 🎨 항렬별/상태별 색상 정의
@@ -29,6 +29,10 @@ const MiniTreeView = ({ node, level = 0, onSelectNode }) => {
   const nameColorClass = getLevelColor(level, node.isDeceased);
   const hasHeirs = node.heirs && node.heirs.length > 0;
 
+  // 중복 노출 방지: 이미 본 이름이면 하위 트리 렌더링 생략 (가계도 요약 간소화)
+  const isDuplicate = node.name && visitedHeirs.has(node.name) && level > 0;
+  if (node.name && level > 0) visitedHeirs.add(node.name);
+
   return (
     <div className={`flex flex-col ${level > 0 ? 'ml-3' : ''}`}>
       <div className="flex items-center gap-1.5 py-1 pr-1 group">
@@ -42,11 +46,12 @@ const MiniTreeView = ({ node, level = 0, onSelectNode }) => {
         {level > 0 && <span className={`text-[10px] font-bold shrink-0 opacity-40 uppercase tracking-tighter ${node.isDeceased ? 'text-[#ef4444]' : 'text-[#787774]'}`}>[{relStr[node.relation] || '자녀'}]</span>}
       </div>
       
-      {hasHeirs && (
+      {!isDuplicate && hasHeirs && (
         <div className="border-l border-[#e9e9e7] dark:border-neutral-700 ml-1.5 pl-1.5 pb-1 transition-colors">
           {node.heirs.map((h, i) => (
             <MiniTreeView key={h.id || i} node={h} level={level + 1}
               onSelectNode={onSelectNode}
+              visitedHeirs={visitedHeirs}
             />
           ))}
         </div>
@@ -388,7 +393,7 @@ function App() {
       });
     }
 
-    const shareStr = totalN > 0 ? `${totalN}분의 ${totalD}` : '0';
+    const shareStr = totalN > 0 ? `${totalD}분의 ${totalN}` : '0';
     return { name, relationInfo, shareStr, sources: sourceList };
   }, [tree, activeDeceasedTab, calcSteps]);
 
@@ -591,7 +596,7 @@ function App() {
     <div className="w-full min-h-screen relative flex flex-col items-center pb-24 transition-colors duration-200 bg-[#f7f7f5] dark:bg-neutral-900">
       
       <div id="print-footer" className="hidden print:block fixed bottom-0 right-0 font-['Dancing_Script'] text-neutral-300 text-sm">
-        Designed by J.H. Lee (v1.0.2)
+        Designed by J.H. Lee (v1.0.3)
       </div>
 
 
@@ -614,6 +619,7 @@ function App() {
                   setActiveTab('input');
                 }
               }}
+              visitedHeirs={new Set()}
             />
           </div>
           {/* 드래그 리사이즈 핸들 */}
@@ -676,9 +682,9 @@ function App() {
             <div className="flex items-baseline gap-2">
               <div className="flex items-center text-[#37352f] dark:text-neutral-100 font-bold text-[18px] tracking-tight">
                 <IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-neutral-400" />
-                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400">v1.0.2</span>
+                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400">v1.0.3</span>
               </div>
-              <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px]">Designed by J.H. Lee · <span className="opacity-60">v1.0.2</span></span>
+              <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px]">Designed by J.H. Lee · <span className="opacity-60">v1.0.3</span></span>
             </div>
           </div>
           
