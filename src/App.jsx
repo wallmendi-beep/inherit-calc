@@ -14,7 +14,7 @@ import { getInitialTree, getEmptyTree } from './utils/initialData';
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 
-const MiniTreeView = ({ node, level = 0, onSelectNode, visitedHeirs = new Set() }) => {
+const MiniTreeView = ({ node, level = 0, onSelectNode }) => {
   if (!node) return null;
   
   // 🎨 항렬별/상태별 색상 정의
@@ -27,10 +27,7 @@ const MiniTreeView = ({ node, level = 0, onSelectNode, visitedHeirs = new Set() 
   };
 
   const nameColorClass = getLevelColor(level, node.isDeceased);
-  
-  // 중복 노출 방지: 이미 본 이름이면 자식 노드 렌더링 생략
-  const isDuplicate = node.name && visitedHeirs.has(node.name) && level > 0;
-  if (node.name && level > 0) visitedHeirs.add(node.name);
+  const hasHeirs = node.heirs && node.heirs.length > 0;
 
   return (
     <div className={`flex flex-col ${level > 0 ? 'ml-3' : ''}`}>
@@ -38,26 +35,20 @@ const MiniTreeView = ({ node, level = 0, onSelectNode, visitedHeirs = new Set() 
         {level > 0 && <span className="text-[#d4d4d4] dark:text-neutral-600 text-[12px] shrink-0 font-bold opacity-40">└</span>}
         <span 
           onClick={() => onSelectNode && onSelectNode(node.id)}
-          className={`text-[13px] truncate transition-all flex-1 min-w-0 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 px-1 rounded ${nameColorClass} ${node.isDeceased ? 'underline underline-offset-4 decoration-1 opacity-80' : ''}`}
+          className={`text-[13px] truncate transition-all flex-1 min-w-0 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 px-1 rounded ${nameColorClass} ${hasHeirs ? 'underline underline-offset-4 decoration-current decoration-1' : ''}`}
         >
           {node.name || (level === 0 ? '피상속인' : '(이름 없음)')}
         </span>
         {level > 0 && <span className={`text-[10px] font-bold shrink-0 opacity-40 uppercase tracking-tighter ${node.isDeceased ? 'text-[#ef4444]' : 'text-[#787774]'}`}>[{relStr[node.relation] || '자녀'}]</span>}
       </div>
       
-      {!isDuplicate && node.heirs && node.heirs.length > 0 && (
+      {hasHeirs && (
         <div className="border-l border-[#e9e9e7] dark:border-neutral-700 ml-1.5 pl-1.5 pb-1 transition-colors">
           {node.heirs.map((h, i) => (
             <MiniTreeView key={h.id || i} node={h} level={level + 1}
               onSelectNode={onSelectNode}
-              visitedHeirs={visitedHeirs}
             />
           ))}
-        </div>
-      )}
-      {isDuplicate && (
-        <div className="ml-6 text-[10px] text-[#a3a3a3] dark:text-neutral-500 italic opacity-60">
-          (위에서 이미 표시됨)
         </div>
       )}
     </div>
@@ -600,7 +591,7 @@ function App() {
     <div className="w-full min-h-screen relative flex flex-col items-center pb-24 transition-colors duration-200 bg-[#f7f7f5] dark:bg-neutral-900">
       
       <div id="print-footer" className="hidden print:block fixed bottom-0 right-0 font-['Dancing_Script'] text-neutral-300 text-sm">
-        Designed by J.H. Lee (v1.0.1)
+        Designed by J.H. Lee (v1.0.2)
       </div>
 
 
@@ -623,7 +614,6 @@ function App() {
                   setActiveTab('input');
                 }
               }}
-              visitedHeirs={new Set()}
             />
           </div>
           {/* 드래그 리사이즈 핸들 */}
@@ -686,9 +676,9 @@ function App() {
             <div className="flex items-baseline gap-2">
               <div className="flex items-center text-[#37352f] dark:text-neutral-100 font-bold text-[18px] tracking-tight">
                 <IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-neutral-400" />
-                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400">v1.0.1</span>
+                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400">v1.0.2</span>
               </div>
-              <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px]">Designed by J.H. Lee · <span className="opacity-60">v1.0.1</span></span>
+              <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px]">Designed by J.H. Lee · <span className="opacity-60">v1.0.2</span></span>
             </div>
           </div>
           
