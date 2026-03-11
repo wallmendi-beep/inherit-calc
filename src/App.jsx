@@ -596,7 +596,7 @@ function App() {
     <div className="w-full min-h-screen relative flex flex-col items-center pb-24 transition-colors duration-200 bg-[#f7f7f5] dark:bg-neutral-900">
       
       <div id="print-footer" className="hidden print:block fixed bottom-0 right-0 font-['Dancing_Script'] text-neutral-300 text-sm">
-        Designed by J.H. Lee (v1.0.3)
+        Designed by J.H. Lee (v1.0.4)
       </div>
 
 
@@ -682,9 +682,9 @@ function App() {
             <div className="flex items-baseline gap-2">
               <div className="flex items-center text-[#37352f] dark:text-neutral-100 font-bold text-[18px] tracking-tight">
                 <IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-neutral-400" />
-                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400">v1.0.3</span>
+                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400">v1.0.4</span>
               </div>
-              <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px]">Designed by J.H. Lee · <span className="opacity-60">v1.0.3</span></span>
+              <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px]">Designed by J.H. Lee · <span className="opacity-60">v1.0.4</span></span>
             </div>
           </div>
           
@@ -873,7 +873,7 @@ function App() {
                               <div className="flex flex-wrap gap-x-4 gap-y-1 pl-4">
                                 {getBriefingInfo.sources.map((src, sidx) => (
                                   <span key={sidx} className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400 whitespace-nowrap">
-                                    {src.from} 지분 {src.n}분의 {src.d}
+                                    {src.from} 지분 {src.d}분의 {src.n}
                                   </span>
                                 ))}
                               </div>
