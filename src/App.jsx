@@ -603,7 +603,7 @@ function App() {
     <div className="w-full min-h-screen relative flex flex-col items-center pb-24 transition-colors duration-200 bg-[#f7f7f5] dark:bg-neutral-900">
       
       <div id="print-footer" className="hidden print:block fixed bottom-0 right-0 font-['Dancing_Script'] text-neutral-300 text-sm">
-        Designed by J.H. Lee (v1.0.6)
+        Designed by J.H. Lee (v1.0.7)
       </div>
 
       {/* 💡 사이드 패널 - 탭에 상관없이 항상 고정 표시 */}
@@ -619,34 +619,48 @@ function App() {
           <div className="flex-1 overflow-y-auto px-3 py-2 pb-10 text-[13px]">
             <MiniTreeView node={tree} level={0}
               onSelectNode={(id) => {
+                const targetNode = findNodeById(tree, id);
+                if (!targetNode) return;
+
                 const tabIds = deceasedTabs.map(t => t.id);
-                
-                // 1. 만약 클릭된 ID가 직접적인 탭 ID라면 즉시 이동
-                if (tabIds.includes(id)) {
-                  setActiveDeceasedTab(id);
+                const tabNames = deceasedTabs.map(t => t.name);
+
+                // 1. 직접 매칭 확인 (ID 또는 이름)
+                let matchedTab = deceasedTabs.find(t => t.id === id);
+                if (!matchedTab && targetNode.name) {
+                  matchedTab = deceasedTabs.find(t => t.name === targetNode.name);
+                }
+
+                if (matchedTab) {
+                  setActiveDeceasedTab(matchedTab.id);
                   setActiveTab('input');
                   return;
                 }
 
-                // 2. 만약 직접 탭이 아니라면, 부모를 거슬러 올라가 탭 소유자 찾기
-                const getOwnerTabId = (root, targetId, path = []) => {
+                // 2. 조상을 거슬러 올라가며 탭 소유자 찾기
+                const getAncestorPath = (root, targetId, path = []) => {
                   if (root.id === targetId) return path;
                   if (root.heirs) {
                     for (const h of root.heirs) {
-                      const foundPath = getOwnerTabId(h, targetId, [...path, root.id]);
-                      if (foundPath) return foundPath;
+                      const res = getAncestorPath(h, targetId, [...path, root]);
+                      if (res) return res;
                     }
                   }
                   return null;
                 };
 
-                const ancestorPath = getOwnerTabId(tree, id);
-                if (ancestorPath && ancestorPath.length > 0) {
-                  // 역순으로 훑으며 가장 가까운(최하위) 조상 중 탭으로 등록된 ID 찾기
-                  for (let i = ancestorPath.length - 1; i >= 0; i--) {
-                    const aid = ancestorPath[i];
-                    if (tabIds.includes(aid)) {
-                      setActiveDeceasedTab(aid);
+                const ancestors = getAncestorPath(tree, id);
+                if (ancestors && ancestors.length > 0) {
+                  // 가장 가까운(최하위) 조상부터 탐색
+                  for (let i = ancestors.length - 1; i >= 0; i--) {
+                    const anc = ancestors[i];
+                    let ancTab = deceasedTabs.find(t => t.id === anc.id);
+                    if (!ancTab && anc.name) {
+                      ancTab = deceasedTabs.find(t => t.name === anc.name);
+                    }
+                    
+                    if (ancTab) {
+                      setActiveDeceasedTab(ancTab.id);
                       setActiveTab('input');
                       return;
                     }
@@ -716,9 +730,9 @@ function App() {
             <div className="flex items-baseline gap-2">
               <div className="flex items-center text-[#37352f] dark:text-neutral-100 font-bold text-[18px] tracking-tight">
                 <IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-neutral-400" />
-                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400">v1.0.6</span>
+                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400">v1.0.7</span>
               </div>
-              <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px]">Designed by J.H. Lee · <span className="opacity-60">v1.0.6</span></span>
+              <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px]">Designed by J.H. Lee · <span className="opacity-60">v1.0.7</span></span>
             </div>
           </div>
           
