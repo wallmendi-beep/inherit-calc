@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   IconCalculator, IconUserPlus, IconSave, IconFolderOpen, 
   IconPrinter, IconNetwork, IconTable, IconList, 
-  IconReset, IconFileText, IconXCircle,
+  IconReset, IconFileText, IconXCircle, IconX,
   IconSun, IconMoon
 } from './components/Icons';
 import { DateInput } from './components/DateInput';
@@ -14,7 +14,7 @@ import { getInitialTree, getEmptyTree } from './utils/initialData';
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 
-const MiniTreeView = ({ node, level = 0, onQuickAdd, activeQuickId, setActiveQuickId, quickVal, setQuickVal, onQuickSubmit, onSelectNode }) => {
+const MiniTreeView = ({ node, level = 0, onSelectNode, visitedHeirs = new Set() }) => {
   if (!node) return null;
   
   // 🎨 항렬별/상태별 색상 정의
@@ -27,53 +27,37 @@ const MiniTreeView = ({ node, level = 0, onQuickAdd, activeQuickId, setActiveQui
   };
 
   const nameColorClass = getLevelColor(level, node.isDeceased);
-  const isOpen = activeQuickId === node.id;
+  
+  // 중복 노출 방지: 이미 본 이름이면 자식 노드 렌더링 생략
+  const isDuplicate = node.name && visitedHeirs.has(node.name) && level > 0;
+  if (node.name && level > 0) visitedHeirs.add(node.name);
 
   return (
     <div className={`flex flex-col ${level > 0 ? 'ml-3' : ''}`}>
-      <div className="flex items-center gap-1.5 py-1 pr-1">
-        {level > 0 && <span className="text-[#d4d4d4] dark:text-neutral-600 text-[12px] shrink-0 font-bold">└</span>}
+      <div className="flex items-center gap-1.5 py-1 pr-1 group">
+        {level > 0 && <span className="text-[#d4d4d4] dark:text-neutral-600 text-[12px] shrink-0 font-bold opacity-40">└</span>}
         <span 
           onClick={() => onSelectNode && onSelectNode(node.id)}
-          className={`text-[13px] truncate transition-colors flex-1 min-w-0 cursor-pointer hover:opacity-70 ${nameColorClass} ${node.isDeceased ? 'underline underline-offset-4 decoration-2' : ''}`}
+          className={`text-[13px] truncate transition-all flex-1 min-w-0 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 px-1 rounded ${nameColorClass} ${node.isDeceased ? 'underline underline-offset-4 decoration-1 opacity-80' : ''}`}
         >
           {node.name || (level === 0 ? '피상속인' : '(이름 없음)')}
         </span>
-        {level > 0 && <span className={`text-[11px] font-medium shrink-0 ${node.isDeceased ? 'text-[#ef4444]/70 dark:text-red-500/70' : 'text-[#787774] dark:text-neutral-500'}`}>({relStr[node.relation] || '자녀'})</span>}
-        {onQuickAdd && (
-          <button
-            onClick={() => isOpen ? setActiveQuickId(null) : (setActiveQuickId(node.id), setQuickVal(''))}
-            className="w-5 h-5 flex-shrink-0 flex justify-center items-center rounded-sm hover:bg-[#e9e9e7] dark:hover:bg-neutral-700 text-[#a3a3a3] hover:text-[#37352f] dark:hover:text-neutral-200 transition-colors cursor-pointer text-[14px] font-bold no-print"
-            title="상속인 빠른 추가"
-          >+</button>
-        )}
+        {level > 0 && <span className={`text-[10px] font-bold shrink-0 opacity-40 uppercase tracking-tighter ${node.isDeceased ? 'text-[#ef4444]' : 'text-[#787774]'}`}>[{relStr[node.relation] || '자녀'}]</span>}
       </div>
-      {isOpen && (
-        <div className="ml-1.5 pl-1.5 mt-0.5 mb-1.5 border-l-2 border-[#2383e2] no-print">
-          <input
-            autoFocus
-            type="text"
-            value={quickVal}
-            onChange={e => setQuickVal(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter') onQuickSubmit(node.id, node, quickVal);
-              if (e.key === 'Escape') setActiveQuickId(null);
-            }}
-            placeholder="이름 입력 (쉼표로 여러 명)"
-            className="w-full text-[12px] border border-[#d4d4d4] rounded px-2 py-1 outline-none focus:border-[#2383e2] bg-white dark:bg-neutral-800 dark:text-neutral-200 dark:border-neutral-600"
-          />
-          <div className="text-[10px] text-[#a3a3a3] mt-0.5">Enter로 추가 · 첫 번째는 배우자, 나머지는 자녀</div>
-        </div>
-      )}
-      {node.heirs && node.heirs.length > 0 && (
+      
+      {!isDuplicate && node.heirs && node.heirs.length > 0 && (
         <div className="border-l border-[#e9e9e7] dark:border-neutral-700 ml-1.5 pl-1.5 pb-1 transition-colors">
           {node.heirs.map((h, i) => (
             <MiniTreeView key={h.id || i} node={h} level={level + 1}
-              onQuickAdd={onQuickAdd} activeQuickId={activeQuickId} setActiveQuickId={setActiveQuickId}
-              quickVal={quickVal} setQuickVal={setQuickVal} onQuickSubmit={onQuickSubmit}
               onSelectNode={onSelectNode}
+              visitedHeirs={visitedHeirs}
             />
           ))}
+        </div>
+      )}
+      {isDuplicate && (
+        <div className="ml-6 text-[10px] text-[#a3a3a3] dark:text-neutral-500 italic opacity-60">
+          (위에서 이미 표시됨)
         </div>
       )}
     </div>
@@ -115,6 +99,10 @@ function App() {
   const [isInputAllExpanded, setIsInputAllExpanded] = useState(true); 
   const [propertyValue, setPropertyValue] = useState(''); 
   const [isAmountActive, setIsAmountActive] = useState(false);
+  const [isFolderFocused, setIsFolderFocused] = useState(false); // 서류철 포커스 모드 (폴더 열기)
+  const [mainQuickVal, setMainQuickVal] = useState('');          // 메인 입력창용 퀵 입력 값
+  const [isMainQuickActive, setIsMainQuickActive] = useState(false); // 메인 입력창용 퀵 입력 활성화
+
 
   // 💡 사이드 패널 상태
   // 💡 퀵 입력 상태
@@ -376,14 +364,16 @@ function App() {
     if (!lineage || lineage.length === 0) return { pathStr: '', shareStr: '', sources: [] };
 
     const targetNode = lineage[lineage.length - 1];
-    if (!targetNode) return { pathStr: '', shareStr: '', sources: [] };
+    if (!targetNode) return { name: '', relation: '', shareStr: '0', sources: [] };
     
-    // "피상속인 이영재의 딸 이용임의 남편 전경록" 형식 생성
-    const pathStr = lineage.map((n, idx) => {
-      if (idx === 0) return `피상속인 ${n.name || '이름없음'}`;
-      const rel = relStr[n.relation] || '상속인';
-      return `${rel} ${n.name || '(이름없음)'}`;
-    }).join('의 ');
+    // 성명 및 부모와의 관계 추출
+    const name = targetNode.name || '(이름없음)';
+    let relationInfo = '';
+    if (lineage.length > 1) {
+      const parent = lineage[lineage.length - 2];
+      const rel = relStr[targetNode.relation] || '상속인';
+      relationInfo = `(${parent.name || '피상속인'}의 ${rel})`;
+    }
 
     const sourceList = [];
     let totalN = 0;
@@ -407,8 +397,8 @@ function App() {
       });
     }
 
-    const shareStr = totalN > 0 ? `${totalN}/${totalD}` : '0';
-    return { pathStr, shareStr, sources: sourceList };
+    const shareStr = totalN > 0 ? `${totalN}분의 ${totalD}` : '0';
+    return { name, relationInfo, shareStr, sources: sourceList };
   }, [tree, activeDeceasedTab, calcSteps]);
 
   // 탭 변경 시 자동 스크롤 (활성 탭이 화면 중앙에 오도록)
@@ -610,8 +600,9 @@ function App() {
     <div className="w-full min-h-screen relative flex flex-col items-center pb-24 transition-colors duration-200 bg-[#f7f7f5] dark:bg-neutral-900">
       
       <div id="print-footer" className="hidden print:block fixed bottom-0 right-0 font-['Dancing_Script'] text-neutral-300 text-sm">
-        Designed by J.H. Lee (v1.0.0)
+        Designed by J.H. Lee (v1.0.1)
       </div>
+
 
       {/* 💡 사이드 패널 - 탭에 상관없이 항상 고정 표시 */}
       {sidebarOpen && (
@@ -619,20 +610,12 @@ function App() {
           className="fixed left-0 top-[54px] bottom-0 flex flex-col bg-white dark:bg-neutral-900 border-r border-[#e9e9e7] dark:border-neutral-700 z-30 no-print overflow-hidden transition-colors select-none"
           style={{ width: sidebarWidth }}
         >
-          {/* 헤더 */}
-          <div className="text-[13px] font-bold text-[#37352f] dark:text-neutral-200 flex items-center gap-2 border-b border-[#e9e9e7] dark:border-neutral-700 px-4 py-3 shrink-0 transition-colors">
-            <IconNetwork className="w-3.5 h-3.5 text-[#787774] dark:text-neutral-400 shrink-0"/> 가계도 요약
-          </div>
-          <div className="px-3 py-2 text-[11px] text-[#a3a3a3] dark:text-neutral-500 border-b border-[#e9e9e7] dark:border-neutral-700 shrink-0">
-            이름 우측 <span className="font-bold text-[#2383e2]">+</span> 를 눌러 상속인을 바로 추가할 수 있습니다.
+          <div className="text-[13px] font-black text-[#37352f] dark:text-neutral-200 flex items-center gap-2 border-b border-[#f1f1ef] dark:border-neutral-700 px-4 py-3 shrink-0 transition-colors uppercase tracking-widest opacity-60">
+            <IconNetwork className="w-3.5 h-3.5 shrink-0"/> 가계도 요약
           </div>
           {/* 트리 내용 */}
           <div className="flex-1 overflow-y-auto px-3 py-2 pb-10 text-[13px]">
             <MiniTreeView node={tree} level={0}
-              onQuickAdd={true}
-              activeQuickId={activeQuickId} setActiveQuickId={setActiveQuickId}
-              quickVal={quickVal} setQuickVal={setQuickVal}
-              onQuickSubmit={handleQuickSubmit}
               onSelectNode={(id) => {
                 const tabIds = deceasedTabs.map(t => t.id);
                 if (tabIds.includes(id)) {
@@ -640,6 +623,7 @@ function App() {
                   setActiveTab('input');
                 }
               }}
+              visitedHeirs={new Set()}
             />
           </div>
           {/* 드래그 리사이즈 핸들 */}
@@ -702,9 +686,9 @@ function App() {
             <div className="flex items-baseline gap-2">
               <div className="flex items-center text-[#37352f] dark:text-neutral-100 font-bold text-[18px] tracking-tight">
                 <IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-neutral-400" />
-                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400">v1.0.0</span>
+                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400">v1.0.1</span>
               </div>
-              <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px]">Designed by J.H. Lee · <span className="opacity-60">v1.0.0</span></span>
+              <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px]">Designed by J.H. Lee · <span className="opacity-60">v1.0.1</span></span>
             </div>
           </div>
           
@@ -740,13 +724,13 @@ function App() {
         </div>
       </div>
 
-      {/* 💡 메인 컨텐츠 - 사이드바 폭만큼 왼쪽 여백 적용 */}
-      {/* 💡 메인 컨텐트 - 사이드바 폭만큼 왼쪽 여백 적용 (인쇄 시 무시) */}
-      <div
-        className="flex flex-col w-full mx-auto px-6 mt-6 print-compact transition-all duration-300 print:!ml-0 print:!max-w-none"
-        style={{ marginLeft: sidebarOpen ? sidebarWidth : 0, maxWidth: sidebarOpen ? `calc(100% - ${sidebarWidth}px)` : '1400px' }}
+      {/* 💡 메인 컨텐츠 - 웹 브라우저 앱 스타일 중앙 캔버스 */}
+      <div 
+        className="flex flex-col w-full max-w-[1280px] px-6 mt-6 print-compact transition-all duration-500 print:!ml-0 print:!max-w-none relative z-10"
+        style={{ marginLeft: sidebarOpen ? sidebarWidth : 0 }}
       >
-        <div className="flex items-end pl-6 gap-1.5 no-print relative z-10">
+        {/* 상단 탭 (네비게이션) - 더 미니멀하고 플랫하게 */}
+        <div className="flex items-end pl-2 gap-1 no-print relative z-20">
           {tabData.map(t => {
             const isActive = activeTab === t.id;
             return (
@@ -763,49 +747,73 @@ function App() {
         </div>
         <div className="border border-[#e9e9e7] dark:border-neutral-700 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.05)] print:hidden min-h-[600px] bg-white dark:bg-neutral-800 flex flex-col p-10 relative z-0 transition-colors">
           
-          {activeTab === 'input' && (
-            <div className="space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-400">
-                <div className="bg-[#fcfcfb] dark:bg-neutral-800/20 border border-[#e9e9e7] dark:border-neutral-700 rounded-lg p-8 transition-colors shadow-none">
-                <div className="text-[12px] font-bold text-[#37352f] dark:text-neutral-200 mb-8 flex items-center gap-2 border-b border-[#f1f1ef] dark:border-neutral-700/50 pb-4 uppercase tracking-[0.1em] opacity-60">
-                  기본정보
-                </div>
-                <div className="grid grid-cols-5 gap-8">
-                  <div>
-                    <label className="block text-[12px] text-[#787774] dark:text-neutral-400 mb-2 font-semibold">사건번호</label>
-                    <input type="text" onKeyDown={handleKeyDown} value={tree.caseNo} onChange={e=>handleRootUpdate('caseNo',e.target.value)} className="w-full border border-[#e9e9e7] dark:border-neutral-700 rounded px-3 py-2 text-[14px] font-medium focus:ring-1 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all bg-white dark:bg-neutral-900 dark:text-neutral-200" placeholder="0000가합000" />
+          {activeTab === 'input' && (() => {
+            const activeTabObj = deceasedTabs.find(t => t.id === activeDeceasedTab);
+            const currentNode = activeTabObj ? findNodeById(tree, activeTabObj.id) : tree;
+            const nodeHeirs = currentNode ? (currentNode.heirs || []) : [];
+            const isRootNode = currentNode && currentNode.id === 'root';
+            
+            return (
+              <div className="space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-400 flex flex-col flex-1">
+                {/* 상단 기본정보 섹션 - 미니멀 개편 */}
+                <div className="bg-[#fcfcfb] dark:bg-neutral-800/20 border border-[#e9e9e7] dark:border-neutral-700 rounded-lg px-6 py-3 flex items-center gap-6 transition-colors shadow-none">
+                  <div className="flex items-center gap-2 shrink-0 border-r border-[#f1f1ef] dark:border-neutral-700/50 pr-6 py-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#2383e2]" />
+                    <span className="text-[12px] font-black text-[#37352f] dark:text-neutral-200 uppercase tracking-widest opacity-60">기본정보</span>
                   </div>
-                  <div>
-                    <label className="block text-[12px] text-[#787774] dark:text-neutral-400 mb-2 font-semibold">피상속인 성명</label>
-                    <input type="text" onKeyDown={handleKeyDown} value={tree.name} onChange={e=>handleRootUpdate('name',e.target.value)} className="w-full border border-[#e9e9e7] dark:border-neutral-700 rounded px-3 py-2 text-[14px] font-bold text-[#2383e2] dark:text-blue-400 focus:ring-1 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all bg-white dark:bg-neutral-900" placeholder="성명 입력" />
-                  </div>
-                  <div>
-                    <label className="block text-[12px] text-[#c93f3a] dark:text-red-400 mb-2 font-semibold">사망일자</label>
-                    <DateInput value={tree.deathDate} onKeyDown={handleKeyDown} onChange={v=>handleRootUpdate('deathDate',v)} className="w-full border border-[#e9e9e7] dark:border-neutral-700 rounded px-3 py-2 text-[14px] font-medium focus:ring-1 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all bg-white dark:bg-neutral-900 dark:text-neutral-200" />
-                  </div>
-                  <div>
-                    <label className="block text-[12px] text-[#2383e2] dark:text-blue-400 mb-2 font-semibold">호주 여부</label>
-                    <label className={`flex items-center gap-2 px-3 py-2 h-[38px] rounded border cursor-pointer transition-colors select-none ${tree.isHoju !== false ? 'bg-[#f0f7ff] dark:bg-blue-900/20 border-[#bae6fd] dark:border-blue-800/40 text-[#2383e2] dark:text-blue-300' : 'bg-white dark:bg-neutral-900 border-[#e9e9e7] dark:border-neutral-700 text-[#787774] dark:text-neutral-400 hover:bg-[#f8f8f7] dark:hover:bg-neutral-800'}`}>
-                      <input type="checkbox" checked={tree.isHoju !== false} onChange={e=>handleRootUpdate('isHoju', e.target.checked)} className="w-3.5 h-3.5 cursor-pointer accent-[#2383e2]" />
-                      <span className="text-[13px] font-bold">호주</span>
-                    </label>
-                  </div>
-                  <div>
-                    <label className="block text-[12px] text-[#787774] dark:text-neutral-400 mb-2 font-semibold">피상속인 지분</label>
-                    <div className="flex items-center bg-white dark:bg-neutral-900 rounded border border-[#e9e9e7] dark:border-neutral-700 p-0.5 h-[38px]">
-                       <input type="number" min="1" onKeyDown={handleKeyDown} value={tree.shareD} onChange={e=>handleRootUpdate('shareD', Math.max(1, parseInt(e.target.value)||1))} title="분모" className="w-[60px] bg-transparent px-2 py-1 text-[14px] text-center font-bold focus:bg-blue-50/30 dark:focus:bg-blue-900/20 outline-none dark:text-neutral-200" />
-                       <span className="text-[#bbb] px-1 text-[11px] font-medium">/</span>
-                       <input type="number" min="1" max={tree.shareD} onKeyDown={handleKeyDown} value={tree.shareN} onChange={e=>handleRootUpdate('shareN', Math.min(tree.shareD, Math.max(1, parseInt(e.target.value)||1)))} title="분자" className="w-[60px] bg-transparent px-2 py-1 text-[14px] text-center font-bold focus:bg-blue-50/30 dark:focus:bg-blue-900/20 outline-none dark:text-neutral-200" />
+                  
+                  <div className="flex flex-1 items-center gap-6 overflow-x-auto no-scrollbar">
+                    <div className="shrink-0 flex items-center gap-2">
+                      <label className="text-[11px] text-[#787774] dark:text-neutral-400 font-bold whitespace-nowrap">사건번호</label>
+                      <input type="text" onKeyDown={handleKeyDown} value={tree.caseNo} onChange={e=>handleRootUpdate('caseNo',e.target.value)} className="w-32 border border-[#e9e9e7] dark:border-neutral-700 rounded px-2.5 py-1 text-[13px] font-medium outline-none transition-all bg-white dark:bg-neutral-900 dark:text-neutral-200" placeholder="번호 입력" />
+                    </div>
+                    
+                    <div className="shrink-0 flex items-center gap-2">
+                      <label className="text-[11px] text-[#787774] dark:text-neutral-400 font-bold whitespace-nowrap">성명</label>
+                      <input type="text" onKeyDown={handleKeyDown} value={currentNode?.name || ''} onChange={e=>currentNode && handleUpdate(currentNode.id, 'name', e.target.value)} className="w-32 border border-[#e9e9e7] dark:border-neutral-700 rounded px-2.5 py-1 text-[13px] font-bold text-[#2383e2] dark:text-blue-400 outline-none transition-all bg-white dark:bg-neutral-900" placeholder="이름" />
+                    </div>
+
+                    <div className="shrink-0 flex items-center gap-2">
+                      <label className="text-[11px] text-[#c93f3a] dark:text-red-400 font-bold whitespace-nowrap">사망일자</label>
+                      <DateInput value={currentNode?.deathDate || ''} onKeyDown={handleKeyDown} onChange={v=>currentNode && handleUpdate(currentNode.id, 'deathDate', v)} className="w-32 border border-[#e9e9e7] dark:border-neutral-700 rounded px-2.5 py-1 text-[12px] font-medium outline-none transition-all bg-white dark:bg-neutral-900 dark:text-neutral-200" />
+                    </div>
+
+                    <div className="shrink-0 flex items-center gap-2">
+                      <label className="text-[11px] text-[#2383e2] dark:text-blue-400 font-bold whitespace-nowrap">호주</label>
+                      <input type="checkbox" disabled={!isRootNode} checked={isRootNode ? tree.isHoju !== false : false} onChange={e=>handleRootUpdate('isHoju', e.target.checked)} className="w-3.5 h-3.5 cursor-pointer accent-[#2383e2]" />
+                    </div>
+
+                    <div className="shrink-0 flex items-center gap-2">
+                      <label className="text-[11px] text-[#787774] dark:text-neutral-400 font-bold whitespace-nowrap">지분</label>
+                      <div className="flex items-center bg-white dark:bg-neutral-900 rounded border border-[#e9e9e7] dark:border-neutral-700 px-1 py-0.5">
+                        <input type="number" min="1" value={currentNode?.shareD || 1} onChange={e=>handleUpdate(currentNode.id, 'shareD', Math.max(1, parseInt(e.target.value)||1))} className="w-8 bg-transparent text-[12px] text-center font-bold outline-none dark:text-neutral-200" />
+                        <span className="text-[#bbb] text-[10px]">/</span>
+                        <input type="number" min="1" max={currentNode?.shareD || 1} value={currentNode?.shareN || 1} onChange={e=>handleUpdate(currentNode.id, 'shareN', Math.min(currentNode.shareD||1, Math.max(1, parseInt(e.target.value)||1)))} className="w-8 bg-transparent text-[12px] text-center font-bold outline-none dark:text-neutral-200" />
+                      </div>
+                    </div>
+
+                    <div className="ml-auto shrink-0">
+                      <button 
+                        onClick={() => {
+                          setIsMainQuickActive(true);
+                          setIsFolderFocused(true);
+                          setTimeout(() => {
+                            const input = document.querySelector('input[placeholder*="한꺼번에"]');
+                            if (input) input.focus();
+                          }, 100);
+                        }}
+                        className="bg-[#2383e2] hover:bg-blue-600 text-white px-3 py-1.5 rounded-md text-[12px] font-black flex items-center gap-1.5 shadow-sm transition-all active:scale-95"
+                      >
+                        <IconUserPlus className="w-3.5 h-3.5" /> 상속인 입력
+                      </button>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* 폴더-탭 구조: 사망한 인물별 탭 (세대별 계단식) */}
-              <div className="transition-colors">
-                {/* 탭 바 - 세대별 계단식 폴더 스타일 */}
-                <div className="flex flex-col gap-1 no-print relative z-10">
+                {/* 폴더-탭 구조: 사망한 인물별 탭 (Filing Cabinet) */}
+                <div className="transition-colors flex-1 flex flex-col">
                   {(() => {
-                    // 레벨별 색상 고정 팔레트 (노션 스타일에 맞춘 부드러운 톤)
+                    const levels = Array.from(new Set(deceasedTabs.map(t => t.level))).sort((a, b) => a - b);
                     const levelPalette = {
                       1: { activeBorder: 'border-[#2383e2]', activeText: 'text-[#2383e2]', activeBg: 'bg-white dark:bg-neutral-800', inactiveBg: 'bg-[#f0f7ff] dark:bg-neutral-800/40', inactiveBorder: 'border-[#d0e2f5] dark:border-neutral-700', inactiveText: 'text-[#5c7c9c] dark:text-neutral-500' },
                       2: { activeBorder: 'border-[#00a35c]', activeText: 'text-[#00a35c]', activeBg: 'bg-white dark:bg-neutral-800', inactiveBg: 'bg-[#f0fff4] dark:bg-neutral-800/40', inactiveBorder: 'border-[#c6f6d5] dark:border-neutral-700', inactiveText: 'text-[#4c8c64] dark:text-neutral-500' },
@@ -814,141 +822,149 @@ function App() {
                       5: { activeBorder: 'border-[#eb5757]', activeText: 'text-[#c64444]', activeBg: 'bg-white dark:bg-neutral-800', inactiveBg: 'bg-[#fff0f0] dark:bg-neutral-800/40', inactiveBorder: 'border-[#fed7d7] dark:border-neutral-700', inactiveText: 'text-[#a64d4d] dark:text-neutral-500' },
                     };
                     
-                    const levels = [...new Set(deceasedTabs.map(t => t.level))].sort((a,b) => a-b);
-                    
-                    return levels.map(lv => (
-                      <div key={lv} className="flex items-end pl-0 gap-1 overflow-x-auto no-scrollbar">
-                        {deceasedTabs.filter(t => t.level === lv)
-                          .sort((a, b) => {
-                            // 활성 탭이나 활성 탭의 직계 부모(ancestor)가 해당 레벨에 있다면 앞으로 보냄
-                            if (a.id === activeDeceasedTab) return -1;
-                            if (b.id === activeDeceasedTab) return 1;
-                            return 0;
-                          })
-                          .map((tab) => {
-                          const isActive = activeDeceasedTab === tab.id;
-                          const p = levelPalette[lv] || levelPalette[5];
-                          return (
-                            <button
-                              key={tab.id}
-                              ref={el => tabRefs.current[tab.id] = el}
-                              onClick={() => setActiveDeceasedTab(tab.id)}
-                              className={`px-4 py-2 rounded-t-lg font-bold text-[13px] flex items-center gap-1.5 transition-all relative cursor-pointer border-2 border-b-0 whitespace-nowrap shrink-0 ${
-                                isActive
-                                  ? `${p.activeBg} ${p.activeBorder} ${p.activeText} shadow-[0_-4px_10px_-2px_rgba(0,0,0,0.1)] pb-3.5 -mt-1 z-20 scale-[1.02]`
-                                  : `${p.inactiveBg} ${p.inactiveBorder} ${p.inactiveText} opacity-70 pb-2 top-[1px] z-10 hover:opacity-100 hover:brightness-95`
-                              }`}
-                            >
-                              {isActive && <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse ring-2 ring-white dark:ring-neutral-800" />}
-                              {tab.name}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ));
-                  })()}
-                </div>
-
-                {/* 탭 콘텐츠 - 활성 탭 레벨 색상과 일치하는 테두리 */}
-                {(() => {
-                  const paletteBorders = {
-                    1: 'border-[#2383e2]', 2: 'border-[#16a34a]', 3: 'border-[#f97316]', 4: 'border-[#a855f7]', 5: 'border-[#e11d48]'
-                  };
-                  const activeTabObj = deceasedTabs.find(t => t.id === activeDeceasedTab);
-                  const activeLv = activeTabObj?.level || 1;
-                  const borderColor = paletteBorders[activeLv] || paletteBorders[5];
-                  
-                  const tab = activeTabObj;
-                  if (!tab) return null;
-                  const currentNode = findNodeById(tree, tab.id);
-                  if (!currentNode) return null;
-                  const nodeHeirs = currentNode.heirs || [];
-                  const isRoot = tab.id === 'root';
-                  const addLabel = currentNode.name ? `+ ${currentNode.name}의 상속인 추가` : '+ 상속인 추가';
-                  return (
-                    <div key={tab.id} className={`border border-[#e9e9e7] dark:border-neutral-700 rounded-b-xl ${tab.id === 'root' ? '' : 'rounded-tr-xl'} bg-white dark:bg-neutral-800 shadow-none p-6`}>
-                      
-                      {/* 상속 브리핑 헤더 */}
-                      <div className="mb-6 p-4 rounded-lg bg-[#f8f9fa] dark:bg-neutral-900/40 border-l-4 border-blue-500 shadow-sm animate-in fade-in slide-in-from-left-2 duration-300">
-                        <div className="flex flex-col gap-1">
-                          <div className="text-[12px] font-bold text-[#787774] dark:text-neutral-400 flex items-center gap-1">
-                            <IconNetwork className="w-3.5 h-3.5" /> 상속 관계 브리핑
-                          </div>
-                          <div className="text-[15px] font-bold text-[#37352f] dark:text-neutral-100 leading-tight">
-                            {getBriefingInfo.pathStr}
-                          </div>
-                          <div className="mt-2 flex items-center gap-3 flex-wrap">
-                            <div className="px-3 py-1 bg-white dark:bg-neutral-800 border border-blue-200 dark:border-blue-900/50 rounded-full flex items-center gap-2">
-                              <span className="text-[11px] font-bold text-blue-500 uppercase">합계 지분</span>
-                              <span className="text-[14px] font-black text-[#2383e2]">{getBriefingInfo.shareStr}</span>
-                            </div>
-                            {getBriefingInfo.sources.map((s, idx) => (
-                              <div key={idx} className="text-[12px] text-[#5c7c9c] dark:text-neutral-400 font-medium">
-                                • {s.n}/{s.d} <span className="text-[10px] opacity-60">from</span> {s.from}
+                    return (
+                      <div className="flex no-print relative z-10 gap-0">
+                        {/* 📂 우측 수직 배치 탭 리스트 (Filing Cabinet) */}
+                        <div className="fixed right-0 top-[110px] bottom-0 flex flex-col pt-10 px-0 pointer-events-none z-[70]">
+                          <div className="flex flex-col gap-1 items-end pointer-events-auto">
+                            {levels.map(lv => (
+                              <div key={lv} className="flex flex-col items-end gap-1.5 pr-0">
+                                {deceasedTabs.filter(t => t.level === lv).map((tab) => {
+                                  const isActive = activeDeceasedTab === tab.id;
+                                  const p = levelPalette[lv] || levelPalette[5];
+                                  return (
+                                    <button
+                                      key={tab.id}
+                                      ref={el => tabRefs.current[tab.id] = el}
+                                      onClick={() => {
+                                        setActiveDeceasedTab(tab.id);
+                                        setIsFolderFocused(true);
+                                      }}
+                                      className={`px-4 py-3 rounded-l-xl font-bold text-[13px] flex items-center gap-2.5 transition-all relative cursor-pointer border-2 border-r-0 whitespace-nowrap shrink-0 shadow-lg ${
+                                        isActive
+                                          ? `${p.activeBg} ${p.activeBorder} ${p.activeText} -mr-[2px] z-50 scale-[1.05] translate-x-[-5px]`
+                                          : `${p.inactiveBg} ${p.inactiveBorder} ${p.inactiveText} opacity-80 z-10 hover:opacity-100 hover:translate-x-[-5px]`
+                                      }`}
+                                    >
+                                      <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-current animate-pulse' : 'bg-gray-400/50'}`} />
+                                      {tab.name}
+                                      <span className="ml-1 text-[9px] opacity-60 font-black tracking-tighter">{lv}대</span>
+                                    </button>
+                                  );
+                                })}
                               </div>
                             ))}
                           </div>
                         </div>
-                      </div>
 
-                      <div className="flex justify-between items-center mb-6">
-                        <div className="flex items-center gap-4">
-                          <h2 className="text-[13px] font-bold text-[#37352f] dark:text-neutral-200 bg-[#f8f8f7] dark:bg-neutral-800/60 px-3 py-1 rounded opacity-80 uppercase tracking-tight">
-                            {isRoot ? '상속인명단(1순위)' : `상속인 명단`}
-                          </h2>
-                          <button
-                            onClick={() => {
-                              const next = Math.abs(inputToggleSignal) + 1;
-                              setInputToggleSignal(isInputAllExpanded ? -next : next);
-                              setIsInputAllExpanded(!isInputAllExpanded);
-                            }}
-                            className="px-2 py-1 bg-white dark:bg-neutral-800 border border-[#d4d4d4] dark:border-neutral-600 hover:bg-[#efefed] dark:hover:bg-neutral-700 text-[#504f4c] dark:text-neutral-400 rounded transition-colors text-[11px] font-bold shadow-sm"
-                          >
-                            {isInputAllExpanded ? '모두 접기' : '모두 펼치기'}
-                          </button>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => addHeir(tab.id)}
-                          className="text-[#504f4c] dark:text-neutral-400 border border-[#d4d4d4] dark:border-neutral-600 hover:text-[#37352f] dark:hover:text-neutral-200 hover:bg-[#efefed] dark:hover:bg-neutral-700 px-3 py-1.5 rounded text-[12px] font-bold transition-colors flex items-center gap-1 shadow-sm"
-                        >
-                          {addLabel}
-                        </button>
-                      </div>
+                        {/* 📄 폴더 콘텐츠 영역 */}
+                        <div className={`relative transition-all duration-300 flex-1 ${
+                          isFolderFocused 
+                            ? 'bg-white dark:bg-neutral-800 border border-[#e9e9e7] dark:border-neutral-700/50 rounded-xl' 
+                            : 'bg-transparent'
+                        }`}>
+                          {/* 📁 폴더 상단 액션 바 - 평면화 */}
+                          <div className="flex items-center justify-between px-8 py-5 border-b border-[#f1f1ef] dark:border-neutral-700/50 bg-[#f8f9fa] dark:bg-neutral-900/40 rounded-t-xl transition-colors">
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-blue-500" />
+                                <span className="text-[15px] font-black text-neutral-800 dark:text-neutral-100">
+                                  {getBriefingInfo.name}
+                                  <span className="text-[13px] text-neutral-400 font-bold ml-1">{getBriefingInfo.relationInfo}</span>
+                                </span>
+                                <span className="text-[14px] font-black text-blue-600 dark:text-blue-400 ml-3">상속 지분 : {getBriefingInfo.shareStr}</span>
+                              </div>
+                              <div className="flex flex-wrap gap-x-4 gap-y-1 pl-4">
+                                {getBriefingInfo.sources.map((src, sidx) => (
+                                  <span key={sidx} className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400 whitespace-nowrap">
+                                    {src.from} 지분 {src.n}분의 {src.d}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              {/* 닫기 버튼 제거됨 */}
+                            </div>
+                          </div>
 
-                      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                        <SortableContext items={nodeHeirs.map(h => h.id)} strategy={verticalListSortingStrategy}>
-                          <div className="space-y-1">
-                            {nodeHeirs.map(h => (
-                              <HeirRow
-                                key={h.id}
-                                node={h}
-                                level={1}
-                                handleUpdate={handleUpdate}
-                                removeHeir={removeHeir}
-                                addHeir={addHeir}
-                                siblings={nodeHeirs}
-                                inheritedDate={currentNode.deathDate || tree.deathDate}
-                                onKeyDown={handleKeyDown}
-                                toggleSignal={inputToggleSignal}
-                                rootIsHoju={tree.isHoju !== false}
-                                showSubHeirs={false}
-                              />
-                            ))}
-                            {nodeHeirs.length === 0 && (
-                              <div className="py-8 text-center text-[13px] text-[#a3a3a3] dark:text-neutral-500">
-                                아직 상속인이 없습니다. 위 버튼으로 추가하세요.
+                          {/* 📄 폴더 내부 */}
+                          <div className="p-10 bg-white dark:bg-neutral-800 rounded-b-xl border border-t-0 border-[#f1f1ef] dark:border-neutral-700/50">
+                            {isMainQuickActive && (
+                              <div className="mb-8 p-6 rounded-lg bg-amber-50/50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 animate-in fade-in slide-in-from-top-1 duration-300">
+                                <div className="flex flex-col gap-3">
+                                  <div className="text-[12px] font-bold text-amber-600 dark:text-amber-500/80 flex items-center gap-2">
+                                    상속인 이름을 쉼표(,)로 구분하여 한꺼번에 입력하세요
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <input 
+                                      autoFocus
+                                      type="text"
+                                      value={mainQuickVal}
+                                      onChange={e => setMainQuickVal(e.target.value)}
+                                      onKeyDown={e => {
+                                        if (e.key === 'Enter') {
+                                          handleQuickSubmit(activeDeceasedTab, currentNode, mainQuickVal);
+                                          setIsMainQuickActive(false);
+                                          setMainQuickVal('');
+                                        }
+                                        if (e.key === 'Escape') setIsMainQuickActive(false);
+                                      }}
+                                      placeholder="예: 홍길동, 김철수, 이영희"
+                                      className="flex-1 text-[14px] border border-amber-200 dark:border-amber-800/50 rounded-md px-4 py-2.5 outline-none focus:ring-2 focus:ring-amber-500/20 bg-white dark:bg-neutral-900 dark:text-neutral-200 transition-all"
+                                    />
+                                    <button 
+                                      onClick={() => {
+                                        handleQuickSubmit(activeDeceasedTab, currentNode, mainQuickVal);
+                                        setIsMainQuickActive(false);
+                                        setMainQuickVal('');
+                                      }}
+                                      className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-[14px] font-black rounded-md transition-all shadow-md active:scale-95"
+                                    >
+                                      일괄 등록
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
                             )}
+
+                            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                              <SortableContext items={nodeHeirs.map(h => h.id)} strategy={verticalListSortingStrategy}>
+                                <div className={`space-y-1.5 transition-all duration-300 ${isFolderFocused ? 'p-2' : ''}`}>
+                                  {nodeHeirs.map(h => (
+                                    <HeirRow
+                                      key={h.id}
+                                      node={h}
+                                      level={1}
+                                      handleUpdate={handleUpdate}
+                                      removeHeir={removeHeir}
+                                      addHeir={addHeir}
+                                      siblings={nodeHeirs}
+                                      inheritedDate={currentNode.deathDate || tree.deathDate}
+                                      onKeyDown={handleKeyDown}
+                                      toggleSignal={inputToggleSignal}
+                                      rootIsHoju={tree.isHoju !== false}
+                                      showSubHeirs={false}
+                                    />
+                                  ))}
+                                  {nodeHeirs.length === 0 && (
+                                    <div className="py-20 text-center flex flex-col items-center gap-4 text-[#a3a3a3] dark:text-neutral-500">
+                                      <IconUserPlus className="w-12 h-12 opacity-20" />
+                                      <p className="text-[14px] font-medium italic">아직 등록된 상속인이 없습니다.</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </SortableContext>
+                            </DndContext>
                           </div>
-                        </SortableContext>
-                      </DndContext>
-                    </div>
-                  );
-                })()}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
+
 
           {activeTab === 'tree' && (
             <div className="py-2 flex flex-col h-full">
@@ -975,56 +991,60 @@ function App() {
             <div className="flex flex-col h-full">
               <div className="space-y-6 print-mt-4">
                 {calcSteps.map((s, i) => (
-                  <div key={i} className="break-inside-avoid">
-                    <div className="bg-white/80 dark:bg-neutral-800/80 border-y border-[#d4d4d4] dark:border-neutral-600 px-4 py-2 flex justify-between items-center print-table-top transition-colors">
+                  <div key={i} className="break-inside-avoid border border-[#f1f1ef] dark:border-neutral-700/50 rounded-xl overflow-hidden shadow-sm bg-white dark:bg-neutral-900/40">
+                    <div className="bg-[#fcfcfb] dark:bg-neutral-800/60 px-6 py-4 flex justify-between items-center transition-colors border-b border-[#f1f1ef] dark:border-neutral-700/50">
                       <div className="flex items-center gap-3">
-                        <span className="text-[16px] font-bold text-[#37352f] dark:text-neutral-200">
-                          피상속인 <span className="text-[#0b6e99] dark:text-blue-400 font-black mx-1">{s.dec.name}</span> 
-                          <span className="ml-2 font-medium text-[#787774] dark:text-neutral-400 text-[14px]">[피상속지분: {s.inN}/{s.inD}]</span>
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                        <span className="text-[15px] font-black text-[#37352f] dark:text-neutral-200">
+                          피상속인 <span className="text-[#2383e2] dark:text-blue-400 mx-1">{s.dec.name}</span> 
+                          <span className="ml-2 font-bold text-[#787774] dark:text-neutral-400 text-[13px] opacity-60">[지분: {s.inN}/{s.inD}]</span>
                         </span>
-                        <span className="text-[#c93f3a] dark:text-red-400 font-bold text-[14px]">({s.dec.deathDate} 사망)</span>
+                        <span className="text-[#c93f3a] dark:text-red-400 font-bold text-[13px] opacity-70">({s.dec.deathDate} 사망)</span>
                       </div>
                       <div className="flex items-center gap-3">
                         {/* 금액 계산 UI는 요약표 탭으로 이동됨 */}
                       </div>
                     </div>
-                    <table className="w-full print-table text-[15px] table-fixed text-[#37352f] dark:text-neutral-300">
-                      <tbody>
+                    <table className="w-full text-left">
+                      <thead className="bg-[#fcfcfb] dark:bg-neutral-800/40 border-b border-[#f1f1ef] dark:border-neutral-700/50">
+                        <tr className="text-[#787774] dark:text-neutral-400 text-[11px] font-black uppercase tracking-widest">
+                          <th className="py-3 px-6">상속인</th>
+                          <th className="py-3 px-6 text-center">산출 지분</th>
+                          <th className="py-3 px-6">비고</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#f1f1ef] dark:divide-neutral-700/30">
                         {s.dists.map((d, di) => {
+                          const isSpecial = d.mod && d.mod.length > 0;
                           return (
-                            <tr key={di} className="border-b border-[#d4d4d4] dark:border-neutral-700 print:border-[#d4d4d4] transition-colors">
-                              <td className="w-[120px] py-1.5 pl-4 font-bold text-[16px] text-[#0b6e99] dark:text-blue-400">{d.h.name}</td>
-                              <td className="w-[70px] py-1.5 text-[15px] font-semibold text-[#504f4c] dark:text-neutral-400">{relStr[d.h.relation] || '자녀'}</td>
-                              <td className="w-[480px] py-1.5 text-[#37352f] dark:text-neutral-300">
-                                <div className="grid grid-cols-[70px_160px_1fr] items-center gap-2 w-full">
-                                  {d.ex ? (
-                                    <div className="col-span-3 flex justify-start">
-                                      <span className="text-[#c93f3a] dark:text-red-400 text-[13px] font-bold bg-white/50 dark:bg-neutral-800/50 px-1.5 py-0.5 rounded border border-[#f0c0b9] dark:border-red-900/50">{d.ex}</span>
-                                    </div>
-                                  ) : (
-                                    <>
-                                      <span className="font-bold text-[16px] text-[#37352f] dark:text-neutral-200 text-right pr-2">{d.n} / {d.d}</span>
-                                      <span className="text-[14px] text-[#787774] dark:text-neutral-500 font-medium whitespace-nowrap">(= {s.inN}/{s.inD} × {d.sn}/{d.sd})</span>
-                                      <div className="flex justify-start">
-                                        {d.mod && (
-                                          <span className={`text-[13px] font-semibold px-2 py-0.5 rounded border whitespace-nowrap ${
-                                            d.mod.includes('호주') ? 'text-[#1d4ed8] dark:text-blue-300 bg-[#bfdbfe] dark:bg-blue-900/40 border-[#93c5fd] dark:border-blue-800/50' :
-                                            d.mod.includes('출가녀') ? 'text-[#b91c1c] dark:text-red-300 bg-[#fee2e2] dark:bg-red-900/40 border-[#fecaca] dark:border-red-800/50' :
-                                            d.mod.includes('가산') ? 'text-[#16a34a] dark:text-green-300 bg-[#dcfce7] dark:bg-green-900/40 border-[#bbf7d0] dark:border-green-800/50' :
-                                            d.mod.includes('처 감산') ? 'text-[#ea580c] dark:text-orange-300 bg-[#ffedd5] dark:bg-orange-900/40 border-[#fed7aa] dark:border-orange-800/50' :
-                                            d.mod.includes('여자 감산') ? 'text-[#ea580c] dark:text-orange-300 bg-[#ffedd5] dark:bg-orange-900/40 border-[#fed7aa] dark:border-orange-800/50' :
-                                            d.mod.includes('감산') ? 'text-[#b91c1c] dark:text-red-300 bg-[#fee2e2] dark:bg-red-900/40 border-[#fecaca] dark:border-red-800/50' :
-                                            'text-[#402c84] dark:text-purple-300 bg-[#f3f0ff] dark:bg-purple-900/40 border-[#d9cfff] dark:border-purple-800/50'
-                                          }`}>
-                                            ※ {d.mod}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </>
-                                  )}
+                            <tr key={di} className="hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20 transition-colors">
+                              <td className="px-6 py-4">
+                                <span className={`text-[15px] font-black ${d.h.isDeceased ? 'text-[#787774] dark:text-neutral-500 line-through decoration-red-500/50' : 'text-[#37352f] dark:text-neutral-100'}`}>{d.h.name}</span>
+                                <span className="ml-2 text-[11px] font-bold text-[#a3a3a3] dark:text-neutral-500 uppercase">[{relStr[d.h.relation] || '상속인'}]</span>
+                              </td>
+                              <td className="px-6 py-4 text-center">
+                                <div className="inline-flex flex-col items-center">
+                                  <span className="font-black text-[17px] text-[#2383e2] dark:text-blue-400">{d.n} / {d.d}</span>
+                                  <span className="text-[11px] text-[#a3a3a3] dark:text-neutral-500 font-bold whitespace-nowrap">(= {s.inN}/{s.inD} × {d.sn}/{d.sd})</span>
                                 </div>
                               </td>
-                              <td className="w-[120px] py-1.5 text-left pl-4 text-[#c93f3a] dark:text-red-400 text-[13px] font-bold whitespace-nowrap">{d.h.isDeceased ? `(${d.h.deathDate} 사망)` : ''}</td>
+                              <td className="px-6 py-4">
+                                <div className="flex flex-col gap-1.5">
+                                  {d.ex ? (
+                                    <span className="text-[#c93f3a] dark:text-red-400 text-[12px] font-black px-2 py-1 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded inline-block">{d.ex}</span>
+                                  ) : isSpecial ? (
+                                    <span className={`text-[11px] font-black px-2 py-1 rounded border inline-block whitespace-nowrap ${
+                                      d.mod.includes('호주') ? 'text-[#1d4ed8] dark:text-blue-300 bg-[#f0f7ff] dark:bg-blue-900/20 border-[#bae6fd] dark:border-blue-800/40' :
+                                      d.mod.includes('출가녀') ? 'text-[#b91c1c] dark:text-red-300 bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-800/40' :
+                                      d.mod.includes('가산') ? 'text-[#166534] dark:text-green-300 bg-green-50 dark:bg-green-900/20 border-green-100 dark:border-green-800/40' :
+                                      'text-[#4c4c4c] dark:text-neutral-300 bg-gray-50 dark:bg-neutral-800/40 border-gray-200 dark:border-neutral-700'
+                                    }`}>
+                                      ※ {d.mod}
+                                    </span>
+                                  ) : null}
+                                  {d.h.isDeceased && <span className="text-[#c93f3a] dark:text-red-400 text-[10px] font-bold">({d.h.deathDate} 사망)</span>}
+                                </div>
+                              </td>
                             </tr>
                           );
                         })}

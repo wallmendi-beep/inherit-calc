@@ -1,0 +1,233 @@
+﻿802 1 <div className="border border-[#e9e9e7] dark:border-neutral-700 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.05)] print:hidden min-h-[600px] bg-white dark:bg-neutral-800 flex flex-col p-10 relative z-0 transition-colors">
+803 1 
+804 1 {activeTab === 'input' && (() => {
+805 1 const activeTabObj = deceasedTabs.find(t => t.id === activeDeceasedTab);
+806 1 const currentNode = activeTabObj ? findNodeById(tree, activeTabObj.id) : tree;
+807 1 const nodeHeirs = currentNode ? (currentNode.heirs || []) : [];
+808 1 const isRootNode = currentNode && currentNode.id === 'root';
+809 1 
+810 1 return (
+811 2 <div className="space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-400 flex flex-col flex-1">
+812 3 <div className="bg-[#fcfcfb] dark:bg-neutral-800/20 border border-[#e9e9e7] dark:border-neutral-700 rounded-lg p-4 flex items-center gap-6 transition-colors shadow-none">
+813 4 <div className="text-[12px] font-black text-[#37352f] dark:text-neutral-200 border-r border-[#f1f1ef] dark:border-neutral-700/50 pr-6 py-1 shrink-0 uppercase tracking-widest opacity-40">
+814 4 湲곕낯<br/>?뺣낫
+815 3 </div>
+816 4 <div className="grid grid-cols-6 gap-6 flex-1 items-end">
+817 5 <div>
+818 5 <label className="block text-[11px] text-[#787774] dark:text-neutral-400 mb-1.5 font-semibold">?ш굔踰덊샇</label>
+819 5 <input type="text" onKeyDown={handleKeyDown} value={tree.caseNo} onChange={e=>handleRootUpdate('caseNo',e.target.value)} className="w-full border border-[#e9e9e7] dark:border-neutral-700 rounded px-3 py-1.5 text-[13px] font-medium focus:ring-1 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all bg-white dark:bg-neutral-900 dark:text-neutral-200" placeholder="0000媛??00" />
+820 4 </div>
+821 5 <div>
+822 5 <label className="block text-[11px] text-[#787774] dark:text-neutral-400 mb-1.5 font-semibold">?깅챸</label>
+823 5 <input type="text" onKeyDown={handleKeyDown} value={currentNode?.name || ''} onChange={e=>currentNode && handleUpdate(currentNode.id, 'name', e.target.value)} className="w-full border border-[#e9e9e7] dark:border-neutral-700 rounded px-3 py-1.5 text-[13px] font-bold text-[#2383e2] dark:text-blue-400 focus:ring-1 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all bg-white dark:bg-neutral-900" placeholder="?깅챸 ?낅젰" />
+824 4 </div>
+825 5 <div>
+826 5 <label className="block text-[11px] text-[#c93f3a] dark:text-red-400 mb-1.5 font-semibold">?щ쭩?쇱옄</label>
+827 5 <DateInput value={currentNode?.deathDate || ''} onKeyDown={handleKeyDown} onChange={v=>currentNode && handleUpdate(currentNode.id, 'deathDate', v)} className="w-full border border-[#e9e9e7] dark:border-neutral-700 rounded px-3 py-1.5 text-[13px] font-medium focus:ring-1 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all bg-white dark:bg-neutral-900 dark:text-neutral-200" />
+828 4 </div>
+829 5 <div>
+830 5 <label className="block text-[11px] text-[#2383e2] dark:text-blue-400 mb-1.5 font-semibold">?몄＜ ?щ?</label>
+831 5 <label className={`flex items-center gap-2 px-3 py-1.5 h-[34px] rounded border cursor-pointer transition-colors select-none ${isRootNode ? (tree.isHoju !== false ? 'bg-[#f0f7ff] dark:bg-blue-900/20 border-[#bae6fd]' : 'bg-white border-[#e9e9e7]') : 'bg-gray-50 opacity-40 cursor-not-allowed'}`}>
+832 5 <input type="checkbox" disabled={!isRootNode} checked={isRootNode ? tree.isHoju !== false : false} onChange={e=>handleRootUpdate('isHoju', e.target.checked)} className="w-3 h-3 cursor-pointer accent-[#2383e2]" />
+833 5 <span className="text-[12px] font-bold">?몄＜</span>
+834 5 </label>
+835 4 </div>
+836 5 <div>
+837 5 <label className="block text-[11px] text-[#787774] dark:text-neutral-400 mb-1.5 font-semibold">?쇱긽?띿?遺?/label>
+838 6 <div className="flex items-center bg-white dark:bg-neutral-900 rounded border border-[#e9e9e7] dark:border-neutral-700 p-0.5 h-[34px]">
+839 6 <input type="number" min="1" onKeyDown={handleKeyDown} value={currentNode?.shareD || 1} onChange={e=>handleUpdate(currentNode.id, 'shareD', Math.max(1, parseInt(e.target.value)||1))} title="遺꾨え" className="w-[50px] bg-transparent px-1 py-1 text-[13px] text-center font-bold focus:bg-blue-50/30 dark:focus:bg-blue-900/20 outline-none dark:text-neutral-200" />
+840 6 <span className="text-[#bbb] px-1 text-[10px] font-medium">/</span>
+841 6 <input type="number" min="1" max={currentNode?.shareD || 1} onKeyDown={handleKeyDown} value={currentNode?.shareN || 1} onChange={e=>handleUpdate(currentNode.id, 'shareN', Math.min(currentNode.shareD||1, Math.max(1, parseInt(e.target.value)||1)))} title="遺꾩옄" className="w-[50px] bg-transparent px-1 py-1 text-[13px] text-center font-bold focus:bg-blue-50/30 dark:focus:bg-blue-900/20 outline-none dark:text-neutral-200" />
+842 5 </div>
+843 4 </div>
+844 5 <div className="flex justify-end">
+845 5 <button
+846 5 onClick={() => {
+847 5 setIsMainQuickActive(true);
+848 5 setIsFolderFocused(true);
+849 5 }}
+850 5 className="bg-[#2383e2] hover:bg-blue-600 text-white px-4 py-2 rounded-md text-[13px] font-black flex items-center gap-2 shadow-lg transition-transform active:scale-95 whitespace-nowrap"
+851 5 >
+852 5 <IconUserPlus className="w-4 h-4" /> ?곸냽??異붽?
+853 5 </button>
+854 4 </div>
+855 3 </div>
+856 2 </div>
+857 2 
+858 2 {/* ?대뜑-??援ъ“: ?щ쭩???몃Ъ蹂???(?몃?蹂?怨꾨떒?? */}
+859 3 <div className="transition-colors flex-1 flex flex-col">
+860 3 {/* ??諛?- ?몃?蹂?怨꾨떒???대뜑 ?ㅽ???*/}
+861 4 <div className="flex flex-col gap-1 no-print relative z-10">
+862 4 {(() => {
+863 4 const levels = Array.from(new Set(deceasedTabs.map(t => t.level))).sort((a, b) => a - b);
+864 4 const levelPalette = {
+865 4 1: { activeBorder: 'border-[#2383e2]', activeText: 'text-[#2383e2]', activeBg: 'bg-white dark:bg-neutral-800', inactiveBg: 'bg-[#f0f7ff] dark:bg-neutral-800/40', inactiveBorder: 'border-[#d0e2f5] dark:border-neutral-700', inactiveText: 'text-[#5c7c9c] dark:text-neutral-500' },
+866 4 2: { activeBorder: 'border-[#00a35c]', activeText: 'text-[#00a35c]', activeBg: 'bg-white dark:bg-neutral-800', inactiveBg: 'bg-[#f0fff4] dark:bg-neutral-800/40', inactiveBorder: 'border-[#c6f6d5] dark:border-neutral-700', inactiveText: 'text-[#4c8c64] dark:text-neutral-500' },
+867 4 3: { activeBorder: 'border-[#f2711c]', activeText: 'text-[#d46016]', activeBg: 'bg-white dark:bg-neutral-800', inactiveBg: 'bg-[#fff5f0] dark:bg-neutral-800/40', inactiveBorder: 'border-[#ffdfba] dark:border-neutral-700', inactiveText: 'text-[#9c5a2a] dark:text-neutral-500' },
+868 4 4: { activeBorder: 'border-[#9b51e0]', activeText: 'text-[#7e42c0]', activeBg: 'bg-white dark:bg-neutral-800', inactiveBg: 'bg-[#f8f0ff] dark:bg-neutral-800/40', inactiveBorder: 'border-[#e9d8fd] dark:border-neutral-700', inactiveText: 'text-[#7a5c9a] dark:text-neutral-500' },
+869 4 5: { activeBorder: 'border-[#eb5757]', activeText: 'text-[#c64444]', activeBg: 'bg-white dark:bg-neutral-800', inactiveBg: 'bg-[#fff0f0] dark:bg-neutral-800/40', inactiveBorder: 'border-[#fed7d7] dark:border-neutral-700', inactiveText: 'text-[#a64d4d] dark:text-neutral-500' },
+870 4 };
+871 4 
+872 4 return (
+873 5 <div className="flex no-print relative z-10 gap-0">
+874 5 {/* ?곗륫 ?섏쭅 諛곗튂 ?몃?蹂???(Filing Cabinet) */}
+875 6 <div className="fixed right-0 top-[56px] bottom-0 flex flex-col pt-10 px-0 pointer-events-none z-[70]">
+876 7 <div className="flex flex-col gap-1 items-end pointer-events-auto">
+877 7 {levels.map(lv => (
+878 8 <div key={lv} className="flex flex-col items-end gap-1.5 pr-0">
+879 8 {deceasedTabs.filter(t => t.level === lv)
+880 8 .map((tab) => {
+881 8 const isActive = activeDeceasedTab === tab.id;
+882 8 const p = levelPalette[lv] || levelPalette[5];
+883 8 
+884 8 return (
+885 8 <button
+886 8 key={tab.id}
+887 8 ref={el => tabRefs.current[tab.id] = el}
+888 8 onClick={() => {
+889 8 setActiveDeceasedTab(tab.id);
+890 8 setIsFolderFocused(true);
+891 8 }}
+892 8 className={`px-4 py-3 rounded-l-xl font-bold text-[13px] flex items-center gap-2.5 transition-all relative cursor-pointer border-2 border-r-0 whitespace-nowrap shrink-0 shadow-lg ${
+893 8 isActive
+894 8 ? `${p.activeBg} ${p.activeBorder} ${p.activeText} -mr-[2px] z-50 scale-[1.05] translate-x-[-5px]`
+895 8 : `${p.inactiveBg} ${p.inactiveBorder} ${p.inactiveText} opacity-80 z-10 hover:opacity-100 hover:translate-x-[-5px]`
+896 8 }`}
+897 8 >
+898 9 <div className={`w-2.5 h-2.5 rounded-full ${isActive ? 'bg-current animate-pulse' : 'bg-gray-400/50'}`} />
+899 9 {tab.name}
+900 9 <span className="ml-1 text-[9px] opacity-60 font-black tracking-tighter">{lv}?</span>
+901 9 </button>
+902 9 );
+903 9 })}
+904 8 </div>
+905 8 ))}
+906 7 </div>
+907 6 </div>
+908 5 </div>
+909 5 );
+910 5 })()}
+911 4 </div>
+912 4 
+913 4 {/* ??肄섑뀗痢?- ?쒖꽦 ???덈꺼 ?됱긽怨??쇱튂?섎뒗 ?뚮몢由?*/}
+914 4 {(() => {
+915 4 const paletteBorders = {
+916 4 1: 'border-[#2383e2]', 2: 'border-[#16a34a]', 3: 'border-[#f97316]', 4: 'border-[#a855f7]', 5: 'border-[#e11d48]'
+917 4 };
+918 4 const activeTabObj = deceasedTabs.find(t => t.id === activeDeceasedTab);
+919 4 const activeLv = activeTabObj?.level || 1;
+920 4 const borderColor = paletteBorders[activeLv] || paletteBorders[5];
+921 4 
+922 4 const tab = activeTabObj;
+923 4 if (!tab) return null;
+924 4 const currentNode = findNodeById(tree, tab.id);
+925 4 if (!currentNode) return null;
+926 4 
+927 4 return (
+928 5 <div key={tab.id} className={`relative transition-all duration-700 ease-in-out ${isFolderFocused ? 'z-50' : 'z-0'}`}>
+929 5 
+930 5 {/* ?뱛 怨좊룄?붾맂 3D ?쒕쪟 ?대뜑 */}
+931 6 <div className={`relative transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+932 6 isFolderFocused
+933 6 ? 'bg-white dark:bg-neutral-800 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5),0_30px_60px_-30px_rgba(0,0,0,0.6),0_0_0_1px_rgba(0,0,0,0.02)] rounded-xl translate-y-0 opacity-100'
+934 6 : 'bg-transparent opacity-0 translate-y-10 pointer-events-none'
+935 6 }`}>
+936 6 
+937 6 {/* ?뱚 ?대뜑 ?곷떒 ?≪뀡 諛?- 誘몃땲硫由ъ쬁 媛쒗렪 */}
+938 7 <div className="flex items-center justify-between px-6 py-4 border-b border-[#f1f1ef] dark:border-neutral-700/50 bg-[#f8f9fa] dark:bg-neutral-900/40 rounded-t-xl transition-colors">
+939 8 <div className="flex items-center gap-3">
+940 9 <div className="w-2.5 h-2.5 rounded-full bg-blue-500 ring-4 ring-blue-500/10" />
+941 9 <span className="text-[14px] font-black text-neutral-800 dark:text-neutral-100">?곸냽 愿怨??낆쬆 ?먮즺</span>
+942 9 <span className="text-[11px] font-bold text-neutral-400 dark:text-neutral-500 ml-2">{getBriefingInfo.pathStr}</span>
+943 8 </div>
+944 9 <div className="flex items-center gap-4">
+945 9 <span className="text-[15px] font-black text-blue-600 dark:text-blue-400">{getBriefingInfo.shareStr}</span>
+946 9 <button
+947 9 onClick={() => setIsFolderFocused(false)}
+948 9 className="w-8 h-8 rounded-full bg-white dark:bg-neutral-800 border border-red-500 text-red-500 hover:bg-red-500 hover:text-white flex items-center justify-center transition-all shadow-md group"
+949 9 title="?묎린"
+950 9 >
+951 9 <IconX className="w-4 h-4" />
+952 9 </button>
+953 8 </div>
+954 7 </div>
+955 7 
+956 7 {/* ?뱞 ?대뜑 ?대? */}
+957 8 <div className="p-8 bg-white dark:bg-neutral-800 rounded-b-xl">
+958 8 {isMainQuickActive && (
+959 9 <div className="mb-6 p-4 rounded-lg bg-amber-50/50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 animate-in fade-in slide-in-from-top-1 duration-200">
+960 10 <div className="flex flex-col gap-2">
+961 11 <div className="text-[11px] font-bold text-amber-600 dark:text-amber-500/80 flex items-center gap-1">
+962 11 ?곸냽???대쫫???쇳몴(,)濡?援щ텇?섏뿬 ?쒓볼踰덉뿉 ?낅젰?섏꽭??963 10 </div>
+964 11 <div className="flex gap-2">
+965 11 <input
+966 11 autoFocus
+967 11 type="text"
+968 11 value={mainQuickVal}
+969 11 onChange={e => setMainQuickVal(e.target.value)}
+970 11 onKeyDown={e => {
+971 11 if (e.key === 'Enter') {
+972 11 handleQuickSubmit(tab.id, currentNode, mainQuickVal);
+973 11 setIsMainQuickActive(false);
+974 11 setMainQuickVal('');
+975 11 }
+976 11 if (e.key === 'Escape') setIsMainQuickActive(false);
+977 11 }}
+978 11 placeholder="?? ?띻만?? 源泥좎닔, ?댁쁺??
+979 11 className="flex-1 text-[13px] border border-amber-200 dark:border-amber-800/50 rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-amber-500/20 bg-white dark:bg-neutral-900 dark:text-neutral-200"
+980 11 />
+981 11 <button
+982 11 onClick={() => {
+983 11 handleQuickSubmit(tab.id, currentNode, mainQuickVal);
+984 11 setIsMainQuickActive(false);
+985 11 setMainQuickVal('');
+986 11 }}
+987 11 className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-[13px] font-bold rounded-md transition-colors shadow-sm"
+988 11 >
+989 11 ?깅줉
+990 11 </button>
+991 10 </div>
+992 9 </div>
+993 8 </div>
+994 8 )}
+995 8 
+996 8 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+997 8 <SortableContext items={nodeHeirs.map(h => h.id)} strategy={verticalListSortingStrategy}>
+998 9 <div className={`space-y-1 transition-all ${isFolderFocused ? 'bg-white dark:bg-[#1a1a1b] p-4 rounded-lg shadow-inner' : ''}`}>
+999 9 {nodeHeirs.map(h => (
+1000 9 <HeirRow
+1001 9 key={h.id}
+1002 9 node={h}
+1003 9 level={1}
+1004 9 handleUpdate={handleUpdate}
+1005 9 removeHeir={removeHeir}
+1006 9 addHeir={addHeir}
+1007 9 siblings={nodeHeirs}
+1008 9 inheritedDate={currentNode.deathDate || tree.deathDate}
+1009 9 onKeyDown={handleKeyDown}
+1010 9 toggleSignal={inputToggleSignal}
+1011 9 rootIsHoju={tree.isHoju !== false}
+1012 9 showSubHeirs={false}
+1013 9 />
+1014 9 ))}
+1015 9 {nodeHeirs.length === 0 && (
+1016 10 <div className="py-8 text-center text-[13px] text-[#a3a3a3] dark:text-neutral-500 font-medium italic">
+1017 10 ?꾩쭅 ?깅줉???곸냽?몄씠 ?놁뒿?덈떎.
+1018 9 </div>
+1019 9 )}
+1020 8 </div>
+1021 8 </SortableContext>
+1022 8 </DndContext>
+1023 7 </div>
+1024 6 </div>
+1025 5 </div>
+1026 5 );
+1027 5 })()}
+1028 4 </div>
+1029 3 </div>
+1030 3 )}
+1031 3 
+1032 3 {activeTab === 'tree' && (
+1033 4 <div className="py-2 flex flex-col h-full">
+1034 5 <div className="mb-5 p-3.5 bg-[#f0fdf4] dark:bg-green-900/20 border border-[#bbf7d0] dark:border-green-800/50 text-[#166534] dark:text-green-300 rounded-lg text-[14px] font-semibold flex justify-between items-center shadow-sm no-print transition-colors">
+1035 6 <div className="flex items-center gap-2">
