@@ -1,11 +1,12 @@
 {
-  "name": "temp_project",
+  "name": "inheritance-calc-pro",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:standalone": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "test:logic": "node src/engine/check_logic.js"
@@ -30,6 +31,7 @@
     "globals": "^16.5.0",
     "postcss": "^8.5.8",
     "tailwindcss": "^3.4.19",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "vite-plugin-singlefile": "^2.3.0"
   }
 }

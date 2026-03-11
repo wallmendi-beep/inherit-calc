@@ -6,7 +6,7 @@ import { getLevelStyle, getLineStyle } from '../utils/styles';
 import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inheritedDate, onKeyDown, toggleSignal, rootIsHoju }) => {
+const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inheritedDate, onKeyDown, toggleSignal, rootIsHoju, showSubHeirs = true }) => {
   const isSp = node.relation === 'wife' || node.relation === 'husband';
   const isSon = node.relation === 'son';
   const isDaughter = node.relation === 'daughter';
@@ -66,11 +66,12 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
         </div>
 
         <div className="w-7 flex justify-center shrink-0 mr-1">
-          {node.isDeceased && (
+          {node.isDeceased && showSubHeirs && (
             <button type="button" onClick={() => setIsExpanded(!isExpanded)} className="text-[#787774] dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/10 p-1 rounded transition-colors" title={isExpanded ? "접기" : "펼치기"}>
               <IconChevronRight className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
             </button>
           )}
+
         </div>
 
         <div className="flex items-center gap-2 flex-nowrap w-full">
@@ -108,7 +109,7 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
                   onChange={e => handleUpdate(node.id, 'isHoju', e.target.checked)} 
                   className={`w-3.5 h-3.5 accent-[#0284c7] ${hasOtherHoju && !node.isHoju ? 'cursor-not-allowed grayscale' : 'cursor-pointer'}`} 
                 />
-                <span className="text-[13px] font-bold">호주상속</span>
+                <span className="text-[13px] font-bold">호주</span>
               </label>
             )}
             
@@ -127,17 +128,24 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
             )}
           </div>
 
-          <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded border cursor-pointer transition-colors ml-auto select-none ${node.isDeceased ? 'bg-[#ffe2dd] dark:bg-red-900/40 border-[#f0c0b9] dark:border-red-800/50 text-[#c93f3a] dark:text-red-400' : 'bg-white dark:bg-slate-800 border-[#cccccc] dark:border-slate-600 text-[#787774] dark:text-slate-400 hover:bg-[#f1f1ef] dark:hover:bg-slate-700'}`}>
-            <input type="checkbox" checked={node.isDeceased || false} onKeyDown={onKeyDown} onChange={e => handleUpdate(node.id, 'isDeceased', e.target.checked)} className="w-4 h-4 cursor-pointer accent-[#c93f3a]" />
-            <span className="text-[13px] font-bold">사망</span>
-          </label>
-
-          {node.isDeceased && (
-            <div className="flex items-center bg-white dark:bg-slate-800 border border-[#f0c0b9] dark:border-red-800/50 rounded overflow-hidden input-combo transition-colors">
-              <span className="bg-[#ffe2dd] dark:bg-red-900/40 text-[#c93f3a] dark:text-red-400 font-semibold px-3 py-1.5 text-[13px] border-r border-[#f0c0b9] dark:border-red-800/50 transition-colors">사망일</span>
-              <DateInput value={node.deathDate} onKeyDown={onKeyDown} onChange={v => handleUpdate(node.id, 'deathDate', v)} className="w-28 px-3 py-1.5 text-[14px] font-semibold outline-none text-[#37352f] dark:text-slate-200 bg-transparent transition-colors" />
-            </div>
-          )}
+          <div className={`flex items-center rounded overflow-hidden transition-all ml-auto border ${node.isDeceased ? 'border-[#f0c0b9] dark:border-red-800/50 bg-[#ffe2dd]/30 dark:bg-red-900/10' : 'border-[#e9e9e7] dark:border-neutral-700 bg-white dark:bg-neutral-800 hover:bg-[#f8f8f7] dark:hover:bg-neutral-700'}`}>
+            <label className="flex items-center px-2 py-1.5 cursor-pointer select-none">
+              <input type="checkbox" checked={node.isDeceased || false} onKeyDown={onKeyDown} onChange={e => {
+                handleUpdate(node.id, 'isDeceased', e.target.checked);
+                if (!e.target.checked) handleUpdate(node.id, 'deathDate', '');
+              }} className="w-3.5 h-3.5 cursor-pointer accent-[#c93f3a]" />
+            </label>
+            
+            {node.isDeceased && (
+               <div className="flex items-center pr-3 group/death">
+                 <DateInput value={node.deathDate} onKeyDown={onKeyDown} onChange={v => handleUpdate(node.id, 'deathDate', v)} placeholder="사망일자" className="w-[105px] px-1 py-1 text-[13.5px] font-bold outline-none text-[#c93f3a] dark:text-red-400 bg-transparent transition-colors text-center" />
+                 <span className="text-[13px] font-bold text-[#c93f3a] dark:text-red-400 opacity-80">사망</span>
+               </div>
+            )}
+            {!node.isDeceased && (
+               <span className="text-[12px] font-bold text-[#787774] dark:text-neutral-500 pr-3 opacity-60">사망</span>
+            )}
+          </div>
 
           {isSp && level > 1 && (
             <div className="flex gap-1 ml-1 shrink-0">
@@ -160,7 +168,7 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
         </button>
       </div>
 
-      {node.isDeceased && isExpanded && (
+      {node.isDeceased && showSubHeirs && isExpanded && (
         <div className="mt-2 ml-4 animate-in fade-in slide-in-from-top-2 duration-200">
           {canAutoFill && (
             <div className="mb-2 p-3 bg-[#f7f7f5] dark:bg-slate-700/50 border border-[#d4d4d4] dark:border-slate-600 rounded-md text-[13px] flex items-center justify-between no-print shadow-sm transition-colors">

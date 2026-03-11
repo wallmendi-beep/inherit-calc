@@ -8,39 +8,71 @@ import {
 import { DateInput } from './components/DateInput';
 import HeirRow from './components/HeirRow';
 import TreeReportNode from './components/TreeReportNode';
-import { relStr, formatKorDate, formatMoney } from './engine/utils';
+import { math, relStr, formatKorDate, formatMoney } from './engine/utils';
 import { calculateInheritance } from './engine/inheritance';
 import { getInitialTree, getEmptyTree } from './utils/initialData';
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 
-const MiniTreeView = ({ node, level = 0 }) => {
+const MiniTreeView = ({ node, level = 0, onQuickAdd, activeQuickId, setActiveQuickId, quickVal, setQuickVal, onQuickSubmit, onSelectNode }) => {
   if (!node) return null;
   
   // 🎨 항렬별/상태별 색상 정의
   const getLevelColor = (lvl, isDead) => {
-    if (isDead) return 'text-[#ef4444] dark:text-red-500 font-black'; // 사망자는 무조건 빨간색
-    if (lvl === 0) return 'text-[#0ea5e9] dark:text-sky-400 font-black'; // 피상속인
-    if (lvl === 1) return 'text-[#22c55e] dark:text-green-400 font-bold'; // 1대
-    if (lvl === 2) return 'text-[#f97316] dark:text-orange-400 font-bold'; // 2대
-    return 'text-[#a855f7] dark:text-purple-400 font-bold'; // 3대 이상
+    if (isDead) return 'text-[#ef4444] dark:text-red-500 font-black';
+    if (lvl === 0) return 'text-[#0ea5e9] dark:text-sky-400 font-black';
+    if (lvl === 1) return 'text-[#22c55e] dark:text-green-400 font-bold';
+    if (lvl === 2) return 'text-[#f97316] dark:text-orange-400 font-bold';
+    return 'text-[#a855f7] dark:text-purple-400 font-bold';
   };
 
   const nameColorClass = getLevelColor(level, node.isDeceased);
+  const isOpen = activeQuickId === node.id;
 
   return (
     <div className={`flex flex-col ${level > 0 ? 'ml-3' : ''}`}>
-      <div className="flex items-center gap-1.5 py-1">
+      <div className="flex items-center gap-1.5 py-1 pr-1">
         {level > 0 && <span className="text-[#d4d4d4] dark:text-neutral-600 text-[12px] shrink-0 font-bold">└</span>}
-        <span className={`text-[13px] truncate transition-colors ${nameColorClass} ${node.isDeceased ? 'line-through' : ''}`}>
+        <span 
+          onClick={() => onSelectNode && onSelectNode(node.id)}
+          className={`text-[13px] truncate transition-colors flex-1 min-w-0 cursor-pointer hover:opacity-70 ${nameColorClass} ${node.isDeceased ? 'underline underline-offset-4 decoration-2' : ''}`}
+        >
           {node.name || (level === 0 ? '피상속인' : '(이름 없음)')}
         </span>
         {level > 0 && <span className={`text-[11px] font-medium shrink-0 ${node.isDeceased ? 'text-[#ef4444]/70 dark:text-red-500/70' : 'text-[#787774] dark:text-neutral-500'}`}>({relStr[node.relation] || '자녀'})</span>}
+        {onQuickAdd && (
+          <button
+            onClick={() => isOpen ? setActiveQuickId(null) : (setActiveQuickId(node.id), setQuickVal(''))}
+            className="w-5 h-5 flex-shrink-0 flex justify-center items-center rounded-sm hover:bg-[#e9e9e7] dark:hover:bg-neutral-700 text-[#a3a3a3] hover:text-[#37352f] dark:hover:text-neutral-200 transition-colors cursor-pointer text-[14px] font-bold no-print"
+            title="상속인 빠른 추가"
+          >+</button>
+        )}
       </div>
+      {isOpen && (
+        <div className="ml-1.5 pl-1.5 mt-0.5 mb-1.5 border-l-2 border-[#2383e2] no-print">
+          <input
+            autoFocus
+            type="text"
+            value={quickVal}
+            onChange={e => setQuickVal(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') onQuickSubmit(node.id, node, quickVal);
+              if (e.key === 'Escape') setActiveQuickId(null);
+            }}
+            placeholder="이름 입력 (쉼표로 여러 명)"
+            className="w-full text-[12px] border border-[#d4d4d4] rounded px-2 py-1 outline-none focus:border-[#2383e2] bg-white dark:bg-neutral-800 dark:text-neutral-200 dark:border-neutral-600"
+          />
+          <div className="text-[10px] text-[#a3a3a3] mt-0.5">Enter로 추가 · 첫 번째는 배우자, 나머지는 자녀</div>
+        </div>
+      )}
       {node.heirs && node.heirs.length > 0 && (
         <div className="border-l border-[#e9e9e7] dark:border-neutral-700 ml-1.5 pl-1.5 pb-1 transition-colors">
           {node.heirs.map((h, i) => (
-            <MiniTreeView key={h.id || i} node={h} level={level + 1} />
+            <MiniTreeView key={h.id || i} node={h} level={level + 1}
+              onQuickAdd={onQuickAdd} activeQuickId={activeQuickId} setActiveQuickId={setActiveQuickId}
+              quickVal={quickVal} setQuickVal={setQuickVal} onQuickSubmit={onQuickSubmit}
+              onSelectNode={onSelectNode}
+            />
           ))}
         </div>
       )}
@@ -52,7 +84,30 @@ function App() {
   const [activeTab, setActiveTab] = useState('input'); 
   const [isResetModalOpen, setIsResetModalOpen] = useState(false); 
   const [syncRequest, setSyncRequest] = useState(null);
-  const [tree, setTree] = useState(getInitialTree());
+  const [rawTree, setRawTree] = useState(getInitialTree());
+
+  // 데이터 무결성 강제 확보: 중복 ID 제거 (순환 참조 및 동일 요소 반복 렌더링 방지)
+  const tree = useMemo(() => {
+    const seenIds = new Set();
+    const sanitize = (node) => {
+      // 이미 처리된 ID의 노드(객체 참조 복사본 포함)는 하위 트리 탐색을 중단하거나 필터링함
+      if (!node) return null;
+      if (seenIds.has(node.id)) return null; 
+      seenIds.add(node.id);
+      
+      const copy = { ...node };
+      if (copy.heirs && Array.isArray(copy.heirs)) {
+        // 배열 내 중복 ID 제거 및 하위 정제
+        copy.heirs = copy.heirs
+          .map(sanitize)
+          .filter(Boolean); // null 제거
+      }
+      return copy;
+    };
+    return sanitize(rawTree) || getInitialTree();
+  }, [rawTree]);
+
+  const setTree = setRawTree; // 하위 로직 호환성을 위해 setTree 맵핑
 
   const [treeToggleSignal, setTreeToggleSignal] = useState(0); 
   const [isAllExpanded, setIsAllExpanded] = useState(false); 
@@ -60,6 +115,70 @@ function App() {
   const [isInputAllExpanded, setIsInputAllExpanded] = useState(true); 
   const [propertyValue, setPropertyValue] = useState(''); 
   const [isAmountActive, setIsAmountActive] = useState(false);
+
+  // 💡 사이드 패널 상태
+  // 💡 퀵 입력 상태
+  const [activeQuickId, setActiveQuickId] = useState(null);
+  const [quickVal, setQuickVal] = useState('');
+
+  // 퀵 입력 제출: 이름들을 파싱해서 상속인 추가 + 부모 노드 자동 사망 처리
+  const handleQuickSubmit = (parentId, parentNode, value) => {
+    if (!value.trim()) { setActiveQuickId(null); return; }
+    const names = value.split(/[,，、\s]+/).map(n => n.trim()).filter(Boolean);
+    if (names.length === 0) return;
+
+    setTree(prev => {
+      let newTree = JSON.parse(JSON.stringify(prev));
+
+      const markDeceasedAndAdd = (node) => {
+        if (node.id === parentId) {
+          // 부모 노드 사망 처리
+          if (!node.isDeceased) node.isDeceased = true;
+          // 기존 배우자 여부 확인
+          const hasSpouse = (node.heirs || []).some(h => h.relation === 'wife' || h.relation === 'husband');
+          names.forEach((name, idx) => {
+            const isSpouse = idx === 0 && !hasSpouse;
+            const isRootFemale = parentNode.gender === 'female';
+            node.heirs = node.heirs || [];
+            node.heirs.push({
+              id: `h_${Date.now()}_${idx}`,
+              name,
+              relation: isSpouse ? (isRootFemale ? 'husband' : 'wife') : 'son',
+              isDeceased: false,
+              isSameRegister: true,
+              heirs: []
+            });
+          });
+          return true;
+        }
+        if (node.heirs) return node.heirs.some(markDeceasedAndAdd);
+        return false;
+      };
+
+      // 루트 노드 자체에 추가하는 경우
+      if (newTree.id === parentId) {
+        const hasSpouse = (newTree.heirs || []).some(h => h.relation === 'wife' || h.relation === 'husband');
+        names.forEach((name, idx) => {
+          const isSpouse = idx === 0 && !hasSpouse;
+          const isRootFemale = newTree.gender === 'female';
+          newTree.heirs = newTree.heirs || [];
+          newTree.heirs.push({
+            id: `h_${Date.now()}_${idx}`,
+            name,
+            relation: isSpouse ? (isRootFemale ? 'husband' : 'wife') : 'son',
+            isDeceased: false,
+            isSameRegister: true,
+            heirs: []
+          });
+        });
+      } else {
+        (newTree.heirs || []).forEach(markDeceasedAndAdd);
+      }
+      return newTree;
+    });
+    setActiveQuickId(null);
+    setQuickVal('');
+  };
 
   // 💡 사이드 패널 상태
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -234,6 +353,138 @@ function App() {
     return calculateInheritance(tree, propertyValue);
   }, [tree, propertyValue]);
 
+  // 📂 폴더-탭 상태: 사망한 인물별 탭 목록 생성
+  const [activeDeceasedTab, setActiveDeceasedTab] = useState('root');
+  const tabRefs = React.useRef({});
+
+  // 🧭 상속 경로 및 브리핑 정보 계산
+  const getBriefingInfo = useMemo(() => {
+    const findPath = (curr, target, currentPath = []) => {
+      if (!curr) return null;
+      const newPath = [...currentPath, curr];
+      if (curr.id === target) return newPath;
+      if (curr.heirs) {
+        for (const h of curr.heirs) {
+          const res = findPath(h, target, newPath);
+          if (res) return res;
+        }
+      }
+      return null;
+    };
+
+    const lineage = findPath(tree, activeDeceasedTab);
+    if (!lineage || lineage.length === 0) return { pathStr: '', shareStr: '', sources: [] };
+
+    const targetNode = lineage[lineage.length - 1];
+    if (!targetNode) return { pathStr: '', shareStr: '', sources: [] };
+    
+    // "피상속인 이영재의 딸 이용임의 남편 전경록" 형식 생성
+    const pathStr = lineage.map((n, idx) => {
+      if (idx === 0) return `피상속인 ${n.name || '이름없음'}`;
+      const rel = relStr[n.relation] || '상속인';
+      return `${rel} ${n.name || '(이름없음)'}`;
+    }).join('의 ');
+
+    const sourceList = [];
+    let totalN = 0;
+    let totalD = 1;
+
+    if (calcSteps && Array.isArray(calcSteps)) {
+      calcSteps.forEach(s => {
+        const myShare = s.dists?.find(d => d.h?.name === targetNode.name && targetNode.name !== '');
+        if (myShare && myShare.n > 0) {
+          sourceList.push({ 
+            from: s.dec?.name || '피상속인', 
+            n: myShare.sn, 
+            d: myShare.sd, 
+            fn: myShare.n, 
+            fd: myShare.d 
+          });
+          const [nn, nd] = (math && math.add) ? math.add(totalN, totalD, myShare.n, myShare.d) : [totalN, totalD];
+          totalN = nn;
+          totalD = nd;
+        }
+      });
+    }
+
+    const shareStr = totalN > 0 ? `${totalN}/${totalD}` : '0';
+    return { pathStr, shareStr, sources: sourceList };
+  }, [tree, activeDeceasedTab, calcSteps]);
+
+  // 탭 변경 시 자동 스크롤 (활성 탭이 화면 중앙에 오도록)
+  useEffect(() => {
+    const activeEl = tabRefs.current[activeDeceasedTab];
+    if (activeEl) {
+      activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }, [activeDeceasedTab]);
+
+  // 트리를 순회하여 사망한 인물들의 순서 목록 생성 (세대 레벨 포함, 중복 절대 방지)
+  const deceasedTabs = useMemo(() => {
+    const tabMap = new Map();
+    const registeredNames = new Set();
+
+    // 피상속인(root) 기본 추가
+    tabMap.set('root', { id: 'root', name: tree.name || '피상속인', node: tree, parentName: null, level: 1 });
+    if (tree.name) registeredNames.add(tree.name);
+    
+    const visit = (node, currentLevel) => {
+      if (!node.heirs) return;
+      node.heirs.forEach(h => {
+        if (h.isDeceased) {
+          // 배우자(wife/husband)는 현재 노드와 동일 레벨, 나머지는 다음 레벨
+          const nextLevel = (h.relation === 'wife' || h.relation === 'husband') ? currentLevel : currentLevel + 1;
+          
+          const isAnonymous = !h.name || h.name.trim() === '';
+          const nameToRegister = isAnonymous ? h.id : h.name.trim();
+
+          // 이름(또는 익명 식별자)이 한 번도 탭으로 등록되지 않은 경우에만 추가
+          if (!registeredNames.has(nameToRegister)) {
+            tabMap.set(h.id, {
+              id: h.id,
+              name: h.name || '(상속인)',
+              node: h,
+              parentNode: node,
+              parentName: node.id === 'root' ? (tree.name || '피상속인') : node.name,
+              relation: h.relation,
+              level: nextLevel
+            });
+            registeredNames.add(nameToRegister);
+            
+            // 사망한 경우에만 하위 탐색 (독립 폴더)
+            if (h.heirs && h.heirs.length > 0) {
+              visit(h, nextLevel);
+            }
+          }
+        } else {
+          // 사망하지 않았더라도 그 하위(자손)에 사망자가 있을 수 있으므로 탐색
+          visit(h, currentLevel + 1);
+        }
+      });
+    };
+    
+    visit(tree, 1);
+    return Array.from(tabMap.values());
+  }, [tree]);
+
+  // 탭 목록이 변경되면 현재 탭이 업는지 확인
+  useEffect(() => {
+    const tabIds = deceasedTabs.map(t => t.id);
+    if (!tabIds.includes(activeDeceasedTab)) {
+      setActiveDeceasedTab('root');
+    }
+  }, [deceasedTabs]);
+
+  // 노드를 ID로 찾는 활용 함수
+  const findNodeById = (node, id) => {
+    if (node.id === id) return node;
+    for (const h of (node.heirs || [])) {
+      const found = findNodeById(h, id);
+      if (found) return found;
+    }
+    return null;
+  };
+
   const moveHeir = (activeId, overId) => {
     setTree(prev => {
       const newTree = JSON.parse(JSON.stringify(prev));
@@ -294,16 +545,61 @@ function App() {
     reader.onload = (ev) => {
       try {
         const data = JSON.parse(ev.target.result);
-        if (data.id === 'root') {
+        // 구버전(트리) 형식: id === 'root' 또는 heirs 배열 보유
+        if (data.id === 'root' || (Array.isArray(data.heirs) && data.name !== undefined)) {
           setTree(data);
-          setActiveTab('calc'); 
+          setActiveTab('calc');
+        } else if (data.people && Array.isArray(data.people)) {
+          // 신버전(그래프) 형식 - 기본 정보만 추출하여 트리 초기화
+          alert('이 파일은 이전 버전의 그래프 형식입니다. 일부 데이터가 누락될 수 있습니다.');
+          const root = data.people.find(p => p.isRoot || p.id === 'root');
+          if (root) {
+            setTree({ id: 'root', name: root.name || '', gender: root.gender || 'male',
+              deathDate: root.deathDate || '', caseNo: data.caseNo || '',
+              isHoju: root.isHoju !== false, shareN: data.shareN || 1, shareD: data.shareD || 1,
+              heirs: [] });
+            setActiveTab('input');
+          }
+        } else {
+          alert('인식할 수 없는 파일 형식입니다.');
         }
-      } catch (err) { alert('유효하지 않은 파일입니다.'); }
+      } catch (err) { alert('파일을 읽는 중 오류가 발생했습니다: ' + err.message); }
     };
     reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleExcelExport = () => {
+    // CSV 형태로 지분 요약 정보를 내보냄
+    const rows = [
+      ['사건번호', tree.caseNo || ''],
+      ['피상속인', tree.name || ''],
+      ['사망일자', tree.deathDate || ''],
+      [''],
+      ['상속인', '관계', '지분(분자)', '지분(분모)', '통분 지분(분자)', '통분 지분(분모)'],
+    ];
+    finalShares.direct.forEach(f => {
+      rows.push([f.name, f.relation, f.n, f.d, f.un, f.ud]);
+    });
+    (finalShares.subGroups || []).forEach(g => {
+      rows.push(['', `└ ${g.ancestor?.name || ''} 의 대습상속분`, '', '', '', '']);
+      g.shares.forEach(f => {
+        rows.push([f.name, f.relation, f.n, f.d, f.un, f.ud]);
+      });
+    });
+    const csv = '\uFEFF' + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const safeName = (tree.name || '피상속인없음').replace(/[^a-zA-Z0-9가-힣_-]/g, '');
+    a.download = `상속지분_${safeName}_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const performReset = (withSave) => {
+
     if (withSave) saveFile();
     setTree(getEmptyTree());
     setActiveTab('input');
@@ -314,7 +610,7 @@ function App() {
     <div className="w-full min-h-screen relative flex flex-col items-center pb-24 transition-colors duration-200 bg-[#f7f7f5] dark:bg-neutral-900">
       
       <div id="print-footer" className="hidden print:block fixed bottom-0 right-0 font-['Dancing_Script'] text-neutral-300 text-sm">
-        Designed by J.H. Lee
+        Designed by J.H. Lee (v1.0.0)
       </div>
 
       {/* 💡 사이드 패널 - 탭에 상관없이 항상 고정 표시 */}
@@ -327,9 +623,24 @@ function App() {
           <div className="text-[13px] font-bold text-[#37352f] dark:text-neutral-200 flex items-center gap-2 border-b border-[#e9e9e7] dark:border-neutral-700 px-4 py-3 shrink-0 transition-colors">
             <IconNetwork className="w-3.5 h-3.5 text-[#787774] dark:text-neutral-400 shrink-0"/> 가계도 요약
           </div>
+          <div className="px-3 py-2 text-[11px] text-[#a3a3a3] dark:text-neutral-500 border-b border-[#e9e9e7] dark:border-neutral-700 shrink-0">
+            이름 우측 <span className="font-bold text-[#2383e2]">+</span> 를 눌러 상속인을 바로 추가할 수 있습니다.
+          </div>
           {/* 트리 내용 */}
           <div className="flex-1 overflow-y-auto px-3 py-2 pb-10 text-[13px]">
-            <MiniTreeView node={tree} level={0} />
+            <MiniTreeView node={tree} level={0}
+              onQuickAdd={true}
+              activeQuickId={activeQuickId} setActiveQuickId={setActiveQuickId}
+              quickVal={quickVal} setQuickVal={setQuickVal}
+              onQuickSubmit={handleQuickSubmit}
+              onSelectNode={(id) => {
+                const tabIds = deceasedTabs.map(t => t.id);
+                if (tabIds.includes(id)) {
+                  setActiveDeceasedTab(id);
+                  setActiveTab('input');
+                }
+              }}
+            />
           </div>
           {/* 드래그 리사이즈 핸들 */}
           <div
@@ -391,9 +702,9 @@ function App() {
             <div className="flex items-baseline gap-2">
               <div className="flex items-center text-[#37352f] dark:text-neutral-100 font-bold text-[18px] tracking-tight">
                 <IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-neutral-400" />
-                상속지분 계산기 PRO
+                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400">v1.0.0</span>
               </div>
-              <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px]">Designed by J.H. Lee</span>
+              <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px]">Designed by J.H. Lee · <span className="opacity-60">v1.0.0</span></span>
             </div>
           </div>
           
@@ -417,6 +728,9 @@ function App() {
             </label>
             <button onClick={saveFile} className="text-[#787774] hover:text-[#37352f] hover:bg-[#efefed] px-2 py-1 rounded border border-transparent hover:border-[#d4d4d4] text-[12px] font-bold transition-colors flex items-center gap-1">
               <IconSave className="h-3.5 w-3.5" /> 저장
+            </button>
+            <button onClick={handleExcelExport} className="text-[#787774] hover:text-[#37352f] hover:bg-[#efefed] px-2 py-1 rounded border border-transparent hover:border-[#d4d4d4] text-[12px] font-bold transition-colors flex items-center gap-1">
+              <IconTable className="h-3.5 w-3.5" /> 엑셀
             </button>
             <div className="w-px h-3.5 bg-[#e9e9e7] mx-0.5"></div>
             <button onClick={handlePrint} className="text-white bg-[#2383e2] hover:bg-[#0073ea] px-3 py-1 rounded text-[12px] font-bold transition-colors flex items-center gap-1 shadow-sm whitespace-nowrap">
@@ -447,68 +761,191 @@ function App() {
             );
           })}
         </div>
-        <div className={`border-2 rounded-xl shadow-sm print:hidden min-h-[500px] bg-white dark:bg-neutral-800 flex flex-col ${activeStyle.activeBorder} p-10 relative z-0 transition-colors`}>
+        <div className="border border-[#e9e9e7] dark:border-neutral-700 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.05)] print:hidden min-h-[600px] bg-white dark:bg-neutral-800 flex flex-col p-10 relative z-0 transition-colors">
           
           {activeTab === 'input' && (
-            <div className="space-y-6">
-                <div className="bg-white dark:bg-neutral-800/50 border border-[#d4d4d4] dark:border-neutral-700 rounded-md p-6 shadow-sm transition-colors">
-                <div className="text-[15px] font-bold text-[#37352f] dark:text-neutral-200 mb-4 flex items-center gap-2 border-b border-[#e9e9e7] dark:border-neutral-700 pb-3">
-                  <IconFileText className="w-4 h-4"/> 기본정보 입력
+            <div className="space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-400">
+                <div className="bg-[#fcfcfb] dark:bg-neutral-800/20 border border-[#e9e9e7] dark:border-neutral-700 rounded-lg p-8 transition-colors shadow-none">
+                <div className="text-[12px] font-bold text-[#37352f] dark:text-neutral-200 mb-8 flex items-center gap-2 border-b border-[#f1f1ef] dark:border-neutral-700/50 pb-4 uppercase tracking-[0.1em] opacity-60">
+                  기본정보
                 </div>
-                <div className="grid grid-cols-5 gap-4">
+                <div className="grid grid-cols-5 gap-8">
                   <div>
-                    <label className="block text-[13px] text-[#504f4c] dark:text-neutral-400 mb-1.5 font-bold">사건번호</label>
-                    <input type="text" onKeyDown={handleKeyDown} value={tree.caseNo} onChange={e=>handleRootUpdate('caseNo',e.target.value)} className="w-full border border-[#cccccc] dark:border-neutral-600 rounded p-2 text-[15px] font-bold focus:bg-white dark:focus:bg-neutral-700 transition-all shadow-sm bg-transparent dark:text-neutral-200" />
+                    <label className="block text-[12px] text-[#787774] dark:text-neutral-400 mb-2 font-semibold">사건번호</label>
+                    <input type="text" onKeyDown={handleKeyDown} value={tree.caseNo} onChange={e=>handleRootUpdate('caseNo',e.target.value)} className="w-full border border-[#e9e9e7] dark:border-neutral-700 rounded px-3 py-2 text-[14px] font-medium focus:ring-1 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all bg-white dark:bg-neutral-900 dark:text-neutral-200" placeholder="0000가합000" />
                   </div>
                   <div>
-                    <label className="block text-[13px] text-[#504f4c] dark:text-neutral-400 mb-1.5 font-bold">피상속인 성명</label>
-                    <input type="text" onKeyDown={handleKeyDown} value={tree.name} onChange={e=>handleRootUpdate('name',e.target.value)} className="w-full border border-[#cccccc] dark:border-neutral-600 rounded p-2 text-[15px] font-black text-[#0b6e99] dark:text-blue-400 focus:bg-white dark:focus:bg-neutral-700 transition-all shadow-sm bg-transparent" />
+                    <label className="block text-[12px] text-[#787774] dark:text-neutral-400 mb-2 font-semibold">피상속인 성명</label>
+                    <input type="text" onKeyDown={handleKeyDown} value={tree.name} onChange={e=>handleRootUpdate('name',e.target.value)} className="w-full border border-[#e9e9e7] dark:border-neutral-700 rounded px-3 py-2 text-[14px] font-bold text-[#2383e2] dark:text-blue-400 focus:ring-1 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all bg-white dark:bg-neutral-900" placeholder="성명 입력" />
                   </div>
                   <div>
-                    <label className="block text-[13px] text-[#c93f3a] dark:text-red-400 mb-1.5 font-bold">사망일자</label>
-                    <DateInput value={tree.deathDate} onKeyDown={handleKeyDown} onChange={v=>handleRootUpdate('deathDate',v)} className="w-full border border-[#cccccc] dark:border-neutral-600 rounded p-2 text-[15px] font-bold focus:bg-white dark:focus:bg-neutral-700 transition-all shadow-sm bg-transparent dark:text-neutral-200" />
+                    <label className="block text-[12px] text-[#c93f3a] dark:text-red-400 mb-2 font-semibold">사망일자</label>
+                    <DateInput value={tree.deathDate} onKeyDown={handleKeyDown} onChange={v=>handleRootUpdate('deathDate',v)} className="w-full border border-[#e9e9e7] dark:border-neutral-700 rounded px-3 py-2 text-[14px] font-medium focus:ring-1 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all bg-white dark:bg-neutral-900 dark:text-neutral-200" />
                   </div>
                   <div>
-                    <label className="block text-[13px] text-[#0284c7] dark:text-blue-400 mb-1.5 font-bold">호주 여부</label>
-                    <label className={`flex items-center gap-1.5 px-3 py-2 h-[42px] rounded border cursor-pointer transition-colors shadow-sm select-none ${tree.isHoju !== false ? 'bg-[#e0f2fe] dark:bg-blue-900/30 border-[#bae6fd] dark:border-blue-800/50 text-[#0369a1] dark:text-blue-300' : 'bg-white dark:bg-neutral-800 border-[#cccccc] dark:border-neutral-600 text-[#787774] dark:text-neutral-400 hover:bg-[#f1f1ef] dark:hover:bg-neutral-700'}`}>
-                      <input type="checkbox" checked={tree.isHoju !== false} onChange={e=>handleRootUpdate('isHoju', e.target.checked)} className="w-4 h-4 cursor-pointer accent-[#0284c7]" />
-                      <span className="text-[14px] font-bold">호주였음</span>
+                    <label className="block text-[12px] text-[#2383e2] dark:text-blue-400 mb-2 font-semibold">호주 여부</label>
+                    <label className={`flex items-center gap-2 px-3 py-2 h-[38px] rounded border cursor-pointer transition-colors select-none ${tree.isHoju !== false ? 'bg-[#f0f7ff] dark:bg-blue-900/20 border-[#bae6fd] dark:border-blue-800/40 text-[#2383e2] dark:text-blue-300' : 'bg-white dark:bg-neutral-900 border-[#e9e9e7] dark:border-neutral-700 text-[#787774] dark:text-neutral-400 hover:bg-[#f8f8f7] dark:hover:bg-neutral-800'}`}>
+                      <input type="checkbox" checked={tree.isHoju !== false} onChange={e=>handleRootUpdate('isHoju', e.target.checked)} className="w-3.5 h-3.5 cursor-pointer accent-[#2383e2]" />
+                      <span className="text-[13px] font-bold">호주</span>
                     </label>
                   </div>
                   <div>
-                    <label className="block text-[13px] text-[#504f4c] dark:text-neutral-400 mb-1.5 font-bold">피상속인 지분</label>
-                    <div className="flex items-center gap-2">
-                       <div className="flex flex-1">
-                        <input type="number" min="1" onKeyDown={handleKeyDown} value={tree.shareD} onChange={e=>handleRootUpdate('shareD', Math.max(1, parseInt(e.target.value)||1))} title="분모" className="w-full border border-[#cccccc] dark:border-neutral-600 rounded p-2 text-[16px] text-center font-bold focus:bg-white dark:focus:bg-neutral-700 transition-all shadow-sm bg-transparent dark:text-neutral-200" />
-                       </div>
-                       <span className="text-[#787774] dark:text-neutral-500 font-black text-[14px] select-none shrink-0">분의</span>
-                       <div className="flex flex-1">
-                        <input type="number" min="1" max={tree.shareD} onKeyDown={handleKeyDown} value={tree.shareN} onChange={e=>handleRootUpdate('shareN', Math.min(tree.shareD, Math.max(1, parseInt(e.target.value)||1)))} title="분자" className="w-full border border-[#cccccc] dark:border-neutral-600 rounded p-2 text-[16px] text-center font-bold focus:bg-white dark:focus:bg-neutral-700 transition-all shadow-sm bg-transparent dark:text-neutral-200" />
-                       </div>
+                    <label className="block text-[12px] text-[#787774] dark:text-neutral-400 mb-2 font-semibold">피상속인 지분</label>
+                    <div className="flex items-center bg-white dark:bg-neutral-900 rounded border border-[#e9e9e7] dark:border-neutral-700 p-0.5 h-[38px]">
+                       <input type="number" min="1" onKeyDown={handleKeyDown} value={tree.shareD} onChange={e=>handleRootUpdate('shareD', Math.max(1, parseInt(e.target.value)||1))} title="분모" className="w-[60px] bg-transparent px-2 py-1 text-[14px] text-center font-bold focus:bg-blue-50/30 dark:focus:bg-blue-900/20 outline-none dark:text-neutral-200" />
+                       <span className="text-[#bbb] px-1 text-[11px] font-medium">/</span>
+                       <input type="number" min="1" max={tree.shareD} onKeyDown={handleKeyDown} value={tree.shareN} onChange={e=>handleRootUpdate('shareN', Math.min(tree.shareD, Math.max(1, parseInt(e.target.value)||1)))} title="분자" className="w-[60px] bg-transparent px-2 py-1 text-[14px] text-center font-bold focus:bg-blue-50/30 dark:focus:bg-blue-900/20 outline-none dark:text-neutral-200" />
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white dark:bg-neutral-800/50 border border-[#d4d4d4] dark:border-neutral-700 rounded-md p-6 shadow-sm transition-colors">
-                <div className="flex justify-between border-b border-[#e9e9e7] dark:border-neutral-700 pb-4 mb-4 items-center">
-                  <div className="flex items-center gap-3">
-                    <h2 className="text-[15px] font-bold text-[#37352f] dark:text-neutral-200 flex items-center gap-2"><IconUserPlus className="w-4 h-4"/> 1순위 상속인 명단</h2>
-                    <button onClick={() => { setInputToggleSignal(prev => isInputAllExpanded ? -(Math.abs(prev)+1) : Math.abs(prev)+1); setIsInputAllExpanded(!isInputAllExpanded); }} className="px-3 py-1 bg-white dark:bg-neutral-800 border border-[#d4d4d4] dark:border-neutral-600 hover:bg-[#efefed] dark:hover:bg-neutral-700 text-[#504f4c] dark:text-neutral-400 rounded transition-colors text-[12px] font-bold shadow-sm whitespace-nowrap">
-                      {isInputAllExpanded ? '모두 접기' : '모두 펼치기'}
-                    </button>
-                  </div>
-                  <button type="button" onClick={() => addHeir('root')} className="text-[#504f4c] dark:text-neutral-400 border border-[#d4d4d4] dark:border-neutral-600 hover:text-[#37352f] dark:hover:text-neutral-200 hover:bg-[#efefed] dark:hover:bg-neutral-700 px-3 py-1.5 rounded text-[13px] font-bold transition-colors flex items-center gap-1 shadow-sm">
-                    + {tree.name ? `${tree.name}의 상속인 추가` : '상속인 추가'}
-                  </button>
-                </div>
-                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                    <SortableContext items={tree.heirs.map(h => h.id)} strategy={verticalListSortingStrategy}>
-                      <div className="space-y-1">
-                        {tree.heirs.map(h => <HeirRow key={h.id} node={h} level={1} handleUpdate={handleUpdate} removeHeir={removeHeir} addHeir={addHeir} siblings={tree.heirs} inheritedDate={tree.deathDate} onKeyDown={handleKeyDown} toggleSignal={inputToggleSignal} rootIsHoju={tree.isHoju !== false} />)}
+              {/* 폴더-탭 구조: 사망한 인물별 탭 (세대별 계단식) */}
+              <div className="transition-colors">
+                {/* 탭 바 - 세대별 계단식 폴더 스타일 */}
+                <div className="flex flex-col gap-1 no-print relative z-10">
+                  {(() => {
+                    // 레벨별 색상 고정 팔레트 (노션 스타일에 맞춘 부드러운 톤)
+                    const levelPalette = {
+                      1: { activeBorder: 'border-[#2383e2]', activeText: 'text-[#2383e2]', activeBg: 'bg-white dark:bg-neutral-800', inactiveBg: 'bg-[#f0f7ff] dark:bg-neutral-800/40', inactiveBorder: 'border-[#d0e2f5] dark:border-neutral-700', inactiveText: 'text-[#5c7c9c] dark:text-neutral-500' },
+                      2: { activeBorder: 'border-[#00a35c]', activeText: 'text-[#00a35c]', activeBg: 'bg-white dark:bg-neutral-800', inactiveBg: 'bg-[#f0fff4] dark:bg-neutral-800/40', inactiveBorder: 'border-[#c6f6d5] dark:border-neutral-700', inactiveText: 'text-[#4c8c64] dark:text-neutral-500' },
+                      3: { activeBorder: 'border-[#f2711c]', activeText: 'text-[#d46016]', activeBg: 'bg-white dark:bg-neutral-800', inactiveBg: 'bg-[#fff5f0] dark:bg-neutral-800/40', inactiveBorder: 'border-[#ffdfba] dark:border-neutral-700', inactiveText: 'text-[#9c5a2a] dark:text-neutral-500' },
+                      4: { activeBorder: 'border-[#9b51e0]', activeText: 'text-[#7e42c0]', activeBg: 'bg-white dark:bg-neutral-800', inactiveBg: 'bg-[#f8f0ff] dark:bg-neutral-800/40', inactiveBorder: 'border-[#e9d8fd] dark:border-neutral-700', inactiveText: 'text-[#7a5c9a] dark:text-neutral-500' },
+                      5: { activeBorder: 'border-[#eb5757]', activeText: 'text-[#c64444]', activeBg: 'bg-white dark:bg-neutral-800', inactiveBg: 'bg-[#fff0f0] dark:bg-neutral-800/40', inactiveBorder: 'border-[#fed7d7] dark:border-neutral-700', inactiveText: 'text-[#a64d4d] dark:text-neutral-500' },
+                    };
+                    
+                    const levels = [...new Set(deceasedTabs.map(t => t.level))].sort((a,b) => a-b);
+                    
+                    return levels.map(lv => (
+                      <div key={lv} className="flex items-end pl-0 gap-1 overflow-x-auto no-scrollbar">
+                        {deceasedTabs.filter(t => t.level === lv)
+                          .sort((a, b) => {
+                            // 활성 탭이나 활성 탭의 직계 부모(ancestor)가 해당 레벨에 있다면 앞으로 보냄
+                            if (a.id === activeDeceasedTab) return -1;
+                            if (b.id === activeDeceasedTab) return 1;
+                            return 0;
+                          })
+                          .map((tab) => {
+                          const isActive = activeDeceasedTab === tab.id;
+                          const p = levelPalette[lv] || levelPalette[5];
+                          return (
+                            <button
+                              key={tab.id}
+                              ref={el => tabRefs.current[tab.id] = el}
+                              onClick={() => setActiveDeceasedTab(tab.id)}
+                              className={`px-4 py-2 rounded-t-lg font-bold text-[13px] flex items-center gap-1.5 transition-all relative cursor-pointer border-2 border-b-0 whitespace-nowrap shrink-0 ${
+                                isActive
+                                  ? `${p.activeBg} ${p.activeBorder} ${p.activeText} shadow-[0_-4px_10px_-2px_rgba(0,0,0,0.1)] pb-3.5 -mt-1 z-20 scale-[1.02]`
+                                  : `${p.inactiveBg} ${p.inactiveBorder} ${p.inactiveText} opacity-70 pb-2 top-[1px] z-10 hover:opacity-100 hover:brightness-95`
+                              }`}
+                            >
+                              {isActive && <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse ring-2 ring-white dark:ring-neutral-800" />}
+                              {tab.name}
+                            </button>
+                          );
+                        })}
                       </div>
-                    </SortableContext>
-                  </DndContext>
+                    ));
+                  })()}
+                </div>
+
+                {/* 탭 콘텐츠 - 활성 탭 레벨 색상과 일치하는 테두리 */}
+                {(() => {
+                  const paletteBorders = {
+                    1: 'border-[#2383e2]', 2: 'border-[#16a34a]', 3: 'border-[#f97316]', 4: 'border-[#a855f7]', 5: 'border-[#e11d48]'
+                  };
+                  const activeTabObj = deceasedTabs.find(t => t.id === activeDeceasedTab);
+                  const activeLv = activeTabObj?.level || 1;
+                  const borderColor = paletteBorders[activeLv] || paletteBorders[5];
+                  
+                  const tab = activeTabObj;
+                  if (!tab) return null;
+                  const currentNode = findNodeById(tree, tab.id);
+                  if (!currentNode) return null;
+                  const nodeHeirs = currentNode.heirs || [];
+                  const isRoot = tab.id === 'root';
+                  const addLabel = currentNode.name ? `+ ${currentNode.name}의 상속인 추가` : '+ 상속인 추가';
+                  return (
+                    <div key={tab.id} className={`border border-[#e9e9e7] dark:border-neutral-700 rounded-b-xl ${tab.id === 'root' ? '' : 'rounded-tr-xl'} bg-white dark:bg-neutral-800 shadow-none p-6`}>
+                      
+                      {/* 상속 브리핑 헤더 */}
+                      <div className="mb-6 p-4 rounded-lg bg-[#f8f9fa] dark:bg-neutral-900/40 border-l-4 border-blue-500 shadow-sm animate-in fade-in slide-in-from-left-2 duration-300">
+                        <div className="flex flex-col gap-1">
+                          <div className="text-[12px] font-bold text-[#787774] dark:text-neutral-400 flex items-center gap-1">
+                            <IconNetwork className="w-3.5 h-3.5" /> 상속 관계 브리핑
+                          </div>
+                          <div className="text-[15px] font-bold text-[#37352f] dark:text-neutral-100 leading-tight">
+                            {getBriefingInfo.pathStr}
+                          </div>
+                          <div className="mt-2 flex items-center gap-3 flex-wrap">
+                            <div className="px-3 py-1 bg-white dark:bg-neutral-800 border border-blue-200 dark:border-blue-900/50 rounded-full flex items-center gap-2">
+                              <span className="text-[11px] font-bold text-blue-500 uppercase">합계 지분</span>
+                              <span className="text-[14px] font-black text-[#2383e2]">{getBriefingInfo.shareStr}</span>
+                            </div>
+                            {getBriefingInfo.sources.map((s, idx) => (
+                              <div key={idx} className="text-[12px] text-[#5c7c9c] dark:text-neutral-400 font-medium">
+                                • {s.n}/{s.d} <span className="text-[10px] opacity-60">from</span> {s.from}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center mb-6">
+                        <div className="flex items-center gap-4">
+                          <h2 className="text-[13px] font-bold text-[#37352f] dark:text-neutral-200 bg-[#f8f8f7] dark:bg-neutral-800/60 px-3 py-1 rounded opacity-80 uppercase tracking-tight">
+                            {isRoot ? '상속인명단(1순위)' : `상속인 명단`}
+                          </h2>
+                          <button
+                            onClick={() => {
+                              const next = Math.abs(inputToggleSignal) + 1;
+                              setInputToggleSignal(isInputAllExpanded ? -next : next);
+                              setIsInputAllExpanded(!isInputAllExpanded);
+                            }}
+                            className="px-2 py-1 bg-white dark:bg-neutral-800 border border-[#d4d4d4] dark:border-neutral-600 hover:bg-[#efefed] dark:hover:bg-neutral-700 text-[#504f4c] dark:text-neutral-400 rounded transition-colors text-[11px] font-bold shadow-sm"
+                          >
+                            {isInputAllExpanded ? '모두 접기' : '모두 펼치기'}
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => addHeir(tab.id)}
+                          className="text-[#504f4c] dark:text-neutral-400 border border-[#d4d4d4] dark:border-neutral-600 hover:text-[#37352f] dark:hover:text-neutral-200 hover:bg-[#efefed] dark:hover:bg-neutral-700 px-3 py-1.5 rounded text-[12px] font-bold transition-colors flex items-center gap-1 shadow-sm"
+                        >
+                          {addLabel}
+                        </button>
+                      </div>
+
+                      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                        <SortableContext items={nodeHeirs.map(h => h.id)} strategy={verticalListSortingStrategy}>
+                          <div className="space-y-1">
+                            {nodeHeirs.map(h => (
+                              <HeirRow
+                                key={h.id}
+                                node={h}
+                                level={1}
+                                handleUpdate={handleUpdate}
+                                removeHeir={removeHeir}
+                                addHeir={addHeir}
+                                siblings={nodeHeirs}
+                                inheritedDate={currentNode.deathDate || tree.deathDate}
+                                onKeyDown={handleKeyDown}
+                                toggleSignal={inputToggleSignal}
+                                rootIsHoju={tree.isHoju !== false}
+                                showSubHeirs={false}
+                              />
+                            ))}
+                            {nodeHeirs.length === 0 && (
+                              <div className="py-8 text-center text-[13px] text-[#a3a3a3] dark:text-neutral-500">
+                                아직 상속인이 없습니다. 위 버튼으로 추가하세요.
+                              </div>
+                            )}
+                          </div>
+                        </SortableContext>
+                      </DndContext>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}
@@ -520,7 +957,11 @@ function App() {
                   <IconNetwork className="w-5 h-5 shrink-0" />
                   <span>사람 이름을 클릭하면 해당 인물의 상속인(배우자/자녀)을 접거나 펼쳐서 관계도를 직관적으로 확인할 수 있습니다.</span>
                 </div>
-                <button onClick={() => { setTreeToggleSignal(prev => isAllExpanded ? -(Math.abs(prev)+1) : Math.abs(prev)+1); setIsAllExpanded(!isAllExpanded); }} className="px-4 py-1.5 bg-white dark:bg-neutral-800 border border-[#bbf7d0] dark:border-green-800/50 hover:bg-[#dcfce7] dark:hover:bg-green-800/40 text-[#166534] dark:text-green-300 rounded transition-colors text-[13px] font-bold shadow-sm whitespace-nowrap">
+                <button onClick={() => {
+                  const next = Math.abs(treeToggleSignal) + 1;
+                  setTreeToggleSignal(isAllExpanded ? -next : next);
+                  setIsAllExpanded(!isAllExpanded);
+                }} className="px-4 py-1.5 bg-white dark:bg-neutral-800 border border-[#bbf7d0] dark:border-green-800/50 hover:bg-[#dcfce7] dark:hover:bg-green-800/40 text-[#166534] dark:text-green-300 rounded transition-colors text-[13px] font-bold shadow-sm whitespace-nowrap">
                   {isAllExpanded ? '모두 접기' : '모두 펼치기'}
                 </button>
               </div>
