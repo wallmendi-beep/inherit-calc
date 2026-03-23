@@ -10,7 +10,10 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
   const isSp = node.relation === 'wife' || node.relation === 'husband';
   const isSon = node.relation === 'son';
   const isDaughter = node.relation === 'daughter';
-  const canAutoFill = node.isDeceased && isSp && (!node.heirs || node.heirs.length === 0) && siblings?.length > 0;
+  const isChild = node.relation === 'son' || node.relation === 'daughter';
+  const canAutoFillSp = node.isDeceased && isSp && (!node.heirs || node.heirs.length === 0) && siblings?.filter(s => s.relation === 'son' || s.relation === 'daughter').length > 0;
+  const canAutoFillChild = node.isDeceased && isChild && (!node.heirs || node.heirs.length === 0) && siblings?.filter(s => s.id !== node.id && (s.relation === 'son' || s.relation === 'daughter')).length > 0;
+  const canAutoFill = canAutoFillSp || canAutoFillChild;
 
   const [isExpanded, setIsExpanded] = useState(true);
 
@@ -40,9 +43,16 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
   }
 
   const autoFill = () => {
-    const children = siblings.filter(s => s.relation === 'son' || s.relation === 'daughter');
     const clone = (n) => ({ ...n, id: `auto_${Math.random().toString(36).substr(2,9)}`, heirs: n.heirs?.map(clone) || [] });
-    handleUpdate(node.id, 'heirs', children.map(clone));
+    if (canAutoFillSp) {
+      const children = siblings.filter(s => s.relation === 'son' || s.relation === 'daughter');
+      handleUpdate(node.id, 'heirs', children.map(clone));
+    } else if (canAutoFillChild) {
+      const siblingList = siblings
+        .filter(s => s.id !== node.id && (s.relation === 'son' || s.relation === 'daughter'))
+        .map(s => ({ ...clone(s), relation: 'sibling', heirs: [] }));
+      handleUpdate(node.id, 'heirs', siblingList);
+    }
   };
 
   const boxStyle = getLevelStyle(level);
@@ -172,7 +182,9 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
         <div className="mt-2 ml-4 animate-in fade-in slide-in-from-top-2 duration-200">
           {canAutoFill && (
             <div className="mb-2 p-3 bg-[#f7f7f5] dark:bg-slate-700/50 border border-[#d4d4d4] dark:border-slate-600 rounded-md text-[13px] flex items-center justify-between no-print shadow-sm transition-colors">
-              <span className="text-[#504f4c] dark:text-slate-300 font-semibold flex items-center gap-2"><IconFileText className="w-4 h-4"/> 이 배우자의 상속인을 피상속인의 자녀에서 복사하시겠습니까?</span>
+              <span className="text-[#504f4c] dark:text-slate-300 font-semibold flex items-center gap-2"><IconFileText className="w-4 h-4"/>
+                {canAutoFillSp ? '이 배우자의 상속인을 피상속인의 자녀에서 복사하시겠습니까?' : `${node.name || '이 자녀'}의 상속인을 형제자매 목록에서 복사하시겠습니까?`}
+              </span>
               <div className="flex gap-2">
                 <button type="button" onClick={() => addHeir(node.id)} className="px-3 py-1 bg-white dark:bg-slate-800 border border-[#cccccc] dark:border-slate-600 text-[#37352f] dark:text-slate-200 font-semibold rounded hover:bg-[#f1f1ef] dark:hover:bg-slate-700 transition-colors">직접입력</button>
                 <button type="button" onClick={autoFill} className="px-3 py-1 bg-[#37352f] dark:bg-blue-600 text-white font-semibold rounded hover:bg-[#2f2d27] dark:hover:bg-blue-700 transition-colors">자동불러오기</button>

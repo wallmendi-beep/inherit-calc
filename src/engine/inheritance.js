@@ -70,7 +70,7 @@ export const calculateInheritance = (tree, propertyValue) => {
              if (h.isSameRegister !== false) { h.r = 1.0; }
              else { h.r = 0.25; modifier = '출가녀 감산 (아들의 1/4)'; }
            } else if (h.relation === 'son') {
-             if (h.isHoju) { h.r = 1.5; modifier = isSubstitution ? '대습 호주가산 (선례 2-285호)' : '호주상속 5할 가산'; }
+             if (h.isHoju && (!isSubstitution || node.isHoju)) { h.r = 1.5; modifier = isSubstitution ? '대습 호주가산 (선례 2-285호)' : '호주상속 5할 가산'; }
              else { h.r = 1.0; }
            } else h.r = 1.0;
          } else { // 1960년 구법
@@ -78,7 +78,7 @@ export const calculateInheritance = (tree, propertyValue) => {
              if (h.isSameRegister !== false) { h.r = 0.5; modifier = '여자 감산 (남자의 1/2)'; }
              else { h.r = 0.25; modifier = '출가녀 감산 (남자의 1/4)'; }
            } else if (h.relation === 'son') {
-             if (h.isHoju) { h.r = 1.5; modifier = isSubstitution ? '대습 호주가산 (선례 2-285호)' : '호주상속 5할 가산'; }
+             if (h.isHoju && (!isSubstitution || node.isHoju)) { h.r = 1.5; modifier = isSubstitution ? '대습 호주가산 (선례 2-285호)' : '호주상속 5할 가산'; }
              else { h.r = 1.0; }
            } else h.r = 1.0;
          }
