@@ -124,15 +124,15 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
             )}
             
             {showMarriedDaughter && (
-              <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded border transition-colors cursor-pointer select-none ${node.isSameRegister !== false ? 'bg-[#f3f0ff] dark:bg-purple-900/40 border-[#d9cfff] dark:border-purple-800/50 text-[#402c84] dark:text-purple-300' : 'bg-[#ffedd5] dark:bg-orange-900/40 border-[#fed7aa] dark:border-orange-800/50 text-[#ea580c] dark:text-orange-300'}`}>
-                <input type="checkbox" checked={node.isSameRegister !== false} onKeyDown={onKeyDown} onChange={e => handleUpdate(node.id, 'isSameRegister', e.target.checked)} className={`w-3.5 h-3.5 cursor-pointer ${node.isSameRegister !== false ? 'accent-[#402c84]' : 'accent-[#ea580c]'}`} />
-                <span className="text-[13px] font-bold">동일가적</span>
+              <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded border transition-colors cursor-pointer select-none ${node.isSameRegister !== false ? 'bg-white dark:bg-slate-800 border-[#cccccc] dark:border-slate-600 text-[#504f4c] dark:text-slate-300' : 'bg-[#fff7ed] dark:bg-orange-900/20 border-[#fed7aa] dark:border-orange-800/40 text-[#c2410c] dark:text-orange-400'}`}>
+                <input type="checkbox" checked={node.isSameRegister !== false} onKeyDown={onKeyDown} onChange={e => handleUpdate(node.id, 'isSameRegister', e.target.checked)} className="w-3.5 h-3.5 cursor-pointer accent-[#504f4c]" />
+                <span className="text-[13px] font-bold">{node.isSameRegister !== false ? '동일가적' : '출가녀'}</span>
               </label>
             )}
 
             {showMarriedDaughter && node.isSameRegister === false && (
-              <div className="flex items-center bg-white dark:bg-slate-800 border border-[#fed7aa] dark:border-orange-800/50 rounded overflow-hidden input-combo ml-1 transition-colors">
-                <span className="bg-[#ffedd5] dark:bg-orange-900/40 text-[#ea580c] dark:text-orange-300 font-semibold px-3 py-1.5 text-[13px] border-r border-[#fed7aa] dark:border-orange-800/50 transition-colors">제적일</span>
+              <div className="flex items-center bg-white dark:bg-slate-800 border border-[#cccccc] dark:border-slate-600 rounded overflow-hidden input-combo ml-1 transition-colors">
+                <span className="bg-[#f1f1ef] dark:bg-slate-700 text-[#504f4c] dark:text-slate-300 font-semibold px-3 py-1.5 text-[13px] border-r border-[#cccccc] dark:border-slate-600 transition-colors">제적일</span>
                 <DateInput value={node.marriageDate} onKeyDown={onKeyDown} onChange={v => handleUpdate(node.id, 'marriageDate', v)} className="w-28 px-3 py-1.5 text-[14px] font-semibold outline-none text-[#37352f] dark:text-slate-200 bg-transparent transition-colors" />
               </div>
             )}
@@ -159,13 +159,13 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
 
           {isSp && level > 1 && (
             <div className="flex gap-1 ml-1 shrink-0">
-              <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded border transition-colors cursor-pointer select-none ${node.isRemarried ? 'bg-[#ffebd2] dark:bg-yellow-900/40 border-[#e9a23b] dark:border-yellow-800/50 text-[#975c0b] dark:text-yellow-400' : 'bg-white dark:bg-slate-800 border-[#cccccc] dark:border-slate-600 hover:bg-[#f1f1ef] dark:hover:bg-slate-700 text-[#787774] dark:text-slate-400'}`}>
-                <input type="checkbox" checked={node.isRemarried || false} onKeyDown={onKeyDown} onChange={e => handleUpdate(node.id, 'isRemarried', e.target.checked)} className="w-3.5 h-3.5 cursor-pointer accent-[#e9a23b]" />
+              <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded border transition-colors cursor-pointer select-none ${node.isRemarried ? 'bg-[#f1f1ef] dark:bg-slate-700 border-[#cccccc] dark:border-slate-600 text-[#504f4c] dark:text-slate-300' : 'bg-white dark:bg-slate-800 border-[#cccccc] dark:border-slate-600 hover:bg-[#f1f1ef] dark:hover:bg-slate-700 text-[#787774] dark:text-slate-400'}`}>
+                <input type="checkbox" checked={node.isRemarried || false} onKeyDown={onKeyDown} onChange={e => handleUpdate(node.id, 'isRemarried', e.target.checked)} className="w-3.5 h-3.5 cursor-pointer accent-[#504f4c]" />
                 <span className="text-[13px] font-bold">재혼</span>
               </label>
               {node.isRemarried && (
-                <div className="flex items-center bg-white dark:bg-slate-800 border border-[#e9a23b] dark:border-yellow-800/50 rounded overflow-hidden input-combo transition-colors">
-                  <span className="bg-[#ffebd2] dark:bg-yellow-900/40 text-[#975c0b] dark:text-yellow-400 font-semibold px-3 py-1.5 text-[13px] border-r border-[#e9a23b] dark:border-yellow-800/50 transition-colors">재혼일</span>
+                <div className="flex items-center bg-white dark:bg-slate-800 border border-[#cccccc] dark:border-slate-600 rounded overflow-hidden input-combo transition-colors">
+                  <span className="bg-[#f1f1ef] dark:bg-slate-700 text-[#504f4c] dark:text-slate-300 font-semibold px-3 py-1.5 text-[13px] border-r border-[#cccccc] dark:border-slate-600 transition-colors">재혼일</span>
                   <DateInput value={node.remarriageDate} onKeyDown={onKeyDown} onChange={v => handleUpdate(node.id, 'remarriageDate', v)} className="w-28 px-3 py-1.5 text-[14px] font-semibold outline-none text-[#37352f] dark:text-slate-200 bg-transparent transition-colors" />
                 </div>
               )}

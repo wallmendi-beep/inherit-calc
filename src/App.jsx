@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  IconCalculator, IconUserPlus, IconSave, IconFolderOpen, 
-  IconPrinter, IconNetwork, IconTable, IconList, 
-  IconReset, IconFileText, IconXCircle, IconX,
+import {
+  IconCalculator, IconUserPlus, IconSave, IconFolderOpen,
+  IconPrinter, IconNetwork, IconTable, IconList,
+  IconReset, IconFileText, IconXCircle, IconX, IconChevronRight,
   IconSun, IconMoon
 } from './components/Icons';
 import { DateInput } from './components/DateInput';
@@ -217,17 +217,17 @@ function App() {
   }, [isDarkMode]);
 
   const tabData = [
-    { id: 'input', label: '데이터 입력', icon: <IconFileText className="w-4 h-4"/>, 
-      style: { activeBorder: 'border-[#2383e2]', activeText: 'text-[#2383e2]', inactiveBg: 'bg-[#eef4fb]', inactiveBorder: 'border-[#d0e2f5]', inactiveText: 'text-[#6080a0]' } 
+    { id: 'input', label: '데이터 입력', icon: <IconFileText className="w-4 h-4"/>,
+      style: { activeBorder: 'border-[#2383e2]', activeText: 'text-[#2383e2]', inactiveBg: 'bg-[#f0f0ee]', inactiveBorder: 'border-[#d4d4d4]', inactiveText: 'text-[#787774]' }
     },
-    { id: 'tree', label: '가계도', icon: <IconNetwork className="w-4 h-4"/>, 
-      style: { activeBorder: 'border-[#16a34a]', activeText: 'text-[#16a34a]', inactiveBg: 'bg-[#eaf5ec]', inactiveBorder: 'border-[#cbe6d2]', inactiveText: 'text-[#5a8065]' } 
+    { id: 'tree', label: '가계도', icon: <IconNetwork className="w-4 h-4"/>,
+      style: { activeBorder: 'border-[#2383e2]', activeText: 'text-[#2383e2]', inactiveBg: 'bg-[#f0f0ee]', inactiveBorder: 'border-[#d4d4d4]', inactiveText: 'text-[#787774]' }
     },
-    { id: 'calc', label: '계산표', icon: <IconTable className="w-4 h-4"/>, 
-      style: { activeBorder: 'border-[#eab308]', activeText: 'text-[#ca8a04]', inactiveBg: 'bg-[#fef8e6]', inactiveBorder: 'border-[#fbeba6]', inactiveText: 'text-[#9c8238]' } 
+    { id: 'calc', label: '계산표', icon: <IconTable className="w-4 h-4"/>,
+      style: { activeBorder: 'border-[#2383e2]', activeText: 'text-[#2383e2]', inactiveBg: 'bg-[#f0f0ee]', inactiveBorder: 'border-[#d4d4d4]', inactiveText: 'text-[#787774]' }
     },
-    { id: 'summary', label: '요약표', icon: <IconList className="w-4 h-4"/>, 
-      style: { activeBorder: 'border-[#a855f7]', activeText: 'text-[#9333ea]', inactiveBg: 'bg-[#f6effa]', inactiveBorder: 'border-[#e5d4f5]', inactiveText: 'text-[#7e609c]' } 
+    { id: 'summary', label: '요약표', icon: <IconList className="w-4 h-4"/>,
+      style: { activeBorder: 'border-[#2383e2]', activeText: 'text-[#2383e2]', inactiveBg: 'bg-[#f0f0ee]', inactiveBorder: 'border-[#d4d4d4]', inactiveText: 'text-[#787774]' }
     },
   ];
   
@@ -858,47 +858,57 @@ function App() {
                 <div className="transition-colors flex-1 flex flex-col">
                   {(() => {
                     const levels = Array.from(new Set(deceasedTabs.map(t => t.level))).sort((a, b) => a - b);
-                    const levelPalette = {
-                      1: { activeBorder: 'border-[#2383e2]', activeText: 'text-[#2383e2]', activeBg: 'bg-white dark:bg-neutral-800', inactiveBg: 'bg-[#f0f7ff] dark:bg-neutral-800/40', inactiveBorder: 'border-[#d0e2f5] dark:border-neutral-700', inactiveText: 'text-[#5c7c9c] dark:text-neutral-500' },
-                      2: { activeBorder: 'border-[#00a35c]', activeText: 'text-[#00a35c]', activeBg: 'bg-white dark:bg-neutral-800', inactiveBg: 'bg-[#f0fff4] dark:bg-neutral-800/40', inactiveBorder: 'border-[#c6f6d5] dark:border-neutral-700', inactiveText: 'text-[#4c8c64] dark:text-neutral-500' },
-                      3: { activeBorder: 'border-[#f2711c]', activeText: 'text-[#d46016]', activeBg: 'bg-white dark:bg-neutral-800', inactiveBg: 'bg-[#fff5f0] dark:bg-neutral-800/40', inactiveBorder: 'border-[#ffdfba] dark:border-neutral-700', inactiveText: 'text-[#9c5a2a] dark:text-neutral-500' },
-                      4: { activeBorder: 'border-[#9b51e0]', activeText: 'text-[#7e42c0]', activeBg: 'bg-white dark:bg-neutral-800', inactiveBg: 'bg-[#f8f0ff] dark:bg-neutral-800/40', inactiveBorder: 'border-[#e9d8fd] dark:border-neutral-700', inactiveText: 'text-[#7a5c9a] dark:text-neutral-500' },
-                      5: { activeBorder: 'border-[#eb5757]', activeText: 'text-[#c64444]', activeBg: 'bg-white dark:bg-neutral-800', inactiveBg: 'bg-[#fff0f0] dark:bg-neutral-800/40', inactiveBorder: 'border-[#fed7d7] dark:border-neutral-700', inactiveText: 'text-[#a64d4d] dark:text-neutral-500' },
+                    // 배경·텍스트는 모두 동일, 레벨 구분은 점(dot) 색상만 사용
+                    const levelDotColor = {
+                      1: '#2383e2', // 파랑
+                      2: '#0d9488', // 청록
+                      3: '#ea580c', // 주황
+                      4: '#7c3aed', // 보라
+                      5: '#e11d48', // 자주
                     };
+                    const levelPalette = Object.fromEntries(
+                      [1,2,3,4,5].map(lv => [lv, {
+                        activeBorder: 'border-[#d4d4d4] dark:border-neutral-600',
+                        activeText:   'text-[#37352f] dark:text-neutral-100',
+                        activeBg:     'bg-white dark:bg-neutral-800',
+                        inactiveBg:   'bg-[#f5f5f4] dark:bg-neutral-800/60',
+                        inactiveBorder:'border-[#e2e2e0] dark:border-neutral-700',
+                        inactiveText: 'text-[#787774] dark:text-neutral-500',
+                        dotColor:     levelDotColor[lv] || levelDotColor[5],
+                      }])
+                    );
                     
                     return (
                       <div className="flex no-print relative z-10 gap-0">
-                        {/* 📂 우측 수직 배치 탭 리스트 (Filing Cabinet) */}
-                        <div className="fixed right-0 top-[110px] bottom-0 flex flex-col pt-10 px-0 pointer-events-none z-[70]">
-                          <div className="flex flex-col gap-1 items-end pointer-events-auto">
-                            {levels.map(lv => (
-                              <div key={lv} className="flex flex-col items-end gap-1.5 pr-0">
-                                {deceasedTabs.filter(t => t.level === lv).map((tab) => {
-                                  const isActive = activeDeceasedTab === tab.id;
-                                  const p = levelPalette[lv] || levelPalette[5];
-                                  return (
-                                    <button
-                                      key={tab.id}
-                                      ref={el => tabRefs.current[tab.id] = el}
-                                      onClick={() => {
-                                        setActiveDeceasedTab(tab.id);
-                                        setIsFolderFocused(true);
-                                      }}
-                                      className={`px-4 py-3 rounded-l-xl font-bold text-[13px] flex items-center gap-2.5 transition-all relative cursor-pointer border-2 border-r-0 whitespace-nowrap shrink-0 shadow-lg ${
-                                        isActive
-                                          ? `${p.activeBg} ${p.activeBorder} ${p.activeText} -mr-[2px] z-50 scale-[1.05] translate-x-[-5px]`
-                                          : `${p.inactiveBg} ${p.inactiveBorder} ${p.inactiveText} opacity-80 z-10 hover:opacity-100 hover:translate-x-[-5px]`
-                                      }`}
-                                    >
-                                      <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-current animate-pulse' : 'bg-gray-400/50'}`} />
-                                      {tab.name}
-                                      <span className="ml-1 text-[9px] opacity-60 font-black tracking-tighter">{lv}대</span>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            ))}
-                          </div>
+                        {/* 📂 Post-it 탭 — 카드 오른쪽 바깥에 부착 */}
+                        <div className="absolute top-6 left-full flex flex-col gap-1 pointer-events-auto z-20">
+                          {levels.map(lv => (
+                            <div key={lv} className="flex flex-col gap-1">
+                              {deceasedTabs.filter(t => t.level === lv).map((tab) => {
+                                const isActive = activeDeceasedTab === tab.id;
+                                const p = levelPalette[lv] || levelPalette[5];
+                                return (
+                                  <button
+                                    key={tab.id}
+                                    ref={el => tabRefs.current[tab.id] = el}
+                                    onClick={() => {
+                                      setActiveDeceasedTab(tab.id);
+                                      setIsFolderFocused(true);
+                                    }}
+                                    style={{ borderLeft: `3px solid ${isActive ? p.dotColor : '#d4d4d4'}` }}
+                                    className={`px-3 py-2 rounded-r-lg font-bold text-[12px] flex items-center gap-2 transition-all cursor-pointer border border-l-0 whitespace-nowrap shrink-0 ${
+                                      isActive
+                                        ? `${p.activeBg} ${p.activeBorder} ${p.activeText} shadow-md z-50`
+                                        : `${p.inactiveBg} ${p.inactiveBorder} ${p.inactiveText} opacity-70 z-10 hover:opacity-100 hover:translate-x-0.5 shadow-sm`
+                                    }`}
+                                  >
+                                    {tab.name}
+                                    <span className="text-[9px] opacity-50 font-black">{lv}대</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ))}
                         </div>
 
                         {/* 📄 폴더 콘텐츠 영역 */}
@@ -929,7 +939,6 @@ function App() {
                               </div>
                             </div>
                             <div className="flex items-center gap-4">
-                              {/* 닫기 버튼 제거됨 */}
                             </div>
                           </div>
 
@@ -938,11 +947,20 @@ function App() {
                             {isMainQuickActive && (
                               <div className="mb-8 p-6 rounded-lg bg-amber-50/50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 animate-in fade-in slide-in-from-top-1 duration-300">
                                 <div className="flex flex-col gap-3">
-                                  <div className="text-[12px] font-bold text-amber-600 dark:text-amber-500/80 flex items-center gap-2">
-                                    상속인 이름을 쉼표(,)로 구분하여 한꺼번에 입력하세요
+                                  <div className="flex items-center justify-between">
+                                    <div className="text-[12px] font-bold text-amber-600 dark:text-amber-500/80">
+                                      상속인 이름을 쉼표(,)로 구분하여 한꺼번에 입력하세요
+                                    </div>
+                                    <button
+                                      onClick={() => { setIsMainQuickActive(false); setMainQuickVal(''); }}
+                                      className="text-[#787774] dark:text-neutral-400 hover:text-[#37352f] dark:hover:text-neutral-100 p-1 rounded transition-colors"
+                                      title="닫기"
+                                    >
+                                      <IconX className="w-4 h-4" />
+                                    </button>
                                   </div>
                                   <div className="flex gap-2">
-                                    <input 
+                                    <input
                                       autoFocus
                                       type="text"
                                       value={mainQuickVal}
@@ -953,12 +971,12 @@ function App() {
                                           setIsMainQuickActive(false);
                                           setMainQuickVal('');
                                         }
-                                        if (e.key === 'Escape') setIsMainQuickActive(false);
+                                        if (e.key === 'Escape') { setIsMainQuickActive(false); setMainQuickVal(''); }
                                       }}
                                       placeholder="예: 홍길동, 김철수, 이영희"
                                       className="flex-1 text-[14px] border border-amber-200 dark:border-amber-800/50 rounded-md px-4 py-2.5 outline-none focus:ring-2 focus:ring-amber-500/20 bg-white dark:bg-neutral-900 dark:text-neutral-200 transition-all"
                                     />
-                                    <button 
+                                    <button
                                       onClick={() => {
                                         handleQuickSubmit(activeDeceasedTab, currentNode, mainQuickVal);
                                         setIsMainQuickActive(false);
@@ -1065,7 +1083,7 @@ function App() {
                           return (
                             <tr key={di} className="hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20 transition-colors">
                               <td className="px-6 py-4">
-                                <span className={`text-[15px] font-black ${d.h.isDeceased ? 'text-[#787774] dark:text-neutral-500 line-through decoration-red-500/50' : 'text-[#37352f] dark:text-neutral-100'}`}>{d.h.name}</span>
+                                <span className={`text-[15px] font-black ${d.h.isDeceased ? 'text-[#787774] dark:text-neutral-500 underline underline-offset-2 decoration-[#c93f3a]/60' : 'text-[#37352f] dark:text-neutral-100'}`}>{d.h.name}</span>
                                 <span className="ml-2 text-[11px] font-bold text-[#a3a3a3] dark:text-neutral-500 uppercase">[{relStr[d.h.relation] || '상속인'}]</span>
                               </td>
                               <td className="px-6 py-4 text-center">
