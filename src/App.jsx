@@ -572,12 +572,12 @@ function App() {
       ['상속인', '관계', '지분(분자)', '지분(분모)', '통분 지분(분자)', '통분 지분(분모)'],
     ];
     finalShares.direct.forEach(f => {
-      rows.push([f.name, f.relation, f.n, f.d, f.un, f.ud]);
+      rows.push([f.name, relStr[f.relation] || f.relation, f.n, f.d, f.un, f.ud]);
     });
     (finalShares.subGroups || []).forEach(g => {
       rows.push(['', `└ ${g.ancestor?.name || ''} 의 대습상속분`, '', '', '', '']);
       g.shares.forEach(f => {
-        rows.push([f.name, f.relation, f.n, f.d, f.un, f.ud]);
+        rows.push([f.name, relStr[f.relation] || f.relation, f.n, f.d, f.un, f.ud]);
       });
     });
     const csv = '\uFEFF' + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
