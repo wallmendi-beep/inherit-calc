@@ -764,9 +764,9 @@ function App() {
             <div className="flex items-baseline gap-2">
               <div className="flex items-center text-[#37352f] dark:text-neutral-100 font-bold text-[18px] tracking-tight">
                 <IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-neutral-400" />
-                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400">v1.0.9</span>
+                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400">v1.1</span>
               </div>
-              <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px]">Designed by J.H. Lee · <span className="opacity-60">v1.0.9</span></span>
+              <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px]">Designed by J.H. Lee · <span className="opacity-60">v1.1</span></span>
             </div>
           </div>
           
