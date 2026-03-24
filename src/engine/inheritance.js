@@ -266,22 +266,33 @@ export const calculateInheritance = (tree, propertyValue) => {
   let subGroupOrder = 0;
   tree.heirs.forEach((h, idx) => { if (!h.isDeceased) categoryMap[h.name] = { type: 'direct', order: idx }; });
 
-  // 재귀적 서브그룹 분류: 중간에 사망한 노드가 있으면 별도 서브그룹으로 분리
-  const buildCategory = (node, ancestor, order) => {
+  // 재귀적 가계 줄기 분류: 1대 상속인(Branch Root)을 기준으로 모든 후손을 하나의 그룹으로 결합
+  const buildCategory = (node, branchRoot, order) => {
     if (!node.heirs) return;
     node.heirs.forEach(h => {
-      if (h.isDeceased && h.heirs && h.heirs.length > 0) {
-        // 하위 사망자 → 별도 subGroup의 ancestor로 발전
-        buildCategory(h, h, subGroupOrder++);
-      } else if (!h.isDeceased && !categoryMap[h.name]) {
-        categoryMap[h.name] = { type: 'sub', ancestor: ancestor, order: order };
+      // 생존한 최종 상속인은 해당 가계 줄기(branchRoot)에 귀속
+      if (!h.isDeceased && h.name && h.name.trim() !== '') {
+        if (!categoryMap[h.name]) {
+          categoryMap[h.name] = { type: 'sub', ancestor: branchRoot, order: order };
+        }
+      }
+      // 사망한 경우에도 가계 줄기(branchRoot)는 그대로 유지하며 하위 탐색
+      if (h.isDeceased) {
+        buildCategory(h, branchRoot, order);
       }
     });
   };
 
   tree.heirs.forEach((h, idx) => {
-    if (h.isDeceased) {
-      buildCategory(h, h, subGroupOrder++);
+    // 1대 상속인 중 '혈육'(자녀, 형제 등)인 경우만 가계 줄기의 대장(Branch Root)으로 인정
+    // 배우자(wife, husband, spouse)는 계보의 기둥이 아닌 전이자로 취급
+    const isBloodPillar = !(h.relation === 'wife' || h.relation === 'husband' || h.relation === 'spouse');
+    
+    if (h.isDeceased && isBloodPillar) {
+      buildCategory(h, h, idx);
+    } else if (!h.isDeceased) {
+      // 생존한 경우에는 혈육/배우자 관계없이 일단 direct(직계)로 분류
+      categoryMap[h.name] = { type: 'direct', order: idx };
     }
   });
 

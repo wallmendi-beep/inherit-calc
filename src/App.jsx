@@ -644,7 +644,7 @@ function App() {
       rows.push([f.name, getRelStr(f.relation, tree.deathDate) || f.relation, f.n, f.d, f.un, f.ud]);
     });
     (finalShares.subGroups || []).forEach(g => {
-      rows.push(['', `└ ${g.ancestor?.name || ''} 의 대습상속분`, '', '', '', '']);
+      rows.push(['', `※ 공동상속인 중 [${g.ancestor?.name || ''}]은(는) ${formatKorDate(g.ancestor?.deathDate)} 사망하였으므로 상속인`, '', '', '', '']);
       g.shares.forEach(f => {
         rows.push([f.name, getRelStr(f.relation, tree.deathDate) || f.relation, f.n, f.d, f.un, f.ud]);
       });
@@ -1393,6 +1393,19 @@ function App() {
           {/* 인쇄 전용 보고서 표 (화면에서는 숨김, 인쇄 시에만 표시) */}
           <div className="hidden print:block w-full">
             <div className="space-y-8">
+              {/* 0. 가계도 섹션 (가계도 탭일 때만 출력) */}
+              {activeTab === 'tree' && (
+                <section>
+                  <h2 className="text-[16pt] font-bold mb-5 border-l-4 border-black pl-3 flex items-center gap-2">
+                    <IconNetwork className="w-5 h-5"/> 상속 가계도
+                  </h2>
+                  <div className="border border-gray-300 p-8 rounded-xl bg-white">
+                    {/* 인쇄 시에는 전체를 펼쳐서 출력하도록 toggleSignal을 1로 고정 */}
+                    <TreeReportNode node={tree} level={0} treeToggleSignal={1} />
+                  </div>
+                </section>
+              )}
+
               {/* 1. 상속인 지분 요약 표 */}
               {activeTab === 'summary' && (
               <section>
@@ -1419,7 +1432,7 @@ function App() {
                       <React.Fragment key={'p-g'+gIdx}>
                         <tr className="bg-gray-50">
                           <td colSpan="3" className="border border-black py-1.5 px-3 text-[10pt] text-gray-700 italic">
-                            ※ {group.ancestor.name}의 대습/순차 상속분
+                            ※ 공동상속인 중 [{group.ancestor.name}]은(는) {formatKorDate(group.ancestor.deathDate)} 사망하였으므로 상속인
                           </td>
                         </tr>
                         {group.shares.map((f, i) => (
@@ -1447,6 +1460,16 @@ function App() {
                     <div key={'p-s'+i} className="border border-gray-300 p-4 rounded">
                       <div className="font-bold text-[11pt] mb-2 text-gray-800">
                         피상속인 {s.dec.name} ({s.dec.deathDate} 사망) ─ 피상속지분: {s.inN}/{s.inD}
+                        {s.mergeSources && s.mergeSources.length > 1 && (
+                          <span className="ml-2 text-[10pt] font-bold text-teal-700">
+                            (= {s.mergeSources.map((src, si) => (
+                              <React.Fragment key={si}>
+                                {si > 0 && ' + '}
+                                {src.from} {src.d}분의 {src.n}
+                              </React.Fragment>
+                            ))})
+                          </span>
+                        )}
                       </div>
                       <table className="w-full border-collapse border border-gray-400 text-[10pt]">
                         <thead>
