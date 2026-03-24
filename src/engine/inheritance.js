@@ -152,7 +152,11 @@ export const calculateInheritance = (tree, propertyValue) => {
         }
       } else if (h.relation === 'wife' || (h.relation === 'spouse' && node.relation === 'son')) { 
          if (law === '1991' || law === '1979') { h.r = 1.5; modifier = '처(배우자) 5할 가산'; }
-         else { h.r = 0.5; modifier = '처 감산 (자녀의 1/2)'; } 
+         else {
+           // 1960년 구민법: 직계존속과 공동상속 시 균분, 직계비속과 공동상속 시 1/2 감산
+           if (activeRank === 2) { h.r = 1.0; modifier = '처 균분 (직계존속과 동순위)'; }
+           else { h.r = 0.5; modifier = '처 감산 (직계비속의 1/2)'; }
+         } 
       } else if (h.relation === 'husband' || (h.relation === 'spouse' && node.relation === 'daughter')) {
          if (law === '1991') { h.r = 1.5; modifier = '남편(배우자) 5할 가산'; }
          else { h.r = 1.0; } 

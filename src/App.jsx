@@ -672,7 +672,7 @@ function App() {
     <div className="w-full min-h-screen relative flex flex-col items-center pb-24 transition-colors duration-200 bg-[#f7f7f5] dark:bg-neutral-900">
       
       <div id="print-footer" className="hidden print:block fixed bottom-0 right-0 font-['Dancing_Script'] text-neutral-300 text-sm">
-        Designed by J.H. Lee (v1.0.9)
+        Designed by J.H. Lee (v1.3.0)
       </div>
 
       {/* 💡 사이드 패널 - 탭에 상관없이 항상 고정 표시 */}
