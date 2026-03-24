@@ -6,17 +6,13 @@ import { getLevelStyle, getLineStyle } from '../utils/styles';
 import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inheritedDate, onKeyDown, toggleSignal, rootIsHoju, showSubHeirs = true }) => {
+const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inheritedDate, onKeyDown, toggleSignal, rootIsHoju, showSubHeirs = true, isRootChildren }) => {
   const isSp = node.relation === 'wife' || node.relation === 'husband';
   const isSon = node.relation === 'son';
   const isDaughter = node.relation === 'daughter';
   const isChild = node.relation === 'son' || node.relation === 'daughter';
   const lawEra = getLawEra(inheritedDate);
 
-  // 대습상속(자신이 사망)시 자동채우기 버튼 (하위 상속인이 0명일 때만 노출)
-  const canAutoFillSp = node.isDeceased && isSp && (!node.heirs || node.heirs.length === 0);
-  const canAutoFillChild = node.isDeceased && isChild && (!node.heirs || node.heirs.length === 0);
-  const canAutoFill = canAutoFillSp || canAutoFillChild;
 
   const [isExpanded, setIsExpanded] = useState(true);
 
@@ -36,44 +32,13 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
   }
 
   let disqualificationReason = '';
-  if (isSp && level > 1 && node.isRemarried && node.remarriageDate && inheritedDate && isBefore(node.remarriageDate, inheritedDate)) {
-    disqualificationReason = `상속 개시(${inheritedDate}) 전 재혼: 대습상속권이 없습니다.`;
-  } else if (node.isDeceased && node.deathDate && inheritedDate && isBefore(node.deathDate, inheritedDate) && (!node.heirs || node.heirs.length === 0)) {
-    disqualificationReason = `상속 개시(${inheritedDate}) 전 사망: 대습상속인이 없으므로 상속권이 없습니다.`;
+  if (isSp && isRootChildren && node.isDeceased && node.deathDate && inheritedDate && isBefore(node.deathDate, inheritedDate)) {
+    disqualificationReason = `피상속인보다 먼저 사망 (상속권 없음)`;
+  } else if (isSp && !isRootChildren && node.isRemarried && node.remarriageDate && inheritedDate && isBefore(node.remarriageDate, inheritedDate)) {
+    disqualificationReason = `상속 개시(${inheritedDate}) 전 재혼 (대습불가)`;
   } else if (node.relation === 'husband' && level > 1 && lawEra !== '1991' && node.isSubstitution) {
-    disqualificationReason = '1991년 1월 1일 이전 사위: 대습상속권이 없습니다.';
+    disqualificationReason = '1991년 이전 사위 (대습불가)';
   }
-
-  const autoFill = () => {
-    const clone = (n) => ({ ...n, id: `auto_${Math.random().toString(36).substr(2,9)}`, heirs: n.heirs?.map(clone) || [] });
-    // 이미 있는 상속인 이름 기반 중복 검사
-    const existingNames = new Set((node.heirs || []).map(h => h.name).filter(n => n.trim() !== ''));
-
-    if (canAutoFillSp) {
-      const children = siblings ? siblings.filter(s => s.relation === 'son' || s.relation === 'daughter') : [];
-      let newItems = children.filter(c => c.name.trim() === '' || !existingNames.has(c.name));
-
-      if (children.length > 0 && newItems.length === 0) {
-        alert('더 이상 불러올 동일한 상속인이 없습니다. (모두 등록됨)');
-        return;
-      }
-
-      const toAdd = newItems.length > 0 ? newItems.map(clone) : [{ id: `auto_${Date.now()}`, name: '', relation: 'son', isDeceased: false, isSameRegister: true, heirs: [] }];
-      handleUpdate(node.id, 'heirs', [...(node.heirs || []), ...toAdd]);
-      
-    } else if (canAutoFillChild) {
-      const siblingList = siblings ? siblings.filter(s => s.id !== node.id && (s.relation === 'son' || s.relation === 'daughter')).map(s => ({ ...clone(s), relation: 'sibling', heirs: [] })) : [];
-      let newItems = siblingList.filter(s => s.name.trim() === '' || !existingNames.has(s.name));
-
-      if (siblingList.length > 0 && newItems.length === 0) {
-        alert('더 이상 불러올 동일한 상속인이 없습니다. (모두 등록됨)');
-        return;
-      }
-
-      const toAdd = newItems.length > 0 ? newItems.map(clone) : [{ id: `auto_${Date.now()}`, name: '', relation: 'sibling', isDeceased: false, isSameRegister: true, heirs: [] }];
-      handleUpdate(node.id, 'heirs', [...(node.heirs || []), ...toAdd]);
-    }
-  };
 
   const boxStyle = getLevelStyle(level);
   const lineStyle = getLineStyle(level);
@@ -96,7 +61,7 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
         </div>
 
         <div className="w-7 flex justify-center shrink-0 mr-1">
-          {node.isDeceased && showSubHeirs && (
+          {node.isDeceased && showSubHeirs && !disqualificationReason && (
             <button type="button" onClick={() => setIsExpanded(!isExpanded)} className="text-[#787774] dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/10 p-1 rounded transition-colors" title={isExpanded ? "접기" : "펼치기"}>
               <IconChevronRight className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
             </button>
@@ -139,6 +104,12 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
           </div>
 
           <div className="flex items-center gap-2 pl-1">
+            {disqualificationReason && (
+              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded border bg-white dark:bg-neutral-800 border-[#f0c0b9] dark:border-red-800/50 text-[#c93f3a] dark:text-red-400 text-[13px] font-bold whitespace-nowrap tracking-tight transition-colors">
+                <span className="text-[14px] leading-none">⚠️</span> {disqualificationReason}
+              </span>
+            )}
+            
             {showHoju && (
               <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded border transition-colors select-none ${
                 node.isHoju 
@@ -174,7 +145,7 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
             )}
           </div>
 
-          <div className={`flex items-center rounded overflow-hidden transition-all ml-auto border ${node.isDeceased ? 'border-[#f0c0b9] dark:border-red-800/50 bg-[#ffe2dd]/30 dark:bg-red-900/10' : 'border-[#e9e9e7] dark:border-neutral-700 bg-white dark:bg-neutral-800 hover:bg-[#f8f8f7] dark:hover:bg-neutral-700'}`}>
+          <div className={`flex items-center rounded overflow-hidden transition-all ml-auto border ${node.isDeceased ? 'border-[#f0c0b9] dark:border-red-800/50 bg-white dark:bg-neutral-800/50' : 'border-[#e9e9e7] dark:border-neutral-700 bg-white dark:bg-neutral-800 hover:bg-[#f8f8f7] dark:hover:bg-neutral-700'}`}>
             <label className="flex items-center px-2 py-1.5 cursor-pointer select-none">
               <input type="checkbox" checked={node.isDeceased || false} onKeyDown={onKeyDown} onChange={e => {
                 handleUpdate(node.id, 'isDeceased', e.target.checked);
@@ -185,7 +156,7 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
             {node.isDeceased && (
                <div className="flex items-center pr-3 group/death">
                  <DateInput value={node.deathDate} onKeyDown={onKeyDown} onChange={v => handleUpdate(node.id, 'deathDate', v)} placeholder="사망일자" className="w-[105px] px-1 py-1 text-[13.5px] font-bold outline-none text-[#c93f3a] dark:text-red-400 bg-transparent transition-colors text-center" />
-                 <span className="text-[13px] font-bold text-[#c93f3a] dark:text-red-400 opacity-80">사망</span>
+                 <span className="text-[13px] font-bold text-[#c93f3a] dark:text-red-400">사망</span>
                </div>
             )}
             {!node.isDeceased && (
@@ -216,25 +187,7 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
 
       {node.isDeceased && showSubHeirs && isExpanded && (
         <div className="mt-2 ml-4 animate-in fade-in slide-in-from-top-2 duration-200">
-          {canAutoFill && (
-            <div className="mb-2 p-3 bg-[#f7f7f5] dark:bg-slate-700/50 border border-[#d4d4d4] dark:border-slate-600 rounded-md text-[13px] flex items-center justify-between no-print shadow-sm transition-colors">
-              <span className="text-[#504f4c] dark:text-slate-300 font-semibold flex items-center gap-2"><IconFileText className="w-4 h-4"/>
-                {canAutoFillSp 
-                  ? `${node.name ? `'${node.name}'(배우자)` : '배우자'}의 상속인을 피대습자(원래 상속인)의 자녀 목록에서 기본적으로 불러옵니다.`
-                  : `이 상속인에게 자녀나 배우자가 없어 3순위(형제자매) 상속이 발생할 경우, 다른 상속인 목록을 기본적으로 불러올 수 있습니다.`}
-              </span>
-              <div className="flex gap-2">
-                <button type="button" onClick={() => addHeir(node.id)} className="px-3 py-1 bg-white dark:bg-slate-800 border border-[#cccccc] dark:border-slate-600 text-[#37352f] dark:text-slate-200 font-semibold rounded hover:bg-[#f1f1ef] dark:hover:bg-slate-700 transition-colors">직접 빈칸 추가</button>
-                <button type="button" onClick={autoFill} className="px-3 py-1 bg-[#2383e2] hover:bg-blue-600 text-white font-semibold rounded transition-colors shadow-sm">상속인 불러오기</button>
-              </div>
-            </div>
-          )}
-
-          {disqualificationReason ? (
-            <div className="px-3 py-2 mt-2 bg-[#fee2e2] dark:bg-red-900/40 border border-[#fecaca] dark:border-red-800/50 text-[#b91c1c] dark:text-red-300 text-[13px] font-bold rounded flex items-center gap-2 transition-colors">
-              ⚠️ {disqualificationReason}
-            </div>
-          ) : (
+          {!disqualificationReason && (
             <>
               <div className="flex justify-between items-center mb-1 mt-2 no-print">
                 <span className="text-[13px] font-bold text-[#787774] dark:text-slate-400 flex items-center pl-2">
