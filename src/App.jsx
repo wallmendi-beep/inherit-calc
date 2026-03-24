@@ -402,7 +402,37 @@ function App() {
     } else if (lineage.length > 1) {
       const parent = lineage[lineage.length - 2];
       const rel = getRelStr(targetNode.relation, tree.deathDate) || '상속인';
-      relationInfo = `(${parent.name || '피상속인'}의 ${rel})`;
+      
+      const isSp = targetNode.relation === 'wife' || targetNode.relation === 'husband' || targetNode.relation === 'spouse';
+      const isChild = targetNode.relation === 'son' || targetNode.relation === 'daughter';
+      
+      let parentNames = parent.name || '피상속인';
+      
+      if (isChild) {
+        // 자녀 노드: 양부모를 함께 표시
+        const parentIsSp = parent.relation === 'wife' || parent.relation === 'husband' || parent.relation === 'spouse';
+        
+        if (lineage.length > 2 && parentIsSp) {
+          // 부모가 배우자 관계면 → 조부모(=다른 부모)와 함께 표시
+          const grandparent = lineage[lineage.length - 3];
+          if (grandparent?.name) {
+            parentNames = `${grandparent.name}·${parent.name}`;
+          }
+        } else if (parent.heirs) {
+          // 부모의 heirs에서 배우자를 찾아 함께 표시 (자기 자신 제외)
+          const spouse = parent.heirs.find(h => 
+            h.id !== targetNode.id &&
+            (h.relation === 'wife' || h.relation === 'husband' || h.relation === 'spouse') && 
+            h.name && h.name.trim() !== ''
+          );
+          if (spouse) {
+            parentNames = `${parent.name}·${spouse.name}`;
+          }
+        }
+      }
+      // 배우자 노드: 부모 이름만 표시 (자기 자신을 양부모에 포함하지 않음)
+      
+      relationInfo = `(${parentNames}의 ${rel})`;
     }
 
     const sourceList = [];
@@ -770,7 +800,7 @@ function App() {
             <div className="flex items-baseline gap-2">
               <div className="flex items-center text-[#37352f] dark:text-neutral-100 font-bold text-[18px] tracking-tight">
                 <IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-neutral-400" />
-                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400">v1.1</span>
+                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400">v1.2</span>
               </div>
               <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px]">Designed by J.H. Lee · <span className="opacity-60">v1.1</span></span>
             </div>
@@ -849,8 +879,8 @@ function App() {
             const isSp = currentNode?.relation === 'wife' || currentNode?.relation === 'husband';
             const isChild = currentNode?.relation === 'son' || currentNode?.relation === 'daughter';
 
-            const canAutoFillSp = !isRootNode && isSp && (!nodeHeirs || nodeHeirs.length === 0);
-            const canAutoFillChild = !isRootNode && isChild && (!nodeHeirs || nodeHeirs.length === 0);
+            const canAutoFillSp = !isRootNode && isSp;
+            const canAutoFillChild = !isRootNode && isChild;
             const canAutoFill = canAutoFillSp || canAutoFillChild;
 
             const handleAutoFill = () => {
@@ -889,12 +919,12 @@ function App() {
                     
                     <div className="shrink-0 flex items-center gap-2">
                       <label className="text-[12px] text-[#787774] dark:text-neutral-400 font-bold whitespace-nowrap">성명</label>
-                      <input type="text" onKeyDown={handleKeyDown} value={currentNode?.name || ''} onChange={e=>currentNode && handleUpdate(currentNode.id, 'name', e.target.value)} className="w-32 border border-[#e9e9e7] dark:border-neutral-700 rounded px-2.5 py-1.5 text-[14px] font-bold text-[#2383e2] dark:text-blue-400 outline-none transition-all bg-white dark:bg-neutral-900" placeholder="이름" />
+                      <input type="text" onKeyDown={handleKeyDown} value={tree.name || ''} onChange={e=>handleRootUpdate('name',e.target.value)} className="w-32 border border-[#e9e9e7] dark:border-neutral-700 rounded px-2.5 py-1.5 text-[14px] font-bold text-[#2383e2] dark:text-blue-400 outline-none transition-all bg-white dark:bg-neutral-900" placeholder="이름" />
                     </div>
 
                     <div className="shrink-0 flex items-center gap-2">
                       <label className="text-[12px] text-[#c93f3a] dark:text-red-400 font-bold whitespace-nowrap">사망일자</label>
-                      <DateInput value={currentNode?.deathDate || ''} onKeyDown={handleKeyDown} onChange={v=>currentNode && handleUpdate(currentNode.id, 'deathDate', v)} className="w-32 border border-[#e9e9e7] dark:border-neutral-700 rounded px-2.5 py-1.5 text-[14px] font-bold outline-none transition-all bg-white dark:bg-neutral-900 dark:text-neutral-200" />
+                      <DateInput value={tree.deathDate || ''} onKeyDown={handleKeyDown} onChange={v=>handleRootUpdate('deathDate', v)} className="w-32 border border-[#e9e9e7] dark:border-neutral-700 rounded px-2.5 py-1.5 text-[14px] font-bold outline-none transition-all bg-white dark:bg-neutral-900 dark:text-neutral-200" />
                     </div>
 
                     {getLawEra(tree.deathDate) !== '1991' && (
@@ -907,9 +937,9 @@ function App() {
                     <div className="shrink-0 flex items-center gap-2">
                       <label className="text-[12px] text-[#787774] dark:text-neutral-400 font-bold whitespace-nowrap">지분</label>
                       <div className="flex items-center bg-white dark:bg-neutral-900 rounded border border-[#e9e9e7] dark:border-neutral-700 px-1.5 py-0.5">
-                        <input type="number" min="1" value={currentNode?.shareD || 1} onChange={e=>handleUpdate(currentNode.id, 'shareD', Math.max(1, parseInt(e.target.value)||1))} className="w-8 bg-transparent text-[14px] text-center font-bold outline-none dark:text-neutral-200" />
+                        <input type="number" min="1" value={tree.shareD || 1} onChange={e=>handleRootUpdate('shareD', Math.max(1, parseInt(e.target.value)||1))} className="w-8 bg-transparent text-[14px] text-center font-bold outline-none dark:text-neutral-200" />
                         <span className="text-[#bbb] text-[12px]">/</span>
-                        <input type="number" min="1" max={currentNode?.shareD || 1} value={currentNode?.shareN || 1} onChange={e=>handleUpdate(currentNode.id, 'shareN', Math.min(currentNode.shareD||1, Math.max(1, parseInt(e.target.value)||1)))} className="w-8 bg-transparent text-[14px] text-center font-bold outline-none dark:text-neutral-200" />
+                        <input type="number" min="1" max={tree.shareD || 1} value={tree.shareN || 1} onChange={e=>handleRootUpdate('shareN', Math.min(tree.shareD||1, Math.max(1, parseInt(e.target.value)||1)))} className="w-8 bg-transparent text-[14px] text-center font-bold outline-none dark:text-neutral-200" />
                       </div>
                     </div>
 
@@ -1000,6 +1030,11 @@ function App() {
                                 <span className="text-[14px] font-black text-blue-600 dark:text-blue-400 ml-3">
                                   {getBriefingInfo.isRoot ? '상속할 지분' : '상속 지분'} : {getBriefingInfo.shareStr}
                                 </span>
+                                {!getBriefingInfo.isRoot && currentNode?.deathDate && (
+                                  <span className="text-[12px] font-bold text-[#c93f3a] dark:text-red-400 ml-2">
+                                    ({formatKorDate(currentNode.deathDate)} 사망)
+                                  </span>
+                                )}
                               </div>
                               <div className="flex flex-wrap gap-x-4 gap-y-1 pl-4">
                                 {getBriefingInfo.sources.map((src, sidx) => (
@@ -1010,7 +1045,12 @@ function App() {
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <button type="button" onClick={() => addHeir(currentNode.id)} onKeyDown={handleKeyDown} className="text-[13px] text-[#166534] dark:text-green-400 font-bold bg-[#f0fdf4] hover:bg-[#dcfce7] dark:bg-green-900/20 dark:hover:bg-green-900/40 px-3 py-1.5 rounded transition-colors flex items-center border border-[#bbf7d0] dark:border-green-800/50 shadow-sm">
+                              {!isRootNode && isSp && (
+                                <button type="button" onClick={handleAutoFill} className="text-[13px] text-[#2383e2] dark:text-blue-400 font-bold bg-[#eff6ff] hover:bg-[#dbeafe] dark:bg-blue-900/20 dark:hover:bg-blue-900/40 px-3 py-1.5 rounded transition-colors flex items-center border border-[#bfdbfe] dark:border-blue-800/50 shadow-sm">
+                                  <IconFolderOpen className="w-3.5 h-3.5 mr-1.5" /> 상속인 불러오기
+                                </button>
+                              )}
+                              <button type="button" onClick={() => addHeir(currentNode.id)} onKeyDown={handleKeyDown} className="text-[13px] text-[#166534] dark:text-green-400 font-bold bg-[#f0fdf4] hover:bg-[#dcfce7] dark:bg-green-900/20 dark:hover:bg-green-900/40 px-3 py-1.5 rounded transition-colors flex items-center border border-[#bbf7d0] dark:border-green-800/50 shadow-sm ml-1">
                                   + 상속인 추가
                               </button>
                               <button 
@@ -1129,7 +1169,7 @@ function App() {
                                     
                                     if (activeTabObj && activeTabObj.parentNode) {
                                       const parentHeirs = activeTabObj.parentNode.heirs || [];
-                                      const relation = currentNode.relation;
+                                      const relation = currentNode?.relation || '';
                                       
                                       if (relation === 'wife' || relation === 'husband') {
                                         const children = parentHeirs.filter(s => s.relation === 'son' || s.relation === 'daughter');
@@ -1156,7 +1196,9 @@ function App() {
                                         {activeDeceasedTab !== 'root' && (
                                           <div className="mt-2 flex flex-col items-center gap-1.5 opacity-80">
                                             <p className="text-[13px] font-medium text-[#b45309] dark:text-amber-500/80">
-                                              상속인을 입력하지 않으면 3순위(형제자매)를 상속인으로 간주하여 상속지분을 계산합니다.
+                                              {potentialHeirsLabel === '피대습자의 자녀' 
+                                                ? '별도의 상속인을 입력하지 않으면 피대습자의 자녀를 상속인으로 간주하여 상속지분을 계산합니다.' 
+                                                : '상속인을 입력하지 않으면 3순위(형제자매)를 상속인으로 간주하여 상속지분을 계산합니다.'}
                                             </p>
                                             {potentialHeirsStr && (
                                               <p className="text-[13px] font-bold text-[#b45309] dark:text-amber-500 mt-1">
@@ -1214,6 +1256,16 @@ function App() {
                         <span className="text-[15px] font-black text-[#37352f] dark:text-neutral-200">
                           피상속인 <span className="text-[#2383e2] dark:text-blue-400 mx-1">{s.dec.name}</span> 
                           <span className="ml-2 font-bold text-[#787774] dark:text-neutral-400 text-[13px] opacity-60">[지분: {s.inN}/{s.inD}]</span>
+                          {s.mergeSources && s.mergeSources.length > 1 && (
+                            <span className="ml-2 text-[12px] font-bold text-[#0d9488] dark:text-teal-400 opacity-80">
+                              (= {s.mergeSources.map((src, si) => (
+                                <React.Fragment key={si}>
+                                  {si > 0 && ' + '}
+                                  {src.from} 지분 {src.d}분의 {src.n}
+                                </React.Fragment>
+                              ))})
+                            </span>
+                          )}
                         </span>
                         <span className="text-[#c93f3a] dark:text-red-400 font-bold text-[13px] opacity-70">({s.dec.deathDate} 사망)</span>
                       </div>

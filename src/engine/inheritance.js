@@ -6,7 +6,23 @@ export const calculateInheritance = (tree, propertyValue) => {
   let warnings = [];
   let appliedLaws = new Set();
   
-  const traverse = (node, inN, inD, inheritedDate, visitedIds = []) => {
+  // 동명 노드의 상속인 정보를 참조하기 위한 헬퍼: 트리 전체에서 같은 이름을 가진 다른 노드의 heirs를 찾아주는 함수
+  const findHeirsByName = (root, targetName, excludeId) => {
+    if (!targetName || targetName.trim() === '') return null;
+    let found = null;
+    const search = (n) => {
+      if (found) return;
+      if (n.id !== excludeId && n.name === targetName && n.heirs && n.heirs.length > 0) {
+        found = n.heirs;
+        return;
+      }
+      if (n.heirs) n.heirs.forEach(search);
+    };
+    search(root);
+    return found;
+  };
+
+  const traverse = (node, inN, inD, inheritedDate, visitedIds = [], parentDecName = '피상속인') => {
     if (visitedIds.includes(node.id)) {
       warnings.push(`순차상속 순환 참조가 발생하여 ${node.name || '상속인'}의 지분 전이가 중단되었습니다.`);
       return;
@@ -32,10 +48,22 @@ export const calculateInheritance = (tree, propertyValue) => {
       isSubstitution = true;
     }
 
-    if (!node.heirs || node.heirs.length === 0) {
+    let targetHeirs = node.heirs || [];
+
+    // 불러오기 복사본처럼 heirs가 비어있는 사망 노드라면, 동명의 원본 노드에서 heirs를 자동 참조
+    if (targetHeirs.length === 0 && node.isDeceased && node.id !== 'root') {
+      const borrowed = findHeirsByName(tree, node.name, node.id);
+      if (borrowed && borrowed.length > 0) {
+        targetHeirs = borrowed;
+      }
+    }
+
+    if (targetHeirs.length === 0) {
       if (isSubstitution || node.id === 'root') return;
 
-      if (node.relation === 'son' || node.relation === 'daughter') {
+      const isDirectChildOfRoot = tree.heirs.some(th => th.id === node.id);
+
+      if (isDirectChildOfRoot && (node.relation === 'son' || node.relation === 'daughter')) {
          const parents = tree.heirs.filter(th => (th.relation === 'wife' || th.relation === 'husband' || th.relation === 'spouse') && (!th.isDeceased || !isBefore(th.deathDate, distributionDate)));
          const virtualHeirs = [];
          
@@ -51,7 +79,21 @@ export const calculateInheritance = (tree, propertyValue) => {
               });
             } else { return; }
          }
-         node.heirs = virtualHeirs;
+         targetHeirs = virtualHeirs;
+      } else if (!isDirectChildOfRoot && (node.relation === 'wife' || node.relation === 'husband' || node.relation === 'spouse')) {
+          let parentNode = null;
+          const findParent = (curr) => {
+             if (curr.heirs && curr.heirs.some(h => h.id === node.id)) { parentNode = curr; } 
+             else { for (const child of curr.heirs || []) findParent(child); }
+          };
+          findParent(tree);
+          if (parentNode && parentNode.heirs) {
+             const children = parentNode.heirs.filter(th => th.id !== node.id && (th.relation === 'son' || th.relation === 'daughter'));
+             const virtualHeirs = [];
+             children.forEach(c => { virtualHeirs.push({ ...c, id: c.id, relation: c.relation }); });
+             if (virtualHeirs.length > 0) targetHeirs = virtualHeirs;
+             else return;
+          } else { return; }
       } else { return; }
     }
     
@@ -62,7 +104,7 @@ export const calculateInheritance = (tree, propertyValue) => {
     
     // 순위 판별 (1순위:자녀, 2순위:존속, 3순위:형제)
     let hasRank1 = false, hasRank2 = false, hasRank3 = false, hasSpouse = false;
-    node.heirs.forEach(h => {
+    targetHeirs.forEach(h => {
       if (h.relation === 'son' || h.relation === 'daughter') hasRank1 = true;
       else if (h.relation === 'parent') hasRank2 = true;
       else if (h.relation === 'sibling') hasRank3 = true;
@@ -75,7 +117,7 @@ export const calculateInheritance = (tree, propertyValue) => {
     else if (hasSpouse) activeRank = -1; // 배우자 단독 (1,2순위 없고 형제자매만 있을 때 형제 배제가능)
     else if (hasRank3) activeRank = 3;
     
-    node.heirs.forEach(h => {
+    targetHeirs.forEach(h => {
       if (h.isRemarried && !h.remarriageDate) {
         warnings.push(`${h.name || '이름 미입력'} 님의 재혼일자가 입력되지 않아 대습상속권 유지를 판단할 수 없습니다.`);
       }
@@ -140,10 +182,10 @@ export const calculateInheritance = (tree, propertyValue) => {
     });
 
     if (total > 0) {
-      const step = { dec: node, inN, inD, dists: [], lawEra: law };
+      const step = { dec: node, inN, inD, dists: [], lawEra: law, parentDecName };
       const childrenToTraverse = [];
 
-      node.heirs.forEach(h => {
+      targetHeirs.forEach(h => {
         if (h.r === 0) { 
           step.dists.push({ h, n: 0, d: 1, sn: 0, sd: 1, ex: h.ex, mod: h.modifierReason }); 
         } else {
@@ -154,13 +196,55 @@ export const calculateInheritance = (tree, propertyValue) => {
         }
       });
       steps.push(step);
-      childrenToTraverse.forEach(child => { traverse(child.h, child.nn, child.nd, distributionDate, currentVisited); });
+      childrenToTraverse.forEach(child => { traverse(child.h, child.nn, child.nd, distributionDate, currentVisited, node.name || '피상속인'); });
     }
   };
 
   const initN = Math.max(1, Number(tree.shareN) || 1);
   const initD = Math.max(1, Number(tree.shareD) || 1);
   traverse(tree, initN, initD, tree.deathDate, []);
+  
+  // 📊 후처리: 동일 인물의 계산 step 병합 (법원 계산기 방식)
+  // 예: 부영주가 부대은(2/78)과 강정우(1/130)에서 각각 지분을 받으면
+  //     → 합산(1/30) 후 단일 블록으로 한영희/부제경에게 분배
+  const mergedSteps = [];
+  const stepByName = {};
+  
+  steps.forEach(step => {
+    const name = step.dec?.name;
+    if (!name || name.trim() === '' || step.dec?.id === 'root') {
+      mergedSteps.push(step);
+      return;
+    }
+    
+    if (!stepByName[name]) {
+      // 첫 등장: 합산 출처 배열 초기화
+      step.mergeSources = [{ from: step.parentDecName || '피상속인', n: step.inN, d: step.inD }];
+      stepByName[name] = step;
+      mergedSteps.push(step);
+    } else {
+      // 동일 인물의 기존 step에 지분을 합산
+      const existing = stepByName[name];
+      existing.mergeSources.push({ from: step.parentDecName || '피상속인', n: step.inN, d: step.inD });
+      
+      const [newN, newD] = math.add(existing.inN, existing.inD, step.inN, step.inD);
+      existing.inN = newN;
+      existing.inD = newD;
+      
+      // 분배(dists)를 합산된 지분 기준으로 재계산
+      const total = existing.dists.reduce((sum, d) => sum + (d.h?.r || 0), 0);
+      if (total > 0) {
+        existing.dists = existing.dists.map(d => {
+          if (d.h?.r === 0) return { ...d, n: 0, d: 1, sn: 0, sd: 1 };
+          const [sn, sd] = math.simplify(d.h.r * 100, total * 100);
+          const [nn, nd] = math.multiply(newN, newD, sn, sd);
+          return { ...d, n: nn, d: nd, sn, sd };
+        });
+      }
+    }
+  });
+  
+  steps = mergedSteps;
   
   const merged = [];
   results.forEach(r => {
@@ -179,23 +263,25 @@ export const calculateInheritance = (tree, propertyValue) => {
   });
 
   const categoryMap = {};
+  let subGroupOrder = 0;
   tree.heirs.forEach((h, idx) => { if (!h.isDeceased) categoryMap[h.name] = { type: 'direct', order: idx }; });
+
+  // 재귀적 서브그룹 분류: 중간에 사망한 노드가 있으면 별도 서브그룹으로 분리
+  const buildCategory = (node, ancestor, order) => {
+    if (!node.heirs) return;
+    node.heirs.forEach(h => {
+      if (h.isDeceased && h.heirs && h.heirs.length > 0) {
+        // 하위 사망자 → 별도 subGroup의 ancestor로 발전
+        buildCategory(h, h, subGroupOrder++);
+      } else if (!h.isDeceased && !categoryMap[h.name]) {
+        categoryMap[h.name] = { type: 'sub', ancestor: ancestor, order: order };
+      }
+    });
+  };
+
   tree.heirs.forEach((h, idx) => {
-    if (h.isDeceased && h.relation !== 'wife' && h.relation !== 'husband') {
-      const traverseSub = (node) => {
-        if (!node.isDeceased && !categoryMap[node.name]) categoryMap[node.name] = { type: 'sub', ancestor: h, order: idx };
-        if (node.heirs) node.heirs.forEach(traverseSub);
-      };
-      if (h.heirs) h.heirs.forEach(traverseSub);
-    }
-  });
-  tree.heirs.forEach((h, idx) => {
-    if (h.isDeceased && (h.relation === 'wife' || h.relation === 'husband')) {
-      const traverseSub = (node) => {
-        if (!node.isDeceased && !categoryMap[node.name]) categoryMap[node.name] = { type: 'sub', ancestor: h, order: idx };
-        if (node.heirs) node.heirs.forEach(traverseSub);
-      };
-      if (h.heirs) h.heirs.forEach(traverseSub);
+    if (h.isDeceased) {
+      buildCategory(h, h, subGroupOrder++);
     }
   });
 
