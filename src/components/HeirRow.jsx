@@ -11,8 +11,11 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
   const isSon = node.relation === 'son';
   const isDaughter = node.relation === 'daughter';
   const isChild = node.relation === 'son' || node.relation === 'daughter';
-  const canAutoFillSp = node.isDeceased && isSp && (!node.heirs || node.heirs.length === 0) && siblings?.filter(s => s.relation === 'son' || s.relation === 'daughter').length > 0;
-  const canAutoFillChild = node.isDeceased && isChild && (!node.heirs || node.heirs.length === 0) && siblings?.filter(s => s.id !== node.id && (s.relation === 'son' || s.relation === 'daughter')).length > 0;
+  const lawEra = getLawEra(inheritedDate);
+
+  // 대습상속(자신이 사망)시 자동채우기 버튼 (하위 상속인이 0명일 때만 노출)
+  const canAutoFillSp = node.isDeceased && isSp && (!node.heirs || node.heirs.length === 0);
+  const canAutoFillChild = node.isDeceased && isChild && (!node.heirs || node.heirs.length === 0);
   const canAutoFill = canAutoFillSp || canAutoFillChild;
 
   const [isExpanded, setIsExpanded] = useState(true);
@@ -22,7 +25,6 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
     else if (toggleSignal < 0) setIsExpanded(false);
   }, [toggleSignal]);
 
-  const lawEra = getLawEra(inheritedDate);
   const showHoju = isSon && lawEra !== '1991' && rootIsHoju !== false;
   const showMarriedDaughter = isDaughter && lawEra !== '1991';
 
@@ -44,14 +46,32 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
 
   const autoFill = () => {
     const clone = (n) => ({ ...n, id: `auto_${Math.random().toString(36).substr(2,9)}`, heirs: n.heirs?.map(clone) || [] });
+    // 이미 있는 상속인 이름 기반 중복 검사
+    const existingNames = new Set((node.heirs || []).map(h => h.name).filter(n => n.trim() !== ''));
+
     if (canAutoFillSp) {
-      const children = siblings.filter(s => s.relation === 'son' || s.relation === 'daughter');
-      handleUpdate(node.id, 'heirs', children.map(clone));
+      const children = siblings ? siblings.filter(s => s.relation === 'son' || s.relation === 'daughter') : [];
+      let newItems = children.filter(c => c.name.trim() === '' || !existingNames.has(c.name));
+
+      if (children.length > 0 && newItems.length === 0) {
+        alert('더 이상 불러올 동일한 상속인이 없습니다. (모두 등록됨)');
+        return;
+      }
+
+      const toAdd = newItems.length > 0 ? newItems.map(clone) : [{ id: `auto_${Date.now()}`, name: '', relation: 'son', isDeceased: false, isSameRegister: true, heirs: [] }];
+      handleUpdate(node.id, 'heirs', [...(node.heirs || []), ...toAdd]);
+      
     } else if (canAutoFillChild) {
-      const siblingList = siblings
-        .filter(s => s.id !== node.id && (s.relation === 'son' || s.relation === 'daughter'))
-        .map(s => ({ ...clone(s), relation: 'sibling', heirs: [] }));
-      handleUpdate(node.id, 'heirs', siblingList);
+      const siblingList = siblings ? siblings.filter(s => s.id !== node.id && (s.relation === 'son' || s.relation === 'daughter')).map(s => ({ ...clone(s), relation: 'sibling', heirs: [] })) : [];
+      let newItems = siblingList.filter(s => s.name.trim() === '' || !existingNames.has(s.name));
+
+      if (siblingList.length > 0 && newItems.length === 0) {
+        alert('더 이상 불러올 동일한 상속인이 없습니다. (모두 등록됨)');
+        return;
+      }
+
+      const toAdd = newItems.length > 0 ? newItems.map(clone) : [{ id: `auto_${Date.now()}`, name: '', relation: 'sibling', isDeceased: false, isSameRegister: true, heirs: [] }];
+      handleUpdate(node.id, 'heirs', [...(node.heirs || []), ...toAdd]);
     }
   };
 
@@ -95,9 +115,25 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
           {/* 관계 */}
           <div className="flex items-center bg-white dark:bg-slate-800 border border-[#cccccc] dark:border-slate-600 rounded overflow-hidden relative input-combo transition-colors">
             <span className="bg-[#f1f1ef] dark:bg-slate-700 text-[#504f4c] dark:text-slate-300 font-semibold px-3 py-1.5 text-[13px] border-r border-[#cccccc] dark:border-slate-600 transition-colors">관계</span>
-            <select value={node.relation} onKeyDown={onKeyDown} onChange={e => handleUpdate(node.id, 'relation', e.target.value)} 
+            <select 
+              value={lawEra === '1991' ? (node.relation === 'daughter' ? 'son' : (node.relation === 'husband' ? 'wife' : node.relation)) : node.relation}
+              onKeyDown={onKeyDown} onChange={e => handleUpdate(node.id, 'relation', e.target.value)} 
               className="w-24 px-3 py-1.5 text-[14px] font-semibold text-[#37352f] dark:text-slate-200 bg-transparent outline-none cursor-pointer appearance-none">
-              <option value="wife" className="dark:bg-slate-800">처</option><option value="husband" className="dark:bg-slate-800">남편</option><option value="son" className="dark:bg-slate-800">아들</option><option value="daughter" className="dark:bg-slate-800">딸</option><option value="sibling" className="dark:bg-slate-800">형제자매</option>
+              {lawEra === '1991' ? (
+                <>
+                  <option value="wife" className="dark:bg-slate-800">배우자</option>
+                  <option value="son" className="dark:bg-slate-800">자녀</option>
+                </>
+              ) : (
+                <>
+                  <option value="wife" className="dark:bg-slate-800">처</option>
+                  <option value="husband" className="dark:bg-slate-800">남편</option>
+                  <option value="son" className="dark:bg-slate-800">아들</option>
+                  <option value="daughter" className="dark:bg-slate-800">딸</option>
+                </>
+              )}
+              <option value="parent" className="dark:bg-slate-800">직계존속</option>
+              <option value="sibling" className="dark:bg-slate-800">형제자매</option>
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-[#787774] dark:text-slate-400"><IconChevronRight className="w-4 h-4 rotate-90" /></div>
           </div>
@@ -183,11 +219,13 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
           {canAutoFill && (
             <div className="mb-2 p-3 bg-[#f7f7f5] dark:bg-slate-700/50 border border-[#d4d4d4] dark:border-slate-600 rounded-md text-[13px] flex items-center justify-between no-print shadow-sm transition-colors">
               <span className="text-[#504f4c] dark:text-slate-300 font-semibold flex items-center gap-2"><IconFileText className="w-4 h-4"/>
-                {canAutoFillSp ? '이 배우자의 상속인을 피상속인의 자녀에서 복사하시겠습니까?' : `${node.name || '이 자녀'}의 상속인을 형제자매 목록에서 복사하시겠습니까?`}
+                {canAutoFillSp 
+                  ? `${node.name ? `'${node.name}'(배우자)` : '배우자'}의 상속인을 피대습자(원래 상속인)의 자녀 목록에서 기본적으로 불러옵니다.`
+                  : `이 상속인에게 자녀나 배우자가 없어 3순위(형제자매) 상속이 발생할 경우, 다른 상속인 목록을 기본적으로 불러올 수 있습니다.`}
               </span>
               <div className="flex gap-2">
-                <button type="button" onClick={() => addHeir(node.id)} className="px-3 py-1 bg-white dark:bg-slate-800 border border-[#cccccc] dark:border-slate-600 text-[#37352f] dark:text-slate-200 font-semibold rounded hover:bg-[#f1f1ef] dark:hover:bg-slate-700 transition-colors">직접입력</button>
-                <button type="button" onClick={autoFill} className="px-3 py-1 bg-[#37352f] dark:bg-blue-600 text-white font-semibold rounded hover:bg-[#2f2d27] dark:hover:bg-blue-700 transition-colors">자동불러오기</button>
+                <button type="button" onClick={() => addHeir(node.id)} className="px-3 py-1 bg-white dark:bg-slate-800 border border-[#cccccc] dark:border-slate-600 text-[#37352f] dark:text-slate-200 font-semibold rounded hover:bg-[#f1f1ef] dark:hover:bg-slate-700 transition-colors">직접 빈칸 추가</button>
+                <button type="button" onClick={autoFill} className="px-3 py-1 bg-[#2383e2] hover:bg-blue-600 text-white font-semibold rounded transition-colors shadow-sm">상속인 불러오기</button>
               </div>
             </div>
           )}
@@ -203,9 +241,20 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
                   <IconChevronRight className="h-4 w-4 mr-1" /> 대습/순차 상속인
                 </span>
                 {!canAutoFill && (
-                  <button type="button" onClick={() => addHeir(node.id)} onKeyDown={onKeyDown} className="text-[13px] text-[#504f4c] dark:text-slate-300 font-semibold hover:bg-[#e9e9e7] dark:hover:bg-slate-700 px-2 py-1 rounded transition-colors flex items-center border border-transparent hover:border-[#cccccc] dark:hover:border-slate-600">
-                    + {node.name ? `${node.name}의 상속인 추가` : '상속인 추가'}
-                  </button>
+                  <div className="flex gap-2">
+                    {node.heirs?.length > 0 && (
+                      <button type="button" onClick={() => {
+                        if(confirm('이 상속인의 하위 상속인 데이터를 모두 삭제하시겠습니까?')) {
+                          handleUpdate(node.id, 'heirs', []);
+                        }
+                      }} className="text-[13px] text-[#c93f3a] dark:text-red-400 font-semibold hover:bg-[#ffe2dd]/50 dark:hover:bg-red-900/20 px-2 py-1 rounded transition-colors flex items-center border border-transparent hover:border-[#f0c0b9] dark:hover:border-red-800">
+                        전부 삭제
+                      </button>
+                    )}
+                    <button type="button" onClick={() => addHeir(node.id)} onKeyDown={onKeyDown} className="text-[13px] text-[#504f4c] dark:text-slate-300 font-semibold hover:bg-[#e9e9e7] dark:hover:bg-slate-700 px-2 py-1 rounded transition-colors flex items-center border border-transparent hover:border-[#cccccc] dark:hover:border-slate-600">
+                      + {node.name ? `${node.name}의 상속인 추가` : '상속인 추가'}
+                    </button>
+                  </div>
                 )}
               </div>
               {node.heirs?.length > 0 && (

@@ -8,13 +8,13 @@ import {
 import { DateInput } from './components/DateInput';
 import HeirRow from './components/HeirRow';
 import TreeReportNode from './components/TreeReportNode';
-import { math, relStr, formatKorDate, formatMoney } from './engine/utils';
+import { math, getLawEra, getRelStr, formatKorDate, formatMoney } from './engine/utils';
 import { calculateInheritance } from './engine/inheritance';
 import { getInitialTree, getEmptyTree } from './utils/initialData';
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 
-const MiniTreeView = ({ node, level = 0, onSelectNode, visitedHeirs = new Set() }) => {
+const MiniTreeView = ({ node, level = 0, onSelectNode, visitedHeirs = new Set(), deathDate }) => {
   const [isExpanded, setIsExpanded] = React.useState(level === 0); // 루트는 기본 확장
   if (!node) return null;
   
@@ -47,7 +47,7 @@ const MiniTreeView = ({ node, level = 0, onSelectNode, visitedHeirs = new Set() 
         >
           {node.name || (level === 0 ? '피상속인' : '(이름 없음)')}
         </span>
-        {level > 0 && <span className={`text-[10px] font-bold shrink-0 opacity-40 uppercase tracking-tighter ${node.isDeceased ? 'text-[#ef4444]' : 'text-[#787774]'}`}>[{relStr[node.relation] || '자녀'}]</span>}
+        {level > 0 && <span className={`text-[10px] font-bold shrink-0 opacity-40 uppercase tracking-tighter ${node.isDeceased ? 'text-[#ef4444]' : 'text-[#787774]'}`}>[{getRelStr(node.relation, deathDate) || '자녀'}]</span>}
       </div>
       
       {isExpanded && hasHeirs && (
@@ -56,6 +56,7 @@ const MiniTreeView = ({ node, level = 0, onSelectNode, visitedHeirs = new Set() 
             <MiniTreeView key={h.id || i} node={h} level={level + 1}
               onSelectNode={onSelectNode}
               visitedHeirs={visitedHeirs}
+              deathDate={deathDate}
             />
           ))}
         </div>
@@ -68,7 +69,35 @@ function App() {
   const [activeTab, setActiveTab] = useState('input'); 
   const [isResetModalOpen, setIsResetModalOpen] = useState(false); 
   const [syncRequest, setSyncRequest] = useState(null);
-  const [rawTree, setRawTree] = useState(getInitialTree());
+
+  // Undo/Redo 위한 History 기능 추가
+  const [treeState, setTreeState] = useState({
+    history: [getInitialTree()],
+    currentIndex: 0
+  });
+
+  const rawTree = treeState.history[treeState.currentIndex] || getInitialTree();
+
+  const setTree = (action) => {
+    setTreeState(prev => {
+      const currentTree = prev.history[prev.currentIndex];
+      const newTree = typeof action === 'function' ? action(currentTree) : action;
+      const parsedTree = JSON.parse(JSON.stringify(newTree)); // 깊은 복사 보장
+      
+      const newHistory = prev.history.slice(0, prev.currentIndex + 1);
+      newHistory.push(parsedTree);
+      if (newHistory.length > 50) newHistory.shift();
+      
+      return { history: newHistory, currentIndex: newHistory.length - 1 };
+    });
+  };
+
+  const undoTree = () => {
+    setTreeState(prev => prev.currentIndex > 0 ? { ...prev, currentIndex: prev.currentIndex - 1 } : prev);
+  };
+  const redoTree = () => {
+    setTreeState(prev => prev.currentIndex < prev.history.length - 1 ? { ...prev, currentIndex: prev.currentIndex + 1 } : prev);
+  };
 
   // 데이터 무결성 강제 확보: 중복 ID 제거 (순환 참조 및 동일 요소 반복 렌더링 방지)
   const tree = useMemo(() => {
@@ -90,8 +119,6 @@ function App() {
     };
     return sanitize(rawTree) || getInitialTree();
   }, [rawTree]);
-
-  const setTree = setRawTree; // 하위 로직 호환성을 위해 setTree 맵핑
 
   const [treeToggleSignal, setTreeToggleSignal] = useState(0); 
   const [isAllExpanded, setIsAllExpanded] = useState(false); 
@@ -374,7 +401,7 @@ function App() {
       relationInfo = '(피상속인)';
     } else if (lineage.length > 1) {
       const parent = lineage[lineage.length - 2];
-      const rel = relStr[targetNode.relation] || '상속인';
+      const rel = getRelStr(targetNode.relation, tree.deathDate) || '상속인';
       relationInfo = `(${parent.name || '피상속인'}의 ${rel})`;
     }
 
@@ -572,12 +599,12 @@ function App() {
       ['상속인', '관계', '지분(분자)', '지분(분모)', '통분 지분(분자)', '통분 지분(분모)'],
     ];
     finalShares.direct.forEach(f => {
-      rows.push([f.name, relStr[f.relation] || f.relation, f.n, f.d, f.un, f.ud]);
+      rows.push([f.name, getRelStr(f.relation, tree.deathDate) || f.relation, f.n, f.d, f.un, f.ud]);
     });
     (finalShares.subGroups || []).forEach(g => {
       rows.push(['', `└ ${g.ancestor?.name || ''} 의 대습상속분`, '', '', '', '']);
       g.shares.forEach(f => {
-        rows.push([f.name, relStr[f.relation] || f.relation, f.n, f.d, f.un, f.ud]);
+        rows.push([f.name, getRelStr(f.relation, tree.deathDate) || f.relation, f.n, f.d, f.un, f.ud]);
       });
     });
     const csv = '\uFEFF' + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -668,6 +695,7 @@ function App() {
                 }
               }}
               visitedHeirs={new Set()}
+              deathDate={tree.deathDate}
             />
           </div>
           {/* 드래그 리사이즈 핸들 */}
@@ -747,6 +775,14 @@ function App() {
               <span className="text-[13px] font-black text-[#0b6e99] dark:text-blue-400 whitespace-nowrap">{tree.name || '미입력'}</span>
             </div>
 
+            <button onClick={undoTree} disabled={treeState.currentIndex <= 0} className="disabled:opacity-40 disabled:cursor-not-allowed text-[#787774] hover:text-[#37352f] hover:bg-[#efefed] px-2 py-1 rounded border border-transparent hover:border-[#d4d4d4] text-[12px] font-bold transition-colors flex items-center gap-1">
+              ↩ 이전
+            </button>
+            <button onClick={redoTree} disabled={treeState.currentIndex >= treeState.history.length - 1} className="disabled:opacity-40 disabled:cursor-not-allowed text-[#787774] hover:text-[#37352f] hover:bg-[#efefed] px-2 py-1 rounded border border-transparent hover:border-[#d4d4d4] text-[12px] font-bold transition-colors flex items-center gap-1">
+              ↪ 취소 복구
+            </button>
+            <div className="w-px h-3.5 bg-[#e9e9e7] dark:bg-neutral-600 mx-0.5"></div>
+
             <button onClick={() => setIsResetModalOpen(true)} className="text-[#787774] hover:text-[#37352f] hover:bg-[#efefed] px-2 py-1 rounded border border-transparent hover:border-[#d4d4d4] text-[12px] font-bold transition-colors flex items-center gap-1">
               <IconReset className="h-3.5 w-3.5" /> 초기화
             </button>
@@ -789,13 +825,40 @@ function App() {
             );
           })}
         </div>
-        <div className="border border-[#e9e9e7] dark:border-neutral-700 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.05)] print:hidden min-h-[600px] bg-white dark:bg-neutral-800 flex flex-col p-10 relative z-0 transition-colors">
-          
-          {activeTab === 'input' && (() => {
+        <div className="border border-[#e9e9e7] dark:border-neutral-700 rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.05)] print:border-none print:shadow-none print:bg-transparent print:p-0 min-h-[600px] bg-white dark:bg-neutral-800 flex flex-col p-10 relative z-0 transition-colors">
+          <div className="no-print">
+            {activeTab === 'input' && (() => {
             const activeTabObj = deceasedTabs.find(t => t.id === activeDeceasedTab);
             const currentNode = activeTabObj ? findNodeById(tree, activeTabObj.id) : tree;
             const nodeHeirs = currentNode ? (currentNode.heirs || []) : [];
             const isRootNode = currentNode && currentNode.id === 'root';
+            
+            const siblings = activeTabObj ? activeTabObj.parentNode?.heirs : null;
+            const isSp = currentNode?.relation === 'wife' || currentNode?.relation === 'husband';
+            const isChild = currentNode?.relation === 'son' || currentNode?.relation === 'daughter';
+
+            const canAutoFillSp = !isRootNode && isSp && (!nodeHeirs || nodeHeirs.length === 0);
+            const canAutoFillChild = !isRootNode && isChild && (!nodeHeirs || nodeHeirs.length === 0);
+            const canAutoFill = canAutoFillSp || canAutoFillChild;
+
+            const handleAutoFill = () => {
+              const clone = (n) => ({ ...n, id: `auto_${Math.random().toString(36).substr(2,9)}`, heirs: n.heirs?.map(clone) || [] });
+              const existingNames = new Set(nodeHeirs.map(h => h.name).filter(n => n.trim() !== ''));
+              
+              if (canAutoFillSp) {
+                const children = siblings ? siblings.filter(s => s.relation === 'son' || s.relation === 'daughter') : [];
+                let newItems = children.filter(c => c.name.trim() === '' || !existingNames.has(c.name));
+                if (children.length > 0 && newItems.length === 0) { alert('더 이상 불러올 동일한 상속인이 없습니다. (모두 등록됨)'); return; }
+                const toAdd = newItems.length > 0 ? newItems.map(clone) : [{ id: `auto_${Date.now()}`, name: '', relation: 'son', isDeceased: false, isSameRegister: true, heirs: [] }];
+                handleUpdate(currentNode.id, 'heirs', [...nodeHeirs, ...toAdd]);
+              } else if (canAutoFillChild) {
+                const siblingList = siblings ? siblings.filter(s => s.id !== currentNode.id && (s.relation === 'son' || s.relation === 'daughter')).map(s => ({ ...clone(s), relation: 'sibling', heirs: [] })) : [];
+                let newItems = siblingList.filter(s => s.name.trim() === '' || !existingNames.has(s.name));
+                if (siblingList.length > 0 && newItems.length === 0) { alert('더 이상 불러올 동일한 상속인이 없습니다. (모두 등록됨)'); return; }
+                const toAdd = newItems.length > 0 ? newItems.map(clone) : [{ id: `auto_${Date.now()}`, name: '', relation: 'sibling', isDeceased: false, isSameRegister: true, heirs: [] }];
+                handleUpdate(currentNode.id, 'heirs', [...nodeHeirs, ...toAdd]);
+              }
+            };
             
             return (
               <div className="space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-400 flex flex-col flex-1">
@@ -822,10 +885,12 @@ function App() {
                       <DateInput value={currentNode?.deathDate || ''} onKeyDown={handleKeyDown} onChange={v=>currentNode && handleUpdate(currentNode.id, 'deathDate', v)} className="w-32 border border-[#e9e9e7] dark:border-neutral-700 rounded px-2.5 py-1 text-[12px] font-medium outline-none transition-all bg-white dark:bg-neutral-900 dark:text-neutral-200" />
                     </div>
 
-                    <div className="shrink-0 flex items-center gap-2">
-                      <label className="text-[11px] text-[#2383e2] dark:text-blue-400 font-bold whitespace-nowrap">호주</label>
-                      <input type="checkbox" disabled={!isRootNode} checked={isRootNode ? tree.isHoju !== false : false} onChange={e=>handleRootUpdate('isHoju', e.target.checked)} className="w-3.5 h-3.5 cursor-pointer accent-[#2383e2]" />
-                    </div>
+                    {getLawEra(tree.deathDate) !== '1991' && (
+                      <div className="shrink-0 flex items-center gap-2">
+                        <label className="text-[11px] text-[#2383e2] dark:text-blue-400 font-bold whitespace-nowrap">호주</label>
+                        <input type="checkbox" disabled={!isRootNode} checked={isRootNode ? tree.isHoju !== false : false} onChange={e=>handleRootUpdate('isHoju', e.target.checked)} className="w-3.5 h-3.5 cursor-pointer accent-[#2383e2]" />
+                      </div>
+                    )}
 
                     <div className="shrink-0 flex items-center gap-2">
                       <label className="text-[11px] text-[#787774] dark:text-neutral-400 font-bold whitespace-nowrap">지분</label>
@@ -836,7 +901,7 @@ function App() {
                       </div>
                     </div>
 
-                    <div className="ml-auto shrink-0">
+                    <div className="ml-auto shrink-0 flex gap-2">
                       <button 
                         onClick={() => {
                           setIsMainQuickActive(true);
@@ -846,9 +911,9 @@ function App() {
                             if (input) input.focus();
                           }, 100);
                         }}
-                        className="bg-[#2383e2] hover:bg-blue-600 text-white px-3 py-1.5 rounded-md text-[12px] font-black flex items-center gap-1.5 shadow-sm transition-all active:scale-95"
+                        className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-md text-[12px] font-black flex items-center gap-1.5 shadow-sm transition-all active:scale-95"
                       >
-                        <IconUserPlus className="w-3.5 h-3.5" /> 상속인 입력
+                        <IconUserPlus className="w-3.5 h-3.5" /> 텍스트 일괄입력
                       </button>
                     </div>
                   </div>
@@ -991,6 +1056,27 @@ function App() {
                               </div>
                             )}
 
+                            <div className="mt-4 mb-2 flex justify-between items-center no-print">
+                              <div className="text-[13px] font-bold text-[#787774] dark:text-slate-400 pl-2">
+                                <IconChevronRight className="h-4 w-4 mr-1 inline-block" /> 상세 상속인 목록
+                              </div>
+                              <div className="flex gap-2">
+                                <button type="button" onClick={() => addHeir(currentNode.id)} onKeyDown={handleKeyDown} className="text-[13px] text-[#166534] dark:text-green-400 font-bold bg-[#f0fdf4] hover:bg-[#dcfce7] dark:bg-green-900/20 dark:hover:bg-green-900/40 px-4 py-1.5 rounded transition-colors flex items-center border border-[#bbf7d0] dark:border-green-800/50 shadow-sm">
+                                    + 상속인 추가
+                                </button>
+                                {nodeHeirs.length > 0 && (
+                                  <button type="button" onClick={() => {
+                                    if(confirm('모든 상속인 데이터를 삭제하시겠습니까?')) {
+                                      if(currentNode.id === 'root') setTree({ ...tree, heirs: [] });
+                                      else handleUpdate(currentNode.id, 'heirs', []);
+                                    }
+                                  }} className="text-[13px] text-[#b91c1c] dark:text-red-400 font-bold bg-[#fef2f2] hover:bg-[#fee2e2] dark:bg-red-900/20 dark:hover:bg-red-900/40 px-4 py-1.5 rounded transition-colors flex items-center border border-[#fecaca] dark:border-red-800/50 shadow-sm ml-1">
+                                    전체 삭제
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
                             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                               <SortableContext items={nodeHeirs.map(h => h.id)} strategy={verticalListSortingStrategy}>
                                 <div className={`space-y-1.5 transition-all duration-300 ${isFolderFocused ? 'p-2' : ''}`}>
@@ -1010,10 +1096,25 @@ function App() {
                                       showSubHeirs={false}
                                     />
                                   ))}
+                                  {canAutoFill && (
+                                    <div className="mb-2 p-3 bg-[#f7f7f5] dark:bg-slate-700/50 border border-[#d4d4d4] dark:border-slate-600 rounded-md text-[13px] flex items-center justify-between no-print shadow-sm transition-colors">
+                                      <span className="text-[#504f4c] dark:text-slate-300 font-semibold flex items-center gap-2"><IconFileText className="w-4 h-4"/>
+                                        {canAutoFillSp 
+                                          ? `${currentNode.name ? `'${currentNode.name}'(배우자)` : '배우자'}의 상속인을 피대습자(원래 상속인)의 자녀 목록에서 기본적으로 불러옵니다.`
+                                          : `이 상속인에게 자녀나 배우자가 없어 3순위(형제자매) 상속이 발생할 경우, 다른 상속인 목록을 기본적으로 불러올 수 있습니다.`}
+                                      </span>
+                                      <div className="flex gap-2">
+                                        <button type="button" onClick={() => addHeir(currentNode.id)} className="px-3 py-1 bg-white dark:bg-slate-800 border border-[#cccccc] dark:border-slate-600 text-[#37352f] dark:text-slate-200 font-semibold rounded hover:bg-[#f1f1ef] dark:hover:bg-slate-700 transition-colors">직접 빈칸 추가</button>
+                                        <button type="button" onClick={handleAutoFill} className="px-3 py-1 bg-[#2383e2] hover:bg-blue-600 text-white font-semibold rounded transition-colors shadow-sm">상속인 불러오기</button>
+                                      </div>
+                                    </div>
+                                  )}
                                   {nodeHeirs.length === 0 && (
                                     <div className="py-20 text-center flex flex-col items-center gap-4 text-[#a3a3a3] dark:text-neutral-500">
                                       <IconUserPlus className="w-12 h-12 opacity-20" />
-                                      <p className="text-[14px] font-medium italic">아직 등록된 상속인이 없습니다.</p>
+                                      <div className="flex flex-col gap-1 items-center">
+                                        <p className="text-[14px] font-medium italic">아직 등록된 상속인이 없습니다.</p>
+                                      </div>
                                     </div>
                                   )}
                                 </div>
@@ -1069,12 +1170,12 @@ function App() {
                         {/* 금액 계산 UI는 요약표 탭으로 이동됨 */}
                       </div>
                     </div>
-                    <table className="w-full text-left">
+                    <table className="w-full text-left table-fixed">
                       <thead className="bg-[#fcfcfb] dark:bg-neutral-800/40 border-b border-[#f1f1ef] dark:border-neutral-700/50">
-                        <tr className="text-[#787774] dark:text-neutral-400 text-[11px] font-black uppercase tracking-widest">
-                          <th className="py-3 px-6">상속인</th>
-                          <th className="py-3 px-6 text-center">산출 지분</th>
-                          <th className="py-3 px-6">비고</th>
+                        <tr className="text-[#787774] dark:text-neutral-400 text-[12px] font-black uppercase tracking-widest text-center">
+                          <th className="py-3 px-6 w-[20%] text-left">상속인</th>
+                          <th className="py-3 px-6 w-[55%]">산출 지분 계산식</th>
+                          <th className="py-3 px-6 w-[25%] text-left">비고</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#f1f1ef] dark:divide-neutral-700/30">
@@ -1084,29 +1185,32 @@ function App() {
                             <tr key={di} className="hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20 transition-colors">
                               <td className="px-6 py-4">
                                 <span className={`text-[15px] font-black ${d.h.isDeceased ? 'text-[#787774] dark:text-neutral-500 underline underline-offset-2 decoration-[#c93f3a]/60' : 'text-[#37352f] dark:text-neutral-100'}`}>{d.h.name}</span>
-                                <span className="ml-2 text-[11px] font-bold text-[#a3a3a3] dark:text-neutral-500 uppercase">[{relStr[d.h.relation] || '상속인'}]</span>
+                                <span className="ml-2 text-[11px] font-bold text-[#a3a3a3] dark:text-neutral-500 uppercase">[{getRelStr(d.h.relation, s.dec.deathDate) || '상속인'}]</span>
                               </td>
-                              <td className="px-6 py-4 text-center">
-                                <div className="inline-flex flex-col items-center">
-                                  <span className="font-black text-[17px] text-[#2383e2] dark:text-blue-400">{d.n} / {d.d}</span>
-                                  <span className="text-[11px] text-[#a3a3a3] dark:text-neutral-500 font-bold whitespace-nowrap">(= {s.inN}/{s.inD} × {d.sn}/{d.sd})</span>
-                                </div>
-                              </td>
-                              <td className="px-6 py-4">
-                                <div className="flex flex-col gap-1.5">
+                                <td className="px-6 py-4 text-center">
+                                  <div className="inline-flex items-center gap-2 whitespace-nowrap text-[15px] font-black">
+                                    <span className="text-[#787774] dark:text-neutral-400">{s.inN}/{s.inD}</span>
+                                    <span className="text-[#a3a3a3] dark:text-neutral-500 font-medium">×</span>
+                                    <span className="text-[#787774] dark:text-neutral-400">{d.sn}/{d.sd}</span>
+                                    <span className="text-[#a3a3a3] dark:text-neutral-500 font-medium mx-1">=</span>
+                                    <span className="text-[17px] text-[#2383e2] dark:text-blue-400 font-black">{d.n}/{d.d}</span>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                <div className="flex gap-1.5 flex-wrap items-center">
                                   {d.ex ? (
-                                    <span className="text-[#c93f3a] dark:text-red-400 text-[12px] font-black px-2 py-1 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded inline-block">{d.ex}</span>
+                                    <span className="text-[#c93f3a] dark:text-red-400 text-[12px] font-black">※ {d.ex}</span>
                                   ) : isSpecial ? (
-                                    <span className={`text-[11px] font-black px-2 py-1 rounded border inline-block whitespace-nowrap ${
-                                      d.mod.includes('호주') ? 'text-[#1d4ed8] dark:text-blue-300 bg-[#f0f7ff] dark:bg-blue-900/20 border-[#bae6fd] dark:border-blue-800/40' :
-                                      d.mod.includes('출가녀') ? 'text-[#b91c1c] dark:text-red-300 bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-800/40' :
-                                      d.mod.includes('가산') ? 'text-[#166534] dark:text-green-300 bg-green-50 dark:bg-green-900/20 border-green-100 dark:border-green-800/40' :
-                                      'text-[#4c4c4c] dark:text-neutral-300 bg-gray-50 dark:bg-neutral-800/40 border-gray-200 dark:border-neutral-700'
+                                    <span className={`text-[12px] font-black whitespace-nowrap ${
+                                      d.mod.includes('호주') ? 'text-[#1d4ed8] dark:text-blue-400' :
+                                      d.mod.includes('출가녀') ? 'text-[#b91c1c] dark:text-red-400' :
+                                      d.mod.includes('가산') ? 'text-[#166534] dark:text-green-400' :
+                                      'text-[#4c4c4c] dark:text-neutral-400'
                                     }`}>
                                       ※ {d.mod}
                                     </span>
                                   ) : null}
-                                  {d.h.isDeceased && <span className="text-[#c93f3a] dark:text-red-400 text-[10px] font-bold">({d.h.deathDate} 사망)</span>}
+                                  {d.h.isDeceased && <span className="text-[#787774] dark:text-neutral-500 text-[11px] font-bold">({d.h.deathDate} 사망)</span>}
                                 </div>
                               </td>
                             </tr>
@@ -1182,23 +1286,12 @@ function App() {
               </div>
             </div>
           )}
+          </div>
           {/* 인쇄 전용 보고서 표 (화면에서는 숨김, 인쇄 시에만 표시) */}
           <div className="hidden print:block w-full">
-            <div className="flex justify-between items-end mb-6 border-b-2 border-black pb-4">
-              <div>
-                <h1 className="text-[24pt] font-black text-black mb-2">상속지분 계산 결과 보고서</h1>
-                <div className="flex items-center gap-8 text-[12pt] text-black">
-                  <span><strong>사건번호:</strong> {tree.caseNo || '(미입력)'}</span>
-                  <span><strong>피상속인:</strong> <span className="font-black text-[14pt] underline">{tree.name || '(미입력)'}</span> ({formatKorDate(tree.deathDate)} 사망)</span>
-                </div>
-              </div>
-              <div className="text-right text-[10pt] text-gray-500">
-                인쇄일: {new Date().toLocaleDateString()}
-              </div>
-            </div>
-
             <div className="space-y-8">
               {/* 1. 상속인 지분 요약 표 */}
+              {activeTab === 'summary' && (
               <section>
                 <h2 className="text-[16pt] font-bold mb-3 border-l-4 border-black pl-3 flex items-center gap-2">
                   <IconList className="w-5 h-5"/> 최종 상속 지분 요약
@@ -1238,9 +1331,11 @@ function App() {
                   </tbody>
                 </table>
               </section>
+              )}
 
               {/* 2. 상세 계산 근거 (간략화) */}
-              <section className="break-before-page">
+              {activeTab === 'calc' && (
+              <section className="print-section">
                 <h2 className="text-[16pt] font-bold mb-3 border-l-4 border-black pl-3 flex items-center gap-2">
                   <IconTable className="w-5 h-5"/> 상세 계산 근거
                 </h2>
@@ -1248,22 +1343,22 @@ function App() {
                   {calcSteps.map((s, i) => (
                     <div key={'p-s'+i} className="border border-gray-300 p-4 rounded">
                       <div className="font-bold text-[11pt] mb-2 text-gray-800">
-                        [단위 상속] 피상속인 {s.dec.name} ({s.dec.deathDate} 사망) ─ 피상속지분: {s.inN}/{s.inD}
+                        피상속인 {s.dec.name} ({s.dec.deathDate} 사망) ─ 피상속지분: {s.inN}/{s.inD}
                       </div>
                       <table className="w-full border-collapse border border-gray-400 text-[10pt]">
                         <thead>
                           <tr className="bg-gray-50 border-b border-gray-400">
-                            <th className="py-1 px-2 text-left">수유자</th>
-                            <th className="py-1 px-2 text-center">비율</th>
-                            <th className="py-1 px-2 text-left">적용 법리</th>
+                            <th className="py-1 px-2 text-left w-[20%]">상속인</th>
+                            <th className="py-1 px-2 text-center w-[40%]">산출 지분 계산식</th>
+                            <th className="py-1 px-2 text-left w-[40%]">비고</th>
                           </tr>
                         </thead>
                         <tbody>
                           {s.dists.map((d, di) => (
                             <tr key={di} className="border-b border-gray-200">
                               <td className="py-1 px-2 font-bold">{d.h.name}</td>
-                              <td className="py-1 px-2 text-center">{d.n}/{d.d} <span className="text-gray-400 text-[9pt]">({s.inN}/{s.inD}×{d.sn}/{d.sd})</span></td>
-                              <td className="py-1 px-2 text-[9pt]">{d.mod || '본위 상속'}</td>
+                              <td className="py-1 px-2 text-center">{s.inN}/{s.inD} × {d.sn}/{d.sd} = <strong>{d.n}/{d.d}</strong></td>
+                              <td className="py-1 px-2 text-[9pt]">{d.mod ? ('※ ' + d.mod) : ''}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -1272,6 +1367,7 @@ function App() {
                   ))}
                 </div>
               </section>
+              )}
             </div>
             
             <div className="mt-12 text-[10pt] text-gray-400 text-center italic border-t pt-4">

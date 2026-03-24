@@ -20,13 +20,27 @@
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #d3d1cb; border-radius: 5px; border: 2px solid white; }
 ::-webkit-scrollbar-thumb:hover { background: #aeaca6; }
-/* 인쇄 최적화 스타일 */
+/* 인쇄 최적화 스타일 (엑셀 뷰, 흑백) */
 @media print {
   .no-print { display: none !important; }
   body { background-color: white !important; color: black !important; padding: 0 !important; margin: 0 !important; }
   .print-p-0 { padding: 0 !important; }
   .print-compact { margin-top: 0 !important; padding-top: 0 !important; border: none !important; box-shadow: none !important; }
   
-  /* 인쇄 시 배경색 강제 해제 및 텍스트 강조 */
-  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  /* 인쇄 시 컬러/배경색 강제 해제 및 텍스트 흑백화 */
+  * { 
+    color: black !important; 
+    background-color: transparent !important; 
+    box-shadow: none !important;
+    text-shadow: none !important;
+    border-color: #999 !important;
+  }
+
+  /* 텍스트 옅은 색은 조금 어둡게 */
+  .text-\[\#787774\], .text-\[\#a3a3a3\], .opacity-70, .opacity-60 { color: #555 !important; opacity: 1 !important; }
+
+  /* 테이블(계산표) 강조 엑셀 테두리 */
+  table { border-collapse: collapse !important; border: 1px solid #000 !important; }
+  th, td { border: 1px solid #777 !important; }
+  th { background-color: #f3f3f3 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 }

@@ -28,8 +28,20 @@ export const relStr = {
   'husband': '남편', 
   'son': '아들', 
   'daughter': '딸', 
-  'sibling': '형제자매' 
+  'sibling': '형제자매',
+  'child': '자녀',
+  'parent': '직계존속'
 };
+
+export const getRelStr = (relation, deathDate) => {
+  const law = getLawEra(deathDate);
+  if (law === '1991') {
+    if (relation === 'parent') return '직계존속';
+    if (relation === 'son' || relation === 'daughter') return relStr['child'];
+    if (relation === 'wife' || relation === 'husband' || relation === 'spouse') return '배우자';
+  }
+  return relStr[relation] || relation;
+}
 
 export const getLawEra = (deathDate) => {
   if (!deathDate || deathDate.length < 4) return '1991';
