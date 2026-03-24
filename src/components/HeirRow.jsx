@@ -6,7 +6,7 @@ import { getLevelStyle, getLineStyle } from '../utils/styles';
 import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inheritedDate, onKeyDown, toggleSignal, rootIsHoju, showSubHeirs = true, isRootChildren }) => {
+const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inheritedDate, onKeyDown, toggleSignal, rootIsHoju, showSubHeirs = true, isRootChildren, onTabClick }) => {
   const isSp = node.relation === 'wife' || node.relation === 'husband';
   const isSon = node.relation === 'son';
   const isDaughter = node.relation === 'daughter';
@@ -180,6 +180,17 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
           )}
         </div>
 
+        {node.isDeceased && onTabClick && !disqualificationReason && (
+          <button 
+            type="button"
+            onClick={() => onTabClick(node.id)}
+            className="absolute left-full top-1/2 -translate-y-1/2 text-[11px] font-black text-[#854d0e] dark:text-amber-500 hover:text-[#713f12] dark:hover:text-amber-300 bg-[#fef08a] dark:bg-amber-900/60 hover:bg-[#fde047] dark:hover:bg-amber-800 border border-l-0 border-[#fef08a] dark:border-amber-700/50 px-2.5 py-1.5 rounded-r-md transition-all shadow-sm z-10 whitespace-nowrap no-print"
+            title="대습상속 입력 탭으로 이동"
+          >
+            재상속
+          </button>
+        )}
+
         <button type="button" onClick={() => removeHeir(node.id)} onKeyDown={onKeyDown} className="text-[#d4d4d4] dark:text-slate-500 hover:text-[#c93f3a] dark:hover:text-red-400 p-1.5 ml-2 shrink-0 rounded transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100" title="삭제">
           <IconTrash2 className="w-5 h-5" />
         </button>
@@ -225,6 +236,9 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
                       onKeyDown={onKeyDown} 
                       toggleSignal={toggleSignal} 
                       rootIsHoju={rootIsHoju}
+                      showSubHeirs={showSubHeirs}
+                      isRootChildren={isRootChildren}
+                      onTabClick={onTabClick}
                     />
                   ))}
                 </SortableContext>

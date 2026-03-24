@@ -493,6 +493,12 @@ function App() {
     return Array.from(tabMap.values());
   }, [tree]);
 
+  // 진행 중인 활성 탭 객체 참조 (부모, 레벨 정보 포함)
+  const activeTabObj = useMemo(() => {
+    if (!deceasedTabs) return null;
+    return deceasedTabs.find(t => t.id === activeDeceasedTab) || null;
+  }, [deceasedTabs, activeDeceasedTab]);
+
   // 탭 목록이 변경되면 현재 탭이 업는지 확인
   useEffect(() => {
     const tabIds = deceasedTabs.map(t => t.id);
@@ -938,35 +944,39 @@ function App() {
                     
                     return (
                       <div className="flex no-print relative z-10 gap-0">
-                        {/* 📂 Post-it 탭 — 카드 오른쪽 바깥에 부착 */}
-                        <div className="absolute top-6 left-full flex flex-col gap-1 pointer-events-auto z-20">
+                        {/* 📂 Post-it 탭 — 카드 오른쪽 테두리 바깥에 부착 */}
+                        <div className="absolute top-6 left-full ml-10 flex flex-col gap-1 pointer-events-auto z-20">
                           {levels.map(lv => (
                             <div key={lv} className="flex flex-col gap-1">
                               {deceasedTabs.filter(t => t.level === lv).map((tab) => {
                                 const isActive = activeDeceasedTab === tab.id;
                                 const p = levelPalette[lv] || levelPalette[5];
-                                return (
-                                  <button
-                                    key={tab.id}
-                                    ref={el => tabRefs.current[tab.id] = el}
-                                    onClick={() => {
-                                      setActiveDeceasedTab(tab.id);
-                                      setIsFolderFocused(true);
-                                    }}
-                                    style={{ 
-                                      borderLeft: `3px solid ${isActive ? p.dotColor : '#d4d4d4'}`,
-                                      borderRight: `3px solid ${isActive ? p.dotColor : '#d4d4d4'}`
-                                    }}
-                                    className={`px-3 py-2 rounded-[4px] font-bold text-[12px] flex items-center gap-2 transition-all cursor-pointer border-t border-b whitespace-nowrap shrink-0 ${
-                                      isActive
-                                        ? `${p.activeBg} ${p.activeBorder} ${p.activeText} shadow-md z-50`
-                                        : `${p.inactiveBg} ${p.inactiveBorder} ${p.inactiveText} opacity-70 z-10 hover:opacity-100 shadow-sm`
-                                    }`}
-                                  >
-                                    {tab.name}
-                                    <span className="text-[9px] opacity-50 font-black">{lv}대</span>
-                                  </button>
-                                );
+                                  const activeColor = isActive ? p.dotColor : '#a3a3a3';
+                                  const lightBg = `${activeColor}20`; // 투명도 12%의 연한 배경색
+
+                                  return (
+                                    <button
+                                      key={tab.id}
+                                      ref={el => tabRefs.current[tab.id] = el}
+                                      onClick={() => {
+                                        setActiveDeceasedTab(tab.id);
+                                        setIsFolderFocused(true);
+                                      }}
+                                      className={`p-0 rounded-[4px] font-bold text-[12px] flex items-stretch transition-all cursor-pointer border whitespace-nowrap shrink-0 overflow-hidden ${
+                                        isActive
+                                          ? `${p.activeBg} border-[#d4d4d4] dark:border-neutral-600 ${p.activeText} shadow-md z-50`
+                                          : `${p.inactiveBg} border-[#e2e2e0] dark:border-neutral-700 ${p.inactiveText} opacity-70 z-10 hover:opacity-100 shadow-sm`
+                                      }`}
+                                    >
+                                      <span className="px-3 py-2 flex-1 text-left">{tab.name}</span>
+                                      <span 
+                                        className="px-2.5 py-2 flex items-center justify-center border-l border-black/5 dark:border-black/20 text-[10px] font-black"
+                                        style={{ backgroundColor: lightBg, color: activeColor }}
+                                      >
+                                        {lv}대
+                                      </span>
+                                    </button>
+                                  );
                               })}
                             </div>
                           ))}
@@ -1105,6 +1115,10 @@ function App() {
                                       rootIsHoju={tree.isHoju !== false}
                                       showSubHeirs={false}
                                       isRootChildren={activeDeceasedTab === 'root'}
+                                      onTabClick={(id) => {
+                                        setActiveDeceasedTab(id);
+                                        setIsFolderFocused(true);
+                                      }}
                                     />
                                   ))}
                                   {(() => {
@@ -1112,7 +1126,6 @@ function App() {
                                     
                                     let potentialHeirsStr = '';
                                     let potentialHeirsLabel = '';
-                                    const activeTabObj = activeDeceasedTab !== 'root' ? tabMap.get(activeDeceasedTab) : null;
                                     
                                     if (activeTabObj && activeTabObj.parentNode) {
                                       const parentHeirs = activeTabObj.parentNode.heirs || [];
@@ -1122,14 +1135,14 @@ function App() {
                                         const children = parentHeirs.filter(s => s.relation === 'son' || s.relation === 'daughter');
                                         const names = children.map(c => c.name || '(이름없음)');
                                         if (names.length > 0) {
-                                          potentialHeirsLabel = '피대습자의 자녀 목록';
+                                          potentialHeirsLabel = '피대습자의 자녀';
                                           potentialHeirsStr = names.join(', ');
                                         }
                                       } else if (relation === 'son' || relation === 'daughter') {
                                         const siblings = parentHeirs.filter(s => s.id !== currentNode.id && (s.relation === 'son' || s.relation === 'daughter'));
                                         const names = siblings.map(c => c.name || '(이름없음)');
                                         if (names.length > 0) {
-                                          potentialHeirsLabel = '형제자매 목록';
+                                          potentialHeirsLabel = '형제자매';
                                           potentialHeirsStr = names.join(', ');
                                         }
                                       }
@@ -1146,7 +1159,7 @@ function App() {
                                               상속인을 입력하지 않으면 3순위(형제자매)를 상속인으로 간주하여 상속지분을 계산합니다.
                                             </p>
                                             {potentialHeirsStr && (
-                                              <p className="text-[12px] font-bold bg-[#fffbeb] dark:bg-amber-900/10 px-4 py-2 rounded-full text-[#b45309] dark:text-amber-500 mt-2 shadow-sm border border-[#fde68a] dark:border-amber-800/30">
+                                              <p className="text-[13px] font-bold text-[#b45309] dark:text-amber-500 mt-1">
                                                 [{potentialHeirsLabel}] {potentialHeirsStr}
                                               </p>
                                             )}
