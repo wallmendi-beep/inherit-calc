@@ -111,30 +111,36 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
             )}
             
             {showHoju && (
-              <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded border transition-colors select-none ${
-                node.isHoju 
-                  ? 'bg-[#bfdbfe] dark:bg-blue-900/40 border-[#93c5fd] dark:border-blue-800/50 text-[#1d4ed8] dark:text-blue-300 cursor-pointer' 
-                  : hasOtherHoju 
-                    ? 'bg-[#f1f1ef] dark:bg-slate-700/50 border-[#e9e9e7] dark:border-slate-600 text-[#a3a3a3] dark:text-slate-500 cursor-not-allowed opacity-70' 
-                    : 'bg-white dark:bg-slate-800 border-[#cccccc] dark:border-slate-600 hover:bg-[#f1f1ef] dark:hover:bg-slate-700 text-[#787774] dark:text-slate-400 cursor-pointer'
-              }`}>
-                <input 
-                  type="checkbox" 
-                  checked={node.isHoju || false} 
-                  disabled={hasOtherHoju && !node.isHoju}
-                  onKeyDown={onKeyDown} 
-                  onChange={e => handleUpdate(node.id, 'isHoju', e.target.checked)} 
-                  className={`w-3.5 h-3.5 accent-[#0284c7] ${hasOtherHoju && !node.isHoju ? 'cursor-not-allowed grayscale' : 'cursor-pointer'}`} 
-                />
-                <span className="text-[13px] font-bold">호주</span>
-              </label>
+              <button
+                type="button"
+                onClick={() => !hasOtherHoju || node.isHoju ? handleUpdate(node.id, 'isHoju', !node.isHoju) : null}
+                onKeyDown={onKeyDown}
+                disabled={hasOtherHoju && !node.isHoju}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-bold transition-all select-none ${
+                  node.isHoju 
+                    ? 'bg-[#2383e2] text-white shadow-sm hover:bg-[#0073ea]' 
+                    : hasOtherHoju 
+                      ? 'bg-[#f1f1ef] dark:bg-slate-700/50 text-[#a3a3a3] dark:text-slate-500 cursor-not-allowed border border-dashed border-[#d4d4d4] dark:border-slate-600' 
+                      : 'bg-white dark:bg-slate-800 text-[#787774] dark:text-slate-400 border border-dashed border-[#cccccc] dark:border-slate-600 hover:border-[#2383e2] hover:text-[#2383e2] dark:hover:border-blue-400 dark:hover:text-blue-400 cursor-pointer'
+                }`}
+              >
+                {node.isHoju ? '✦ 호주' : '호주'}
+              </button>
             )}
             
             {showMarriedDaughter && (
-              <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded border transition-colors cursor-pointer select-none ${node.isSameRegister !== false ? 'bg-white dark:bg-slate-800 border-[#cccccc] dark:border-slate-600 text-[#504f4c] dark:text-slate-300' : 'bg-[#fff7ed] dark:bg-orange-900/20 border-[#fed7aa] dark:border-orange-800/40 text-[#c2410c] dark:text-orange-400'}`}>
-                <input type="checkbox" checked={node.isSameRegister !== false} onKeyDown={onKeyDown} onChange={e => handleUpdate(node.id, 'isSameRegister', e.target.checked)} className="w-3.5 h-3.5 cursor-pointer accent-[#504f4c]" />
-                <span className="text-[13px] font-bold">{node.isSameRegister !== false ? '동일가적' : '출가녀'}</span>
-              </label>
+              <button
+                type="button"
+                onClick={() => handleUpdate(node.id, 'isSameRegister', node.isSameRegister === false ? true : false)}
+                onKeyDown={onKeyDown}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-bold transition-all select-none cursor-pointer ${
+                  node.isSameRegister !== false
+                    ? 'bg-white dark:bg-slate-800 text-[#787774] dark:text-slate-400 border border-dashed border-[#cccccc] dark:border-slate-600 hover:border-[#c2410c] hover:text-[#c2410c] dark:hover:border-orange-400 dark:hover:text-orange-400'
+                    : 'bg-[#c2410c] text-white shadow-sm hover:bg-[#a3370b]'
+                }`}
+              >
+                {node.isSameRegister !== false ? '동일가적' : '✦ 출가(제적)'}
+              </button>
             )}
 
             {showMarriedDaughter && node.isSameRegister === false && (

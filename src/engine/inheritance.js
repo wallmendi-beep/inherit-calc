@@ -165,16 +165,28 @@ export const calculateInheritance = (tree, propertyValue) => {
            h.r = 1.0;
          } else if (law === '1979') {
            if (h.relation === 'daughter') {
-             if (h.isSameRegister !== false) { h.r = 1.0; }
+             // 제적일(marriageDate)이 있는 경우 피상속인 사망일과 비교하여 자동 판정
+             let isMarried = h.isSameRegister === false;
+             if (h.marriageDate && distributionDate) {
+               isMarried = !isBefore(distributionDate, h.marriageDate);
+             }
+
+             if (!isMarried) { h.r = 1.0; }
              else { h.r = 0.25; modifier = '출가녀 감산 (아들의 1/4)'; }
            } else if (h.relation === 'son') {
              if (h.isHoju && (!isSubstitution || node.isHoju)) { h.r = 1.5; modifier = isSubstitution ? '대습 호주가산 (선례 2-285호)' : '호주상속 5할 가산'; }
              else { h.r = 1.0; }
            } else h.r = 1.0;
          } else { // 1960년 구법
-           if (h.relation === 'daughter') {
-             if (h.isSameRegister !== false) { h.r = 0.5; modifier = '여자 감산 (남자의 1/2)'; }
-             else { h.r = 0.25; modifier = '출가녀 감산 (남자의 1/4)'; }
+            if (h.relation === 'daughter') {
+              // 제적일(marriageDate)이 있는 경우 피상속인 사망일과 비교하여 자동 판정
+              let isMarried = h.isSameRegister === false;
+              if (h.marriageDate && distributionDate) {
+                isMarried = !isBefore(distributionDate, h.marriageDate);
+              }
+
+              if (!isMarried) { h.r = 0.5; modifier = '여자 감산 (남자의 1/2)'; }
+              else { h.r = 0.25; modifier = '출가녀 감산 (남자의 1/4)'; }
            } else if (h.relation === 'son') {
              if (h.isHoju && (!isSubstitution || node.isHoju)) { h.r = 1.5; modifier = isSubstitution ? '대습 호주가산 (선례 2-285호)' : '호주상속 5할 가산'; }
              else { h.r = 1.0; }
