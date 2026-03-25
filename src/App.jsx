@@ -20,11 +20,11 @@ const MiniTreeView = ({ node, level = 0, onSelectNode, visitedHeirs = new Set(),
   
   // 🎨 상태별 스타일 정의 (사용자 커스텀)
   const getStatusStyle = (isDead, hasSubHeirs) => {
-    let colorClass = 'text-[#2563eb] dark:text-blue-400 font-bold'; // 기본 상속인 (파란색)
-    if (isDead) colorClass = 'text-[#37352f] dark:text-neutral-100 font-black'; // 사망자 (검정/진한회색)
+    let colorClass = 'text-[#2563eb] dark:text-blue-400 font-medium'; // 기본 상속인 (파란색, 미디엄 두께)
+    if (isDead) colorClass = 'text-[#37352f] dark:text-neutral-100 font-bold'; // 사망자 (검정, 볼드 두께)
     
     let underlineClass = '';
-    if (hasSubHeirs) underlineClass = 'underline decoration-[#ef4444] dark:decoration-red-500 decoration-[5px] underline-offset-4'; // 하위 상속인 존재 시 빨간색 언더라인 (두께 강화)
+    if (hasSubHeirs) underlineClass = 'underline decoration-[#ef4444] dark:decoration-red-500 decoration-2 underline-offset-4'; // 하위 존재 시 빨간색 언더라인 (2px로 조정)
     
     return `${colorClass} ${underlineClass}`;
   };
@@ -674,7 +674,7 @@ function App() {
     <div className="w-full min-h-screen relative flex flex-col items-center pb-24 transition-colors duration-200 bg-[#f7f7f5] dark:bg-neutral-900">
       
       <div id="print-footer" className="hidden print:block fixed bottom-0 right-0 font-['Dancing_Script'] text-neutral-300 text-sm">
-        Designed by J.H. Lee (v1.3.1)
+        Designed by J.H. Lee
       </div>
 
       {/* 💡 사이드 패널 - 탭에 상관없이 항상 고정 표시 */}
@@ -804,7 +804,7 @@ function App() {
                 <IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-neutral-400" />
                 상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400">v1.3.1</span>
               </div>
-              <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px]">Designed by J.H. Lee · <span className="opacity-60">v1.1</span></span>
+              <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px] ml-8">Designed by J.H. Lee</span>
             </div>
           </div>
           

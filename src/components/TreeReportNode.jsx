@@ -11,16 +11,20 @@ const TreeReportNode = ({ node, level, treeToggleSignal }) => {
     else if (treeToggleSignal < 0) setIsExpanded(level === 0);
   }, [treeToggleSignal, level]);
 
-    // 🎨 항렬별/상태별 색상 정의
-    const getLevelColor = (lvl, isDead) => {
-      if (isDead) return 'text-[#ef4444] dark:text-red-500 font-black'; // 사망자는 무조건 빨간색
-      if (lvl === 0) return 'text-[#0ea5e9] dark:text-sky-400 font-black'; // 피상속인
-      if (lvl === 1) return 'text-[#22c55e] dark:text-green-400 font-bold'; // 1대
-      if (lvl === 2) return 'text-[#f97316] dark:text-orange-400 font-bold'; // 2대
-      return 'text-[#a855f7] dark:text-purple-400 font-bold'; // 3대 이상
+    // 🎨 상태별 색상 정의 (사이드바와 통일)
+    const getStatusStyle = (lvl, isDead, hasHeirs, isExpanded) => {
+      let colorClass = 'text-[#2563eb] dark:text-blue-400 font-medium'; // 기본 상속인 (파란색, 미디엄 두께)
+      if (isDead) colorClass = 'text-[#37352f] dark:text-neutral-100 font-bold'; // 사망자 (검정, 볼드 두께)
+      
+      let underlineClass = '';
+      if (hasHeirs && !isExpanded) {
+        underlineClass = 'underline decoration-[#ef4444] dark:decoration-red-500 decoration-2 underline-offset-4'; 
+      }
+      
+      return `${colorClass} ${underlineClass}`;
     };
 
-    const nameColorClass = getLevelColor(level, node.isDeceased);
+    const itemStyleClass = getStatusStyle(level, node.isDeceased, hasHeirs, isExpanded);
 
   return (
     <div className={`relative ${level > 0 ? 'ml-6 pl-4 border-l-2 border-[#d4d4d4] dark:border-neutral-700' : ''} py-1 transition-colors`}>
@@ -36,7 +40,7 @@ const TreeReportNode = ({ node, level, treeToggleSignal }) => {
           )}
         </div>
         
-        <span className={`tracking-wide transition-colors ${level === 0 ? 'text-[18px]' : 'text-[16px]'} ${nameColorClass} ${!isExpanded && hasHeirs ? 'underline decoration-2 underline-offset-4' : ''}`}>
+        <span className={`tracking-wide transition-colors ${level === 0 ? 'text-[18px]' : 'text-[16px]'} ${itemStyleClass}`}>
           {node.name}
         </span>
         
@@ -51,7 +55,7 @@ const TreeReportNode = ({ node, level, treeToggleSignal }) => {
         </div>
 
         {hasHeirs && !isExpanded && (
-           <span className="ml-2 text-[12px] text-[#2383e2] dark:text-blue-400 font-bold bg-[#e8f3ff] dark:bg-blue-900/20 border border-[#bfe0ff] dark:border-blue-800/50 px-2 py-0.5 rounded-full animate-in fade-in zoom-in duration-200 shadow-sm print:hidden">
+           <span className="ml-2 text-[12px] text-[#854d0e] dark:text-yellow-400 font-bold bg-[#fef9c3] dark:bg-yellow-900/20 border border-[#fef08a] dark:border-yellow-800/50 px-2 py-0.5 rounded-full animate-in fade-in zoom-in duration-200 shadow-sm print:hidden">
              상속인 {node.heirs.length}명 보기
            </span>
         )}
