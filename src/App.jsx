@@ -993,8 +993,8 @@ function App() {
                     
                     return (
                       <div className="flex no-print relative z-10 gap-0">
-                        {/* 📂 Post-it 탭 그룹 (다단 지원) - 바짝 붙여서 배치 */}
-                        <div className="absolute top-6 left-full ml-1 flex gap-1 pointer-events-auto z-20">
+                        {/* 📂 Post-it 탭 그룹 (다단 지원) - 바짝 붙여서 배치, 상단으로 끌어올림 */}
+                        <div className="absolute top-[-75px] left-full ml-1 flex gap-1 pointer-events-auto z-20">
                           <div className="flex flex-col gap-1">
                             {col1.map(renderTab)}
                           </div>
