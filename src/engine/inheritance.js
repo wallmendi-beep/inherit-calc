@@ -34,9 +34,9 @@ export const calculateInheritance = (tree, propertyValue) => {
       warnings.push(`${node.name || '이름 미입력'} 님의 사망일자가 입력되지 않았습니다.`);
     }
 
-    if (!node.isDeceased || node.id === 'root') {
+    if (!node.isDeceased && !(node.isExcluded && node.exclusionOption === 'lost') || node.id === 'root') {
       if (node.id !== 'root') results.push({ name: node.name, n: inN, d: inD, relation: node.relation });
-      if (!node.isDeceased) return;
+      if (!node.isDeceased && !(node.isExcluded && node.exclusionOption === 'lost')) return;
     }
 
     let isSubstitution = false;
@@ -47,19 +47,28 @@ export const calculateInheritance = (tree, propertyValue) => {
     } else if (node.id !== 'root' && node.isDeceased && node.deathDate) {
       isSubstitution = true;
     }
+    
+    // 상속권 상실의 경우: (고의 상속결격과 동일하게) 선사망과 같이 취급하여 대습상속을 발동시킴
+    if (node.id !== 'root' && node.isExcluded && node.exclusionOption === 'lost') {
+      isSubstitution = true;
+      distributionDate = inheritedDate; // 상속권 상실은 피상속인의 사망 시점(상속개시일)에 함께 소급효가 발생하므로, 대습상속 개시일은 상속개시일이 됨
+    }
 
     // ★ FIX 1: ReferenceError 방지를 위해 getLawEra 위치를 위로 끌어올림
     const law = getLawEra(distributionDate); 
 
-    let targetHeirs = (node.heirs || []).filter(h => h.isRenounced !== true); // 상속포기자 제외
+    // 상속포기(renounce) 판별 헬퍼
+    const isRenounced = (h) => h.isExcluded && (!h.exclusionOption || h.exclusionOption === 'renounce');
+
+    let targetHeirs = (node.heirs || []).filter(h => !isRenounced(h)); // 상속포기자 제외
 
     // [2023년 전원합의체 판례 및 실무 반영] 
     // 본래 상속인이어야 할 자녀가 모두 포기한 경우의 처리
     const originalChildren = (node.heirs || []).filter(h => h.relation === 'son' || h.relation === 'daughter');
-    const renouncedChildrenCount = originalChildren.filter(h => h.isRenounced === true).length;
+    const renouncedChildrenCount = originalChildren.filter(isRenounced).length;
     const isAllChildrenRenounced = originalChildren.length > 0 && renouncedChildrenCount === originalChildren.length;
     
-    const spouseInHeirs = (node.heirs || []).find(h => (h.relation === 'wife' || h.relation === 'husband' || h.relation === 'spouse') && h.isRenounced !== true);
+    const spouseInHeirs = (node.heirs || []).find(h => (h.relation === 'wife' || h.relation === 'husband' || h.relation === 'spouse') && !isRenounced(h));
 
     if (isAllChildrenRenounced) {
       if (spouseInHeirs && law === '1991') {
@@ -71,7 +80,7 @@ export const calculateInheritance = (tree, propertyValue) => {
         originalChildren.forEach(child => {
            if (child.heirs) {
               // 손자녀 중에서도 상속포기자는 제외하고 수집
-              grandchildren = grandchildren.concat(child.heirs.filter(h => h.isRenounced !== true));
+              grandchildren = grandchildren.concat(child.heirs.filter(h => !isRenounced(h)));
            }
         });
         if (grandchildren.length > 0) {
@@ -81,10 +90,10 @@ export const calculateInheritance = (tree, propertyValue) => {
     }
 
     // 불러오기 복사본처럼 heirs가 비어있는 사망 노드라면, 동명의 원본 노드에서 heirs를 자동 참조
-    if (targetHeirs.length === 0 && node.isDeceased && node.id !== 'root') {
+    if (targetHeirs.length === 0 && (node.isDeceased || (node.isExcluded && node.exclusionOption === 'lost')) && node.id !== 'root') {
       const borrowed = findHeirsByName(tree, node.name, node.id);
       if (borrowed && borrowed.length > 0) {
-        targetHeirs = borrowed.filter(h => h.isRenounced !== true);
+        targetHeirs = borrowed.filter(h => !isRenounced(h));
       }
     }
 
@@ -98,28 +107,24 @@ export const calculateInheritance = (tree, propertyValue) => {
          const parents = tree.heirs.filter(th => 
            (th.relation === 'wife' || th.relation === 'husband' || th.relation === 'spouse') && 
            (!th.isDeceased || !isBefore(th.deathDate, distributionDate)) &&
-           th.isRenounced !== true
+           !isRenounced(th)
          );
          
          const virtualHeirs = [];
          
          if (parents.length > 0) {
             parents.forEach((p) => {
-              // [1991년 개정 반영] 계모자 관계 상속권 폐지
-              // 1991년 이후 상속이고, 친모가 아니면(isBiological === false) 상속인에서 제외
-              if (law === '1991' && p.isBiological === false) {
-                return;
-              }
+              // 1991년 이후 계모자 상속은 사용자가 부모를 별도로 입력하므로 코어 로직에서는 패스
               virtualHeirs.push({ ...p, id: p.id, relation: 'parent' });
             });
          }
          
          if (virtualHeirs.length === 0) {
-            // 부모가 없거나 (1991년 이후) 계모뿐인 경우 형제자매로 이동
+            // 부모가 없거나 모두 상속결격/사망/포기 시 형제자매로 이동
             const siblings = tree.heirs.filter(th => 
               th.id !== node.id && 
               (th.relation === 'son' || th.relation === 'daughter') &&
-              th.isRenounced !== true
+              !isRenounced(th)
             );
             if (siblings.length > 0) {
               siblings.forEach((s) => {
@@ -136,7 +141,7 @@ export const calculateInheritance = (tree, propertyValue) => {
           };
           findParent(tree);
           if (parentNode && parentNode.heirs) {
-             const children = parentNode.heirs.filter(th => th.id !== node.id && (th.relation === 'son' || th.relation === 'daughter') && th.isRenounced !== true);
+             const children = parentNode.heirs.filter(th => th.id !== node.id && (th.relation === 'son' || th.relation === 'daughter') && !isRenounced(th));
              const virtualHeirs = [];
              children.forEach(c => { virtualHeirs.push({ ...c, id: c.id, relation: c.relation }); });
              if (virtualHeirs.length > 0) targetHeirs = virtualHeirs;
