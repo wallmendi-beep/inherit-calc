@@ -1200,7 +1200,7 @@ function App() {
                                             <p className="text-[13px] font-medium text-[#b45309] dark:text-amber-500/80">
                                               {potentialHeirsLabel === '피대습자의 자녀' 
                                                 ? '별도의 상속인을 입력하지 않으면 피대습자의 자녀를 상속인으로 간주하여 상속지분을 계산합니다.' 
-                                                : '상속인을 입력하지 않으면 3순위(형제자매)를 상속인으로 간주하여 상속지분을 계산합니다.'}
+                                                : '상속인을 입력하지 않으면 2순위(직계존속)를 우선하며, 계모나 부재 시 3순위(형제자매)가 상속하는 것으로 계산합니다.'}
                                             </p>
                                             {potentialHeirsStr && (
                                               <p className="text-[13px] font-bold text-[#b45309] dark:text-amber-500 mt-1">

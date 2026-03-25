@@ -48,13 +48,43 @@ export const calculateInheritance = (tree, propertyValue) => {
       isSubstitution = true;
     }
 
-    let targetHeirs = node.heirs || [];
+    // ★ FIX 1: ReferenceError 방지를 위해 getLawEra 위치를 위로 끌어올림
+    const law = getLawEra(distributionDate); 
+
+    let targetHeirs = (node.heirs || []).filter(h => h.isRenounced !== true); // 상속포기자 제외
+
+    // [2023년 전원합의체 판례 및 실무 반영] 
+    // 본래 상속인이어야 할 자녀가 모두 포기한 경우의 처리
+    const originalChildren = (node.heirs || []).filter(h => h.relation === 'son' || h.relation === 'daughter');
+    const renouncedChildrenCount = originalChildren.filter(h => h.isRenounced === true).length;
+    const isAllChildrenRenounced = originalChildren.length > 0 && renouncedChildrenCount === originalChildren.length;
+    
+    const spouseInHeirs = (node.heirs || []).find(h => (h.relation === 'wife' || h.relation === 'husband' || h.relation === 'spouse') && h.isRenounced !== true);
+
+    if (isAllChildrenRenounced) {
+      if (spouseInHeirs && law === '1991') {
+        // 배우자가 있는 경우 -> 2023 전원합의체(2020그42)에 따라 배우자 단독 상속 처리 (하위 탐색 중단)
+        targetHeirs = [spouseInHeirs];
+      } else if (!spouseInHeirs) {
+        // ★ FIX 2: 배우자가 없는 경우 -> 민법 제1000조 1항 1호에 따라 그 다음 직계비속(손자녀)이 본위상속
+        let grandchildren = [];
+        originalChildren.forEach(child => {
+           if (child.heirs) {
+              // 손자녀 중에서도 상속포기자는 제외하고 수집
+              grandchildren = grandchildren.concat(child.heirs.filter(h => h.isRenounced !== true));
+           }
+        });
+        if (grandchildren.length > 0) {
+           targetHeirs = grandchildren;
+        }
+      }
+    }
 
     // 불러오기 복사본처럼 heirs가 비어있는 사망 노드라면, 동명의 원본 노드에서 heirs를 자동 참조
     if (targetHeirs.length === 0 && node.isDeceased && node.id !== 'root') {
       const borrowed = findHeirsByName(tree, node.name, node.id);
       if (borrowed && borrowed.length > 0) {
-        targetHeirs = borrowed;
+        targetHeirs = borrowed.filter(h => h.isRenounced !== true);
       }
     }
 
@@ -64,17 +94,35 @@ export const calculateInheritance = (tree, propertyValue) => {
       const isDirectChildOfRoot = tree.heirs.some(th => th.id === node.id);
 
       if (isDirectChildOfRoot && (node.relation === 'son' || node.relation === 'daughter')) {
-         const parents = tree.heirs.filter(th => (th.relation === 'wife' || th.relation === 'husband' || th.relation === 'spouse') && (!th.isDeceased || !isBefore(th.deathDate, distributionDate)));
+         // 직계존속(부모) 찾기
+         const parents = tree.heirs.filter(th => 
+           (th.relation === 'wife' || th.relation === 'husband' || th.relation === 'spouse') && 
+           (!th.isDeceased || !isBefore(th.deathDate, distributionDate)) &&
+           th.isRenounced !== true
+         );
+         
          const virtualHeirs = [];
          
          if (parents.length > 0) {
-            parents.forEach((p, idx) => {
+            parents.forEach((p) => {
+              // [1991년 개정 반영] 계모자 관계 상속권 폐지
+              // 1991년 이후 상속이고, 친모가 아니면(isBiological === false) 상속인에서 제외
+              if (law === '1991' && p.isBiological === false) {
+                return;
+              }
               virtualHeirs.push({ ...p, id: p.id, relation: 'parent' });
             });
-         } else {
-            const siblings = tree.heirs.filter(th => th.id !== node.id && (th.relation === 'son' || th.relation === 'daughter'));
+         }
+         
+         if (virtualHeirs.length === 0) {
+            // 부모가 없거나 (1991년 이후) 계모뿐인 경우 형제자매로 이동
+            const siblings = tree.heirs.filter(th => 
+              th.id !== node.id && 
+              (th.relation === 'son' || th.relation === 'daughter') &&
+              th.isRenounced !== true
+            );
             if (siblings.length > 0) {
-              siblings.forEach((s, idx) => {
+              siblings.forEach((s) => {
                 virtualHeirs.push({ ...s, id: s.id, relation: 'sibling' });
               });
             } else { return; }
@@ -88,7 +136,7 @@ export const calculateInheritance = (tree, propertyValue) => {
           };
           findParent(tree);
           if (parentNode && parentNode.heirs) {
-             const children = parentNode.heirs.filter(th => th.id !== node.id && (th.relation === 'son' || th.relation === 'daughter'));
+             const children = parentNode.heirs.filter(th => th.id !== node.id && (th.relation === 'son' || th.relation === 'daughter') && th.isRenounced !== true);
              const virtualHeirs = [];
              children.forEach(c => { virtualHeirs.push({ ...c, id: c.id, relation: c.relation }); });
              if (virtualHeirs.length > 0) targetHeirs = virtualHeirs;
@@ -97,7 +145,6 @@ export const calculateInheritance = (tree, propertyValue) => {
       } else { return; }
     }
     
-    const law = getLawEra(distributionDate);
     appliedLaws.add(law);
 
     let total = 0;
@@ -114,7 +161,8 @@ export const calculateInheritance = (tree, propertyValue) => {
     let activeRank = 0;
     if (hasRank1) activeRank = 1;
     else if (hasRank2) activeRank = 2;
-    else if (hasSpouse) activeRank = -1; // 배우자 단독 (1,2순위 없고 형제자매만 있을 때 형제 배제가능)
+    // 2023 판례나 일반 실무에서 1,2순위가 전혀 없는 경우 배우자 단독
+    else if (hasSpouse) activeRank = -1; 
     else if (hasRank3) activeRank = 3;
     
     targetHeirs.forEach(h => {
@@ -193,8 +241,11 @@ export const calculateInheritance = (tree, propertyValue) => {
            } else h.r = 1.0;
          }
       }
-      h.modifierReason = modifier; 
-      total += h.r;
+      
+      if (h.r !== undefined) {
+         h.modifierReason = modifier; 
+         total += h.r;
+      }
     });
 
     if (total > 0) {
@@ -202,7 +253,7 @@ export const calculateInheritance = (tree, propertyValue) => {
       const childrenToTraverse = [];
 
       targetHeirs.forEach(h => {
-        if (h.r === 0) { 
+        if (h.r === 0 || h.r === undefined) { 
           step.dists.push({ h, n: 0, d: 1, sn: 0, sd: 1, ex: h.ex, mod: h.modifierReason }); 
         } else {
           const [sn, sd] = math.simplify(h.r * 100, total * 100);
@@ -221,8 +272,6 @@ export const calculateInheritance = (tree, propertyValue) => {
   traverse(tree, initN, initD, tree.deathDate, []);
   
   // 📊 후처리: 동일 인물의 계산 step 병합 (법원 계산기 방식)
-  // 예: 부영주가 부대은(2/78)과 강정우(1/130)에서 각각 지분을 받으면
-  //     → 합산(1/30) 후 단일 블록으로 한영희/부제경에게 분배
   const mergedSteps = [];
   const stepByName = {};
   
@@ -234,12 +283,10 @@ export const calculateInheritance = (tree, propertyValue) => {
     }
     
     if (!stepByName[name]) {
-      // 첫 등장: 합산 출처 배열 초기화
       step.mergeSources = [{ from: step.parentDecName || '피상속인', n: step.inN, d: step.inD }];
       stepByName[name] = step;
       mergedSteps.push(step);
     } else {
-      // 동일 인물의 기존 step에 지분을 합산
       const existing = stepByName[name];
       existing.mergeSources.push({ from: step.parentDecName || '피상속인', n: step.inN, d: step.inD });
       
@@ -247,11 +294,10 @@ export const calculateInheritance = (tree, propertyValue) => {
       existing.inN = newN;
       existing.inD = newD;
       
-      // 분배(dists)를 합산된 지분 기준으로 재계산
       const total = existing.dists.reduce((sum, d) => sum + (d.h?.r || 0), 0);
       if (total > 0) {
         existing.dists = existing.dists.map(d => {
-          if (d.h?.r === 0) return { ...d, n: 0, d: 1, sn: 0, sd: 1 };
+          if (d.h?.r === 0 || d.h?.r === undefined) return { ...d, n: 0, d: 1, sn: 0, sd: 1 };
           const [sn, sd] = math.simplify(d.h.r * 100, total * 100);
           const [nn, nd] = math.multiply(newN, newD, sn, sd);
           return { ...d, n: nn, d: nd, sn, sd };
@@ -282,17 +328,15 @@ export const calculateInheritance = (tree, propertyValue) => {
   let subGroupOrder = 0;
   tree.heirs.forEach((h, idx) => { if (!h.isDeceased) categoryMap[h.name] = { type: 'direct', order: idx }; });
 
-  // 재귀적 가계 줄기 분류: 1대 상속인(Branch Root)을 기준으로 모든 후손을 하나의 그룹으로 결합
+  // 재귀적 가계 줄기 분류
   const buildCategory = (node, branchRoot, order) => {
     if (!node.heirs) return;
     node.heirs.forEach(h => {
-      // 생존한 최종 상속인은 해당 가계 줄기(branchRoot)에 귀속
       if (!h.isDeceased && h.name && h.name.trim() !== '') {
         if (!categoryMap[h.name]) {
           categoryMap[h.name] = { type: 'sub', ancestor: branchRoot, order: order };
         }
       }
-      // 사망한 경우에도 가계 줄기(branchRoot)는 그대로 유지하며 하위 탐색
       if (h.isDeceased) {
         buildCategory(h, branchRoot, order);
       }
@@ -300,14 +344,11 @@ export const calculateInheritance = (tree, propertyValue) => {
   };
 
   tree.heirs.forEach((h, idx) => {
-    // 1대 상속인 중 '혈육'(자녀, 형제 등)인 경우만 가계 줄기의 대장(Branch Root)으로 인정
-    // 배우자(wife, husband, spouse)는 계보의 기둥이 아닌 전이자로 취급
     const isBloodPillar = !(h.relation === 'wife' || h.relation === 'husband' || h.relation === 'spouse');
     
     if (h.isDeceased && isBloodPillar) {
       buildCategory(h, h, idx);
     } else if (!h.isDeceased) {
-      // 생존한 경우에는 혈육/배우자 관계없이 일단 direct(직계)로 분류
       categoryMap[h.name] = { type: 'direct', order: idx };
     }
   });
