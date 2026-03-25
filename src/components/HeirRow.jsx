@@ -116,12 +116,12 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
                 onClick={() => !hasOtherHoju || node.isHoju ? handleUpdate(node.id, 'isHoju', !node.isHoju) : null}
                 onKeyDown={onKeyDown}
                 disabled={hasOtherHoju && !node.isHoju}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-bold transition-all select-none ${
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-bold transition-all select-none border ${
                   node.isHoju 
-                    ? 'bg-[#2383e2] text-white shadow-sm hover:bg-[#0073ea]' 
+                    ? 'bg-[#eff6ff] dark:bg-blue-900/30 text-[#1d4ed8] dark:text-blue-300 border-[#bfdbfe] dark:border-blue-800/50 shadow-sm' 
                     : hasOtherHoju 
-                      ? 'bg-[#f1f1ef] dark:bg-slate-700/50 text-[#a3a3a3] dark:text-slate-500 cursor-not-allowed border border-dashed border-[#d4d4d4] dark:border-slate-600' 
-                      : 'bg-white dark:bg-slate-800 text-[#787774] dark:text-slate-400 border border-dashed border-[#cccccc] dark:border-slate-600 hover:border-[#2383e2] hover:text-[#2383e2] dark:hover:border-blue-400 dark:hover:text-blue-400 cursor-pointer'
+                      ? 'bg-[#f1f1ef] dark:bg-slate-700/50 text-[#a3a3a3] dark:text-slate-500 cursor-not-allowed border-dashed border-[#d4d4d4] dark:border-slate-600' 
+                      : 'bg-white dark:bg-slate-800 text-[#787774] dark:text-slate-400 border-dashed border-[#cccccc] dark:border-slate-600 hover:border-[#2383e2] hover:text-[#2383e2] dark:hover:border-blue-400 dark:hover:text-blue-400 cursor-pointer'
                 }`}
               >
                 {node.isHoju ? '✦ 호주' : '호주'}
@@ -133,13 +133,13 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
                 type="button"
                 onClick={() => handleUpdate(node.id, 'isSameRegister', node.isSameRegister === false ? true : false)}
                 onKeyDown={onKeyDown}
-                className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-bold transition-all select-none cursor-pointer ${
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-bold transition-all select-none cursor-pointer border ${
                   node.isSameRegister !== false
-                    ? 'bg-white dark:bg-slate-800 text-[#787774] dark:text-slate-400 border border-dashed border-[#cccccc] dark:border-slate-600 hover:border-[#c2410c] hover:text-[#c2410c] dark:hover:border-orange-400 dark:hover:text-orange-400'
-                    : 'bg-[#c2410c] text-white shadow-sm hover:bg-[#a3370b]'
+                    ? 'bg-[#ecfdf5] dark:bg-emerald-900/20 text-[#047857] dark:text-emerald-400 border-[#a7f3d0] dark:border-emerald-800/40 hover:border-[#059669]'
+                    : 'bg-[#fff1f2] dark:bg-rose-900/20 text-[#be123e] dark:text-rose-400 border-[#fecdd3] dark:border-rose-800/40 shadow-sm hover:border-[#e11d48]'
                 }`}
               >
-                {node.isSameRegister !== false ? '동일가적' : '✦ 출가(제적)'}
+                {node.isSameRegister !== false ? '동일가적' : '출가(제적)'}
               </button>
             )}
 

@@ -18,17 +18,19 @@ const MiniTreeView = ({ node, level = 0, onSelectNode, visitedHeirs = new Set(),
   const [isExpanded, setIsExpanded] = React.useState(level === 0); // 루트는 기본 확장
   if (!node) return null;
   
-  // 🎨 항렬별/상태별 색상 정의
-  const getLevelColor = (lvl, isDead) => {
-    if (isDead) return 'text-[#ef4444] dark:text-red-500 font-black';
-    if (lvl === 0) return 'text-[#0ea5e9] dark:text-sky-400 font-black';
-    if (lvl === 1) return 'text-[#22c55e] dark:text-green-400 font-bold';
-    if (lvl === 2) return 'text-[#f97316] dark:text-orange-400 font-bold';
-    return 'text-[#a855f7] dark:text-purple-400 font-bold';
+  // 🎨 상태별 스타일 정의 (사용자 커스텀)
+  const getStatusStyle = (isDead, hasSubHeirs) => {
+    let colorClass = 'text-[#2563eb] dark:text-blue-400 font-bold'; // 기본 상속인 (파란색)
+    if (isDead) colorClass = 'text-[#37352f] dark:text-neutral-100 font-black'; // 사망자 (검정/진한회색)
+    
+    let underlineClass = '';
+    if (hasSubHeirs) underlineClass = 'underline decoration-[#ef4444] dark:decoration-red-500 decoration-[5px] underline-offset-4'; // 하위 상속인 존재 시 빨간색 언더라인 (두께 강화)
+    
+    return `${colorClass} ${underlineClass}`;
   };
 
-  const nameColorClass = getLevelColor(level, node.isDeceased);
   const hasHeirs = node.heirs && node.heirs.length > 0;
+  const itemStyleClass = getStatusStyle(node.isDeceased, hasHeirs);
 
   // 중복 노출 방지 로직 (간소화 유지)
   const isDuplicate = node.name && visitedHeirs.has(node.name) && level > 0;
@@ -43,7 +45,7 @@ const MiniTreeView = ({ node, level = 0, onSelectNode, visitedHeirs = new Set(),
             if (hasHeirs) setIsExpanded(!isExpanded);
             onSelectNode && onSelectNode(node.id);
           }}
-          className={`text-[13px] truncate transition-all flex-1 min-w-0 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 px-1 rounded ${nameColorClass} ${hasHeirs ? 'underline underline-offset-4 decoration-current decoration-1' : ''}`}
+          className={`text-[13px] truncate transition-all flex-1 min-w-0 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 px-1 rounded ${itemStyleClass}`}
         >
           {node.name || (level === 0 ? '피상속인' : '(이름 없음)')}
         </span>
@@ -672,7 +674,7 @@ function App() {
     <div className="w-full min-h-screen relative flex flex-col items-center pb-24 transition-colors duration-200 bg-[#f7f7f5] dark:bg-neutral-900">
       
       <div id="print-footer" className="hidden print:block fixed bottom-0 right-0 font-['Dancing_Script'] text-neutral-300 text-sm">
-        Designed by J.H. Lee (v1.3.0)
+        Designed by J.H. Lee (v1.3.1)
       </div>
 
       {/* 💡 사이드 패널 - 탭에 상관없이 항상 고정 표시 */}
@@ -800,7 +802,7 @@ function App() {
             <div className="flex items-baseline gap-2">
               <div className="flex items-center text-[#37352f] dark:text-neutral-100 font-bold text-[18px] tracking-tight">
                 <IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-neutral-400" />
-                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400">v1.2</span>
+                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400">v1.3.1</span>
               </div>
               <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px]">Designed by J.H. Lee · <span className="opacity-60">v1.1</span></span>
             </div>
