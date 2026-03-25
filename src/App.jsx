@@ -802,7 +802,7 @@ function App() {
             <div className="flex items-baseline gap-2">
               <div className="flex items-center text-[#37352f] dark:text-neutral-100 font-bold text-[18px] tracking-tight">
                 <IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-neutral-400" />
-                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400">v1.3.1</span>
+                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400">v1.4.0</span>
               </div>
               <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px] ml-8">Designed by J.H. Lee</span>
             </div>
@@ -953,66 +953,60 @@ function App() {
                 {/* 폴더-탭 구조: 사망한 인물별 탭 (Filing Cabinet) */}
                 <div className="transition-colors flex-1 flex flex-col">
                   {(() => {
-                    const levels = Array.from(new Set(deceasedTabs.map(t => t.level))).sort((a, b) => a - b);
-                    // 배경·텍스트는 모두 동일, 레벨 구분은 점(dot) 색상만 사용
-                    const levelDotColor = {
-                      1: '#2383e2', // 파랑
-                      2: '#0d9488', // 청록
-                      3: '#ea580c', // 주황
-                      4: '#7c3aed', // 보라
-                      5: '#e11d48', // 자주
+                    const getLevelStyle = (lv) => {
+                      switch(lv) {
+                        case 1: return { bg: 'bg-[#eff6ff]', border: 'border-[#bfdbfe]', text: 'text-[#1e40af]', darkBg: 'dark:bg-blue-900/30', darkBorder: 'dark:border-blue-800' };
+                        case 2: return { bg: 'bg-[#f5f3ff]', border: 'border-[#ddd6fe]', text: 'text-[#5b21b6]', darkBg: 'dark:bg-purple-900/30', darkBorder: 'dark:border-purple-800' };
+                        case 3: return { bg: 'bg-[#f0fdf4]', border: 'border-[#bbf7d0]', text: 'text-[#166534]', darkBg: 'dark:bg-green-900/30', darkBorder: 'dark:border-green-800' };
+                        case 4: return { bg: 'bg-[#fefce8]', border: 'border-[#fef08a]', text: 'text-[#854d0e]', darkBg: 'dark:bg-yellow-900/30', darkBorder: 'dark:border-yellow-800' };
+                        case 5: return { bg: 'bg-[#fff7ed]', border: 'border-[#fed7aa]', text: 'text-[#9a3412]', darkBg: 'dark:bg-orange-900/30', darkBorder: 'dark:border-orange-800' };
+                        default: return { bg: 'bg-[#f5f5f4]', border: 'border-[#e7e5e4]', text: 'text-[#44403c]', darkBg: 'dark:bg-neutral-800', darkBorder: 'dark:border-neutral-700' };
+                      }
                     };
-                    const levelPalette = Object.fromEntries(
-                      [1,2,3,4,5].map(lv => [lv, {
-                        activeBorder: 'border-[#d4d4d4] dark:border-neutral-600',
-                        activeText:   'text-[#37352f] dark:text-neutral-100',
-                        activeBg:     'bg-white dark:bg-neutral-800',
-                        inactiveBg:   'bg-[#f5f5f4] dark:bg-neutral-800/60',
-                        inactiveBorder:'border-[#e2e2e0] dark:border-neutral-700',
-                        inactiveText: 'text-[#787774] dark:text-neutral-500',
-                        dotColor:     levelDotColor[lv] || levelDotColor[5],
-                      }])
-                    );
+
+                    // 레이아웃 분리 로직: 15-20개 초과 시 3대부터는 옆으로
+                    const shouldSplit = deceasedTabs.length > 15 && deceasedTabs.some(t => t.level >= 3);
+                    const col1 = shouldSplit ? deceasedTabs.filter(t => t.level <= 2) : deceasedTabs;
+                    const col2 = shouldSplit ? deceasedTabs.filter(t => t.level >= 3) : [];
+
+                    const renderTab = (tab) => {
+                      const isActive = activeDeceasedTab === tab.id;
+                      const s = getLevelStyle(tab.level);
+                      return (
+                        <button
+                          key={tab.id}
+                          ref={el => tabRefs.current[tab.id] = el}
+                          onClick={() => {
+                            setActiveDeceasedTab(tab.id);
+                            setIsFolderFocused(true);
+                          }}
+                          className={`px-2 py-1.5 rounded-md font-bold text-[12px] transition-all cursor-pointer border whitespace-nowrap shadow-sm text-left ${
+                            isActive
+                              ? `z-50 ring-2 ring-offset-1 ring-blue-400 ${s.bg} ${s.darkBg} ${s.border} ${s.darkBorder} ${s.text} dark:text-neutral-100 scale-105 transform`
+                              : `z-10 opacity-70 hover:opacity-100 ${s.bg} ${s.darkBg} ${s.border} ${s.darkBorder} ${s.text} dark:text-neutral-100/70`
+                          }`}
+                        >
+                          {tab.name}
+                        </button>
+                      );
+                    };
                     
                     return (
                       <div className="flex no-print relative z-10 gap-0">
-                        {/* 📂 Post-it 탭 — 카드 오른쪽 테두리 바깥에 부착 */}
-                        <div className="absolute top-6 left-full ml-10 flex flex-col gap-1 pointer-events-auto z-20">
-                          {levels.map(lv => (
-                            <div key={lv} className="flex flex-col gap-1">
-                              {deceasedTabs.filter(t => t.level === lv).map((tab) => {
-                                const isActive = activeDeceasedTab === tab.id;
-                                const p = levelPalette[lv] || levelPalette[5];
-                                  const activeColor = isActive ? p.dotColor : '#a3a3a3';
-                                  const lightBg = `${activeColor}20`; // 투명도 12%의 연한 배경색
-
-                                  return (
-                                    <button
-                                      key={tab.id}
-                                      ref={el => tabRefs.current[tab.id] = el}
-                                      onClick={() => {
-                                        setActiveDeceasedTab(tab.id);
-                                        setIsFolderFocused(true);
-                                      }}
-                                      className={`p-0 rounded-[4px] font-bold text-[12px] flex items-stretch transition-all cursor-pointer border whitespace-nowrap shrink-0 overflow-hidden ${
-                                        isActive
-                                          ? `${p.activeBg} border-[#d4d4d4] dark:border-neutral-600 ${p.activeText} shadow-md z-50`
-                                          : `${p.inactiveBg} border-[#e2e2e0] dark:border-neutral-700 ${p.inactiveText} opacity-70 z-10 hover:opacity-100 shadow-sm`
-                                      }`}
-                                    >
-                                      <span className="px-3 py-2 flex-1 text-left">{tab.name}</span>
-                                      <span 
-                                        className="px-2.5 py-2 flex items-center justify-center border-l border-black/5 dark:border-black/20 text-[10px] font-black"
-                                        style={{ backgroundColor: lightBg, color: activeColor }}
-                                      >
-                                        {lv}대
-                                      </span>
-                                    </button>
-                                  );
-                              })}
+                        {/* 📂 Post-it 탭 그룹 (다단 지원) - 바짝 붙여서 배치 */}
+                        <div className="absolute top-6 left-full ml-1 flex gap-1 pointer-events-auto z-20">
+                          <div className="flex flex-col gap-1">
+                            {col1.map(renderTab)}
+                          </div>
+                          {col2.length > 0 && (
+                            <div className="flex flex-col gap-1 border-l border-[#e9e9e7]/50 dark:border-neutral-700/50 pl-1">
+                              {col2.map(renderTab)}
                             </div>
-                          ))}
+                          )}
                         </div>
+                      </div>
+                    );
+                  })()}
 
                         {/* 📄 폴더 콘텐츠 영역 */}
                         <div className={`relative transition-all duration-300 flex-1 ${
@@ -1215,11 +1209,8 @@ function App() {
                                 </div>
                               </SortableContext>
                             </DndContext>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()}
+                    </div>
+                  </div>
                 </div>
               </div>
             );
