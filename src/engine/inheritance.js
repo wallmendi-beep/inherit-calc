@@ -35,7 +35,7 @@ export const calculateInheritance = (tree, propertyValue) => {
     }
 
     if (!node.isDeceased && !(node.isExcluded && node.exclusionOption === 'lost') || node.id === 'root') {
-      if (node.id !== 'root') results.push({ name: node.name, n: inN, d: inD, relation: node.relation });
+      if (node.id !== 'root') results.push({ id: node.id, name: node.name, n: inN, d: inD, relation: node.relation });
       if (!node.isDeceased && !(node.isExcluded && node.exclusionOption === 'lost')) return;
     }
 
@@ -278,21 +278,21 @@ export const calculateInheritance = (tree, propertyValue) => {
   
   // 📊 후처리: 동일 인물의 계산 step 병합 (법원 계산기 방식)
   const mergedSteps = [];
-  const stepByName = {};
+  const stepById = {}; // 🔑 이름 대신 ID 기준으로 병합
   
   steps.forEach(step => {
-    const name = step.dec?.name;
-    if (!name || name.trim() === '' || step.dec?.id === 'root') {
+    const id = step.dec?.id;
+    if (!id || step.dec?.id === 'root') {
       mergedSteps.push(step);
       return;
     }
     
-    if (!stepByName[name]) {
+    if (!stepById[id]) {
       step.mergeSources = [{ from: step.parentDecName || '피상속인', n: step.inN, d: step.inD }];
-      stepByName[name] = step;
+      stepById[id] = step;
       mergedSteps.push(step);
     } else {
-      const existing = stepByName[name];
+      const existing = stepById[id];
       existing.mergeSources.push({ from: step.parentDecName || '피상속인', n: step.inN, d: step.inD });
       
       const [newN, newD] = math.add(existing.inN, existing.inD, step.inN, step.inD);
@@ -315,7 +315,8 @@ export const calculateInheritance = (tree, propertyValue) => {
   
   const merged = [];
   results.forEach(r => {
-    const ex = merged.find(m => m.name === r.name);
+    // 🔑 이름이 아닌 ID 기준으로 합산 여부 결정
+    const ex = merged.find(m => m.id === r.id);
     if (ex) { 
       const [nn, nd] = math.add(ex.n, ex.d, r.n, r.d); 
       ex.n = nn; ex.d = nd; 
@@ -331,15 +332,15 @@ export const calculateInheritance = (tree, propertyValue) => {
 
   const categoryMap = {};
   let subGroupOrder = 0;
-  tree.heirs.forEach((h, idx) => { if (!h.isDeceased) categoryMap[h.name] = { type: 'direct', order: idx }; });
+  tree.heirs.forEach((h, idx) => { if (!h.isDeceased) categoryMap[h.id] = { type: 'direct', order: idx }; });
 
   // 재귀적 가계 줄기 분류
   const buildCategory = (node, branchRoot, order) => {
     if (!node.heirs) return;
     node.heirs.forEach(h => {
       if (!h.isDeceased && h.name && h.name.trim() !== '') {
-        if (!categoryMap[h.name]) {
-          categoryMap[h.name] = { type: 'sub', ancestor: branchRoot, order: order };
+        if (!categoryMap[h.id]) {
+          categoryMap[h.id] = { type: 'sub', ancestor: branchRoot, order: order };
         }
       }
       if (h.isDeceased) {
@@ -354,7 +355,7 @@ export const calculateInheritance = (tree, propertyValue) => {
     if (h.isDeceased && isBloodPillar) {
       buildCategory(h, h, idx);
     } else if (!h.isDeceased) {
-      categoryMap[h.name] = { type: 'direct', order: idx };
+      categoryMap[h.id] = { type: 'direct', order: idx };
     }
   });
 
@@ -362,7 +363,7 @@ export const calculateInheritance = (tree, propertyValue) => {
   const subMap = {};
 
   merged.forEach(m => {
-    const cat = categoryMap[m.name];
+    const cat = categoryMap[m.id];
     if (!cat || cat.type === 'direct') { directShares.push(m); } 
     else {
       const ancId = cat.ancestor.id;
