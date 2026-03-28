@@ -119,7 +119,10 @@ function App() {
     const visit = (node, currentLevel) => {
       if (!node.heirs) return;
       node.heirs.forEach(h => {
-        if (h.isDeceased) {
+        // 사망자이거나 상속권 상실/결격자인 경우 탭 생성 (대습상속 입력 필요)
+        const isTarget = h.isDeceased || (h.isExcluded && (h.exclusionOption === 'lost' || h.exclusionOption === 'disqualified'));
+        
+        if (isTarget) {
           const isSpouseOfRoot = node.id === 'root' && (h.relation === 'wife' || h.relation === 'husband');
           const isDisqualifiedSpouse = isSpouseOfRoot && h.deathDate && tree.deathDate && isBefore(h.deathDate, tree.deathDate);
           if (!isDisqualifiedSpouse) {
@@ -307,19 +310,19 @@ function App() {
 
   const tabData = [
     { id: 'input', label: '데이터 입력', icon: <IconFileText className="w-4 h-4"/>,
-      style: { activeBorder: 'border-[#64B5F6]', activeText: 'text-[#64B5F6]', inactiveBg: 'bg-[#f0f0ee]', inactiveBorder: 'border-[#d4d4d4]', inactiveText: 'text-[#787774]' }
+      style: { activeBorder: 'border-[#37352f]', activeText: 'text-[#37352f] dark:text-neutral-100', inactiveBg: 'bg-transparent', inactiveBorder: 'border-transparent', inactiveText: 'text-[#9b9a97]' }
     },
     { id: 'tree', label: '가계도', icon: <IconNetwork className="w-4 h-4"/>,
-      style: { activeBorder: 'border-[#BA68C8]', activeText: 'text-[#BA68C8]', inactiveBg: 'bg-[#f0f0ee]', inactiveBorder: 'border-[#d4d4d4]', inactiveText: 'text-[#787774]' }
+      style: { activeBorder: 'border-[#37352f]', activeText: 'text-[#37352f] dark:text-neutral-100', inactiveBg: 'bg-transparent', inactiveBorder: 'border-transparent', inactiveText: 'text-[#9b9a97]' }
     },
     { id: 'calc', label: '계산표', icon: <IconTable className="w-4 h-4"/>,
-      style: { activeBorder: 'border-[#4DB6AC]', activeText: 'text-[#4DB6AC]', inactiveBg: 'bg-[#f0f0ee]', inactiveBorder: 'border-[#d4d4d4]', inactiveText: 'text-[#787774]' }
+      style: { activeBorder: 'border-[#37352f]', activeText: 'text-[#37352f] dark:text-neutral-100', inactiveBg: 'bg-transparent', inactiveBorder: 'border-transparent', inactiveText: 'text-[#9b9a97]' }
     },
     { id: 'result', label: '계산결과', icon: <IconCalculator className="w-4 h-4"/>,
-      style: { activeBorder: 'border-[#81C784]', activeText: 'text-[#81C784]', inactiveBg: 'bg-[#f0f0ee]', inactiveBorder: 'border-[#d4d4d4]', inactiveText: 'text-[#787774]' }
+      style: { activeBorder: 'border-[#37352f]', activeText: 'text-[#37352f] dark:text-neutral-100', inactiveBg: 'bg-transparent', inactiveBorder: 'border-transparent', inactiveText: 'text-[#9b9a97]' }
     },
     { id: 'summary', label: '요약표', icon: <IconList className="w-4 h-4"/>,
-      style: { activeBorder: 'border-[#F06292]', activeText: 'text-[#F06292]', inactiveBg: 'bg-[#f0f0ee]', inactiveBorder: 'border-[#d4d4d4]', inactiveText: 'text-[#787774]' }
+      style: { activeBorder: 'border-[#37352f]', activeText: 'text-[#37352f] dark:text-neutral-100', inactiveBg: 'bg-transparent', inactiveBorder: 'border-transparent', inactiveText: 'text-[#9b9a97]' }
     },
   ];
 
@@ -1186,7 +1189,7 @@ function App() {
             <div className="flex items-center gap-2 whitespace-nowrap shrink-0 overflow-visible">
               <div className="flex items-center text-[#37352f] dark:text-neutral-100 font-bold text-[18px] tracking-tight whitespace-nowrap shrink-0">
                 <IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-neutral-400 shrink-0" />
-                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v1.6.1</span>
+                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v1.6.3</span>
               </div>
               <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px] ml-8 whitespace-nowrap shrink-0">Designed by J.H. Lee</span>
             </div>

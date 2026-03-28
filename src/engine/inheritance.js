@@ -41,6 +41,7 @@ export const calculateInheritance = (tree, propertyValue) => {
 
     let isSubstitution = false;
     let distributionDate = inheritedDate;
+    let isDisqualifiedOrLost = false; // ★ 결격/상실 플래그 추가
 
     if (node.id !== 'root' && node.isDeceased && node.deathDate && !isBefore(node.deathDate, inheritedDate)) {
       distributionDate = node.deathDate;
@@ -48,10 +49,11 @@ export const calculateInheritance = (tree, propertyValue) => {
       isSubstitution = true;
     }
     
-    // 상속권 상실의 경우: (고의 상속결격과 동일하게) 선사망과 같이 취급하여 대습상속을 발동시킴
-    if (node.id !== 'root' && node.isExcluded && node.exclusionOption === 'lost') {
+    // 상속결격 및 상속권 상실의 경우: 선사망과 같이 취급하여 대습상속 발동
+    if (node.id !== 'root' && node.isExcluded && (node.exclusionOption === 'lost' || node.exclusionOption === 'disqualified')) {
       isSubstitution = true;
-      distributionDate = inheritedDate; // 상속권 상실은 피상속인의 사망 시점(상속개시일)에 함께 소급효가 발생하므로, 대습상속 개시일은 상속개시일이 됨
+      isDisqualifiedOrLost = true; // ★ 플래그 ON
+      distributionDate = inheritedDate; 
     }
 
     // ★ FIX 1: ReferenceError 방지를 위해 getLawEra 위치를 위로 끌어올림
@@ -190,6 +192,9 @@ export const calculateInheritance = (tree, propertyValue) => {
       }
 
       if (skipped) { /* 이미 처리됨 */ }
+      else if (isSp && isDisqualifiedOrLost && !isBefore(inheritedDate, '2024-04-25')) {
+        h.r = 0; h.ex = '개정 민법에 따라 결격/상실자의 배우자는 대습상속 불가'; 
+      }
       else if (isSp && isPre) { h.r = 0; h.ex = `${h.deathDate} 피상속인보다 먼저 사망`; }
       else if (isSp && node.id !== 'root' && h.isRemarried && h.remarriageDate && isBefore(h.remarriageDate, distributionDate) && law === '1991') { 
         h.r = 0; h.ex = '상속 개시 전 재혼 (1991년 이후 대습상속권 소멸)'; 

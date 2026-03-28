@@ -31,3 +31,6 @@ src-tauri/gen/
 # Releases
 releases/
 release_v*/
+
+# User Samples
+inherit_source/
