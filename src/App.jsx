@@ -939,11 +939,77 @@ function App() {
             </section>
           )}
 
-          {activeTab === 'summary' && (
+          {activeTab === 'summary' && (() => {
+            const pShareById = new Map();
+            (finalShares.direct || []).forEach(s => pShareById.set(s.id, s));
+            (finalShares.subGroups || []).forEach(g => g.shares.forEach(s => pShareById.set(s.id, s)));
+
+            const pBuildGroups = (node, parentDeathDate) => {
+              const directShares = [];
+              const subGroups = [];
+              (node.heirs || []).forEach(h => {
+                if (!h.isDeceased) {
+                  const s = pShareById.get(h.id);
+                  if (s && s.n > 0) directShares.push(s);
+                } else {
+                  const type = (h.deathDate && isBefore(h.deathDate, parentDeathDate)) ? '대습상속' : '재상속';
+                  const child = pBuildGroups(h, h.deathDate || parentDeathDate);
+                  if (child.directShares.length > 0 || child.subGroups.length > 0) {
+                    subGroups.push({ ancestor: h, type, ...child });
+                  }
+                }
+              });
+              return { directShares, subGroups };
+            };
+
+            const pTopDirect = [];
+            const pTopGroups = [];
+            (tree.heirs || []).forEach(h => {
+              if (!h.isDeceased) {
+                const s = pShareById.get(h.id);
+                if (s && s.n > 0) pTopDirect.push(s);
+              } else {
+                const type = (h.deathDate && isBefore(h.deathDate, tree.deathDate)) ? '대습상속' : '재상속';
+                const child = pBuildGroups(h, h.deathDate || tree.deathDate);
+                if (child.directShares.length > 0 || child.subGroups.length > 0) {
+                  pTopGroups.push({ ancestor: h, type, ...child });
+                }
+              }
+            });
+
+            const pRenderShareRow = (f, depth, key) => (
+              <tr key={key} className="text-black">
+                <td className="border border-black py-1.5 px-3 text-[10pt]" style={{paddingLeft: `${12 + depth * 16}px`}}>└ {f.name}</td>
+                <td className="border border-black py-1.5 px-3 text-center text-[10pt]">{f.n} / {f.d}</td>
+                <td className="border border-black py-1.5 px-3 text-center font-bold text-[10pt]">{f.un} / {f.ud}</td>
+              </tr>
+            );
+
+            const pRenderGroup = (group, depth, parentName, keyPrefix) => (
+              <React.Fragment key={keyPrefix}>
+                <tr className="bg-gray-50">
+                  <td colSpan="3" className="border border-black py-1.5 text-[9pt] text-gray-700 italic" style={{paddingLeft: `${8 + depth * 16}px`}}>
+                    {depth > 0 && '└ '}
+                    {parentName ? `※ [${parentName}]의 상속인 중 [${group.ancestor.name}]은(는)` : `※ 공동상속인 중 [${group.ancestor.name}]은(는)`}
+                    {' '}{formatKorDate(group.ancestor.deathDate)} 사망 → {group.type} 발생, 상속인
+                  </td>
+                </tr>
+                {group.directShares.map((f, i) => pRenderShareRow(f, depth + 1, `${keyPrefix}-d${i}`))}
+                {group.subGroups.map((sg, i) => pRenderGroup(sg, depth + 1, group.ancestor.name, `${keyPrefix}-sg${i}`))}
+              </React.Fragment>
+            );
+
+            return (
             <section className="w-full">
-              <h2 className="text-[16pt] font-bold mb-3 border-l-4 border-black pl-3 flex items-center gap-2">
+              <h2 className="text-[16pt] font-bold mb-2 border-l-4 border-black pl-3 flex items-center gap-2">
                 <IconList className="w-5 h-5"/> 최종 상속 지분 요약
               </h2>
+              <p className="text-[10pt] text-gray-700 mb-3 pl-1">
+                피상속인: <strong>{tree.name || '미입력'}</strong>
+                &nbsp;|&nbsp;사망일자: <strong>{tree.deathDate || '미입력'}</strong>
+                &nbsp;|&nbsp;상속지분: <strong>{tree.shareN || 1} / {tree.shareD || 1}</strong>
+                &nbsp;|&nbsp;적용법령: <strong>{getLawEra(tree.deathDate)}년 민법</strong>
+              </p>
               <table className="w-full border-collapse border-2 border-black">
                 <thead>
                   <tr className="bg-gray-100 text-black">
@@ -953,33 +1019,13 @@ function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {finalShares.direct?.map((f, i) => (
-                    <tr key={'p-d'+i} className="text-black">
-                      <td className="border border-black py-2 px-3 text-center font-bold text-[12pt]">{f.name}</td>
-                      <td className="border border-black py-2 px-3 text-center">{f.n} / {f.d}</td>
-                      <td className="border border-black py-2 px-3 text-center font-bold">{f.un} / {f.ud}</td>
-                    </tr>
-                  ))}
-                  {finalShares.subGroups?.map((group, gIdx) => (
-                    <React.Fragment key={'p-g'+gIdx}>
-                      <tr className="bg-gray-50">
-                        <td colSpan="3" className="border border-black py-1.5 px-3 text-[10pt] text-gray-700 italic">
-                          ※ 공동상속인 중 [{group.ancestor.name}]은(는) {formatKorDate(group.ancestor.deathDate)} 사망하였으므로 상속인
-                        </td>
-                      </tr>
-                      {group.shares.map((f, i) => (
-                        <tr key={'p-gs'+gIdx+'-'+i} className="text-black">
-                          <td className="border border-black py-2 px-3 text-center pl-6">└ {f.name}</td>
-                          <td className="border border-black py-2 px-3 text-center">{f.n} / {f.d}</td>
-                          <td className="border border-black py-2 px-3 text-center font-bold">{f.un} / {f.ud}</td>
-                        </tr>
-                      ))}
-                    </React.Fragment>
-                  ))}
+                  {pTopDirect.map((f, i) => pRenderShareRow(f, 0, 'p-d'+i))}
+                  {pTopGroups.map((g, i) => pRenderGroup(g, 0, null, 'p-g'+i))}
                 </tbody>
               </table>
             </section>
-          )}
+          );
+          })()}
 
           {activeTab === 'calc' && (
             <section className="w-full">
@@ -1851,8 +1897,101 @@ function App() {
           })()}
 
           {activeTab === 'summary' && (() => {
+            // ID 기반 지분 조회 맵 구성
+            const shareById = new Map();
+            (finalShares.direct || []).forEach(s => shareById.set(s.id, s));
+            (finalShares.subGroups || []).forEach(g => g.shares.forEach(s => shareById.set(s.id, s)));
+
+            // 트리를 재귀 순회하여 계층형 표시 구조 생성
+            // parentDeathDate: 이 노드에 상속이 개시된 기준일 (재상속/대습상속 판단용)
+            const buildGroups = (node, parentDeathDate) => {
+              const directShares = [];
+              const subGroups = [];
+              (node.heirs || []).forEach(h => {
+                if (!h.isDeceased) {
+                  const s = shareById.get(h.id);
+                  if (s && s.n > 0) directShares.push(s);
+                } else {
+                  // 이 사망자가 상속개시일(parentDeathDate) 이전에 사망 → 대습상속
+                  // 상속개시일 이후에 사망 → 재상속
+                  const type = (h.deathDate && isBefore(h.deathDate, parentDeathDate)) ? '대습상속' : '재상속';
+                  const child = buildGroups(h, h.deathDate || parentDeathDate);
+                  if (child.directShares.length > 0 || child.subGroups.length > 0) {
+                    subGroups.push({ ancestor: h, type, ...child });
+                  }
+                }
+              });
+              return { directShares, subGroups };
+            };
+
+            // 최상위: 피상속인의 직접 상속인 분류
+            const topDirect = [];
+            const topGroups = [];
+            (tree.heirs || []).forEach(h => {
+              if (!h.isDeceased) {
+                const s = shareById.get(h.id);
+                if (s && s.n > 0) topDirect.push(s);
+              } else {
+                const type = (h.deathDate && isBefore(h.deathDate, tree.deathDate)) ? '대습상속' : '재상속';
+                const child = buildGroups(h, h.deathDate || tree.deathDate);
+                // 생존 하위 상속인이 있을 때만 그룹 헤더 표시 (구수명처럼 별도 상속인 없는 경우 생략)
+                if (child.directShares.length > 0 || child.subGroups.length > 0) {
+                  topGroups.push({ ancestor: h, type, ...child });
+                }
+              }
+            });
+
+            // 지분 행 렌더러
+            const renderShareRow = (f, depth) => {
+              const pl = `${16 + depth * 20}px`;
+              return (
+                <tr key={'sr-'+f.id} className="border-b border-[#d4d4d4] dark:border-neutral-600 transition-colors">
+                  <td className="py-2 font-medium text-[15px] border-r border-[#d4d4d4] dark:border-neutral-600 text-[#37352f] dark:text-neutral-100" style={{paddingLeft: pl}}>
+                    <span className="text-[#a1a1aa] dark:text-neutral-500 mr-1.5">└</span>{f.name}
+                  </td>
+                  <td className="py-2 px-4 text-center border-r border-[#d4d4d4] dark:border-neutral-600 font-medium text-[15px]">{f.n} / {f.d}</td>
+                  <td className={`py-2 px-4 text-center font-bold text-[15px] ${isAmountActive ? 'border-r border-[#d4d4d4] dark:border-neutral-600' : ''}`}>{f.un} / {f.ud}</td>
+                  {isAmountActive && <td className="py-2 px-4 text-right font-medium text-[15px] bg-[#f8f8f7] dark:bg-neutral-800">{formatMoney(propertyValue ? Math.floor((Number(propertyValue)*f.un)/f.ud) : 0)}원</td>}
+                </tr>
+              );
+            };
+
+            // 그룹 헤더 + 하위 항목 재귀 렌더러
+            const renderGroup = (group, depth, parentName) => {
+              const pl = `${12 + depth * 20}px`;
+              const prefix = parentName
+                ? `※ [${parentName}]의 상속인 중 [${group.ancestor.name}]은(는) ${formatKorDate(group.ancestor.deathDate)} 사망 →`
+                : `※ 공동상속인 중 [${group.ancestor.name}]은(는) ${formatKorDate(group.ancestor.deathDate)} 사망 →`;
+              return (
+                <React.Fragment key={'grp-'+group.ancestor.id}>
+                  <tr className="border-b border-[#d4d4d4] dark:border-neutral-600 bg-[#37352f]/5 dark:bg-neutral-700/40 print:bg-[#f1f1ef]">
+                    <td colSpan={isAmountActive ? "4" : "3"} className="py-2.5 text-[13px] font-bold text-[#504f4c] dark:text-neutral-400" style={{paddingLeft: pl}}>
+                      {depth > 0 && <span className="text-[#a1a1aa] mr-1.5">└</span>}
+                      {prefix}
+                      <span className={`ml-1.5 px-2 py-0.5 rounded-full text-[12px] border ${group.type === '재상속' ? 'text-blue-700 dark:text-blue-400 border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20' : 'text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20'}`}>
+                        {group.type}
+                      </span>
+                      <span className="ml-1 font-normal text-[#787774] dark:text-neutral-500"> 발생, 상속인</span>
+                    </td>
+                  </tr>
+                  {group.directShares.map(f => renderShareRow(f, depth + 1))}
+                  {group.subGroups.map(sg => renderGroup(sg, depth + 1, group.ancestor.name))}
+                </React.Fragment>
+              );
+            };
+
             return (
             <div className="flex flex-col h-full">
+              {/* 기본정보 헤더 - 화면/인쇄 공통 */}
+              <div className="mb-3 flex items-center gap-4 text-[13px] font-bold text-[#504f4c] dark:text-neutral-400 border-b border-[#e5e5e5] dark:border-neutral-700 pb-2.5">
+                <span>피상속인: <span className="text-[#37352f] dark:text-neutral-100 font-black">{tree.name || '미입력'}</span></span>
+                <span className="text-[#d4d4d4] dark:text-neutral-600">|</span>
+                <span>사망일자: <span className="text-[#37352f] dark:text-neutral-100">{tree.deathDate || '미입력'}</span></span>
+                <span className="text-[#d4d4d4] dark:text-neutral-600">|</span>
+                <span>상속지분: <span className="text-[#37352f] dark:text-neutral-100">{tree.shareN || 1} / {tree.shareD || 1}</span></span>
+                <span className="text-[#d4d4d4] dark:text-neutral-600">|</span>
+                <span>적용법령: <span className="text-[#37352f] dark:text-neutral-100">{getLawEra(tree.deathDate)}년 민법</span></span>
+              </div>
               <div className="mb-4 flex justify-end no-print">
                 <div className="flex items-center gap-3">
                   <label className="flex items-center gap-1.5 cursor-pointer text-[#504f4c] dark:text-neutral-300 font-bold text-[13px] hover:text-[#37352f] dark:hover:text-neutral-100 select-none transition-colors">
@@ -1880,33 +2019,8 @@ function App() {
                     </tr>
                   </thead>
                   <tbody className="text-[#37352f] dark:text-neutral-300">
-                    {finalShares.direct?.map((f, i) => (
-                      <tr key={'d'+i} className="border-b border-[#d4d4d4] dark:border-neutral-600 transition-colors">
-                        <td className="py-1.5 px-4 font-medium text-[16px] border-r border-[#d4d4d4] dark:border-neutral-600 text-[#37352f] dark:text-neutral-100 bg-white/50 dark:bg-neutral-800/50">{f.name}</td>
-                        <td className="py-1.5 px-4 text-center border-r border-[#d4d4d4] dark:border-neutral-600 font-medium text-[16px]">
-                          <span>{f.n} / {f.d}</span>
-                        </td>
-                        <td className={`py-1.5 px-4 text-center font-medium text-[16px] ${isAmountActive ? 'border-r border-[#d4d4d4] dark:border-neutral-600' : ''}`}>{f.un} / {f.ud}</td>
-                        {isAmountActive && <td className="py-1.5 px-4 text-right pr-6 font-medium text-[16px] text-[#37352f] dark:text-neutral-100 bg-[#f8f8f7] dark:bg-neutral-800">{formatMoney(propertyValue ? Math.floor((Number(propertyValue)*f.un)/f.ud) : 0)}원</td>}
-                      </tr>
-                    ))}
-                    {finalShares.subGroups?.map((group, gIdx) => (
-                      <React.Fragment key={'g'+gIdx}>
-                        <tr className="border-b border-[#d4d4d4] dark:border-neutral-600 bg-[#37352f]/5 dark:bg-neutral-700/50 print:bg-[#f1f1ef]">
-                          <td colSpan={isAmountActive ? "4" : "3"} className="py-2.5 px-4 text-[14px] font-bold text-[#504f4c] dark:text-neutral-400">※ 공동상속인 중 [{group.ancestor.name}]은(는) {formatKorDate(group.ancestor.deathDate)} 사망하였으므로 상속인</td>
-                        </tr>
-                        {group.shares.map((f, i) => (
-                          <tr key={'gs'+gIdx+'-'+i} className="border-b border-[#d4d4d4] dark:border-neutral-700 transition-colors">
-                            <td className="py-2.5 px-4 font-medium pl-10 border-r border-[#d4d4d4] dark:border-neutral-700 text-[#37352f] dark:text-neutral-100"><span className="text-[#a1a1aa] dark:text-neutral-500 mr-2">└</span>{f.name}</td>
-                            <td className="py-2.5 px-4 text-center border-r border-[#d4d4d4] dark:border-neutral-700 font-medium text-[16px]">
-                              <span>{f.n} / {f.d}</span>
-                            </td>
-                            <td className={`py-2.5 px-4 text-center font-medium text-[16px] ${isAmountActive ? 'border-r border-[#d4d4d4] dark:border-neutral-700' : ''}`}>{f.un} / {f.ud}</td>
-                            {isAmountActive && <td className="py-2.5 px-4 text-right pr-6 font-medium text-[16px] text-[#37352f] dark:text-neutral-100 bg-[#f8f8f7] dark:bg-neutral-800/80">{formatMoney(propertyValue ? Math.floor((Number(propertyValue)*f.un)/f.ud) : 0)}원</td>}
-                          </tr>
-                        ))}
-                      </React.Fragment>
-                    ))}
+                    {topDirect.map(f => renderShareRow(f, 0))}
+                    {topGroups.map(g => renderGroup(g, 0, null))}
                   </tbody>
                 </table>
                 <div className="mt-8 text-[13px] text-[#787774] dark:text-neutral-400 space-y-1 text-right font-medium transition-colors">

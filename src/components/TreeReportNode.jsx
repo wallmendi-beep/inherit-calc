@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { IconChevronRight } from './Icons';
-import { relStr } from '../engine/utils';
+import { relStr, getLawEra, isBefore } from '../engine/utils';
 
-const TreeReportNode = ({ node, level, treeToggleSignal }) => {
+const TreeReportNode = ({ node, level, treeToggleSignal, rootDeathDate }) => {
   const hasHeirs = node.heirs && node.heirs.length > 0;
   const [isExpanded, setIsExpanded] = useState(level === 0);
 
@@ -11,15 +11,22 @@ const TreeReportNode = ({ node, level, treeToggleSignal }) => {
     else if (treeToggleSignal < 0) setIsExpanded(level === 0);
   }, [treeToggleSignal, level]);
 
+  // ⚖️ 법리 판단을 위한 변수들
+  const lawEra = getLawEra(rootDeathDate || node.deathDate);
+  const isSpouseType = node.relation === 'wife' || node.relation === 'husband' || node.relation === 'spouse';
+  // 선사망 배우자 판단 (본인의 사망일이 피상속인의 사망일보다 빠른 경우)
+  const isPreDeceasedSpouse = isSpouseType && node.isDeceased && node.deathDate && rootDeathDate && isBefore(node.deathDate, rootDeathDate);
+  
+  // 최종 상속권 배제 여부
+  const isInheritanceLost = node.isExcluded || isPreDeceasedSpouse;
+
     // 🎨 상태별 색상 정의 (요약표/입력창과 통일)
     const getStatusStyle = (lvl, isDead, hasHeirs, isExpanded) => {
-      let colorClass = 'text-[#37352f] dark:text-neutral-100 font-bold'; // 기본 상속인 (또렷한 차콜)
-      
+      let colorClass = 'text-[#37352f] dark:text-neutral-100 font-bold'; 
       let underlineClass = '';
       if (hasHeirs && !isExpanded) {
         underlineClass = 'underline decoration-rose-400 dark:decoration-rose-500 decoration-2 underline-offset-4'; 
       }
-      
       return `${colorClass} ${underlineClass}`;
     };
 
@@ -38,21 +45,66 @@ const TreeReportNode = ({ node, level, treeToggleSignal }) => {
             <div className="w-1.5 h-1.5 rounded-full bg-[#e5e5e5] dark:bg-neutral-700" />
           )}
         </div>
-        
+
         <span className={`tracking-tight transition-colors ${level === 0 ? 'text-[18px]' : 'text-[16px]'} ${itemStyleClass}`}>
           {node.name}
         </span>
-        
-        <div className="flex items-center gap-1.5 ml-1">
+
+        <div className="flex items-center gap-1.5 ml-1 flex-wrap">
+          {/* 🏷️ 신분 라벨 */}
           <span className="text-[13px] text-[#787774] dark:text-neutral-400 font-bold border border-[#e5e5e5] dark:border-neutral-700 bg-[#f8f8f7] dark:bg-neutral-800 px-1.5 py-0.5 rounded shadow-sm">
             {level === 0 ? '피상속인' : (relStr[node.relation] || '자녀')}
           </span>
-          
-          {node.relation === 'son' && node.isHoju && <span className="text-[12px] text-sky-600 bg-sky-50 dark:bg-sky-900/30 border border-sky-200 dark:border-sky-800/40 px-1.5 py-0.5 rounded font-bold">호주상속 +5할</span>}
-          {node.relation === 'daughter' && node.isSameRegister === false && <span className="text-[12px] text-rose-600 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800/40 px-1.5 py-0.5 rounded font-bold">출가(제적)</span>}
-          {node.isDeceased && <span className="text-[12px] text-neutral-500 bg-white dark:bg-slate-800 border border-[#e5e5e5] dark:border-neutral-700 px-1.5 py-0.5 rounded font-bold">{node.deathDate} 사망</span>}
-        </div>
 
+          {/* ⚖️ 상속권 배제 처리 (최우선순위) */}
+          {isInheritanceLost ? (
+            <span className="px-2.5 py-1 rounded-full border border-neutral-300 bg-neutral-200 text-[12px] font-medium text-black shadow-sm whitespace-nowrap">
+              상속권 없음
+            </span>
+          ) : (
+            <>
+              {/* ⚖️ 1960년대 처 감산 뱃지 */}
+              {lawEra === '1960' && node.relation === 'wife' && (
+                <span className="flex items-center px-2 py-0.5 rounded-full border border-rose-800/80 bg-white text-[12px] font-bold text-rose-800/80 shadow-sm whitespace-nowrap">
+                  처 x 1/2
+                </span>
+              )}
+
+              {/* ⚖️ 호주 상속 가산 뱃지 */}
+              {node.relation === 'son' && node.isHoju && (
+                <span className="flex items-center px-2 py-0.5 rounded-full border border-sky-800/80 bg-white text-[12px] font-bold text-sky-800/80 shadow-sm whitespace-nowrap">
+                  호주 x 1.5
+                </span>
+              )}
+
+              {/* ⚖️ 출가녀/동일가적 감산 뱃지 */}
+              {node.relation === 'daughter' && (() => {
+                let multiplier = '';
+                let label = '';
+                if (lawEra === '1960') {
+                  label = node.isSameRegister !== false ? '여자' : '출가';
+                  multiplier = node.isSameRegister !== false ? 'x 1/2' : 'x 1/4';
+                } else if (lawEra === '1979' && node.isSameRegister === false) {
+                  label = '출가';
+                  multiplier = 'x 1/4';
+                }
+
+                return multiplier ? (
+                  <span className="flex items-center px-2 py-0.5 rounded-full border border-rose-800/80 bg-white text-[12px] font-bold text-rose-800/80 shadow-sm whitespace-nowrap">
+                    {label} {multiplier}
+                  </span>
+                ) : null;
+              })()}
+            </>
+          )}
+
+          {/* ⚰️ 사망 정보 */}
+          {node.isDeceased && (
+            <span className="text-[12px] text-neutral-500 font-bold ml-1">
+              ({node.deathDate} 사망)
+            </span>
+          )}
+        </div>
         {hasHeirs && !isExpanded && (
            <span className="ml-2 text-[12px] text-[#854d0e] dark:text-yellow-400 font-bold bg-[#fef9c3] dark:bg-yellow-900/20 border border-[#fef08a] dark:border-yellow-800/50 px-2 py-0.5 rounded-full animate-in fade-in zoom-in duration-200 shadow-sm print:hidden">
              상속인 {node.heirs.length}명 보기
@@ -62,7 +114,7 @@ const TreeReportNode = ({ node, level, treeToggleSignal }) => {
       
       <div className={`grid transition-all duration-300 ease-in-out print:grid-rows-[1fr] print:opacity-100 print:mt-1 ${isExpanded ? 'grid-rows-[1fr] opacity-100 mt-1' : 'grid-rows-[0fr] opacity-0'}`}>
         <div className="overflow-hidden print:overflow-visible">
-          {node.heirs && node.heirs.map(h => <TreeReportNode key={h.id} node={h} level={level + 1} treeToggleSignal={treeToggleSignal} />)}
+          {node.heirs && node.heirs.map(h => <TreeReportNode key={h.id} node={h} level={level + 1} treeToggleSignal={treeToggleSignal} rootDeathDate={rootDeathDate || node.deathDate} />)}
         </div>
       </div>
     </div>
