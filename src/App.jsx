@@ -1209,7 +1209,7 @@ function App() {
             <div className="flex items-center gap-2 whitespace-nowrap shrink-0 overflow-visible">
               <div className="flex items-center text-[#37352f] dark:text-neutral-100 font-bold text-[18px] tracking-tight whitespace-nowrap shrink-0">
                 <IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-neutral-400 shrink-0" />
-                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v1.6.4</span>
+                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v1.6.5</span>
               </div>
               <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px] ml-8 whitespace-nowrap shrink-0">Designed by J.H. Lee</span>
             </div>
@@ -1667,74 +1667,104 @@ function App() {
           )}
 
           {activeTab === 'calc' && (
-            <div className="flex flex-col h-full">
+            <div className="flex flex-col h-full animate-in fade-in duration-300">
               <div className="space-y-6 print-mt-4">
                 {calcSteps.map((s, i) => (
-                  <div key={i} className="break-inside-avoid border border-[#f1f1ef] dark:border-neutral-700/50 rounded-xl overflow-hidden shadow-sm bg-white dark:bg-neutral-900/40">
-                    <div className="bg-[#fcfcfb] dark:bg-neutral-800/60 px-5 py-3 flex justify-between items-center transition-colors border-b border-[#f1f1ef] dark:border-neutral-700/50">
+                  <div key={i} className="break-inside-avoid border border-[#e5e5e5] dark:border-neutral-700/50 rounded-xl overflow-hidden shadow-sm bg-white dark:bg-neutral-900/40">
+                    <div className="bg-[#f8f8f7] dark:bg-neutral-800/60 px-5 py-3 flex justify-between items-center transition-colors border-b border-[#e5e5e5] dark:border-neutral-700/50">
                       <div className="flex items-center gap-3">
-                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#37352f] dark:bg-neutral-400" />
                         <span className="text-[15px] font-black text-[#37352f] dark:text-neutral-200">
-                          피상속인 <span className="text-[#2383e2] dark:text-blue-400 mx-1">{s.dec.name}</span> 
-                          <span className="ml-2 font-bold text-[#787774] dark:text-neutral-400 text-[13px] opacity-60">[지분: {s.inN}/{s.inD}]</span>
+                          피상속인 <span className="mx-1">{s.dec.name}</span> 
+                          <span className="ml-2 font-bold text-[#787774] dark:text-neutral-400 text-[13px] opacity-80">[승계 지분: {s.inN}/{s.inD}]</span>
                           {s.mergeSources && s.mergeSources.length > 1 && (
-                            <span className="ml-2 text-[12px] font-bold text-[#0d9488] dark:text-teal-400 opacity-80">
+                            <span className="ml-2 text-[12px] font-bold text-[#787774] dark:text-neutral-500 opacity-80">
                               (= {s.mergeSources.map((src, si) => (
                                 <React.Fragment key={si}>
                                   {si > 0 && ' + '}
-                                  {src.from} 지분 {src.d}분의 {src.n}
+                                  {src.from} {src.d}분의 {src.n}
                                 </React.Fragment>
                               ))})
                             </span>
                           )}
                         </span>
-                        <span className="text-[#c93f3a] dark:text-red-400 font-bold text-[13px] opacity-70">({s.dec.deathDate} 사망)</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {/* 금액 계산 UI는 요약표 탭으로 이동됨 */}
+                        <span className="text-[#787774] dark:text-neutral-400 font-bold text-[13px]">({s.dec.deathDate} 사망)</span>
                       </div>
                     </div>
                     <table className="w-full text-left table-fixed">
-                      <thead className="bg-[#fcfcfb] dark:bg-neutral-800/40 border-b border-[#f1f1ef] dark:border-neutral-700/50">
-                        <tr className="text-[#787774] dark:text-neutral-400 text-[12px] font-black uppercase tracking-widest text-center">
-                          <th className="py-2 px-5 w-[20%] text-left">상속인</th>
-                          <th className="py-2 px-5 w-[55%]">산출 지분 계산식</th>
-                          <th className="py-2 px-5 w-[25%] text-left">비고</th>
+                      <thead className="bg-white dark:bg-neutral-800/40 border-b border-[#f1f1ef] dark:border-neutral-700/50">
+                        <tr className="text-[#787774] dark:text-neutral-400 text-[12px] font-bold uppercase tracking-widest text-center">
+                          <th className="py-2 px-5 w-[15%] text-left">상속인</th>
+                          <th className="py-2 px-5 w-[45%]">산출 지분 계산식</th>
+                          <th className="py-2 px-5 w-[40%] text-left">비고 (특수조건)</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#f1f1ef] dark:divide-neutral-700/30">
                         {s.dists.map((d, di) => {
                           const isSpecial = d.mod && d.mod.length > 0;
+                          // ⚖️ 사유 뱃지에 이미 사망 정보가 포함되어 있는지 체크
+                          const hasDeathInfoInEx = d.ex && (d.ex.includes('사망') || d.ex.includes('선사망'));
+                          
                           return (
                             <tr key={di} className="hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20 transition-colors">
-                              <td className="px-5 py-2.5">
-                                <span className={`text-[15px] font-black ${d.h.isDeceased ? 'text-[#787774] dark:text-neutral-500 underline underline-offset-2 decoration-[#c93f3a]/60' : 'text-[#37352f] dark:text-neutral-100'}`}>{d.h.name}</span>
-                                <span className="ml-2 text-[11px] font-bold text-[#a3a3a3] dark:text-neutral-500 uppercase">[{getRelStr(d.h.relation, s.dec.deathDate) || '상속인'}]</span>
+                              <td className="px-5 py-3">
+                                <div className="flex items-center gap-[20px]">
+                                  <span className={`text-[16px] font-bold ${d.h.isDeceased ? 'text-black dark:text-white' : 'text-[#37352f] dark:text-neutral-100'}`}>{d.h.name}</span>
+                                  <span className="text-[13px] font-bold text-[#787774] dark:text-neutral-500 uppercase whitespace-nowrap">[{getRelStr(d.h.relation, s.dec.deathDate) || '상속인'}]</span>
+                                </div>
                               </td>
                                 <td className="px-6 py-4 text-center">
-                                  <div className="inline-flex items-center gap-2 whitespace-nowrap text-[15px] font-black">
+                                  <div className="inline-flex items-center gap-2 whitespace-nowrap text-[16px] font-medium">
                                     <span className="text-[#787774] dark:text-neutral-400">{s.inN}/{s.inD}</span>
-                                    <span className="text-[#a3a3a3] dark:text-neutral-500 font-medium">×</span>
+                                    <span className="text-[#a3a3a3] dark:text-neutral-500 font-normal">×</span>
                                     <span className="text-[#787774] dark:text-neutral-400">{d.sn}/{d.sd}</span>
-                                    <span className="text-[#a3a3a3] dark:text-neutral-500 font-medium mx-1">=</span>
-                                    <span className="text-[17px] text-[#2383e2] dark:text-blue-400 font-black">{d.n}/{d.d}</span>
+                                    <span className="text-[#a3a3a3] dark:text-neutral-500 font-normal mx-1">=</span>
+                                    <span className="text-[18px] text-[#37352f] dark:text-neutral-200 font-normal bg-[#f1f1ef] dark:bg-neutral-700 px-2 py-0.5 rounded">{d.n}/{d.d}</span>
                                   </div>
                                 </td>
                                 <td className="px-6 py-4">
-                                <div className="flex gap-1.5 flex-wrap items-center">
-                                  {d.ex ? (
-                                    <span className="text-[#c93f3a] dark:text-red-400 text-[12px] font-black">※ {d.ex}</span>
-                                  ) : isSpecial ? (
-                                    <span className={`text-[12px] font-black whitespace-nowrap ${
-                                      d.mod.includes('호주') ? 'text-[#1d4ed8] dark:text-blue-400' :
-                                      d.mod.includes('출가녀') ? 'text-[#b91c1c] dark:text-red-400' :
-                                      d.mod.includes('가산') ? 'text-[#166534] dark:text-green-400' :
-                                      'text-[#4c4c4c] dark:text-neutral-400'
-                                    }`}>
-                                      ※ {d.mod}
+                                <div className="flex gap-2 flex-wrap items-center">
+                                  {/* 1. 상속권 없음 및 사유 (검정색 + 그레이 음영 배경 - 보통체로 변경) */}
+                                  {d.ex && (
+                                    <span className="text-black dark:text-white text-[13px] font-medium bg-neutral-200 dark:bg-neutral-700 px-2 py-0.5 rounded-full border border-neutral-300 dark:border-neutral-600 shadow-sm whitespace-nowrap">
+                                      상속권 없음 ({d.ex})
                                     </span>
-                                  ) : null}
-                                  {d.h.isDeceased && <span className="text-[#787774] dark:text-neutral-500 text-[11px] font-bold">({d.h.deathDate} 사망)</span>}
+                                  )}
+                                  
+                                  {/* 2. 사망 정보 (사유 뱃지에 사망 정보가 없을 때만 노출) */}
+                                  {d.h.isDeceased && !hasDeathInfoInEx && (
+                                    <span className="text-[#787774] dark:text-neutral-500 text-[13px] font-bold">
+                                      사망 ({d.h.deathDate})
+                                    </span>
+                                  )}
+
+                                  {/* 3. 특수 조건 (가감산 등) - 흰색 배경 + 80% 투명도 + 어두운 톤 색상 */}
+                                  {isSpecial && (() => {
+                                    const mods = d.mod.split(',').map(m => m.trim());
+                                    return mods.map((mod, midx) => {
+                                      let styleClass = "";
+                                      let icon = null;
+                                      
+                                      if (mod.includes('호주')) {
+                                        styleClass = "text-sky-800/80 dark:text-sky-400/80 bg-white dark:bg-neutral-900 border-sky-800/80 dark:border-sky-400/80";
+                                        icon = <span className="text-[10px] mr-1 opacity-80">◆</span>;
+                                      } else if (mod.includes('+') || mod.includes('가산') || mod.includes('기여')) {
+                                        styleClass = "text-emerald-800/80 dark:text-emerald-400/80 bg-white dark:bg-neutral-900 border-emerald-800/80 dark:border-emerald-400/80";
+                                        icon = <span className="text-[10px] mr-1 opacity-80">▲</span>;
+                                      } else if (mod.includes('-') || mod.includes('감산') || mod.includes('출가') || mod.includes('수익')) {
+                                        styleClass = "text-rose-800/80 dark:text-rose-400/80 bg-white dark:bg-neutral-900 border-rose-800/80 dark:border-rose-400/80";
+                                        icon = <span className="text-[10px] mr-1 opacity-80">▼</span>;
+                                      } else {
+                                        styleClass = "text-neutral-500/80 bg-white dark:bg-neutral-900 border-neutral-500/80";
+                                      }
+
+                                      return (
+                                        <span key={midx} className={`flex items-center px-2 py-0.5 rounded-full border text-[13px] font-bold whitespace-nowrap transition-colors ${styleClass}`}>
+                                          {icon}{mod}
+                                        </span>
+                                      );
+                                    });
+                                  })()}
                                 </div>
                               </td>
                             </tr>
@@ -1749,34 +1779,35 @@ function App() {
           )}
 
           {activeTab === 'result' && (() => {
-            // 상속인 기준으로 데이터 재구성
             const heirMap = new Map();
             calcSteps.forEach(s => {
               s.dists.forEach(d => {
                 if (d.n > 0) {
-                  const key = d.h.id; // 🔑 이름 대신 고유 ID 기준으로 집계
+                  const key = d.h.id; 
                   if (!heirMap.has(key)) {
-                    heirMap.set(key, { 
-                      name: d.h.name, 
-                      relation: d.h.relation, 
-                      sources: [], 
-                      isDeceased: d.h.isDeceased 
-                    });
+                    heirMap.set(key, { name: d.h.name, relation: d.h.relation, sources: [], isDeceased: d.h.isDeceased });
                   }
                   heirMap.get(key).sources.push({ decName: s.dec.name, n: d.n, d: d.d });
                 }
               });
             });
-            // 죽은 사람은 제외하고 실제 상속인만 보여줌
             const results = Array.from(heirMap.values()).filter(r => !r.isDeceased);
 
             return (
               <div className="flex flex-col h-full animate-in fade-in duration-300">
-                <div className="mb-6 p-4 bg-[#f0f9ff] dark:bg-blue-900/10 border border-[#bae6fd] dark:border-blue-800/50 rounded-lg text-[14px] font-semibold text-[#0369a1] dark:text-blue-300 flex items-center gap-2 no-print">
-                  <IconCalculator className="w-5 h-5" />
-                  <span>각 상속인이 누구로부터 얼마를 상속받아 최종 지분이 되었는지 '상속 흐름'을 1열로 보여줍니다.</span>
+                <div className="mb-6 p-4 bg-[#f8f8f7] dark:bg-neutral-800/50 border border-[#e5e5e5] dark:border-neutral-700 rounded-lg text-[14px] font-semibold text-[#787774] dark:text-neutral-300 flex items-center gap-2 no-print">
+                  <IconCalculator className="w-5 h-5 opacity-50" />
+                  <span>각 상속인이 승계받은 모든 지분을 합산하여 최종 상속분을 산출하는 과정입니다.</span>
                 </div>
-                <div className="space-y-4 pb-10">
+
+                {/* 📋 계산결과 헤더 (Excel 스타일) */}
+                <div className="flex items-center px-5 py-2.5 mb-2 bg-[#f8f8f7] dark:bg-neutral-800/80 rounded-t-lg border border-[#e5e5e5] dark:border-neutral-700 text-[13px] font-bold text-[#787774] dark:text-neutral-400 select-none">
+                  <div className="w-[18%] shrink-0">상속인</div>
+                  <div className="flex-1 px-4">상속지분 구성 요소</div>
+                  <div className="w-[22%] text-center shrink-0">최종 산출 지분</div>
+                </div>
+
+                <div className="space-y-1 pb-10">
                   {results.map((r, i) => {
                     const total = r.sources.reduce((acc, s) => {
                       const [nn, nd] = math.add(acc.n, acc.d, s.n, s.d);
@@ -1784,30 +1815,31 @@ function App() {
                     }, { n: 0, d: 1 });
                     
                     return (
-                      <div key={i} className="group border border-[#e9e9e7] dark:border-neutral-700/50 rounded-xl bg-white dark:bg-neutral-900/40 p-2.5 shadow-sm hover:shadow-md transition-all">
-                        <div className="flex items-center gap-4 flex-wrap">
-                          <div className="flex items-center gap-2 min-w-[140px]">
-                            <span className="text-[11px] font-bold text-[#787774] dark:text-neutral-500 uppercase tracking-tighter">상속인</span>
-                            <span className="text-[16px] font-black text-[#0b6e99] dark:text-blue-400">{r.name}</span>
-                          </div>
-                          
-                          <div className="h-4 w-px bg-[#e9e9e7] dark:bg-neutral-700 hidden sm:block mx-1"></div>
-                          
-                          <div className="flex items-center gap-2 flex-1">
-                            {r.sources.map((s, si) => (
-                              <React.Fragment key={si}>
-                                {si > 0 && <span className="text-[#a3a3a3] mx-1 text-[13px] font-bold">+</span>}
-                                <div className="flex items-center gap-1.5 px-2 py-1 bg-[#fcfcfb] dark:bg-neutral-800/50 rounded border border-[#f1f1ef] dark:border-neutral-700/50">
-                                  <span className="text-[14px] font-bold text-[#37352f] dark:text-neutral-200">{s.n}/{s.d}</span>
-                                  <span className="text-[12px] text-[#787774] dark:text-neutral-400">({s.decName})</span>
-                                </div>
-                              </React.Fragment>
-                            ))}
-                            <span className="text-[#a3a3a3] mx-2 text-[13px] font-bold">=</span>
-                            <div className="flex items-center gap-1.5 px-3 py-1 bg-white dark:bg-neutral-800 rounded border border-[#e9e9e7] dark:border-neutral-700 shadow-sm">
-                              <span className="text-[11px] font-bold text-[#0b6e99] dark:text-blue-400 uppercase tracking-tighter">최종지분</span>
-                              <span className="text-[18px] font-black text-[#0b6e99] dark:text-blue-400">{total.n} / {total.d}</span>
-                            </div>
+                      <div key={i} className="flex items-center px-5 py-3.5 bg-white dark:bg-neutral-900/40 border border-[#f1f1ef] dark:border-neutral-700/50 hover:bg-[#fcfcfb] transition-colors">
+                        {/* 1. 상속인 성명 */}
+                        <div className="w-[18%] shrink-0 flex items-center gap-2">
+                          <span className="text-[16px] font-bold text-[#37352f] dark:text-neutral-200">{r.name}</span>
+                          <span className="text-[11px] font-bold text-[#a3a3a3] uppercase tracking-tighter">[{getRelStr(r.relation, tree.deathDate) || '상속인'}]</span>
+                        </div>
+                        
+                        {/* 2. 구성 요소 (수식 흐름) */}
+                        <div className="flex-1 px-4 flex items-center gap-2 flex-wrap">
+                          {r.sources.map((s, si) => (
+                            <React.Fragment key={si}>
+                              {si > 0 && <span className="text-[#a3a3a3] mx-0.5 text-[13px] font-bold">+</span>}
+                              <div className="flex items-center gap-1.5 px-2 py-1 bg-[#f8f8f7] dark:bg-neutral-800/50 rounded border border-[#eeeeee] dark:border-neutral-700/50">
+                                <span className="text-[14px] font-medium text-[#37352f] dark:text-neutral-200">{s.n}/{s.d}</span>
+                                <span className="text-[11px] font-bold text-[#787774] dark:text-neutral-500">({s.decName})</span>
+                              </div>
+                            </React.Fragment>
+                          ))}
+                        </div>
+
+                        {/* 3. 최종 산출 지분 */}
+                        <div className="w-[22%] shrink-0 flex justify-center items-center gap-2">
+                          <span className="text-[#a3a3a3] text-[13px] font-bold">=</span>
+                          <div className="px-2.5 py-1 bg-[#f1f1ef] dark:bg-neutral-700 rounded border border-[#e5e5e5] dark:border-neutral-600 shadow-sm min-w-[80px] text-center">
+                            <span className="text-[15px] font-medium text-[#37352f] dark:text-neutral-100">{total.n} / {total.d}</span>
                           </div>
                         </div>
                       </div>
@@ -1850,12 +1882,12 @@ function App() {
                   <tbody className="text-[#37352f] dark:text-neutral-300">
                     {finalShares.direct?.map((f, i) => (
                       <tr key={'d'+i} className="border-b border-[#d4d4d4] dark:border-neutral-600 transition-colors">
-                        <td className="py-1.5 px-4 font-bold text-[16px] border-r border-[#d4d4d4] dark:border-neutral-600 text-[#0b6e99] dark:text-blue-400 bg-white/50 dark:bg-neutral-800/50">{f.name}</td>
-                        <td className="py-1.5 px-4 text-center border-r border-[#d4d4d4] dark:border-neutral-600 font-bold text-[16px]">
+                        <td className="py-1.5 px-4 font-medium text-[16px] border-r border-[#d4d4d4] dark:border-neutral-600 text-[#37352f] dark:text-neutral-100 bg-white/50 dark:bg-neutral-800/50">{f.name}</td>
+                        <td className="py-1.5 px-4 text-center border-r border-[#d4d4d4] dark:border-neutral-600 font-medium text-[16px]">
                           <span>{f.n} / {f.d}</span>
                         </td>
-                        <td className={`py-1.5 px-4 text-center font-bold text-[16px] ${isAmountActive ? 'border-r border-[#d4d4d4] dark:border-neutral-600' : ''}`}>{f.un} / {f.ud}</td>
-                        {isAmountActive && <td className="py-1.5 px-4 text-right pr-6 font-black text-[16px] text-[#0b6e99] dark:text-blue-400 bg-[#eff6ff] dark:bg-blue-900/20">{formatMoney(propertyValue ? Math.floor((Number(propertyValue)*f.un)/f.ud) : 0)}원</td>}
+                        <td className={`py-1.5 px-4 text-center font-medium text-[16px] ${isAmountActive ? 'border-r border-[#d4d4d4] dark:border-neutral-600' : ''}`}>{f.un} / {f.ud}</td>
+                        {isAmountActive && <td className="py-1.5 px-4 text-right pr-6 font-medium text-[16px] text-[#37352f] dark:text-neutral-100 bg-[#f8f8f7] dark:bg-neutral-800">{formatMoney(propertyValue ? Math.floor((Number(propertyValue)*f.un)/f.ud) : 0)}원</td>}
                       </tr>
                     ))}
                     {finalShares.subGroups?.map((group, gIdx) => (
@@ -1865,12 +1897,12 @@ function App() {
                         </tr>
                         {group.shares.map((f, i) => (
                           <tr key={'gs'+gIdx+'-'+i} className="border-b border-[#d4d4d4] dark:border-neutral-700 transition-colors">
-                            <td className="py-2.5 px-4 font-bold pl-10 border-r border-[#d4d4d4] dark:border-neutral-700 text-[#0b6e99] dark:text-blue-400"><span className="text-[#a1a1aa] dark:text-neutral-500 mr-2">└</span>{f.name}</td>
-                            <td className="py-2.5 px-4 text-center border-r border-[#d4d4d4] dark:border-neutral-700 font-bold">
+                            <td className="py-2.5 px-4 font-medium pl-10 border-r border-[#d4d4d4] dark:border-neutral-700 text-[#37352f] dark:text-neutral-100"><span className="text-[#a1a1aa] dark:text-neutral-500 mr-2">└</span>{f.name}</td>
+                            <td className="py-2.5 px-4 text-center border-r border-[#d4d4d4] dark:border-neutral-700 font-medium text-[16px]">
                               <span>{f.n} / {f.d}</span>
                             </td>
-                            <td className={`py-2.5 px-4 text-center font-bold ${isAmountActive ? 'border-r border-[#d4d4d4] dark:border-neutral-700' : ''}`}>{f.un} / {f.ud}</td>
-                            {isAmountActive && <td className="py-2.5 px-4 text-right pr-6 font-black text-[#0b6e99] dark:text-blue-400 bg-[#eff6ff] dark:bg-blue-900/20">{formatMoney(propertyValue ? Math.floor((Number(propertyValue)*f.un)/f.ud) : 0)}원</td>}
+                            <td className={`py-2.5 px-4 text-center font-medium text-[16px] ${isAmountActive ? 'border-r border-[#d4d4d4] dark:border-neutral-700' : ''}`}>{f.un} / {f.ud}</td>
+                            {isAmountActive && <td className="py-2.5 px-4 text-right pr-6 font-medium text-[16px] text-[#37352f] dark:text-neutral-100 bg-[#f8f8f7] dark:bg-neutral-800/80">{formatMoney(propertyValue ? Math.floor((Number(propertyValue)*f.un)/f.ud) : 0)}원</td>}
                           </tr>
                         ))}
                       </React.Fragment>
@@ -1879,7 +1911,7 @@ function App() {
                 </table>
                 <div className="mt-8 text-[13px] text-[#787774] dark:text-neutral-400 space-y-1 text-right font-medium transition-colors">
                   <p>※ 본 계산서는 대습 및 순차 상속 법리를 기초로 산출되었습니다.</p>
-                  {isAmountActive && <p className="text-[#0b6e99] dark:text-blue-400 font-bold mt-2">※ 계산된 상속 금액은 원 단위 이하를 내림하여 표기하였습니다.</p>}
+                  {isAmountActive && <p className="text-[#37352f] dark:text-neutral-300 font-bold mt-2">※ 계산된 상속 금액은 원 단위 이하를 내림하여 표기하였습니다.</p>}
                 </div>
               </div>
             </div>
