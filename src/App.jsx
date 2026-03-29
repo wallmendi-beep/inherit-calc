@@ -499,6 +499,26 @@ function App() {
       };
     }
 
+    // ⚖️ 호주 상속인 단일 선택 로직: 한 명을 호주로 지정하면 다른 형제의 호주 상태를 해제
+    if (field === 'isHoju' && value === true) {
+      setTree(prev => {
+        const updateSingleHoju = (n) => {
+          if (n.heirs && n.heirs.some(h => h.id === id)) {
+            return {
+              ...n,
+              heirs: n.heirs.map(h => ({
+                ...h,
+                isHoju: h.id === id ? true : false
+              }))
+            };
+          }
+          return { ...n, heirs: n.heirs?.map(updateSingleHoju) || [] };
+        };
+        return updateSingleHoju(prev);
+      });
+      return;
+    }
+
     // 동기화 필요 없는 일반 업데이트 (applyUpdate 내부에서 id 기반으로 자동 연동됨)
     applyUpdate(id, field, value, false);
   };
@@ -1189,7 +1209,7 @@ function App() {
             <div className="flex items-center gap-2 whitespace-nowrap shrink-0 overflow-visible">
               <div className="flex items-center text-[#37352f] dark:text-neutral-100 font-bold text-[18px] tracking-tight whitespace-nowrap shrink-0">
                 <IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-neutral-400 shrink-0" />
-                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v1.6.3</span>
+                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v1.6.4</span>
               </div>
               <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px] ml-8 whitespace-nowrap shrink-0">Designed by J.H. Lee</span>
             </div>
@@ -1307,7 +1327,7 @@ function App() {
                 <div className="bg-[#fcfcfb] dark:bg-neutral-800/20 border border-[#e9e9e7] dark:border-neutral-700 rounded-lg px-6 py-3 flex items-center gap-6 transition-colors shadow-none">
                   <div className="flex items-center gap-2 shrink-0 border-r border-[#f1f1ef] dark:border-neutral-700/50 pr-6 py-1">
                     <div className="w-1.5 h-1.5 rounded-full bg-[#2383e2]" />
-                    <span className="text-[12px] font-black text-[#37352f] dark:text-neutral-200 uppercase tracking-widest opacity-60">기본정보</span>
+                    <span className="text-[12px] font-black text-[#37352f] dark:text-neutral-200 uppercase tracking-widest">기본정보</span>
                   </div>
                   
                   <div className="flex flex-1 items-center gap-6 overflow-x-auto no-scrollbar">
@@ -1318,12 +1338,12 @@ function App() {
                     
                     <div className="shrink-0 flex items-center gap-2">
                       <label className="text-[12px] text-[#787774] dark:text-neutral-400 font-bold whitespace-nowrap">성명</label>
-                      <input type="text" onKeyDown={handleKeyDown} value={tree.name || ''} onChange={e=>handleRootUpdate('name',e.target.value)} className="w-32 border border-[#e9e9e7] dark:border-neutral-700 rounded px-2.5 py-1.5 text-[14px] font-bold text-[#2383e2] dark:text-blue-400 outline-none transition-all bg-white dark:bg-neutral-900" placeholder="이름" />
+                      <input type="text" onKeyDown={handleKeyDown} value={tree.name || ''} onChange={e=>handleRootUpdate('name',e.target.value)} className="w-32 border border-[#e9e9e7] dark:border-neutral-700 rounded px-2.5 py-1.5 text-[14px] font-bold text-[#37352f] dark:text-neutral-100 outline-none transition-all bg-white dark:bg-neutral-900" placeholder="이름" />
                     </div>
 
                     <div className="shrink-0 flex items-center gap-2">
                       <label className="text-[12px] text-[#c93f3a] dark:text-red-400 font-bold whitespace-nowrap">사망일자</label>
-                      <DateInput value={tree.deathDate || ''} onKeyDown={handleKeyDown} onChange={v=>handleRootUpdate('deathDate', v)} className="w-32 border border-[#e9e9e7] dark:border-neutral-700 rounded px-2.5 py-1.5 text-[14px] font-bold outline-none transition-all bg-white dark:bg-neutral-900 dark:text-neutral-200" />
+                      <DateInput value={tree.deathDate || ''} onKeyDown={handleKeyDown} onChange={v=>handleRootUpdate('deathDate', v)} className="w-32 border border-[#e9e9e7] dark:border-neutral-700 rounded px-2.5 py-1.5 text-[14px] font-medium outline-none transition-all bg-white dark:bg-neutral-900 text-neutral-500 dark:text-neutral-400" />
                     </div>
 
                     {getLawEra(tree.deathDate) !== '1991' && (
@@ -1515,23 +1535,31 @@ function App() {
                               </div>
                             )}
 
-                            <div className="mb-3 flex justify-between items-center no-print">
-                              <div className="text-[13px] font-bold text-[#787774] dark:text-slate-400 pl-2">
-                                <IconChevronRight className="h-4 w-4 mr-1 inline-block" /> 상세 상속인 목록
-                              </div>
-                              <div className="flex gap-2">
-                                {nodeHeirs.length > 0 && (
-                                  <button type="button" onClick={() => {
-                                    if(confirm('모든 상속인 데이터를 삭제하시겠습니까?')) {
-                                      if(currentNode.id === 'root') setTree({ ...tree, heirs: [] });
-                                      else handleUpdate(currentNode.id, 'heirs', []);
-                                    }
-                                  }} className="text-[13px] text-[#b91c1c] dark:text-red-400 font-bold bg-[#fef2f2] hover:bg-[#fee2e2] dark:bg-red-900/20 dark:hover:bg-red-900/40 px-4 py-1.5 rounded transition-colors flex items-center border border-[#fecaca] dark:border-red-800/50 shadow-sm ml-1">
+                            {/* 📋 엑셀 스타일 컬럼 헤더 (HeirRow와 너비 100% 동기화) */}
+                            {nodeHeirs.length > 0 && (
+                              <div className="flex items-center px-2 py-2 mb-2 bg-[#f8f8f7] dark:bg-neutral-800/50 rounded-md border border-[#e5e5e5] dark:border-neutral-700 text-[13px] font-bold text-[#787774] dark:text-neutral-400 select-none animate-in fade-in duration-300">
+                                <div className="w-[90px] flex justify-start shrink-0 pl-[53px]">상태</div>
+                                <div className="w-28 pl-[28px] shrink-0">성명</div>
+                                <div className="w-24 pl-[28px] shrink-0">관계</div>
+                                <div className="w-[140px] pl-[43px] shrink-0">사망여부 및 일자</div>
+                                <div className="flex-1 pl-[51px] shrink-0">특수조건 (가감산 등)</div>
+                                <div className="w-28 flex justify-center shrink-0">재상속/대습상속</div>
+                                <div className="w-20 flex justify-end shrink-0 pr-2">
+                                  <button 
+                                    type="button" 
+                                    onClick={() => {
+                                      if(confirm('모든 상속인 데이터를 삭제하시겠습니까?')) {
+                                        if(currentNode.id === 'root') setTree({ ...tree, heirs: [] });
+                                        else handleUpdate(currentNode.id, 'heirs', []);
+                                      }
+                                    }} 
+                                    className="text-[11px] text-red-500 hover:text-red-700 px-2 py-0.5 border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800/50 rounded transition-colors font-bold"
+                                  >
                                     전체 삭제
                                   </button>
-                                )}
+                                </div>
                               </div>
-                            </div>
+                            )}
 
                             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                               <SortableContext items={nodeHeirs.map(h => h.id)} strategy={verticalListSortingStrategy}>
