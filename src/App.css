@@ -40,3 +40,13 @@
 .read-the-docs {
   color: #888;
 }
+
+/* --- 생존 상속인 표시용 차분한 남색 (Calm Navy Blue) --- */
+.living-heir {
+  color: #2a4365 !important; /* 차분하고 어두운 남색 */
+  font-weight: 600 !important;
+}
+
+.dark .living-heir {
+  color: #63b3ed !important; /* 다크 모드용 밝은 파란색 */
+}

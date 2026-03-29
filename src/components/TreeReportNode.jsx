@@ -20,9 +20,18 @@ const TreeReportNode = ({ node, level, treeToggleSignal, rootDeathDate }) => {
   // 최종 상속권 배제 여부
   const isInheritanceLost = node.isExcluded || isPreDeceasedSpouse;
 
-    // 🎨 상태별 색상 정의 (요약표/입력창과 통일)
-    const getStatusStyle = (lvl, isDead, hasHeirs, isExpanded) => {
-      let colorClass = 'text-[#37352f] dark:text-neutral-100 font-bold'; 
+    // 🎨 상태별 색상 정의 (사이드바 요약/입력창과 통일)
+    const getStatusStyle = (node, hasHeirs, isExpanded) => {
+      const isAlive = !node.deathDate && !node.isDeceased;
+      
+      // 생존자: 뚜렷하고 차분한 남색 (기본 굵기)
+      let colorClass = 'text-[#1e56a0] dark:text-[#60a5fa]'; 
+      
+      if (!isAlive) {
+        // 사망자: 선명한 검정색/흰색 (기본 굵기)
+        colorClass = 'text-black dark:text-white'; 
+      }
+      
       let underlineClass = '';
       if (hasHeirs && !isExpanded) {
         underlineClass = 'underline decoration-rose-400 dark:decoration-rose-500 decoration-2 underline-offset-4'; 
@@ -30,7 +39,7 @@ const TreeReportNode = ({ node, level, treeToggleSignal, rootDeathDate }) => {
       return `${colorClass} ${underlineClass}`;
     };
 
-    const itemStyleClass = getStatusStyle(level, node.isDeceased, hasHeirs, isExpanded);
+    const itemStyleClass = getStatusStyle(node, hasHeirs, isExpanded);
 
   return (
     <div className={`relative ${level > 0 ? 'ml-6 pl-4 border-l-2 border-[#e5e5e5] dark:border-neutral-700' : ''} py-1 transition-colors`}>
@@ -46,7 +55,7 @@ const TreeReportNode = ({ node, level, treeToggleSignal, rootDeathDate }) => {
           )}
         </div>
 
-        <span className={`tracking-tight transition-colors ${level === 0 ? 'text-[18px]' : 'text-[16px]'} ${itemStyleClass}`}>
+        <span className={`tracking-tight transition-colors text-[16px] ${itemStyleClass}`}>
           {node.name}
         </span>
 
