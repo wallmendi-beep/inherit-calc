@@ -11,27 +11,51 @@ import { CSS } from '@dnd-kit/utilities';
  * 2. 엑셀/노션 데이터베이스 스타일 너비 동기화
  * 3. 글자 크기 상향 및 통일 (사용성 개선)
  */
-const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inheritedDate, onKeyDown, toggleSignal, rootIsHoju, isRootChildren, onTabClick }) => {
+const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inheritedDate, rootDeathDate, onKeyDown, toggleSignal, rootIsHoju, isRootChildren, onTabClick }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: node.id });
   
   const lawEra = getLawEra(inheritedDate);
   const isSpouseType = node.relation === 'wife' || node.relation === 'husband' || node.relation === 'spouse';
   const isPreDeceasedCondition = node.isDeceased && node.deathDate && inheritedDate && isBefore(node.deathDate, inheritedDate);
 
+  // 🏛️ 대습상속 맥락 및 배우자 재혼 판별
+  const isDaeseupContext = rootDeathDate && inheritedDate && inheritedDate !== rootDeathDate && isBefore(inheritedDate, rootDeathDate);
+  const isDaeseupSpouse = isSpouseType && isDaeseupContext;
+
   const shouldDisableToggle = isSpouseType && isPreDeceasedCondition;
   const isToggleOff = shouldDisableToggle ? true : (node.isExcluded || false);
 
   let shouldShowTabBtn = false;
-  let tabBtnText = '재상속 ➔';
+  let tabBtnText = '재상속 »';
+  let tabBtnClass = "bg-[#fffbeb] dark:bg-amber-900/40 text-[#b45309] dark:text-amber-500 border border-[#fde68a] dark:border-amber-700/50 hover:bg-[#fef3c7]";
+  let onBtnClick = () => onTabClick && onTabClick(node.id);
+  let btnTitle = "";
 
   if (isToggleOff) {
-    if (node.exclusionOption === 'lost' || node.exclusionOption === 'disqualified') {
+    if (node.exclusionOption === 'lost' || node.exclusionOption === 'disqualified' || node.exclusionOption === 'remarried') {
       shouldShowTabBtn = true;
-      tabBtnText = '대습상속 ➔';
+      tabBtnText = '대습상속 »';
+      tabBtnClass = "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50 hover:bg-emerald-100";
+    } else if (isPreDeceasedCondition && ['son', 'daughter', 'sibling'].includes(node.relation)) {
+      // 선사망 자동 OFF 상태일 때 대습상속 유도 버튼
+      shouldShowTabBtn = true;
+      tabBtnText = '대습상속 입력 »';
+      tabBtnClass = "bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 border-neutral-300 dark:border-neutral-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-700 dark:hover:text-emerald-400 hover:border-emerald-300 dark:hover:border-emerald-800 border-dashed opacity-80 hover:opacity-100";
+      btnTitle = "대습상속인을 입력하려면 클릭하세요";
+      onBtnClick = () => {
+        handleUpdate(node.id, 'isExcluded', false);
+        if (onTabClick) onTabClick(node.id);
+      };
     }
   } else if (node.isDeceased) {
     shouldShowTabBtn = true;
-    tabBtnText = isPreDeceasedCondition ? '대습상속 ➔' : '재상속 ➔';
+    if (isPreDeceasedCondition) {
+      tabBtnText = '대습상속 »';
+      tabBtnClass = "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50 hover:bg-emerald-100";
+    } else {
+      tabBtnText = '재상속 »';
+      tabBtnClass = "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/50 hover:bg-indigo-100";
+    }
   }
 
   const dndStyle = {
@@ -47,7 +71,7 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
   return (
     <div ref={setNodeRef} style={dndStyle} className="group/row flex items-center w-full px-2 py-2 mb-1 bg-white dark:bg-neutral-800 rounded-md border border-[#e5e5e5] dark:border-neutral-700 hover:bg-[#f8f8f7] dark:hover:bg-neutral-700/50 transition-colors">
       
-      {/* 1. 상태 (토글 스위치 - 노란색 전구 컨셉) */}
+      {/* 1. 상속권 (토글 스위치) */}
       <div className="w-[90px] flex justify-center shrink-0 items-center gap-1">
         <div {...attributes} {...listeners} className="cursor-grab text-neutral-400 hover:text-neutral-600 p-1 transition-opacity relative -left-[15px]">
           <IconMenu className="w-4 h-4" />
@@ -55,11 +79,22 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
         <button
           type="button"
           disabled={shouldDisableToggle}
-          onClick={() => handleUpdate(node.id, 'isExcluded', !node.isExcluded)}
+          onClick={() => {
+            const nextExcluded = !node.isExcluded;
+            if (nextExcluded) {
+              // 상속권 OFF 시 기본 사유 설정
+              handleUpdate(node.id, 'exclusionOption', isDaeseupSpouse ? 'remarried' : 'no_heir');
+            } else {
+              // 상속권 ON 시 제외 옵션 삭제
+              handleUpdate(node.id, 'exclusionOption', '');
+            }
+            handleUpdate(node.id, 'isExcluded', nextExcluded);
+          }}
           className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors focus:outline-none disabled:opacity-100 ${
-            shouldDisableToggle ? 'bg-neutral-300 dark:bg-neutral-700 cursor-not-allowed' :
-            !isToggleOff ? 'bg-amber-400/60 dark:bg-amber-500/60' : 'bg-neutral-300 dark:bg-neutral-600'
+            shouldDisableToggle ? 'bg-neutral-300 dark:bg-neutral-600 cursor-not-allowed' :
+            !isToggleOff ? 'bg-emerald-500 dark:bg-emerald-600' : 'bg-neutral-300 dark:bg-neutral-600'
           }`}
+          title={isToggleOff ? "상속권 없음 (클릭하여 부활)" : "상속권 있음 (클릭하여 소멸)"}
         >
           <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${!isToggleOff ? 'translate-x-4' : 'translate-x-1'}`} />
         </button>
@@ -93,23 +128,25 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
         </select>
       </div>
 
-      {/* 4. 사망여부 및 일자 OR 상속포기/결격 (Normal Weight) */}
-      <div className="w-[140px] pl-[28px] shrink-0 flex items-center text-[15px]">
+      {/* 4. 사망여부 및 일자 OR 상속권 제외 사유 (Normal Weight) */}
+      <div className="w-[150px] pl-[28px] shrink-0 flex items-center text-[15px]">
         {isToggleOff && !shouldDisableToggle ? (
-          <div className="relative w-full group/select">
+          <div className="relative w-full group/select bg-rose-50/50 dark:bg-rose-900/10 px-1 rounded border border-rose-200/50">
             <select
-              value={node.exclusionOption || 'renounce'}
+              value={node.exclusionOption || 'no_heir'}
               onChange={(e) => handleUpdate(node.id, 'exclusionOption', e.target.value)}
-              className="w-full bg-transparent text-[15px] font-normal text-[#c93f3a] dark:text-red-400 outline-none cursor-pointer appearance-none pr-5"
+              className="w-full bg-transparent text-[13px] font-bold text-[#c93f3a] dark:text-red-400 outline-none cursor-pointer appearance-none pr-5 py-0.5"
             >
+              <option value="no_heir">대습상속인 없음</option>
               <option value="renounce">상속포기</option>
               <option value="disqualified">상속결격</option>
-              {!isBefore(inheritedDate, '2024-04-25') && (
+              {!isBefore(rootDeathDate, '2024-04-25') && (
                 <option value="lost">상속권 상실</option>
               )}
+              {isDaeseupSpouse && <option value="remarried">재혼</option>}
             </select>
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-[#c93f3a] opacity-50">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+            <div className="absolute right-0.5 top-1/2 -translate-y-1/2 pointer-events-none text-[#c93f3a] opacity-50">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
                 <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
               </svg>
             </div>
@@ -126,8 +163,16 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
               <DateInput
                 value={node.deathDate}
                 onKeyDown={onKeyDown}
-                onChange={(v) => handleUpdate(node.id, 'deathDate', v)}
-                className="flex-1 text-[15px] font-normal outline-none text-neutral-500 dark:text-neutral-400 bg-transparent"
+                onChange={(v) => {
+                  handleUpdate(node.id, 'deathDate', v);
+                  if (v && inheritedDate && isBefore(v, inheritedDate)) {
+                    if (['son', 'daughter', 'sibling'].includes(node.relation) && (!node.heirs || node.heirs.length === 0)) {
+                      handleUpdate(node.id, 'isExcluded', true);
+                      handleUpdate(node.id, 'exclusionOption', 'no_heir');
+                    }
+                  }
+                }}
+                className="flex-1 text-[13px] font-bold outline-none text-neutral-500 dark:text-neutral-400 bg-transparent"
                 placeholder="사망일자"
               />
             )}
@@ -209,8 +254,9 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
         {shouldShowTabBtn && onTabClick && (
           <button
             type="button"
-            onClick={() => onTabClick(node.id)}
-            className="bg-[#fffbeb] dark:bg-amber-900/40 text-[#b45309] dark:text-amber-500 border border-[#fde68a] dark:border-amber-700/50 px-3 py-1.5 rounded-md font-bold text-[13px] shrink-0 hover:bg-[#fef3c7] transition-colors shadow-sm"
+            onClick={onBtnClick}
+            title={btnTitle}
+            className={`px-3 py-1.5 rounded-md font-bold text-[13px] shrink-0 border transition-colors shadow-sm ${tabBtnClass}`}
           >
             {tabBtnText}
           </button>
