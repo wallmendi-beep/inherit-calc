@@ -1387,11 +1387,11 @@ function App() {
         );
       })()}
 
-      {/* 💡 헤더 (리본 메뉴) - 본문과 정렬 동기화 [절대 줄바꿈 방지] */}
+      {/* 💡 헤더 (리본 메뉴) - 화면 왼쪽 끝 절대 고정 (사이드바 연동 없음) */}
       <div 
-        className="bg-white dark:bg-neutral-800 border-b border-[#e9e9e7] dark:border-neutral-700 h-[54px] sticky top-0 z-50 no-print w-full flex transition-all duration-300 shadow-sm overflow-hidden"
+        className="bg-white dark:bg-neutral-800 border-b border-[#e9e9e7] dark:border-neutral-700 h-[54px] sticky top-0 z-50 no-print w-full flex justify-start transition-all duration-300 shadow-sm overflow-hidden"
       >
-        <div className="w-full max-w-[1160px] min-w-[1140px] px-4 mx-0 flex items-center justify-between h-full flex-nowrap">
+        <div className="w-[1080px] min-w-[1080px] shrink-0 px-6 flex items-center justify-between h-full flex-nowrap">
           <div className="flex items-center gap-3 flex-nowrap shrink-0">
             {/* 사이드바 토글 버튼 */}
             <button
@@ -1410,7 +1410,7 @@ function App() {
             <div className="flex items-center gap-2 whitespace-nowrap shrink-0 overflow-visible">
               <div className="flex items-center text-[#37352f] dark:text-neutral-100 font-bold text-[18px] tracking-tight whitespace-nowrap shrink-0">
                 <IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-neutral-400 shrink-0" />
-                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v1.8.0</span>
+                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v1.8.1</span>
               </div>
               <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px] ml-8 whitespace-nowrap shrink-0">Designed by J.H. Lee</span>
             </div>
@@ -1463,17 +1463,14 @@ function App() {
         </div>
       </div>
 
-      <main className="flex-1">
-
-      {/* 💡 메인 컨텐츠 - 웹 브라우저 앱 스타일 중앙 캔버스 */}
-      <div 
-        className="flex flex-col w-full max-w-[1160px] px-4 mt-6 print-compact transition-all duration-500 print:!ml-0 print:!max-w-none relative z-10"
-        style={{ 
-          marginLeft: sidebarOpen ? sidebarWidth : 0
-        }}
+      <main 
+        className={`flex-1 flex w-full transition-all duration-300 ${sidebarOpen ? 'justify-start' : 'justify-center'}`}
+        style={{ paddingLeft: sidebarOpen ? (sidebarWidth + 50) : 0 }}
       >
-        {/* 상단 탭 (네비게이션) - 제목과 정렬 동기화 */}
-        <div className="flex items-end pl-[48px] gap-1 no-print relative z-20">
+        {/* 💡 가변(max-w)을 버리고 절대 고정폭(w-[1080px]) 적용 */}
+        <div className="flex flex-col w-[1080px] min-w-[1080px] shrink-0 px-6 mt-6 print-compact print:!px-0 print:!min-w-0 print:!w-full relative z-10">
+          {/* 상단 탭 (네비게이션) - 제목과 정렬 동기화 */}
+          <div className="flex items-end pl-[48px] gap-1 no-print relative z-20">
           {tabData.map(t => {
             const isActive = activeTab === t.id;
             return (
@@ -1529,46 +1526,45 @@ function App() {
             
             return (
               <div className="space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-400 flex flex-col flex-1">
-                {/* 상단 기본정보 섹션 - 미니멀 개편 */}
-                <div className="bg-[#fcfcfb] dark:bg-neutral-800/20 border border-[#e9e9e7] dark:border-neutral-700 rounded-lg px-6 py-3 flex items-center gap-6 transition-colors shadow-none">
+                {/* 상단 기본정보 섹션 - 노션 스타일 미니멀 개편 */}
+                <div className="bg-white dark:bg-neutral-800/20 border border-[#e9e9e7] dark:border-neutral-700 rounded-lg px-6 py-3 flex items-center gap-6 transition-colors shadow-sm">
                   <div className="flex items-center gap-2 shrink-0 border-r border-[#f1f1ef] dark:border-neutral-700/50 pr-6 py-1">
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#2383e2]" />
-                    <span className="text-[12px] font-black text-[#37352f] dark:text-neutral-200 uppercase tracking-widest">기본정보</span>
+                    <div className="w-1.5 h-1.5 rounded-full bg-neutral-300 dark:bg-neutral-600" />
+                    <span className="text-[12px] font-bold text-[#787774] dark:text-neutral-400 uppercase tracking-widest">기본정보</span>
                   </div>
                   
-                  <div className="flex flex-1 items-center gap-6 overflow-x-auto no-scrollbar">
+                  <div className="flex flex-1 items-center gap-5 overflow-x-auto no-scrollbar">
                     <div className="shrink-0 flex items-center gap-2">
                       <label className="text-[12px] text-[#787774] dark:text-neutral-400 font-bold whitespace-nowrap">사건번호</label>
-                      <input type="text" onKeyDown={handleKeyDown} value={tree.caseNo} onChange={e=>handleRootUpdate('caseNo',e.target.value)} className="w-32 border border-[#e9e9e7] dark:border-neutral-700 rounded px-2.5 py-1.5 text-[14px] font-medium outline-none transition-all bg-white dark:bg-neutral-900 dark:text-neutral-200" placeholder="번호 입력" />
+                      <input type="text" onKeyDown={handleKeyDown} value={tree.caseNo || ''} onChange={e=>handleRootUpdate('caseNo',e.target.value)} className="w-32 border border-[#e9e9e7] dark:border-neutral-700 rounded px-2.5 py-1.5 text-[14px] font-medium text-[#37352f] dark:text-neutral-200 outline-none transition-all bg-transparent focus:bg-neutral-50 dark:focus:bg-neutral-800" placeholder="번호 입력" />
                     </div>
                     
                     <div className="shrink-0 flex items-center gap-2">
                       <label className="text-[12px] text-[#787774] dark:text-neutral-400 font-bold whitespace-nowrap">성명</label>
-                      <input type="text" onKeyDown={handleKeyDown} value={tree.name || ''} onChange={e=>handleRootUpdate('name',e.target.value)} className="w-32 border border-[#e9e9e7] dark:border-neutral-700 rounded px-2.5 py-1.5 text-[14px] font-bold text-[#37352f] dark:text-neutral-100 outline-none transition-all bg-white dark:bg-neutral-900" placeholder="이름" />
+                      {/* 성명 칸 너비 112px (w-28) 로 고정 */}
+                      <input type="text" onKeyDown={handleKeyDown} value={tree.name || ''} onChange={e=>handleRootUpdate('name',e.target.value)} className="w-28 border border-[#e9e9e7] dark:border-neutral-700 rounded px-2.5 py-1.5 text-[14px] font-bold text-[#37352f] dark:text-neutral-100 outline-none transition-all bg-transparent focus:bg-neutral-50 dark:focus:bg-neutral-800" placeholder="이름" />
                     </div>
 
                     <div className="shrink-0 flex items-center gap-2">
-                      <label className="text-[12px] text-[#c93f3a] dark:text-red-400 font-bold whitespace-nowrap">사망일자</label>
-                      <DateInput value={tree.deathDate || ''} onKeyDown={handleKeyDown} onChange={v=>handleRootUpdate('deathDate', v)} className="w-32 border border-[#e9e9e7] dark:border-neutral-700 rounded px-2.5 py-1.5 text-[14px] font-medium outline-none transition-all bg-white dark:bg-neutral-900 text-neutral-500 dark:text-neutral-400" />
+                      <label className="text-[12px] text-[#787774] dark:text-neutral-400 font-bold whitespace-nowrap">사망일자</label>
+                      {/* 사망일자 칸 너비 112px (w-28) 로 고정 */}
+                      <DateInput value={tree.deathDate || ''} onKeyDown={handleKeyDown} onChange={v=>handleRootUpdate('deathDate', v)} className="w-28 border border-[#e9e9e7] dark:border-neutral-700 rounded px-2.5 py-1.5 text-[14px] font-medium text-[#37352f] dark:text-neutral-200 outline-none transition-all bg-transparent focus:bg-neutral-50 dark:focus:bg-neutral-800" />
                     </div>
 
                     {getLawEra(tree.deathDate) !== '1991' && (
                       <div className="shrink-0 flex items-center gap-2">
-                        <label className="text-[12px] text-[#2383e2] dark:text-blue-400 font-bold whitespace-nowrap">호주</label>
-                        <input type="checkbox" disabled={!isRootNode} checked={isRootNode ? tree.isHoju !== false : false} onChange={e=>handleRootUpdate('isHoju', e.target.checked)} className="w-3.5 h-3.5 cursor-pointer accent-[#2383e2]" />
+                        <label className="text-[12px] text-[#787774] dark:text-neutral-400 font-bold whitespace-nowrap">호주</label>
+                        <input type="checkbox" disabled={!isRootNode} checked={isRootNode ? tree.isHoju !== false : false} onChange={e=>handleRootUpdate('isHoju', e.target.checked)} className="w-3.5 h-3.5 cursor-pointer accent-neutral-500" />
                       </div>
                     )}
 
                     <div className="shrink-0 flex items-center gap-2">
                        <label className="text-[12px] text-[#787774] dark:text-neutral-400 font-bold whitespace-nowrap">상속할 지분</label>
-                       <div className="flex items-center bg-white dark:bg-neutral-900 rounded border border-[#e9e9e7] dark:border-neutral-700 px-2 py-1 gap-1">
-                         <input type="number" min="1" value={tree.shareD || 1} onChange={e=>handleRootUpdate('shareD', Math.max(1, parseInt(e.target.value)||1))} className="w-10 bg-transparent text-[14px] text-center font-bold outline-none dark:text-neutral-200" title="분모" />
-                         <span className="text-[#787774] dark:text-neutral-500 text-[12px] font-bold mx-0.5">분의</span>
-                         <input type="number" min="1" max={tree.shareD || 1} value={tree.shareN || 1} onChange={e=>handleRootUpdate('shareN', Math.min(tree.shareD||1, Math.max(1, parseInt(e.target.value)||1)))} className="w-10 bg-transparent text-[14px] text-center font-bold outline-none dark:text-neutral-200" title="분자" />
+                       <div className="flex items-center bg-transparent rounded border border-[#e9e9e7] dark:border-neutral-700 px-2 py-1 gap-1">
+                         <input type="number" min="1" value={tree.shareD || 1} onChange={e=>handleRootUpdate('shareD', Math.max(1, parseInt(e.target.value)||1))} className="w-10 bg-transparent text-[14px] text-center font-medium text-[#37352f] outline-none dark:text-neutral-200" title="분모" />
+                         <span className="text-[#787774] dark:text-neutral-500 text-[12px] font-medium mx-0.5">/</span>
+                         <input type="number" min="1" max={tree.shareD || 1} value={tree.shareN || 1} onChange={e=>handleRootUpdate('shareN', Math.min(tree.shareD||1, Math.max(1, parseInt(e.target.value)||1)))} className="w-10 bg-transparent text-[14px] text-center font-medium text-[#37352f] outline-none dark:text-neutral-200" title="분자" />
                        </div>
-                    </div>
-
-                    <div className="ml-auto shrink-0 flex gap-2">
                     </div>
                   </div>
                 </div>
@@ -1822,28 +1818,20 @@ function App() {
                               </div>
                             )}
 
-                            {/* 📋 엑셀 스타일 컬럼 헤더 (HeirRow와 너비 100% 동기화) */}
+                            {/* 📋 엑셀 스타일 컬럼 헤더 (HeirRow와 너비 100% 동기화 - 총 828px) */}
                             {nodeHeirs.length > 0 && (
-                              <div className="flex items-center px-2 py-2 mb-2 bg-[#f8f8f7] dark:bg-neutral-800/50 rounded-md border border-[#e5e5e5] dark:border-neutral-700 text-[13px] font-bold text-[#787774] dark:text-neutral-400 select-none animate-in fade-in duration-300">
-                                <div className="w-[90px] flex justify-start shrink-0 pl-[48px]">상속권</div>
-                                <div className="w-28 pl-[35px] shrink-0">성명</div>
-                                <div className="w-24 pl-[28px] shrink-0">관계</div>
-                                <div className="w-[140px] pl-[43px] shrink-0">사망여부 및 일자</div>
-                                <div className="flex-1 pl-[51px] shrink-0">특수조건 (가감산 등)</div>
-                                <div className="w-28 flex justify-center shrink-0">재상속/대습상속</div>
-                                <div className="w-20 flex justify-end shrink-0 pr-2">
-                                  <button 
-                                    type="button" 
-                                    onClick={() => {
-                                      if(confirm('모든 상속인 데이터를 삭제하시겠습니까?')) {
-                                        if(currentNode.id === 'root') setTree({ ...tree, heirs: [] });
-                                        else handleUpdate(currentNode.id, 'heirs', []);
-                                      }
-                                    }} 
-                                    className="text-[11px] text-red-500 hover:text-red-700 px-2 py-0.5 border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800/50 rounded transition-colors font-bold"
-                                  >
-                                    전체 삭제
-                                  </button>
+                              <div className="flex items-center px-2 py-2 mb-2 bg-[#fcfcfb] dark:bg-neutral-800/50 rounded-md border border-[#e9e9e7] dark:border-neutral-700 text-[12px] font-bold text-[#787774] dark:text-neutral-400 select-none animate-in fade-in duration-300 w-full">
+                                <div className="w-[90px] shrink-0 text-center">상태</div>
+                                <div className="w-28 shrink-0 text-center">성명</div>
+                                <div className="w-24 shrink-0 text-center">관계</div>
+                                <div className="w-[150px] shrink-0 text-center">사망여부/일자</div>
+                                <div className="w-[200px] shrink-0 text-center">특수조건 (가감산)</div>
+                                <div className="w-[35px] shrink-0"></div> {/* 35px 간격 */}
+                                <div className="w-28 shrink-0 flex justify-center -ml-2.5">
+                                  <span className="whitespace-nowrap">재/대습상속</span>
+                                </div>
+                                <div className="w-12 shrink-0 flex justify-center pl-[36px]">
+                                  <span className="whitespace-nowrap">삭제</span>
                                 </div>
                               </div>
                             )}
@@ -1962,101 +1950,68 @@ function App() {
             </div>
           )}
 
-          {activeTab === 'calc' && (
-            <section className="w-full animate-in fade-in duration-300">
-              {/* 공통 기본정보 헤더 */}
-              <div className="mb-4 flex items-center justify-between no-print border-b border-[#e5e5e5] dark:border-neutral-700 pb-4">
-                <div className="flex flex-wrap gap-6 text-[13px] font-bold text-neutral-500">
-                  <span>사건번호: <span className="text-neutral-800 dark:text-neutral-200">{tree.caseNo || '미입력'}</span></span>
-                  <span>피상속인: <span className="text-neutral-800 dark:text-neutral-200">{tree.name || '미입력'}</span></span>
-                  <span>사망일자: <span className="text-neutral-800 dark:text-neutral-200">{tree.deathDate || '미입력'}</span></span>
-                  <span>적용법령: <span className="text-neutral-800 dark:text-neutral-200">{getLawEra(tree.deathDate)}년 민법</span></span>
-                </div>
-              </div>
+          {/* 공통 기본정보 헤더 (미니멀 텍스트) */}
+          {(activeTab === 'calc' || activeTab === 'result' || activeTab === 'summary') && (
+            <div className="w-full mb-6 pb-3 border-b border-[#e9e9e7] dark:border-neutral-700 text-[13px] text-[#504f4c] dark:text-neutral-400 flex flex-wrap gap-8 no-print">
+              <span>사건번호: <span className="text-[#37352f] dark:text-neutral-200 font-medium">{tree.caseNo || '미입력'}</span></span>
+              <span>피상속인: <span className="text-[#37352f] dark:text-neutral-200 font-medium">{tree.name || '미입력'}</span></span>
+              <span>사망일자: <span className="text-[#37352f] dark:text-neutral-200 font-medium">{tree.deathDate || '미입력'}</span></span>
+              <span>적용법령: <span className="text-[#37352f] dark:text-neutral-200 font-medium">{getLawEra(tree.deathDate)}년 민법</span></span>
+            </div>
+          )}
 
-              <div className="mb-4 p-4 bg-[#f8f8f7] dark:bg-neutral-800/50 border border-[#e5e5e5] dark:border-neutral-700 rounded-lg text-[14px] text-[#787774] dark:text-neutral-300 flex items-center gap-2 no-print shadow-sm">
-                 <IconTable className="w-5 h-5 text-blue-500" />
-                 <span>피상속인부터 시작하여 각 대습/재상속 발생 시점마다 지분이 어떻게 산출되었는지 보여주는 상세 계산 흐름도입니다.</span>
+          {activeTab === 'calc' && (
+            <section className="w-full text-[#37352f] dark:text-neutral-200">
+              <div className="mb-4 text-[13px] text-[#787774] dark:text-neutral-500">
+                ※ 피상속인부터 시작하여 각 대습/재상속 발생 시점마다 지분이 산출된 계산 흐름표입니다.
               </div>
               <div className="space-y-6 print-mt-4">
                 {calcSteps.map((s, i) => (
-                  <div key={'p-s'+i} className="break-inside-avoid border-2 border-[#37352f] dark:border-neutral-500 rounded-xl overflow-hidden shadow-sm bg-white dark:bg-neutral-800">
-                    <div className="bg-[#f8f9fa] dark:bg-neutral-800 px-5 py-3 flex justify-between items-center transition-colors border-b-2 border-[#37352f] dark:border-neutral-500">
-                      <div className="flex items-center gap-3">
-                        <span className="px-2.5 py-1 bg-[#2383e2] text-white text-[12px] font-black rounded-md shadow-sm">STEP {i+1}</span>
-                        <span className="text-[16px] font-black text-[#37352f] dark:text-neutral-200">
-                          망 {s.dec.name} <span className="text-[14px] font-bold text-[#787774]">({formatKorDate(s.dec.deathDate)} 사망)</span>
+                  <div key={'p-s'+i}>
+                    <div className="mb-2 text-[13px] text-[#504f4c] dark:text-neutral-300">
+                      [STEP {i+1}] <span className="font-medium text-[#37352f] dark:text-neutral-100">망 {s.dec.name}</span> ({formatKorDate(s.dec.deathDate)} 사망) ─ 분배 지분: {s.inN}/{s.inD}
+                      {s.mergeSources && s.mergeSources.length > 1 && (
+                        <span className="text-[#787774]">
+                          {` (= ${s.mergeSources.map(src => `${src.from} ${src.d}분의 ${src.n}`).join(' + ')})`}
                         </span>
-                        <span className="ml-2 font-bold text-[#0b6e99] dark:text-blue-400 text-[14px]">
-                          [분배할 지분: {s.inN}/{s.inD}]
-                        </span>
-                        {s.mergeSources && s.mergeSources.length > 1 && (
-                          <span className="ml-2 text-[12px] font-bold text-teal-600 dark:text-teal-500">
-                            (= {s.mergeSources.map((src, si) => (
-                              <React.Fragment key={si}>
-                                {si > 0 && ' + '}
-                                {src.from} {src.d}분의 {src.n}
-                              </React.Fragment>
-                            ))})
-                          </span>
-                        )}
-                      </div>
+                      )}
                     </div>
-                    <table className="w-full text-left table-fixed">
-                      <thead className="bg-[#fcfcfb] dark:bg-neutral-800/40 border-b border-[#e5e5e5] dark:border-neutral-700/50">
-                        <tr className="text-[#787774] dark:text-neutral-400 text-[13px] font-bold text-center">
-                          <th className="py-3 px-4 w-[15%] border-r border-[#d4d4d4] dark:border-neutral-600">성명</th>
-                          <th className="py-3 px-4 w-[12%] border-r border-[#d4d4d4] dark:border-neutral-600">관계</th>
-                          <th className="py-3 px-4 w-[20%] border-r border-[#d4d4d4] dark:border-neutral-600">계산식</th>
-                          <th className="py-3 px-4 w-[18%] border-r border-[#d4d4d4] dark:border-neutral-600 text-[#0b6e99]">계산된 지분</th>
-                          <th className="py-3 px-4 w-[35%] text-left pl-6">비고 (가감산 사유)</th>
+                    <table className="w-full border-collapse text-[13px]">
+                      <thead className="bg-[#fcfcfb] dark:bg-neutral-800/40">
+                        <tr>
+                          <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2 font-medium text-center w-[15%] text-[#787774] dark:text-neutral-400">성명</th>
+                          <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2 font-medium text-center w-[12%] text-[#787774] dark:text-neutral-400">관계</th>
+                          <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2 font-medium text-center w-[25%] text-[#787774] dark:text-neutral-400">계산식</th>
+                          <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2 font-medium text-center w-[18%] text-[#787774] dark:text-neutral-400">계산된 지분</th>
+                          <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2 font-medium text-left w-[30%] pl-4 text-[#787774] dark:text-neutral-400">비고 (사유)</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-[#f1f1ef] dark:divide-neutral-700/30">
+                      <tbody>
                         {s.dists.map((d, di) => {
                           const isSpecial = d.mod && d.mod.length > 0;
                           const hasDeathInfoInEx = d.ex && (d.ex.includes('사망') || d.ex.includes('선사망'));
                           
+                          let memo = [];
+                          if (d.ex) memo.push(`상속권 없음(${d.ex})`);
+                          if (d.h.isDeceased && !hasDeathInfoInEx) memo.push('망인');
+                          if (isSpecial) memo.push(...d.mod.split(',').map(m => m.trim()));
+                          
                           return (
                             <tr key={di} className="hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20 transition-colors">
-                              <td className={`py-3 px-4 text-center text-[15px] border-r border-[#d4d4d4] dark:border-neutral-600 ${d.h.isDeceased ? 'text-black dark:text-white font-bold' : 'text-[#37352f] dark:text-neutral-100 font-black'}`}>
+                              <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2 text-center font-medium">
                                 {d.h.name}
                               </td>
-                              <td className="py-3 px-4 text-center text-[13px] font-bold text-[#787774] dark:text-neutral-400 border-r border-[#d4d4d4] dark:border-neutral-600">
+                              <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2 text-center text-[#787774]">
                                 {getRelStr(d.h.relation, s.dec.deathDate) || '상속인'}
                               </td>
-                              <td className="py-3 px-4 text-center text-[14px] font-medium text-[#787774] border-r border-[#d4d4d4] dark:border-neutral-600">
-                                {s.inN}/{s.inD} <span className="mx-1 text-[#d4d4d4]">×</span> {d.sn}/{d.sd}
+                              <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2 text-center text-[#787774]">
+                                {s.inN}/{s.inD} × {d.sn}/{d.sd}
                               </td>
-                              <td className="py-3 px-4 text-center text-[16px] font-black text-[#0b6e99] dark:text-blue-400 border-r border-[#d4d4d4] dark:border-neutral-600">
+                              <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2 text-center font-medium">
                                 {d.n}/{d.d}
                               </td>
-                              <td className="py-3 px-4 pl-6">
-                                <div className="flex flex-wrap gap-1.5 items-center">
-                                  {d.ex && (
-                                    <span className="px-2 py-0.5 bg-neutral-200 dark:bg-neutral-700 text-black dark:text-white text-[12px] font-bold rounded-md shadow-sm">
-                                      상속권 없음 ({d.ex})
-                                    </span>
-                                  )}
-                                  {d.h.isDeceased && !hasDeathInfoInEx && (
-                                    <span className="px-2 py-0.5 border border-neutral-300 dark:border-neutral-600 text-neutral-500 text-[12px] font-bold rounded-md">
-                                      망인
-                                    </span>
-                                  )}
-                                  {isSpecial && d.mod.split(',').map((mod, midx) => {
-                                    const mText = mod.trim();
-                                    let badgeClass = "bg-neutral-100 text-neutral-600 border-neutral-200";
-                                    if (mText.includes('가산') || mText.includes('+')) badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
-                                    else if (mText.includes('감산') || mText.includes('-') || mText.includes('출가')) badgeClass = "bg-rose-50 text-rose-700 border-rose-200";
-                                    else if (mText.includes('호주')) badgeClass = "bg-sky-50 text-sky-700 border-sky-200";
-                                    
-                                    return (
-                                      <span key={midx} className={`px-2 py-0.5 border text-[12px] font-bold rounded-md shadow-sm whitespace-nowrap ${badgeClass}`}>
-                                        {mText}
-                                      </span>
-                                    );
-                                  })}
-                                </div>
+                              <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2 text-left pl-4 text-[#787774]">
+                                {memo.join(', ')}
                               </td>
                             </tr>
                           );
@@ -2074,9 +2029,9 @@ function App() {
             calcSteps.forEach(s => {
               s.dists.forEach(d => {
                 if (d.n > 0) {
-                  const key = d.h.personId; // 🔑 personId 기준
+                  const key = d.h.personId; 
                   if (!heirMap.has(key)) {
-                    heirMap.set(key, { personId: d.h.personId, name: d.h.name, relation: d.h.relation, sources: [], isDeceased: d.h.isDeceased });
+                    heirMap.set(key, { name: d.h.name, relation: d.h.relation, sources: [], isDeceased: d.h.isDeceased });
                   }
                   heirMap.get(key).sources.push({ decName: s.dec.name, n: d.n, d: d.d });
                 }
@@ -2085,65 +2040,43 @@ function App() {
             const results = Array.from(heirMap.values()).filter(r => !r.isDeceased);
 
             return (
-              <section className="w-full animate-in fade-in duration-300">
-                {/* 공통 기본정보 헤더 */}
-                <div className="mb-4 flex items-center justify-between no-print border-b border-[#e5e5e5] dark:border-neutral-700 pb-4">
-                  <div className="flex flex-wrap gap-6 text-[13px] font-bold text-neutral-500">
-                    <span>사건번호: <span className="text-neutral-800 dark:text-neutral-200">{tree.caseNo || '미입력'}</span></span>
-                    <span>피상속인: <span className="text-neutral-800 dark:text-neutral-200">{tree.name || '미입력'}</span></span>
-                    <span>사망일자: <span className="text-neutral-800 dark:text-neutral-200">{tree.deathDate || '미입력'}</span></span>
-                    <span>적용법령: <span className="text-neutral-800 dark:text-neutral-200">{getLawEra(tree.deathDate)}년 민법</span></span>
-                  </div>
+              <section className="w-full text-[#37352f] dark:text-neutral-200">
+                <div className="mb-4 text-[13px] text-[#787774] dark:text-neutral-500">
+                  ※ 최종 생존 상속인 기준으로 승계받은 지분들을 합산한 검증표입니다.
                 </div>
+                <table className="w-full border-collapse text-[13px]">
+                  <thead className="bg-[#fcfcfb] dark:bg-neutral-800/40">
+                    <tr>
+                      <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[20%] text-[#787774]">최종 상속인</th>
+                      <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[60%] text-[#787774]">지분 취득 내역 (합산식)</th>
+                      <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[20%] text-[#787774]">최종 합계 지분</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {results.map((r, i) => {
+                      const total = r.sources.reduce((acc, s) => {
+                        const [nn, nd] = math.add(acc.n, acc.d, s.n, s.d);
+                        return { n: nn, d: nd };
+                      }, { n: 0, d: 1 });
+                      
+                      const sourceText = r.sources.map(s => `${s.n}/${s.d} (망 ${s.decName})`).join('  +  ');
 
-                <div className="mb-4 p-4 bg-[#f8f8f7] dark:bg-neutral-800/50 border border-[#e5e5e5] dark:border-neutral-700 rounded-lg text-[14px] font-semibold text-[#787774] dark:text-neutral-300 flex items-center gap-2 no-print shadow-sm">
-                  <IconCalculator className="w-5 h-5 text-indigo-500" />
-                  <span>최종 생존 상속인 기준으로, 여러 단계에 걸쳐 승계받은 지분들을 하나로 합산(+)하여 검증하는 과정입니다.</span>
-                </div>
-
-                {/* 📋 계산결과 테이블 (Excel 스타일) */}
-                <div className="overflow-x-auto shadow-md rounded-xl border-2 border-[#37352f] dark:border-neutral-500 bg-white dark:bg-neutral-800">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-[#f8f9fa] dark:bg-neutral-800 text-[#37352f] dark:text-neutral-200 text-[14px] font-black border-b-2 border-[#37352f] dark:border-neutral-500">
-                        <th className="py-3.5 px-4 border-r border-[#d4d4d4] dark:border-neutral-600 text-center w-[20%]">최종 상속인</th>
-                        <th className="py-3.5 px-4 border-r border-[#d4d4d4] dark:border-neutral-600 text-center w-[55%]">지분 취득 내역 (합산)</th>
-                        <th className="py-3.5 px-4 border-[#d4d4d4] dark:border-neutral-600 text-center w-[25%]">합산된 최종 지분</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-neutral-800 dark:text-neutral-300">
-                      {results.map((r, i) => {
-                        const total = r.sources.reduce((acc, s) => {
-                          const [nn, nd] = math.add(acc.n, acc.d, s.n, s.d);
-                          return { n: nn, d: nd };
-                        }, { n: 0, d: 1 });
-                        
-                        return (
-                          <tr key={i} className="border-b border-[#d4d4d4] dark:border-neutral-600 bg-white dark:bg-neutral-800 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/50">
-                            <td className="py-3 px-4 text-center border-r border-[#d4d4d4] dark:border-neutral-600">
-                              <span className="text-[15px] font-black text-[#37352f] dark:text-neutral-100">{r.name}</span>
-                              <span className="ml-1 text-[12px] text-neutral-400 font-normal">[{getRelStr(r.relation, tree.deathDate)}]</span>
-                            </td>
-                            <td className="py-3 px-5 border-r border-[#d4d4d4] dark:border-neutral-600 text-[14px] font-medium text-neutral-600 dark:text-neutral-400 leading-relaxed">
-                              {r.sources.map((s, si) => (
-                                <React.Fragment key={si}>
-                                  {si > 0 && <span className="mx-2 text-neutral-400 font-bold">+</span>}
-                                  <span className="whitespace-nowrap">{s.n}/{s.d} <span className="text-[12px] text-neutral-400 font-normal">(망 {s.decName})</span></span>
-                                </React.Fragment>
-                              ))}
-                            </td>
-                            <td className="py-3 px-4 text-center font-black text-[16px] text-[#0b6e99] dark:text-blue-400">
-                              {total.n} / {total.d}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="mt-4 text-[12px] text-neutral-400 font-medium text-right italic no-print">
-                  ※ 위 지분은 각 피상속인으로부터 승계받은 지분을 모두 더한 이론적 합계입니다.
-                </div>
+                      return (
+                        <tr key={i} className="hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20 transition-colors">
+                          <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">
+                            {r.name} <span className="text-[#787774] font-normal ml-1">[{getRelStr(r.relation, tree.deathDate)}]</span>
+                          </td>
+                          <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center text-[#787774]">
+                            {sourceText}
+                          </td>
+                          <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">
+                            {total.n} / {total.d}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </section>
             );
           })()}
@@ -2174,13 +2107,23 @@ function App() {
             const [simpleTargetN, simpleTargetD] = math.simplify(targetN, targetD);
             const isMatch = totalSumN === simpleTargetN && totalSumD === simpleTargetD;
 
+            const printedPersonIds = new Set();
+
             const buildGroups = (node, parentDeathDate) => {
               const directShares = [];
               const subGroups = [];
+              const seenInThisGroup = new Set();
+
               (node.heirs || []).forEach(h => {
+                if (seenInThisGroup.has(h.personId)) return;
+                seenInThisGroup.add(h.personId);
+
                 if (!h.isDeceased) {
                   const s = shareByPersonId.get(h.personId);
-                  if (s && s.n > 0) directShares.push(s);
+                  if (s && s.n > 0 && !printedPersonIds.has(h.personId)) {
+                    directShares.push(s);
+                    printedPersonIds.add(h.personId);
+                  }
                 } else {
                   const type = (h.deathDate && isBefore(h.deathDate, parentDeathDate)) ? '대습상속' : '재상속';
                   const child = buildGroups(h, h.deathDate || parentDeathDate);
@@ -2194,10 +2137,18 @@ function App() {
 
             const topDirect = [];
             const topGroups = [];
+            const topSeen = new Set();
+            
             (tree.heirs || []).forEach(h => {
+              if (topSeen.has(h.personId)) return;
+              topSeen.add(h.personId);
+
               if (!h.isDeceased) {
                 const s = shareByPersonId.get(h.personId);
-                if (s && s.n > 0) topDirect.push(s);
+                if (s && s.n > 0 && !printedPersonIds.has(h.personId)) {
+                  topDirect.push(s);
+                  printedPersonIds.add(h.personId);
+                }
               } else {
                 const type = (h.deathDate && isBefore(h.deathDate, tree.deathDate)) ? '대습상속' : '재상속';
                 const child = buildGroups(h, h.deathDate || tree.deathDate);
@@ -2207,36 +2158,33 @@ function App() {
               }
             });
 
-            // 1. 일반 상속인 행 렌더러 (일렬 종대 스타일)
             const renderShareRow = (f, depth) => {
-              const pl = `${16 + (depth > 0 ? 12 : 0)}px`; 
+              const pl = `${12 + (depth > 0 ? 16 : 0)}px`; 
               return (
-                <tr key={'sr-'+f.personId} className="border-b border-[#d4d4d4] dark:border-neutral-600 bg-white dark:bg-neutral-800 transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/50">
-                  <td className="py-3 px-4 font-black text-[15px] border-r border-[#d4d4d4] dark:border-neutral-600 text-[#37352f] dark:text-neutral-100" style={{paddingLeft: pl}}>
-                    {f.name}
-                    <span className="ml-2 text-[12px] text-neutral-400 font-bold font-normal">[{getRelStr(f.relation, tree.deathDate)}]</span>
+                <tr key={'sr-'+f.id} className="hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20 transition-colors">
+                  <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left font-medium" style={{paddingLeft: pl}}>
+                    {f.name} <span className="text-[#787774] font-normal ml-1">[{getRelStr(f.relation, tree.deathDate)}]</span>
                   </td>
-                  <td className="py-3 px-4 text-center border-r border-[#d4d4d4] dark:border-neutral-600 font-medium text-[15px] text-neutral-600 dark:text-neutral-400">{f.n} / {f.d}</td>
-                  <td className={`py-3 px-4 text-center font-black text-[16px] text-[#37352f] dark:text-white ${isAmountActive ? 'border-r border-[#d4d4d4] dark:border-neutral-600 text-[#0b6e99] dark:text-blue-400' : ''}`}>{f.un} / {f.ud}</td>
+                  <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center text-[#504f4c]">{f.n} / {f.d}</td>
+                  <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">{f.un} / {f.ud}</td>
                   {isAmountActive && (
-                    <td className="py-3 px-4 text-right font-black text-[15px] text-[#0b6e99] dark:text-blue-400">
-                      {formatMoney(propertyValue ? Math.floor((Number(propertyValue)*f.un)/f.ud) : 0)}원
+                    <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-right">
+                      {formatMoney(propertyValue ? Math.floor((Number(propertyValue)*f.un)/f.ud) : 0)}
                     </td>
                   )}
                 </tr>
               );
             };
 
-            // 2. 대습/재상속 그룹 사유 행 (삽지) 렌더러
             const renderGroup = (group, depth) => {
               const heirTypeStr = group.type === '대습상속' ? '대습상속인' : '상속인';
               const reasonText = `${formatKorDate(group.ancestor.deathDate)} 공동상속인 중 ${group.ancestor.name}은(는) 사망하였으므로 그 ${heirTypeStr}`;
               
               return (
-                <React.Fragment key={'grp-'+group.ancestor.personId}>
-                  <tr className="bg-[#f0f4f8] dark:bg-blue-900/10 border-b border-[#d4d4d4] dark:border-neutral-600">
-                    <td colSpan={isAmountActive ? 4 : 3} className="py-3 px-5 text-[13px] font-black text-[#0b6e99] dark:text-blue-400">
-                      <span className="mr-2">■</span> {reasonText}
+                <React.Fragment key={'grp-'+group.ancestor.id}>
+                  <tr className="bg-[#fcfcfb] dark:bg-neutral-800/40">
+                    <td colSpan={isAmountActive ? 4 : 3} className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left text-[#504f4c] dark:text-neutral-400 pl-4">
+                      ※ {reasonText}
                     </td>
                   </tr>
                   {group.directShares.map(f => renderShareRow(f, depth + 1))}
@@ -2246,66 +2194,51 @@ function App() {
             };
 
             return (
-              <div className="flex flex-col h-full animate-in fade-in duration-300">
-                {/* 상단 기본정보 브리핑 (심플 헤더) */}
-                <div className="mb-4 flex items-center justify-between no-print border-b border-[#e5e5e5] dark:border-neutral-700 pb-4">
-                  <div className="flex flex-wrap gap-6 text-[13px] font-bold text-neutral-500">
-                    <span>사건번호: <span className="text-neutral-800 dark:text-neutral-200">{tree.caseNo || '미입력'}</span></span>
-                    <span>피상속인: <span className="text-neutral-800 dark:text-neutral-200">{tree.name || '미입력'}</span></span>
-                    <span>사망일자: <span className="text-neutral-800 dark:text-neutral-200">{tree.deathDate || '미입력'}</span></span>
-                    <span>적용법령: <span className="text-neutral-800 dark:text-neutral-200">{getLawEra(tree.deathDate)}년 민법</span></span>
+              <div className="w-full text-[#37352f] dark:text-neutral-200">
+                <div className="mb-4 flex items-center justify-between no-print">
+                  <div className="text-[13px] text-[#787774]">
+                    ※ 등기신청서 작성 등에 활용할 수 있는 일렬 종대 형식의 최종 지분 요약표입니다.
                   </div>
-                  <div className="flex items-center gap-4">
-                     <label className="flex items-center gap-2 cursor-pointer text-[13px] font-bold text-neutral-500">
-                       <input type="checkbox" checked={isAmountActive} onChange={(e) => { setIsAmountActive(e.target.checked); if (!e.target.checked) setPropertyValue(''); }} className="w-4 h-4 accent-blue-500" />
+                  <div className="flex items-center gap-3">
+                     <label className="flex items-center gap-1.5 cursor-pointer text-[13px] text-[#504f4c]">
+                       <input type="checkbox" checked={isAmountActive} onChange={(e) => { setIsAmountActive(e.target.checked); if (!e.target.checked) setPropertyValue(''); }} className="w-3.5 h-3.5 accent-neutral-500" />
                        금액 계산 포함
                      </label>
                      {isAmountActive && (
-                       <input type="text" value={formatMoney(propertyValue)} onChange={(e) => setPropertyValue(e.target.value.replace(/[^0-9]/g, ''))} className="w-44 px-3 py-1.5 border border-[#d4d4d4] dark:border-neutral-600 rounded text-right font-black text-[#0b6e99] outline-none bg-white dark:bg-neutral-800" placeholder="상속재산 입력" />
+                       <input type="text" value={formatMoney(propertyValue)} onChange={(e) => setPropertyValue(e.target.value.replace(/[^0-9]/g, ''))} className="w-32 px-2.5 py-1.5 border border-[#e9e9e7] bg-transparent text-right outline-none text-[13px] rounded-md focus:bg-neutral-50" placeholder="상속재산 입력" />
                      )}
                   </div>
                 </div>
 
-                {/* 메인 요약표 (등기 실무용 일렬 종대 표) */}
-                <div className="overflow-x-auto shadow-md rounded-xl border-2 border-[#37352f] dark:border-neutral-500 bg-white dark:bg-neutral-800">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-[#f8f9fa] dark:bg-neutral-800 text-[#37352f] dark:text-neutral-200 text-[14px] font-black border-b-2 border-[#37352f] dark:border-neutral-500">
-                        <th className="py-3.5 px-4 border-r border-[#d4d4d4] dark:border-neutral-600 text-left w-[30%]">상속인 성명</th>
-                        <th className="py-3.5 px-4 border-r border-[#d4d4d4] dark:border-neutral-600 text-center w-[20%]">최종 지분 (통분 전)</th>
-                        <th className="py-3.5 px-4 border-[#d4d4d4] dark:border-neutral-600 text-center w-[20%]">최종 지분 (통분 후)</th>
-                        {isAmountActive && <th className="py-3.5 px-4 border-l border-[#d4d4d4] dark:border-neutral-600 text-center w-[30%]">상속 금액</th>}
-                      </tr>
-                    </thead>
-                    <tbody className="text-neutral-800 dark:text-neutral-300">
-                      {topDirect.map(f => renderShareRow(f, 0))}
-                      {topGroups.map(g => renderGroup(g, 0))}
-                    </tbody>
-                    <tfoot className="bg-[#f8f9fa] dark:bg-neutral-900 font-bold">
-                      <tr className={`border-t-2 border-[#37352f] dark:border-neutral-500 ${isMatch ? 'text-[#0b6e99] dark:text-blue-400 bg-blue-50/30 dark:bg-blue-900/10' : 'text-rose-700 dark:text-rose-400 bg-rose-50/30 dark:bg-rose-900/10'}`}>
-                        <td className="py-4 px-4 border-r border-[#d4d4d4] dark:border-neutral-600 text-right">최종 지분 합계 검증</td>
-                        <td className="py-4 px-4 text-center border-r border-[#d4d4d4] dark:border-neutral-600 font-black text-[18px]">
-                          {totalSumN} / {totalSumD}
-                        </td>
-                        <td colSpan={isAmountActive ? 2 : 1} className="py-4 px-4 text-left">
-                          {isMatch ? (
-                            <span className="flex items-center gap-1.5 text-[14px]">
-                              ✅ 피상속인 지분({simpleTargetN}/{simpleTargetD})과 일치함
-                            </span>
-                          ) : (
-                            <span className="flex items-center gap-1.5 text-[14px]">
-                              ⚠️ 지분 합계 불일치 (데이터 확인 필요)
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-
-                <div className="mt-8 text-[13px] text-neutral-500 font-bold text-right italic no-print">
-                  ※ 본 요약표는 등기신청서 작성(e-Form 등)에 즉시 활용할 수 있도록 일렬 종대로 구성된 실무용 엑셀 형식입니다.
-                </div>
+                <table className="w-full border-collapse text-[13px]">
+                  <thead className="bg-[#fcfcfb] dark:bg-neutral-800/40">
+                    <tr>
+                      <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[30%] text-[#787774]">상속인 성명</th>
+                      <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[20%] text-[#787774]">최종 지분 (통분 전)</th>
+                      <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[20%] text-[#787774]">최종 지분 (통분 후)</th>
+                      {isAmountActive && <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[30%] text-[#787774]">상속 금액(원)</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {topDirect.map(f => renderShareRow(f, 0))}
+                    {topGroups.map(g => renderGroup(g, 0))}
+                  </tbody>
+                  <tfoot className="bg-[#fcfcfb] dark:bg-neutral-800/40">
+                    <tr>
+                      <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-right font-medium text-[#787774]">합계 검증</td>
+                      <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">
+                        {totalSumN} / {totalSumD}
+                      </td>
+                      <td colSpan={isAmountActive ? 2 : 1} className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left text-[12.5px]">
+                        {isMatch ? (
+                          <span className="text-[#504f4c]">✔️ 피상속인 지분과 일치 ({simpleTargetN}/{simpleTargetD})</span>
+                        ) : (
+                          <span className="text-red-500">⚠️ 지분 합계 불일치</span>
+                        )}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
             );
           })()}
