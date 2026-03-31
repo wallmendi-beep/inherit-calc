@@ -138,15 +138,21 @@ export const calculateInheritance = (tree, propertyValue) => {
     // 3. 하위 상속인이 전혀 없는 경우 (가상 상속인 배분 단계)
     if (targetHeirs.length === 0) {
       if (node.id === 'root') return;
-      
+
       // 재혼이나 상속권 소멸 명시 시 배분 로직 건너뜀
       if (node.isExcluded && (node.exclusionOption === 'no_heir' || node.exclusionOption === 'remarried')) {
         return; 
       }
 
+      // 🚨 [버그 수정]: 대습상속(선사망) 또는 결격/상실인 경우, 하위 상속인이 없다면
+      // 부모나 형제에게 지분을 억지로 넘기지 않고 여기서 계산을 즉시 중단합니다.
+      // 이렇게 지분이 공중으로 증발해야 요약표에서 '합계 불일치' 경고가 정상적으로 발생합니다.
+      if (isSubstitution) {
+        return; 
+      }
+
       // 💡 핵심 픽스: 피상속인의 직계뿐만 아니라, 손자/증손자 등 어떤 계층에서든 부모와 형제자매를 추적하여 지분 누수를 완벽 차단!
-      if (node.relation === 'son' || node.relation === 'daughter') {
-        let parentNode = null;
+      if (node.relation === 'son' || node.relation === 'daughter') {        let parentNode = null;
         if (tree.heirs.some(th => th.id === node.id)) parentNode = tree;
         else {
           const findP = (curr) => {

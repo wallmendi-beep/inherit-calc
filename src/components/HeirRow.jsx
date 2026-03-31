@@ -40,11 +40,15 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
       };
     }
   } else if (node.isDeceased) {
-    shouldShowTabBtn = true;
     if (isPreDeceasedCondition) {
-      tabBtnText = '대습상속 »';
-      tabBtnClass = "bg-transparent text-[#787774] border border-[#e9e9e7] hover:bg-emerald-50/50 hover:text-emerald-600 hover:border-emerald-200 dark:border-neutral-700 dark:hover:bg-emerald-900/20";
+      // 💡 수정: 배우자 선사망인 경우에는 대습상속 버튼을 보여주지 않음 (법적 불가능)
+      if (!isSpouseType) {
+        shouldShowTabBtn = true;
+        tabBtnText = '대습상속 »';
+        tabBtnClass = "bg-transparent text-[#787774] border border-[#e9e9e7] hover:bg-emerald-50/50 hover:text-emerald-600 hover:border-emerald-200 dark:border-neutral-700 dark:hover:bg-emerald-900/20";
+      }
     } else {
+      shouldShowTabBtn = true;
       tabBtnText = '재상속 »';
       tabBtnClass = "bg-transparent text-[#787774] border border-[#e9e9e7] hover:bg-blue-50/50 hover:text-blue-600 hover:border-blue-200 dark:border-neutral-700 dark:hover:bg-blue-900/20";
     }
@@ -122,10 +126,42 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
 
       {/* 4. 사망여부 및 일자 OR 상속권 제외 사유 (관계에서 30px 지점) - 너비 150px */}
       <div className="w-[150px] ml-[30px] shrink-0 flex items-center text-[15px]">
-        {isToggleOff ? (
+        {node.isDeceased ? (
+          /* 💡 개선: 사망 상태라면 토글 여부와 상관없이 날짜 입력 칸을 노출하여 수정 가능케 함 */
+          <div className="flex items-center gap-2 w-full">
+            <input
+              type="checkbox"
+              checked={node.isDeceased || false}
+              onChange={(e) => handleUpdate(node.id, 'isDeceased', e.target.checked)}
+              className="w-4 h-4 accent-neutral-500 cursor-pointer shrink-0 opacity-60"
+            />
+            <DateInput
+              value={node.deathDate}
+              onKeyDown={onKeyDown}
+              onChange={(v) => {
+                handleUpdate(node.id, 'deathDate', v);
+                const isPre = v && inheritedDate && isBefore(v, inheritedDate);
+                if (isPre) {
+                  // 선사망 조건이면 자동으로 토글 OFF (제외)
+                  handleUpdate(node.id, 'isExcluded', true);
+                  if (['son', 'daughter', 'sibling'].includes(node.relation)) {
+                    handleUpdate(node.id, 'exclusionOption', 'no_heir');
+                  }
+                } else if (v) {
+                  // 선사망이 아니게 날짜를 수정하면 자동으로 토글 ON (포함)
+                  handleUpdate(node.id, 'isExcluded', false);
+                  handleUpdate(node.id, 'exclusionOption', '');
+                }
+              }}
+              className={`flex-1 text-[13px] font-bold outline-none bg-transparent ${isToggleOff ? 'text-rose-500/70' : 'text-neutral-500 dark:text-neutral-400'}`}
+              placeholder="사망일자"
+            />
+          </div>
+        ) : isToggleOff ? (
+          /* 생존 상태에서만 제외 사유(포기 등) 선택창 노출 */
           <div className="relative w-full group/select bg-rose-50/50 dark:bg-rose-900/10 px-1 rounded border border-rose-200/50">
             <select
-              value={node.exclusionOption || 'no_heir'}
+              value={node.exclusionOption || 'renounce'}
               onChange={(e) => handleUpdate(node.id, 'exclusionOption', e.target.value)}
               className="w-full bg-transparent text-[13px] font-bold text-[#c93f3a] dark:text-red-400 outline-none cursor-pointer appearance-none pr-5 py-0.5"
             >
@@ -144,31 +180,15 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
             </div>
           </div>
         ) : (
+          /* 생존 기본 상태 */
           <div className="flex items-center gap-2 w-full">
             <input
               type="checkbox"
-              checked={node.isDeceased || false}
+              checked={false}
               onChange={(e) => handleUpdate(node.id, 'isDeceased', e.target.checked)}
               className="w-4 h-4 accent-neutral-500 cursor-pointer shrink-0 opacity-60"
             />
-            {node.isDeceased && (
-              <DateInput
-                value={node.deathDate}
-                onKeyDown={onKeyDown}
-                onChange={(v) => {
-                  handleUpdate(node.id, 'deathDate', v);
-                  if (v && inheritedDate && isBefore(v, inheritedDate)) {
-                    // 💡 배우자/자녀 선사망 시 기본적으로 토글을 꺼서(OFF) 제외 처리
-                    handleUpdate(node.id, 'isExcluded', true);
-                    if (['son', 'daughter', 'sibling'].includes(node.relation)) {
-                      handleUpdate(node.id, 'exclusionOption', 'no_heir');
-                    }
-                  }
-                }}
-                className="flex-1 text-[13px] font-bold outline-none text-neutral-500 dark:text-neutral-400 bg-transparent"
-                placeholder="사망일자"
-              />
-            )}
+            <span className="text-[13px] text-neutral-400 font-medium">생존</span>
           </div>
         )}
       </div>
@@ -279,7 +299,11 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
         <div className="w-[60px] shrink-0"></div>
         <div className="flex-1 text-[11px] font-bold text-red-500 dark:text-red-400 flex items-center gap-1.5">
           <IconChevronRight className="w-3 h-3" />
-          선사망자의 대습상속인(배우자/자녀)을 추가해 주세요. 대습상속인이 없다면 좌측 스위치를 꺼서 '제외(상속인 없음)' 처리해 주세요.
+          {isSpouseType ? (
+            "배우자 선사망은 대습상속이 일어나지 않습니다. 사망일자 오류가 있다면 수정해 주세요."
+          ) : (
+            "선사망자의 대습상속인(배우자/자녀)을 추가해 주세요. 대습상속인이 없다면 좌측 스위치를 꺼서 '제외(상속인 없음)' 처리해 주세요."
+          )}
         </div>
       </div>
     )}
