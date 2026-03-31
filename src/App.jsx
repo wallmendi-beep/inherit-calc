@@ -863,11 +863,42 @@ function App() {
 
 
   const handlePrint = () => {
+    // 1. 입력 탭에서는 인쇄 불가 처리
     if (activeTab === 'input') {
-      alert('보고서 탭(가계도, 계산표, 요약표) 중 하나를 선택한 후 인쇄해주세요.');
+      alert('보고서 탭(가계도, 계산표, 계산결과, 요약표) 중 하나를 선택한 후 인쇄해주세요.');
       return;
     }
+
+    // 2. 현재 열려있는 탭의 영문 ID를 한글 이름으로 변환
+    const tabNames = {
+      tree: '가계도',
+      calc: '계산표',
+      result: '계산결과',
+      summary: '요약표'
+    };
+    const currentTabName = tabNames[activeTab] || '보고서';
+
+    // 3. 사건번호와 피상속인 이름 가져오기 (특수문자 제거하여 안전한 파일명 생성)
+    const safeCaseNo = (tree.caseNo || '사건번호없음').replace(/[^a-zA-Z0-9가-힣_-]/g, '');
+    const safeName = (tree.name || '피상속인없음').replace(/[^a-zA-Z0-9가-힣_-]/g, '');
+
+    // 4. 오늘 날짜 구하기 (YYYY-MM-DD 형식)
+    const today = new Date().toISOString().slice(0, 10);
+
+    // 5. 최종 인쇄용 파일명 조합 (예: 67890_김혁조_요약표_2026-03-31)
+    const printFileName = `${safeCaseNo}_${safeName}_${currentTabName}_${today}`;
+
+    // 6. 원래 브라우저 탭 이름(Title) 임시 저장
+    const originalTitle = document.title;
+
+    // 7. 브라우저 탭 이름을 인쇄용 파일명으로 변경
+    document.title = printFileName;
+
+    // 8. 인쇄(PDF 저장) 대화상자 호출! (이때 변경된 title이 파일명으로 잡힙니다)
     window.print();
+
+    // 9. 인쇄 창이 뜨고 나면, 다시 원래 브라우저 탭 이름으로 원상복구
+    document.title = originalTitle;
   };
 
   const saveFile = () => {
@@ -951,9 +982,50 @@ function App() {
     setIsResetModalOpen(false);
   };
 
+  // 💡 글로벌 지분 검증 로직 (계산표, 계산결과, 요약표 탭에서만 검사)
+  let showGlobalWarning = false;
+  if (['calc', 'result', 'summary'].includes(activeTab)) {
+    const calculateTotalSum = () => {
+      let tn = 0, td = 1;
+      const collect = (nodes) => {
+        nodes.forEach(s => {
+          if (s && s.n > 0) {
+            const [nn, nd] = math.add(tn, td, s.n, s.d);
+            tn = nn; td = nd;
+          }
+        });
+      };
+      collect(finalShares.direct || []);
+      (finalShares.subGroups || []).forEach(g => collect(g.shares || []));
+      return [tn, td];
+    };
+
+    const [sumN, sumD] = calculateTotalSum();
+    const targetN = tree.shareN || 1;
+    const targetD = tree.shareD || 1;
+    
+    // 미세한 오차 허용 비교 (분수 기반 정확도 유지)
+    if (sumN * targetD !== targetN * sumD) {
+      showGlobalWarning = true;
+    }
+  }
+
   return (
     <div className="w-full min-h-screen relative flex flex-col items-start pb-24 transition-colors duration-200 bg-[#f7f7f5] dark:bg-neutral-900 min-w-[1280px] print:min-w-0 print:w-full print:max-w-full">
       
+      {/* 🚨 상단 글로벌 경고 배너 */}
+      {showGlobalWarning && (
+        <div className="sticky top-[54px] w-full z-[100] no-print animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center justify-center gap-3 px-6 py-3 bg-rose-50 dark:bg-rose-950/40 border-b border-rose-200 dark:border-rose-900/50 shadow-sm backdrop-blur-md">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+            </svg>
+            <span className="text-[14px] font-black text-rose-700 dark:text-rose-300 tracking-tight">
+              지분 합계가 일치하지 않습니다. 대습상속인이 누락되었는지 확인하거나 '상속인 없음(제외)' 스위치를 꺼주세요.
+            </span>
+          </div>
+        </div>
+      )}
       <div id="print-footer" className="hidden print:block fixed bottom-0 right-0 font-['Dancing_Script'] text-neutral-300 text-sm">
         Designed by J.H. Lee
       </div>
