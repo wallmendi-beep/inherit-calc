@@ -92,8 +92,8 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
         </button>
       </div>
 
-      {/* 2. 성명 (토글에서 50px 지점) - 너비 96px */}
-      <div className="w-24 ml-[50px] shrink-0 flex items-center">
+      {/* 2. 성명 (토글에서 50px 지점) - 너비 72px로 축소 */}
+      <div className="w-[72px] ml-[50px] shrink-0 flex items-center">
         <input 
           type="text" 
           value={node.name} 
@@ -120,8 +120,8 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
         </select>
       </div>
 
-      {/* 4. 사망여부 및 일자 OR 상속권 제외 사유 (관계에서 50px 지점) - 너비 150px */}
-      <div className="w-[150px] ml-[50px] shrink-0 flex items-center text-[15px]">
+      {/* 4. 사망여부 및 일자 OR 상속권 제외 사유 (관계에서 30px 지점) - 너비 150px */}
+      <div className="w-[150px] ml-[30px] shrink-0 flex items-center text-[15px]">
         {isToggleOff ? (
           <div className="relative w-full group/select bg-rose-50/50 dark:bg-rose-900/10 px-1 rounded border border-rose-200/50">
             <select
@@ -173,8 +173,8 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
         )}
       </div>
 
-      {/* 5. 특수조건 (가감산) - 사망일자에서 50px 지점 (너비 180px) */}
-      <div className="w-[180px] ml-[50px] shrink-0 flex items-center gap-1.5">
+      {/* 5. 특수조건 (가감산) - 사망일자에서 10px 지점 (간격 축소) */}
+      <div className="w-[180px] ml-[10px] shrink-0 flex items-center gap-1.5">
           {/* 👰 배우자/처/남편 로직 */}
           {isSpouseType && !isToggleOff && (() => {
             let label = lawEra === '1991' ? '배우자' : (node.relation === 'wife' ? '처' : '남편');
@@ -247,8 +247,8 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
           )}
       </div>
 
-      {/* 6. 재상속/대습상속 버튼 - 특수조건에서 50px 지점 */}
-      <div className="w-28 shrink-0 flex justify-center ml-[50px]">
+      {/* 6. 재상속/대습상속 버튼 - 특수조건에서 10px 지점 (간격 축소) */}
+      <div className="w-28 shrink-0 flex justify-center ml-[10px]">
         {shouldShowTabBtn && onTabClick && (
           <button
             type="button"
@@ -260,8 +260,8 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
         )}
       </div>
 
-      {/* 7. 삭제 버튼 - 재상속 버튼에서 20px 지점 */}
-      <div className="w-12 shrink-0 flex justify-center ml-[20px] mr-[10px]">
+      {/* 7. 삭제 버튼 - 재상속 버튼에서 0px 지점 (간격 축소) */}
+      <div className="w-12 shrink-0 flex justify-center ml-0 mr-[10px]">
         <button
           type="button"
           onClick={() => removeHeir(node.id)}
