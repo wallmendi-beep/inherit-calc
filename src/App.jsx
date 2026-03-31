@@ -938,7 +938,13 @@ function App() {
             if (!pId) pId = `p_${Math.random().toString(36).substr(2,9)}`;
           }
 
-          return { ...n, personId: pId, heirs: (n.heirs || []).map(syncPersonIdRec) };
+          // 구버전 no_heir → renounce 마이그레이션 (선사망자 지분 재분배 처리)
+          let exclusionOption = n.exclusionOption;
+          if (n.isExcluded && exclusionOption === 'no_heir' && n.isDeceased) {
+            exclusionOption = 'renounce';
+          }
+
+          return { ...n, personId: pId, exclusionOption, heirs: (n.heirs || []).map(syncPersonIdRec) };
         };
 
         // 구버전(트리) 형식: id === 'root' 또는 heirs 배열 보유
@@ -1032,16 +1038,36 @@ function App() {
   return (
     <div className="w-full min-h-screen relative flex flex-col items-start pb-24 transition-colors duration-200 bg-[#f7f7f5] dark:bg-neutral-900 min-w-[1280px] print:min-w-0 print:w-full print:max-w-full">
       
-      {/* 🚨 상단 글로벌 경고 배너 */}
+      {/* 📌 오른쪽 상단 스티커 스타일 경고 메모 */}
       {showGlobalWarning && (
-        <div className="sticky top-[54px] w-full z-[100] no-print animate-in fade-in slide-in-from-top-2 duration-300">
-          <div className="flex items-center justify-center gap-3 px-6 py-3 bg-rose-50 dark:bg-rose-950/40 border-b border-rose-200 dark:border-rose-900/50 shadow-sm backdrop-blur-md">
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-            </svg>
-            <span className="text-[14px] font-black text-rose-700 dark:text-rose-300 tracking-tight">
-              지분 합계가 일치하지 않습니다. 대습상속인이 누락되었는지 확인하거나 '상속인 없음(제외)' 스위치를 꺼주세요.
-            </span>
+        <div className="fixed top-28 right-6 z-[9999] no-print animate-in fade-in slide-in-from-right-4 duration-500">
+          {/* 메모지 본체 */}
+          <div className="relative w-64 p-5 bg-[#fff9c4] dark:bg-[#fbc02d] shadow-2xl border-l-4 border-[#fbc02d] dark:border-[#f9a825] transform rotate-2 hover:rotate-0 transition-transform duration-300 group">
+            
+            {/* 포스트잇 접힌 효과 (상단) */}
+            <div className="absolute top-0 right-0 w-8 h-8 bg-[#fdd835]/30 rounded-bl-full"></div>
+
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2 text-[#f57f17] dark:text-[#bf360c]">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span className="font-black text-[15px] tracking-tight">지분 불일치 주의!</span>
+              </div>
+              
+              <p className="text-[13px] font-bold text-[#5d4037] dark:text-[#3e2723] leading-relaxed break-keep">
+                지분 합계가 1이 아닙니다. <br/>
+                누락된 대습상속인이 있다면 입력하시고, 없으면 <span className="underline decoration-wavy underline-offset-4 decoration-[#f57f17]">상속인 없음</span> 처리를 확인하세요.
+              </p>
+
+              {/* 메모지 하단 서명 같은 느낌의 장식 */}
+              <div className="text-right text-[11px] font-medium text-[#8d6e63] mt-1 italic opacity-60">
+                - 상속 계산 엔진 -
+              </div>
+            </div>
+
+            {/* 압정/테이프 느낌의 상단 장식 */}
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-12 h-6 bg-white/40 dark:bg-black/20 backdrop-blur-sm rotate-[-5deg] shadow-sm"></div>
           </div>
         </div>
       )}
@@ -1511,7 +1537,7 @@ function App() {
             <div className="flex items-center gap-2 whitespace-nowrap shrink-0 overflow-visible">
               <div className="flex items-center text-[#37352f] dark:text-neutral-100 font-bold text-[18px] tracking-tight whitespace-nowrap shrink-0">
                 <IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-neutral-400 shrink-0" />
-                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v1.9.0</span>
+                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v1.9.1</span>
               </div>
               <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px] ml-8 whitespace-nowrap shrink-0">Designed by J.H. Lee</span>
             </div>
@@ -1819,10 +1845,10 @@ function App() {
                                     className={`text-[11.5px] font-bold transition-colors select-none cursor-pointer ${currentNode.isExcluded ? 'text-[#37352f] dark:text-neutral-200' : 'text-[#787774]'}`}
                                     onClick={() => {
                                       const nextVal = !currentNode.isExcluded;
-                                      // 💡 핵심 픽스: 두 개의 상태를 한 번에(원자적으로) 묶어서 업데이트하여 상태 꼬임을 방지합니다.
+                                      // 💡 핵심 픽스: 선사망자라도 지분이 허공으로 증발하지 않고 다른 형제들에게 '재분배' 되도록 무조건 renounce 로직을 태웁니다!
                                       const updates = { isExcluded: nextVal };
                                       if (nextVal) {
-                                        updates.exclusionOption = currentNode.isDeceased ? 'no_heir' : 'renounce';
+                                        updates.exclusionOption = 'renounce';
                                       }
                                       handleUpdate(currentNode.id, updates);
                                     }}
@@ -1835,10 +1861,10 @@ function App() {
                                     aria-checked={currentNode.isExcluded || false}
                                     onClick={() => {
                                       const nextVal = !currentNode.isExcluded;
-                                      // 💡 핵심 픽스: 두 개의 상태를 한 번에(원자적으로) 묶어서 업데이트하여 상태 꼬임을 방지합니다.
+                                      // 💡 핵심 픽스: 선사망자라도 지분이 허공으로 증발하지 않고 다른 형제들에게 '재분배' 되도록 무조건 renounce 로직을 태웁니다!
                                       const updates = { isExcluded: nextVal };
                                       if (nextVal) {
-                                        updates.exclusionOption = currentNode.isDeceased ? 'no_heir' : 'renounce';
+                                        updates.exclusionOption = 'renounce';
                                       }
                                       handleUpdate(currentNode.id, updates);
                                     }}

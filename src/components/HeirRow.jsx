@@ -83,7 +83,7 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
           onClick={() => {
             const nextExcluded = !node.isExcluded;
             if (nextExcluded) {
-              const defaultOpt = isDaeseupSpouse ? 'remarried' : (node.isDeceased ? 'no_heir' : 'renounce');
+              const defaultOpt = isDaeseupSpouse ? 'remarried' : 'renounce';
               handleUpdate(node.id, 'exclusionOption', defaultOpt);
             } else {
               handleUpdate(node.id, 'exclusionOption', '');
@@ -145,7 +145,7 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
                   // 선사망 조건이면 자동으로 토글 OFF (제외)
                   handleUpdate(node.id, 'isExcluded', true);
                   if (['son', 'daughter', 'sibling'].includes(node.relation)) {
-                    handleUpdate(node.id, 'exclusionOption', 'no_heir');
+                    handleUpdate(node.id, 'exclusionOption', 'renounce');
                   }
                 } else if (v) {
                   // 선사망이 아니게 날짜를 수정하면 자동으로 토글 ON (포함)
@@ -165,8 +165,11 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
               onChange={(e) => handleUpdate(node.id, 'exclusionOption', e.target.value)}
               className="w-full bg-transparent text-[13px] font-bold text-[#c93f3a] dark:text-red-400 outline-none cursor-pointer appearance-none pr-5 py-0.5"
             >
-              <option value="no_heir">대습상속인 없음</option>
-              <option value="renounce">상속포기</option>
+              {/* 💡 핵심 픽스: 죽은 사람이면 '상속인 없음'으로, 산 사람이면 '상속포기'로 화면에만 다르게 보여줍니다. */}
+              <option value="renounce">
+                {node.isDeceased ? '상속인 없음 (지분 재분배)' : '상속포기'}
+              </option>
+              <option value="no_heir">상속권 완전 소멸 (국고 귀속 등)</option>
               <option value="disqualified">상속결격</option>
               {!isBefore(rootDeathDate, '2024-04-25') && (
                 <option value="lost">상속권 상실</option>
@@ -223,7 +226,7 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
           })()}
 
           {/* ⚖️ 상속권 없음 (회색 바탕 복구) */}
-          {isToggleOff && (
+          {isToggleOff && isSpouseType && isPreDeceasedCondition && (
             <div className="w-[150px] h-[26px] shrink-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 rounded-full border border-neutral-200 dark:border-neutral-700 shadow-sm">
               <span className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400">배우자 선사망 (상속권 없음)</span>
             </div>
