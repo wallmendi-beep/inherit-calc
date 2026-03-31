@@ -920,13 +920,32 @@ function App() {
     reader.onload = (ev) => {
       try {
         const data = JSON.parse(ev.target.result);
-        const addPersonIdRec = (n) => ({ ...n, personId: n.personId || `p_${Math.random().toString(36).substr(2,9)}`, heirs: (n.heirs || []).map(addPersonIdRec) });
+        
+        // 🚨 초강력 강제 동기화 로직: 파일에 꼬인 ID가 저장되어 있더라도, 이름이 같으면 무조건 하나로 통일!
+        const nameMap = new Map();
+        const syncPersonIdRec = (n) => {
+          let pId = n.personId;
+          
+          if (n.name && n.name.trim() !== '') {
+            if (nameMap.has(n.name)) {
+              // 이미 등록된 이름이면, 파일에 적힌 불량 ID를 무시하고 기존 ID로 강제 덮어쓰기!
+              pId = nameMap.get(n.name); 
+            } else {
+              if (!pId) pId = `p_${Math.random().toString(36).substr(2,9)}`;
+              nameMap.set(n.name, pId);
+            }
+          } else {
+            if (!pId) pId = `p_${Math.random().toString(36).substr(2,9)}`;
+          }
+
+          return { ...n, personId: pId, heirs: (n.heirs || []).map(syncPersonIdRec) };
+        };
+
         // 구버전(트리) 형식: id === 'root' 또는 heirs 배열 보유
         if (data.id === 'root' || (Array.isArray(data.heirs) && data.name !== undefined)) {
-          setTree(addPersonIdRec(data));
+          setTree(syncPersonIdRec(data));
           setActiveTab('calc');
         } else if (data.people && Array.isArray(data.people)) {
-          // 신버전(그래프) 형식 - 기본 정보만 추출하여 트리 초기화
           alert('이 파일은 이전 버전의 그래프 형식입니다. 일부 데이터가 누락될 수 있습니다.');
           const root = data.people.find(p => p.isRoot || p.id === 'root');
           if (root) {
@@ -1047,10 +1066,10 @@ function App() {
                 <span className="text-[10px] font-bold text-[#787774] dark:text-neutral-500">모두펼침</span>
                 <button 
                   onClick={() => setSidebarToggleSignal(prev => prev > 0 ? -Math.abs(prev)-1 : Math.abs(prev)+1)}
-                  className={`relative w-8 h-4 rounded-full transition-all duration-300 focus:outline-none shadow-inner border border-transparent ${sidebarToggleSignal > 0 ? 'bg-[#2383e2] border-blue-600' : 'bg-neutral-200 dark:bg-neutral-800 border-neutral-300 dark:border-neutral-700'}`}
+                  className={`relative inline-flex h-4 w-7 items-center shrink-0 cursor-pointer rounded-full transition-all duration-200 ease-in-out focus:outline-none ${sidebarToggleSignal > 0 ? 'bg-[#15803d] opacity-80' : 'bg-neutral-200 dark:bg-neutral-800'}`}
                   title={sidebarToggleSignal > 0 ? '모두 접기' : '모두 펼치기'}
                 >
-                  <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all duration-300 shadow-md transform ${sidebarToggleSignal > 0 ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                  <span className={`inline-block h-3 w-3 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${sidebarToggleSignal > 0 ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
                 </button>
               </div>
             </div>
@@ -1492,7 +1511,7 @@ function App() {
             <div className="flex items-center gap-2 whitespace-nowrap shrink-0 overflow-visible">
               <div className="flex items-center text-[#37352f] dark:text-neutral-100 font-bold text-[18px] tracking-tight whitespace-nowrap shrink-0">
                 <IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-neutral-400 shrink-0" />
-                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v1.8.9</span>
+                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v1.9.0</span>
               </div>
               <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px] ml-8 whitespace-nowrap shrink-0">Designed by J.H. Lee</span>
             </div>
@@ -1800,11 +1819,12 @@ function App() {
                                     className={`text-[11.5px] font-bold transition-colors select-none cursor-pointer ${currentNode.isExcluded ? 'text-[#37352f] dark:text-neutral-200' : 'text-[#787774]'}`}
                                     onClick={() => {
                                       const nextVal = !currentNode.isExcluded;
-                                      handleUpdate(currentNode.id, 'isExcluded', nextVal);
+                                      // 💡 핵심 픽스: 두 개의 상태를 한 번에(원자적으로) 묶어서 업데이트하여 상태 꼬임을 방지합니다.
+                                      const updates = { isExcluded: nextVal };
                                       if (nextVal) {
-                                        const defaultOption = currentNode.isDeceased ? 'no_heir' : 'renounce';
-                                        handleUpdate(currentNode.id, 'exclusionOption', defaultOption);
+                                        updates.exclusionOption = currentNode.isDeceased ? 'no_heir' : 'renounce';
                                       }
+                                      handleUpdate(currentNode.id, updates);
                                     }}
                                   >
                                     상속인 없음(제외)
@@ -1815,14 +1835,15 @@ function App() {
                                     aria-checked={currentNode.isExcluded || false}
                                     onClick={() => {
                                       const nextVal = !currentNode.isExcluded;
-                                      handleUpdate(currentNode.id, 'isExcluded', nextVal);
+                                      // 💡 핵심 픽스: 두 개의 상태를 한 번에(원자적으로) 묶어서 업데이트하여 상태 꼬임을 방지합니다.
+                                      const updates = { isExcluded: nextVal };
                                       if (nextVal) {
-                                        const defaultOption = currentNode.isDeceased ? 'no_heir' : 'renounce';
-                                        handleUpdate(currentNode.id, 'exclusionOption', defaultOption);
+                                        updates.exclusionOption = currentNode.isDeceased ? 'no_heir' : 'renounce';
                                       }
+                                      handleUpdate(currentNode.id, updates);
                                     }}
                                     className={`relative inline-flex h-4 w-7 items-center shrink-0 cursor-pointer rounded-full border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                                      currentNode.isExcluded ? 'bg-[#37352f] dark:bg-neutral-300' : 'bg-neutral-300 dark:bg-neutral-600'
+                                      currentNode.isExcluded ? 'bg-[#15803d] opacity-80' : 'bg-neutral-300 dark:bg-neutral-600'
                                     }`}
                                   >
                                     <span
