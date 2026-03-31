@@ -1420,7 +1420,7 @@ function App() {
             <div className="flex items-center gap-2 whitespace-nowrap shrink-0 overflow-visible">
               <div className="flex items-center text-[#37352f] dark:text-neutral-100 font-bold text-[18px] tracking-tight whitespace-nowrap shrink-0">
                 <IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-neutral-400 shrink-0" />
-                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v1.8.4</span>
+                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v1.8.5</span>
               </div>
               <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px] ml-8 whitespace-nowrap shrink-0">Designed by J.H. Lee</span>
             </div>
@@ -1837,21 +1837,22 @@ function App() {
                               </div>
                             )}
 
-                            {/* 📋 엑셀 스타일 컬럼 헤더 (HeirRow와 너비 100% 동기화 - 총 828px) */}
+                            {/* 📋 엑셀 스타일 컬럼 헤더 (HeirRow와 너비 100% 동기화) */}
                             {nodeHeirs.length > 0 && (
-                              <div className="flex items-center px-2 py-2 mb-2 bg-[#fcfcfb] dark:bg-neutral-800/50 rounded-md border border-[#e9e9e7] dark:border-neutral-700 text-[12px] font-bold text-[#787774] dark:text-neutral-400 select-none animate-in fade-in duration-300 w-full">
-                                <div className="w-[90px] shrink-0 text-center">상태</div>
-                                <div className="w-28 shrink-0 text-center">성명</div>
-                                <div className="w-24 shrink-0 text-center">관계</div>
-                                <div className="w-[150px] shrink-0 text-center">사망여부/일자</div>
-                                <div className="w-[200px] shrink-0 text-center relative">
+                              <div className="flex items-center px-2 py-2 mb-2 bg-[#fcfcfb] dark:bg-neutral-800/50 rounded-md border border-[#e9e9e7] dark:border-neutral-700 text-[12px] font-bold text-[#787774] dark:text-neutral-400 select-none animate-in fade-in duration-300 w-full overflow-hidden">
+                                <div className="w-[68px] shrink-0 text-center ml-[10px]">상태</div>
+                                <div className="w-[96px] shrink-0 text-center ml-[30px]">성명</div>
+                                <div className="w-[96px] shrink-0 text-center ml-[30px]">관계</div>
+                                <div className="w-[150px] shrink-0 text-center ml-[50px]">사망여부/일자</div>
+                                
+                                {/* 오른쪽 섹션: ml-auto로 우측 밀착 후 역순 마진 적용 */}
+                                <div className="w-[200px] shrink-0 text-center ml-auto mr-[30px] relative">
                                   <span className="relative left-[20px]">특수조건 (가감산)</span>
                                 </div>
-                                <div className="w-[35px] shrink-0"></div> {/* 35px 간격 */}
-                                <div className="w-28 shrink-0 flex justify-center -ml-2.5 relative">
+                                <div className="w-28 shrink-0 text-center mr-[25px]">
                                   <span className="whitespace-nowrap relative left-[20px]">재/대습상속</span>
                                 </div>
-                                <div className="w-12 shrink-0 flex justify-center pl-[36px]">
+                                <div className="w-12 shrink-0 text-center mr-[10px]">
                                   <span className="whitespace-nowrap">삭제</span>
                                 </div>
                               </div>

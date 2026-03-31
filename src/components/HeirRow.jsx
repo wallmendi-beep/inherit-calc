@@ -62,14 +62,14 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
 
   return (
     <>
-      <div ref={setNodeRef} style={dndStyle} className="group/row flex items-center justify-start w-full px-2 py-2 mb-1 bg-white dark:bg-neutral-800 rounded-md border border-[#e5e5e5] dark:border-neutral-700 hover:bg-[#f8f8f7] dark:hover:bg-neutral-700/50 transition-colors relative">
+      <div ref={setNodeRef} style={dndStyle} className="group/row flex items-center justify-start w-full pr-2 pl-0 py-2 mb-1 bg-white dark:bg-neutral-800 rounded-md border border-[#e5e5e5] dark:border-neutral-700 hover:bg-[#f8f8f7] dark:hover:bg-neutral-700/50 transition-colors relative">
       
-      {/* 0. 드래그 핸들 (10px 지점) */}
+      {/* 0. 드래그 핸들 (10px 지점) - 너비 20px */}
       <div {...attributes} {...listeners} className="w-5 h-8 flex items-center justify-center cursor-grab active:cursor-grabbing text-neutral-300 hover:text-neutral-400 transition-colors ml-[10px] shrink-0">
         <IconMenu className="w-4 h-4" />
       </div>
 
-      {/* 1. 상속권/상속인 토글 스위치 (핸들에서 20px 지점) */}
+      {/* 1. 상속권/상속인 토글 스위치 (핸들에서 20px 지점) - 너비 28px */}
       <div className="ml-[20px] shrink-0 flex items-center">
         <button
           type="button"
@@ -86,13 +86,13 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
             }
             handleUpdate(node.id, 'isExcluded', nextExcluded);
           }}
-          className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer items-center rounded-full transition-all duration-200 ease-in-out focus:outline-none ${!node.isExcluded ? 'bg-[#28cd41] opacity-80' : 'bg-neutral-200 dark:bg-neutral-600'}`}
+          className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer items-center rounded-full transition-all duration-200 ease-in-out focus:outline-none ${!node.isExcluded ? 'bg-[#15803d] opacity-80' : 'bg-neutral-200 dark:bg-neutral-600'}`}
         >
           <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition duration-200 ease-in-out ${!node.isExcluded ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
         </button>
       </div>
 
-      {/* 2. 성명 (토글에서 30px 지점) - 96px */}
+      {/* 2. 성명 (토글에서 30px 지점) - 너비 96px */}
       <div className="w-24 ml-[30px] shrink-0 flex items-center">
         <input 
           type="text" 
@@ -104,7 +104,7 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
         />
       </div>
 
-      {/* 3. 관계 (성명에서 30px 지점) */}
+      {/* 3. 관계 (성명에서 30px 지점) - 너비 96px */}
       <div className="w-24 ml-[30px] shrink-0">
         <select 
           value={node.relation}
@@ -120,7 +120,7 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
         </select>
       </div>
 
-      {/* 4. 사망여부 및 일자 OR 상속권 제외 사유 (관계에서 50px 지점) - 150px */}
+      {/* 4. 사망여부 및 일자 OR 상속권 제외 사유 (관계에서 50px 지점) - 너비 150px */}
       <div className="w-[150px] ml-[50px] shrink-0 flex items-center text-[15px]">
         {isToggleOff && !shouldDisableToggle ? (
           <div className="relative w-full group/select bg-rose-50/50 dark:bg-rose-900/10 px-1 rounded border border-rose-200/50">
@@ -241,36 +241,107 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
                     return m ? <span className="px-2.5 py-0.5 rounded-full border border-rose-800/80 bg-white text-[11px] font-medium text-rose-800/80 shadow-sm whitespace-nowrap">{m}</span> : null;
                   })()}
                 </div>
-              )}
-            </div>
-          )}
-      </div>
+                )}
+                </div>
 
-      {/* 6. 35px 간격 및 재상속/대습상속 버튼 */}
-      <div className="w-[35px] shrink-0" />
-      <div className="w-28 shrink-0 flex justify-center -ml-2.5">
-        {shouldShowTabBtn && onTabClick && (
-          <button
-            type="button"
-            onClick={onBtnClick}
-            className={`px-3 py-1.5 rounded-md font-bold text-[13px] shrink-0 border transition-all shadow-sm ${tabBtnClass}`}
-          >
-            {tabBtnText}
-          </button>
-        )}
-      </div>
+                {/* 5. 특수조건 (가감산) - 재상속 버튼으로부터 30px 지점 (오른쪽 그룹 시작) */}
+                <div className="w-[200px] ml-auto mr-[30px] shrink-0 flex items-center gap-1.5">
+                {/* 👰 배우자/처/남편 로직 */}
+                {isSpouseType && !isToggleOff && (() => {
+                let label = lawEra === '1991' ? '배우자' : (node.relation === 'wife' ? '처' : '남편');
+                let multiplier = '';
 
-      {/* 7. 휴지통 배치 */}
-      <div className="w-12 shrink-0 flex justify-center pl-[36px]">
-        <button
-          type="button"
-          onClick={() => removeHeir(node.id)}
-          className="text-[#a3a3a3] hover:text-red-500 transition-colors p-1.5 rounded-md hover:bg-red-50 opacity-0 group-hover/row:opacity-100"
-          title="삭제"
-        >
-          <IconTrash2 className="w-5 h-5" />
-        </button>
-      </div>
+                if (lawEra === '1960') {
+                  if (node.relation === 'wife') multiplier = 'x 1/2';
+                } else if (lawEra === '1979') {
+                  if (node.relation === 'wife') multiplier = 'x 1.5';
+                } else if (lawEra === '1991') {
+                  multiplier = 'x 1.5';
+                }
+
+                return (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="w-[96px] h-[26px] shrink-0 flex items-center justify-center bg-white dark:bg-neutral-800 rounded-full border border-[#e9e9e7] dark:border-neutral-700 shadow-sm">
+                      <span className="text-[11px] font-bold text-neutral-600 dark:text-neutral-300">{label}</span>
+                    </div>
+                    {multiplier && (
+                      <span className={`px-2.5 py-0.5 rounded-full border bg-white text-[11px] font-medium shadow-sm whitespace-nowrap ${multiplier.includes('1.5') ? 'border-emerald-800/80 text-emerald-800/80' : 'border-rose-800/80 text-rose-800/80'}`}>
+                        {multiplier}
+                      </span>
+                    )}
+                  </div>
+                );
+                })()}
+
+                {/* ⚖️ 상속권 없음 (회색 바탕 복구) */}
+                {isToggleOff && (
+                <div className="w-[150px] h-[26px] shrink-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 rounded-full border border-neutral-200 dark:border-neutral-700 shadow-sm">
+                  <span className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400">배우자 선사망 (상속권 없음)</span>
+                </div>
+                )}
+
+                {/* 👨 호주/출가 로직 */}
+                {!isSpouseType && !isToggleOff && (
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {showHoju && (
+                    <div className="flex items-center gap-1.5">
+                      <div 
+                        onClick={() => handleUpdate(node.id, 'isHoju', !node.isHoju)}
+                        className={`relative flex items-center w-[96px] h-[26px] bg-[#efefed] dark:bg-neutral-900 rounded-full border border-[#e5e5e5] dark:border-neutral-700 p-0.5 cursor-pointer select-none`}
+                      >
+                        <div className={`absolute top-0.5 bottom-0.5 w-[calc(50%-1px)] bg-white dark:bg-neutral-700 rounded-full shadow-sm border border-[#e5e5e5] dark:border-neutral-600 transition-transform duration-300 ${node.isHoju ? 'translate-x-[calc(100%-1px)]' : 'translate-x-0'}`} />
+                        <div className={`flex-1 text-center z-10 text-[11px] font-bold ${!node.isHoju ? 'text-[#37352f]' : 'text-[#a3a3a3]'}`}>일반</div>
+                        <div className={`flex-1 text-center z-10 text-[11px] font-bold ${node.isHoju ? 'text-[#37352f]' : 'text-[#a3a3a3]'}`}>호주</div>
+                      </div>
+                      {node.isHoju && <span className="px-2.5 py-0.5 rounded-full border border-sky-800/80 bg-white text-[11px] font-medium text-sky-800/80 shadow-sm whitespace-nowrap">x 1.5</span>}
+                    </div>
+                  )}
+                  {showMarriedDaughter && (
+                    <div className="flex items-center gap-1.5">
+                      <div 
+                        onClick={() => handleUpdate(node.id, 'isSameRegister', node.isSameRegister === false ? true : false)}
+                        className={`relative flex items-center w-[96px] h-[26px] bg-[#efefed] dark:bg-neutral-900 rounded-full border border-[#e5e5e5] dark:border-neutral-700 p-0.5 cursor-pointer select-none`}
+                      >
+                        <div className={`absolute top-0.5 bottom-0.5 w-[calc(50%-1px)] bg-white dark:bg-neutral-700 rounded-full shadow-sm border border-[#e5e5e5] dark:border-neutral-600 transition-transform duration-300 ${node.isSameRegister === false ? 'translate-x-[calc(100%-1px)]' : 'translate-x-0'}`} />
+                        <div className={`flex-1 text-center z-10 text-[11px] font-bold ${node.isSameRegister !== false ? 'text-[#37352f]' : 'text-[#a3a3a3]'}`}>동일</div>
+                        <div className={`flex-1 text-center z-10 text-[11px] font-bold ${node.isSameRegister === false ? 'text-[#37352f]' : 'text-[#a3a3a3]'}`}>출가</div>
+                      </div>
+                      {(() => {
+                        let m = '';
+                        if (lawEra === '1960') m = node.isSameRegister !== false ? 'x 1/2' : 'x 1/4';
+                        else if (lawEra === '1979' && node.isSameRegister === false) m = 'x 1/4';
+                        return m ? <span className="px-2.5 py-0.5 rounded-full border border-rose-800/80 bg-white text-[11px] font-medium text-rose-800/80 shadow-sm whitespace-nowrap">{m}</span> : null;
+                      })()}
+                    </div>
+                  )}
+                </div>
+                )}
+                </div>
+
+                {/* 6. 재상속/대습상속 버튼 - 삭제 버튼으로부터 25px 지점 */}
+                <div className="w-28 shrink-0 flex justify-center mr-[25px]">
+                {shouldShowTabBtn && onTabClick && (
+                <button
+                type="button"
+                onClick={onBtnClick}
+                className={`px-3 py-1.5 rounded-md font-bold text-[13px] shrink-0 border transition-all shadow-sm ${tabBtnClass}`}
+                >
+                {tabBtnText}
+                </button>
+                )}
+                </div>
+
+                {/* 7. 삭제 버튼 - 행 끝에서 10px 지점 */}
+                <div className="w-12 shrink-0 flex justify-center mr-[10px]">
+                <button
+                type="button"
+                onClick={() => removeHeir(node.id)}
+                className="text-[#a3a3a3] hover:text-red-500 transition-colors p-1.5 rounded-md hover:bg-red-50 opacity-0 group-hover/row:opacity-100"
+                title="삭제"
+                >
+                <IconTrash2 className="w-5 h-5" />
+                </button>
+                </div>
 
     </div>
 
