@@ -153,7 +153,7 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
                   handleUpdate(node.id, 'exclusionOption', '');
                 }
               }}
-              className={`flex-1 text-[13px] font-bold outline-none bg-transparent ${isToggleOff ? 'text-rose-500/70' : 'text-neutral-500 dark:text-neutral-400'}`}
+              className={`flex-1 text-[13px] font-bold outline-none bg-transparent ${isPreDeceasedCondition ? 'text-rose-600 dark:text-rose-400' : 'text-neutral-500 dark:text-neutral-400'}`}
               placeholder="사망일자"
             />
           </div>

@@ -148,6 +148,9 @@ export const calculateInheritance = (tree, propertyValue) => {
       // 🚨 [버그 수정]: 대습상속(선사망) 또는 결격/상실인 경우, 하위 상속인이 없다면
       // 부모나 형제에게 지분을 억지로 넘기지 않고 여기서 계산을 즉시 중단합니다.
       // 💡 핵심 픽스: 계산을 멈추기 전에, 사망자 본인의 주머니(유령 지분)를 0으로 비워줍니다!
+      if (!node.isExcluded) {
+        return;
+      }
       const isSubstitution = node.isDeceased || (node.isExcluded && (node.exclusionOption === 'disqualified' || node.exclusionOption === 'lost'));
       if (isSubstitution) {
         results.push({ id: node.id, personId: node.personId, name: node.name, n: 0, d: 1, relation: node.relation });

@@ -108,11 +108,14 @@ const MiniTreeView = ({ node, level = 0, onSelectNode, visitedHeirs = new Set(),
           {showWarning && (
             <span className="text-[12px] cursor-help opacity-100" title={warningTitle}>⚠️</span>
           )}
-          {level > 0 && (
-            <span className={`text-[10px] font-bold opacity-40 uppercase tracking-tighter ${node.isDeceased ? 'text-[#ef4444]' : 'text-[#787774]'}`}>
-              [{getRelStr(node.relation, deathDate) || '자녀'}]
-            </span>
-          )}
+          {level > 0 && (() => {
+            const isPre = node.isDeceased && node.deathDate && deathDate && isBefore(node.deathDate, deathDate);
+            return (
+              <span className={`text-[10px] font-bold opacity-40 uppercase tracking-tighter ${isPre ? 'text-[#ef4444]' : 'text-[#787774]'}`}>
+                [{getRelStr(node.relation, deathDate) || '자녀'}]
+              </span>
+            );
+          })()}
         </div>
       </div>
       
@@ -1007,8 +1010,10 @@ function App() {
     setIsResetModalOpen(false);
   };
 
-  // 💡 글로벌 지분 검증 로직 (계산표, 계산결과, 요약표 탭에서만 검사)
+  // 💡 글로벌 지분 검증 및 원인(이름) 추적 로직
   let showGlobalWarning = false;
+  let missingHeirNames = []; // 👈 범인들의 이름을 담을 빈 바구니 준비!
+
   if (['calc', 'result', 'summary'].includes(activeTab)) {
     const calculateTotalSum = () => {
       let tn = 0, td = 1;
@@ -1029,24 +1034,35 @@ function App() {
     const targetN = tree.shareN || 1;
     const targetD = tree.shareD || 1;
     
-    // 미세한 오차 허용 비교 (분수 기반 정확도 유지)
+    // 지분 합계가 불일치할 경우 (정밀도 유지 비교)
     if (sumN * targetD !== targetN * sumD) {
       showGlobalWarning = true;
+
+      // 🔍 트리 전체를 뒤져서 하위 상속인이 누락된 사망자 찾기
+      const findMissingNodes = (node) => {
+        // 본인이 사망했고, 밑에 상속인이 없는데, '상속인 없음(제외)' 스위치도 안 끈 사람!
+        if (node.id !== 'root' && node.isDeceased && (!node.heirs || node.heirs.length === 0) && !node.isExcluded) {
+          missingHeirNames.push(node.name || '이름 미상');
+        }
+        if (node.heirs) {
+          node.heirs.forEach(findMissingNodes);
+        }
+      };
+      
+      findMissingNodes(tree);
+      missingHeirNames = [...new Set(missingHeirNames)]; // 혹시 모를 중복 이름 제거
     }
   }
 
   return (
     <div className="w-full min-h-screen relative flex flex-col items-start pb-24 transition-colors duration-200 bg-[#f7f7f5] dark:bg-neutral-900 min-w-[1280px] print:min-w-0 print:w-full print:max-w-full">
       
-      {/* 📌 오른쪽 상단 스티커 스타일 경고 메모 */}
+      {/* 📌 오른쪽 상단 똑똑해진 스티커 경고 메모 */}
       {showGlobalWarning && (
         <div className="fixed top-28 right-6 z-[9999] no-print animate-in fade-in slide-in-from-right-4 duration-500">
-          {/* 메모지 본체 */}
           <div className="relative w-64 p-5 bg-[#fff9c4] dark:bg-[#fbc02d] shadow-2xl border-l-4 border-[#fbc02d] dark:border-[#f9a825] transform rotate-2 hover:rotate-0 transition-transform duration-300 group">
-            
-            {/* 포스트잇 접힌 효과 (상단) */}
             <div className="absolute top-0 right-0 w-8 h-8 bg-[#fdd835]/30 rounded-bl-full"></div>
-
+            
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-2 text-[#f57f17] dark:text-[#bf360c]">
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -1055,18 +1071,32 @@ function App() {
                 <span className="font-black text-[15px] tracking-tight">지분 불일치 주의!</span>
               </div>
               
-              <p className="text-[13px] font-bold text-[#5d4037] dark:text-[#3e2723] leading-relaxed break-keep">
-                지분 합계가 1이 아닙니다. <br/>
-                누락된 대습상속인이 있다면 입력하시고, 없으면 <span className="underline decoration-wavy underline-offset-4 decoration-[#f57f17]">상속인 없음</span> 처리를 확인하세요.
-              </p>
+              <div className="text-[13px] font-bold text-[#5d4037] dark:text-[#3e2723] leading-relaxed break-keep">
+                전체 지분 합계가 맞지 않습니다.
+                
+                {/* 범인 이름이 담겨 있다면 빨간 박스로 확실하게 알려주기! */}
+                {missingHeirNames.length > 0 ? (
+                  <div className="mt-2.5 p-2.5 bg-red-100/90 dark:bg-red-900/40 rounded border border-red-300 dark:border-red-800 shadow-sm">
+                    <span className="text-red-700 dark:text-red-300 font-black flex items-center gap-1">
+                      🔍 누락 의심 대상:
+                    </span>
+                    <p className="text-red-600 dark:text-red-400 mt-1 text-[14px]">
+                      [{missingHeirNames.join(', ')}]
+                    </p>
+                    <p className="text-[11px] text-red-500/90 dark:text-red-400/80 mt-1.5 font-normal leading-tight">
+                      해당 인물 밑에 상속인을 추가하거나, 우측 스위치를 꺼서 정리해 주세요.
+                    </p>
+                  </div>
+                ) : (
+                  <p className="mt-1 font-normal">누락된 상속인이 있는지 확인해 주세요.</p>
+                )}
+              </div>
 
-              {/* 메모지 하단 서명 같은 느낌의 장식 */}
               <div className="text-right text-[11px] font-medium text-[#8d6e63] mt-1 italic opacity-60">
                 - 상속 계산 엔진 -
               </div>
             </div>
 
-            {/* 압정/테이프 느낌의 상단 장식 */}
             <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-12 h-6 bg-white/40 dark:bg-black/20 backdrop-blur-sm rotate-[-5deg] shadow-sm"></div>
           </div>
         </div>
