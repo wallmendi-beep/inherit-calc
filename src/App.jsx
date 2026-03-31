@@ -16,6 +16,10 @@ import { SortableContext, verticalListSortingStrategy, sortableKeyboardCoordinat
 
 const getWarningState = (n, rootDeathDate, level = 1) => {
   if (!n) return { isDirect: false, hasDescendant: false };
+  // 💡 핵심 픽스: 상속포기, 상속인없음 등 소급 무시되는 상태는 경고창 완전히 차단
+  if (n.isExcluded && (n.exclusionOption === 'no_heir' || n.exclusionOption === 'renounce' || !n.exclusionOption)) {
+    return { isDirect: false, hasDescendant: false };
+  }
 
   const isRootSpouse = level === 1 && ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(n.relation);
   const isPreDeceasedSpouse = isRootSpouse && n.deathDate && rootDeathDate && isBefore(n.deathDate, rootDeathDate);
@@ -98,15 +102,18 @@ const MiniTreeView = ({ node, level = 0, onSelectNode, visitedHeirs = new Set(),
         >
           {node.name || (level === 0 ? '피상속인' : '(이름 없음)')}
         </span>
-        {level > 0 && <span className={`text-[10px] font-bold shrink-0 opacity-40 uppercase tracking-tighter ${node.isDeceased ? 'text-[#ef4444]' : 'text-[#787774]'}`}>[{getRelStr(node.relation, deathDate) || '자녀'}]</span>}
-        {showWarning && (
-          <span 
-            className="ml-1 text-[12px] cursor-help animate-pulse" 
-            title={warningTitle}
-          >
-            ⚠️
-          </span>
-        )}
+        
+        {/* 💡 수정: 경고 아이콘을 관계 표시 앞으로 이동 + 깜빡임(pulse) 제거 + 고정 정렬 */}
+        <div className="flex items-center gap-1 shrink-0">
+          {showWarning && (
+            <span className="text-[12px] cursor-help opacity-100" title={warningTitle}>⚠️</span>
+          )}
+          {level > 0 && (
+            <span className={`text-[10px] font-bold opacity-40 uppercase tracking-tighter ${node.isDeceased ? 'text-[#ef4444]' : 'text-[#787774]'}`}>
+              [{getRelStr(node.relation, deathDate) || '자녀'}]
+            </span>
+          )}
+        </div>
       </div>
       
       {isExpanded && hasHeirs && (
@@ -551,7 +558,7 @@ function App() {
             if (isSame) {
               // 동일인: 기존 인물의 ID를 부여하여 실질적으로 같은 사람으로 연동
               const syncIdInTree = (n) => {
-                if (n.id === id) return { ...n, name: trimmedValue, id: existingNode.id };
+                if (n.id === id) return { ...n, name: trimmedValue, personId: existingNode.personId };
                 return { ...n, heirs: n.heirs?.map(syncIdInTree) || [] };
               };
               setTree(prev => syncIdInTree(prev));
@@ -632,8 +639,10 @@ function App() {
     applyUpdate(id, field, value, false);
   };
 
-  const applyUpdate = (id, field, value, syncGlobal = false, syncName = '') => {
-    // 타겟 노드의 personId 찾기
+  const applyUpdate = (id, changes, value, syncGlobal = false, syncName = '') => {
+    // changes는 { field: value } 형태의 객체
+    const updates = (typeof changes === 'object' && changes !== null) ? changes : { [changes]: value };
+
     let targetPersonId = null;
     const findPersonId = (n) => {
       if (n.id === id) targetPersonId = n.personId;
@@ -643,8 +652,8 @@ function App() {
 
     const updateNode = (n) => {
       // 💡 화면 ID가 달라도 personId가 같으면 일괄 수정 (이름, 사망일 등 완벽 동기화)
-      if (n.personId === targetPersonId) {
-         return { ...n, [field]: value };
+      if (n.id === id || (targetPersonId && n.personId === targetPersonId)) {
+         return { ...n, personId: targetPersonId || n.personId, ...updates };
       }
       return { ...n, heirs: n.heirs?.map(updateNode) || [] };
     };
@@ -880,9 +889,10 @@ function App() {
     reader.onload = (ev) => {
       try {
         const data = JSON.parse(ev.target.result);
+        const addPersonIdRec = (n) => ({ ...n, personId: n.personId || `p_${Math.random().toString(36).substr(2,9)}`, heirs: (n.heirs || []).map(addPersonIdRec) });
         // 구버전(트리) 형식: id === 'root' 또는 heirs 배열 보유
         if (data.id === 'root' || (Array.isArray(data.heirs) && data.name !== undefined)) {
-          setTree(data);
+          setTree(addPersonIdRec(data));
           setActiveTab('calc');
         } else if (data.people && Array.isArray(data.people)) {
           // 신버전(그래프) 형식 - 기본 정보만 추출하여 트리 초기화
@@ -1710,19 +1720,22 @@ function App() {
                                 ))}
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              {/* 🍎 애플 스타일 '상속인 없음' 토글 스위치 (대습/재상속 진입자 전용) */}
+                            <div className="flex items-center gap-1.5">
+                              {/* 🍎 애플 스타일 '상속인 없음' 토글 스위치 (축소 버전) */}
                               {!isRootNode && (
-                                <div className="flex items-center gap-2 mr-2 bg-white dark:bg-neutral-800/50 border border-[#e9e9e7] dark:border-neutral-700/50 px-3 py-1.5 rounded-full shadow-sm hover:border-rose-200 transition-colors">
+                                <div className="flex items-center gap-1.5 mr-1 bg-[#f7f7f5] dark:bg-neutral-800 border border-[#e9e9e7] dark:border-neutral-700 px-2.5 py-1 rounded-full shadow-none hover:border-neutral-300 transition-colors">
                                   <span 
-                                    className={`text-[12.5px] font-bold transition-colors select-none cursor-pointer ${currentNode.isExcluded ? 'text-rose-500' : 'text-neutral-400 dark:text-neutral-500'}`}
+                                    className={`text-[11.5px] font-bold transition-colors select-none cursor-pointer ${currentNode.isExcluded ? 'text-[#37352f] dark:text-neutral-200' : 'text-[#787774]'}`}
                                     onClick={() => {
                                       const nextVal = !currentNode.isExcluded;
                                       handleUpdate(currentNode.id, 'isExcluded', nextVal);
-                                      if (nextVal) handleUpdate(currentNode.id, 'exclusionOption', 'no_heir');
+                                      if (nextVal) {
+                                        const defaultOption = currentNode.isDeceased ? 'no_heir' : 'renounce';
+                                        handleUpdate(currentNode.id, 'exclusionOption', defaultOption);
+                                      }
                                     }}
                                   >
-                                    상속인 없음
+                                    상속인 없음(제외)
                                   </span>
                                   <button
                                     type="button"
@@ -1731,40 +1744,46 @@ function App() {
                                     onClick={() => {
                                       const nextVal = !currentNode.isExcluded;
                                       handleUpdate(currentNode.id, 'isExcluded', nextVal);
-                                      // 스위치를 켤 때 사유를 '대습상속인 없음'으로 자동 세팅
-                                      if (nextVal) handleUpdate(currentNode.id, 'exclusionOption', 'no_heir');
+                                      if (nextVal) {
+                                        const defaultOption = currentNode.isDeceased ? 'no_heir' : 'renounce';
+                                        handleUpdate(currentNode.id, 'exclusionOption', defaultOption);
+                                      }
                                     }}
-                                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                                      currentNode.isExcluded ? 'bg-rose-400' : 'bg-neutral-200 dark:bg-neutral-600'
+                                    className={`relative inline-flex h-4 w-7 items-center shrink-0 cursor-pointer rounded-full border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                      currentNode.isExcluded ? 'bg-[#37352f] dark:bg-neutral-300' : 'bg-neutral-300 dark:bg-neutral-600'
                                     }`}
                                   >
                                     <span
                                       aria-hidden="true"
-                                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                                        currentNode.isExcluded ? 'translate-x-4' : 'translate-x-0'
+                                      className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-sm transition duration-200 ease-in-out ${
+                                        currentNode.isExcluded ? 'translate-x-3' : 'translate-x-0.5'
                                       }`}
                                     />
                                   </button>
                                 </div>
                               )}
                               {!isRootNode && isSp && (
-                                <button type="button" onClick={handleAutoFill} className="text-[13px] text-[#2383e2] dark:text-blue-400 font-bold bg-[#eff6ff] hover:bg-[#dbeafe] dark:bg-blue-900/20 dark:hover:bg-blue-900/40 px-3 py-1.5 rounded transition-colors flex items-center border border-[#bfdbfe] dark:border-blue-800/50 shadow-sm">
-                                  <IconFolderOpen className="w-3.5 h-3.5 mr-1.5" /> 상속인 불러오기
+                                <button type="button" onClick={handleAutoFill} className="text-[12px] text-[#37352f] dark:text-neutral-200 font-bold bg-white hover:bg-[#f7f7f5] dark:bg-neutral-800 dark:hover:bg-neutral-700 px-2.5 py-1.5 rounded transition-colors flex items-center border border-[#e9e9e7] dark:border-neutral-700 shadow-none">
+                                  <IconFolderOpen className="w-3 h-3 mr-1.5 opacity-60" /> 불러오기
                                 </button>
                               )}
                               <button 
                                 type="button"
                                 onClick={() => {
-                                  setIsMainQuickActive(true);
-                                  setIsFolderFocused(true);
-                                  setTimeout(() => {
-                                    const input = document.querySelector('input[placeholder*="한꺼번에"]');
-                                    if (input) input.focus();
-                                  }, 100);
+                                  if (isMainQuickActive) {
+                                    setIsMainQuickActive(false);
+                                  } else {
+                                    setIsMainQuickActive(true);
+                                    setIsFolderFocused(true);
+                                    setTimeout(() => {
+                                      const input = document.querySelector('input[placeholder*="한꺼번에"]');
+                                      if (input) input.focus();
+                                    }, 100);
+                                  }
                                 }}
-                                className="text-[13px] text-[#b45309] dark:text-amber-500 font-bold bg-[#fffbeb] hover:bg-[#fef3c7] dark:bg-amber-900/20 dark:hover:bg-amber-900/40 px-3 py-1.5 rounded transition-colors flex items-center border border-[#fde68a] dark:border-amber-800/50 shadow-sm gap-1.5"
+                                className="text-[12px] text-[#37352f] dark:text-neutral-200 font-bold bg-white hover:bg-[#f7f7f5] dark:bg-neutral-800 dark:hover:bg-neutral-700 px-2.5 py-1.5 rounded transition-colors flex items-center border border-[#e9e9e7] dark:border-neutral-700 shadow-none gap-1.5"
                               >
-                                <IconUserPlus className="w-3.5 h-3.5" /> 상속인 입력
+                                <IconUserPlus className="w-3 h-3 opacity-60" /> 상속인 입력
                               </button>
                             </div>
                           </div>
@@ -1772,18 +1791,18 @@ function App() {
                           {/* 📄 폴더 내부 */}
                           <div className="px-10 pb-10 pt-6 bg-white dark:bg-neutral-800 rounded-b-xl border border-t-0 border-[#f1f1ef] dark:border-neutral-700/50">
                             {isMainQuickActive && (
-                              <div className="mb-8 p-6 rounded-lg bg-amber-50/50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 animate-in fade-in slide-in-from-top-1 duration-300">
-                                <div className="flex flex-col gap-3">
+                              <div className="mb-4 p-4 rounded-lg bg-[#fcfcfb] dark:bg-neutral-800/50 border border-[#e9e9e7] dark:border-neutral-700 animate-in fade-in slide-in-from-top-1 duration-300">
+                                <div className="flex flex-col gap-2">
                                   <div className="flex items-center justify-between">
-                                    <div className="text-[12px] font-bold text-amber-600 dark:text-amber-500/80">
+                                    <div className="text-[12px] font-bold text-[#787774] dark:text-neutral-400">
                                       상속인 이름을 쉼표(,)로 구분하여 한꺼번에 입력하세요
                                     </div>
                                     <button
                                       onClick={() => { setIsMainQuickActive(false); setMainQuickVal(''); }}
-                                      className="text-[#787774] dark:text-neutral-400 hover:text-[#37352f] dark:hover:text-neutral-100 p-1 rounded transition-colors"
+                                      className="text-[#a3a3a3] dark:text-neutral-500 hover:text-[#37352f] dark:hover:text-neutral-300 p-0.5 rounded transition-colors"
                                       title="닫기"
                                     >
-                                      <IconX className="w-4 h-4" />
+                                      <IconX className="w-3.5 h-3.5" />
                                     </button>
                                   </div>
                                   <div className="flex gap-2">
@@ -1801,7 +1820,7 @@ function App() {
                                         if (e.key === 'Escape') { setIsMainQuickActive(false); setMainQuickVal(''); }
                                       }}
                                       placeholder="예: 홍길동, 김철수, 이영희"
-                                      className="flex-1 text-[14px] border border-amber-200 dark:border-amber-800/50 rounded-md px-4 py-2.5 outline-none focus:ring-2 focus:ring-amber-500/20 bg-white dark:bg-neutral-900 dark:text-neutral-200 transition-all"
+                                      className="flex-1 text-[13px] border border-[#e9e9e7] dark:border-neutral-700 rounded-md px-3 py-1.5 outline-none focus:border-[#d4d4d4] bg-white dark:bg-neutral-900 dark:text-neutral-200 transition-all font-medium text-[#37352f]"
                                     />
                                     <button
                                       onClick={() => {
@@ -1809,7 +1828,7 @@ function App() {
                                         setIsMainQuickActive(false);
                                         setMainQuickVal('');
                                       }}
-                                      className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-[14px] font-black rounded-md transition-all shadow-md active:scale-95"
+                                      className="px-4 py-1.5 bg-white dark:bg-neutral-800 hover:bg-[#efefed] dark:hover:bg-neutral-700 border border-[#e9e9e7] dark:border-neutral-600 text-[#37352f] dark:text-neutral-200 text-[13px] font-bold rounded-md transition-all shadow-sm active:scale-95 whitespace-nowrap"
                                     >
                                       일괄 등록
                                     </button>
@@ -1838,7 +1857,7 @@ function App() {
 
                             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                               <SortableContext items={nodeHeirs.map(h => h.id)} strategy={verticalListSortingStrategy}>
-                                <div className={`space-y-1.5 transition-all duration-300 ${isFolderFocused ? 'p-2' : ''}`}>
+                                <div className={`space-y-1.5 transition-all duration-300`}>
                                   {nodeHeirs.map(h => (
                                     <HeirRow
                                       key={h.id}
@@ -1905,7 +1924,7 @@ function App() {
                                                         {potentialHeirsLabel === '피대습자의 자녀' 
                                                             ? '별도의 상속인을 입력하지 않으면 공동 상속인인 자녀(피상속인의 직계비속)를 상속인으로 간주하여 상속지분을 자동으로 계산합니다.' 
                                                             : potentialHeirsLabel === '대습상속 불가'
-                                                            ? '대습상속의 경우 미혼이거나 무자녀라면 상단의 [상속권 없음] 스위치를 켜서 상속권 소멸 처리를 해주세요.'
+                                                            ? '대습상속의 경우 미혼이거나 무자녀라면 상단의 [상속인 없음(제외)] 스위치를 켜서 제외 처리를 해주세요.'
                                                             : '상속인을 입력하지 않으면 2순위(직계존속)를 우선하며, 직계존속 부재 시 3순위(형제자매)가 상속하는 것으로 계산합니다.'}
                                                     </p>
                                                     {potentialHeirsStr && potentialHeirsLabel !== '대습상속 불가' && (
@@ -2107,6 +2126,57 @@ function App() {
             const [simpleTargetN, simpleTargetD] = math.simplify(targetN, targetD);
             const isMatch = totalSumN === simpleTargetN && totalSumD === simpleTargetD;
 
+            const getMismatchReasons = (rootNode) => {
+              const reasons = [];
+              const rootDeathDate = rootNode.deathDate;
+
+              if (!rootNode.heirs || rootNode.heirs.length === 0) {
+                reasons.push("입력된 상속인이 없어 분배할 지분이 계산되지 않았습니다.");
+              }
+
+              const scanMissingHeirs = (n) => {
+                if (n.id !== 'root') {
+                  const isRootSpouse = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(n.relation);
+                  const isPreDeceasedSpouse = isRootSpouse && n.deathDate && rootDeathDate && isBefore(n.deathDate, rootDeathDate);
+                  const isPreDeceasedContext = n.deathDate && rootDeathDate && isBefore(n.deathDate, rootDeathDate);
+
+                  const requiresHeirsIfExcluded = n.isExcluded && ['lost', 'disqualified'].includes(n.exclusionOption);
+                  const requiresHeirsIfDeceased = !n.isExcluded && n.isDeceased && !isPreDeceasedSpouse && isPreDeceasedContext;
+
+                  if ((requiresHeirsIfDeceased || requiresHeirsIfExcluded) && (!n.heirs || n.heirs.length === 0)) {
+                    if (requiresHeirsIfDeceased) {
+                      reasons.push(`망 ${n.name}(${getRelStr(n.relation, rootDeathDate)})의 대습상속인이 누락되었습니다. (미혼/무자녀인 경우 '상속권 없음' 토글 켜기)`);
+                    } else {
+                      reasons.push(`${n.name}의 상속권 상실/결격에 따른 대습상속인이 누락되었습니다.`);
+                    }
+                  }
+                }
+
+                // 💡 수정 코드: 포기/없음 상태면 하위 순회 및 누락 에러 표시 안 함
+                if (n.isExcluded && (n.exclusionOption === 'no_heir' || n.exclusionOption === 'renounce' || !n.exclusionOption)) return;
+
+                if (n.heirs) n.heirs.forEach(scanMissingHeirs);
+              };
+              
+              if (rootNode.heirs && rootNode.heirs.length > 0) {
+                scanMissingHeirs(rootNode);
+              }
+
+              if (reasons.length === 0) {
+                 if (totalSumN === 0) {
+                   reasons.push("💡 현재 모든 상속인이 '상속포기' 또는 '상속권 없음' 상태입니다.");
+                   reasons.push("민법 제1000조에 따라 차순위 상속인(직계존속 또는 형제자매)을 상속인 입력 창에 새로 추가하여 지분을 분배해 주세요.");
+                 } else {
+                   reasons.push("지분 일부가 '상속권 없음(소멸)' 처리되어 전체 합계가 피상속인 지분에 미달합니다.");
+                   reasons.push("지분을 공동상속인끼리 나누어 갖게 하려면 제외 사유를 '상속포기'로 변경해 주세요.");
+                 }
+              }
+              
+              return Array.from(new Set(reasons));
+            };
+
+            const mismatchReasons = !isMatch ? getMismatchReasons(tree) : [];
+
             const printedPersonIds = new Set();
 
             const buildGroups = (node, parentDeathDate) => {
@@ -2233,12 +2303,26 @@ function App() {
                         {isMatch ? (
                           <span className="text-[#504f4c]">✔️ 피상속인 지분과 일치 ({simpleTargetN}/{simpleTargetD})</span>
                         ) : (
-                          <span className="text-red-500">⚠️ 지분 합계 불일치</span>
+                          <span className="text-red-500 font-bold">⚠️ 지분 합계 불일치 (아래 안내 참조)</span>
                         )}
                       </td>
                     </tr>
                   </tfoot>
                 </table>
+
+                {/* 💡 표 바깥으로 분리된 불일치 경고 메시지 영역 */}
+                {!isMatch && mismatchReasons.length > 0 && (
+                  <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 rounded-lg animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-red-600 dark:text-red-400 font-bold text-[14px]">⚠️ 상속 지분 배분 안내</span>
+                    </div>
+                    <ul className="list-disc pl-5 text-[#c93f3a] dark:text-red-400 space-y-1.5 text-[13px] font-medium leading-relaxed">
+                      {mismatchReasons.map((r, idx) => (
+                        <li key={idx}>{r}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             );
           })()}

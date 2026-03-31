@@ -61,30 +61,34 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
   const showMarriedDaughter = node.relation === 'daughter' && lawEra !== '1991';
 
   return (
-    <div ref={setNodeRef} style={dndStyle} className="group/row flex items-center justify-start w-full px-2 py-2 mb-1 bg-white dark:bg-neutral-800 rounded-md border border-[#e5e5e5] dark:border-neutral-700 hover:bg-[#f8f8f7] dark:hover:bg-neutral-700/50 transition-colors">
+    <>
+      <div ref={setNodeRef} style={dndStyle} className="group/row flex items-center justify-start w-full px-2 py-2 mb-1 bg-white dark:bg-neutral-800 rounded-md border border-[#e5e5e5] dark:border-neutral-700 hover:bg-[#f8f8f7] dark:hover:bg-neutral-700/50 transition-colors">
       
-      {/* 1. 상속권 (90px) */}
-      <div className="w-[90px] flex justify-center shrink-0 items-center">
+      {/* 1. 상속권/상속인 토글 스위치 (90px) */}
+      <div className="w-[90px] shrink-0 flex items-center justify-start pl-[53px]">
         <div {...attributes} {...listeners} className="hidden" />
         <button
           type="button"
+          role="switch"
+          aria-checked={!node.isExcluded}
           disabled={shouldDisableToggle}
           onClick={() => {
             const nextExcluded = !node.isExcluded;
             if (nextExcluded) {
-              handleUpdate(node.id, 'exclusionOption', isDaeseupSpouse ? 'remarried' : 'no_heir');
+              const defaultOpt = isDaeseupSpouse ? 'remarried' : (node.isDeceased ? 'no_heir' : 'renounce');
+              handleUpdate(node.id, 'exclusionOption', defaultOpt);
             } else {
               handleUpdate(node.id, 'exclusionOption', '');
             }
             handleUpdate(node.id, 'isExcluded', nextExcluded);
           }}
-          className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors focus:outline-none disabled:opacity-100 ${
-            shouldDisableToggle ? 'bg-neutral-300 dark:bg-neutral-600 cursor-not-allowed' :
-            !isToggleOff ? 'bg-emerald-500 dark:bg-emerald-600' : 'bg-neutral-200 dark:bg-neutral-700'
-          }`}
+          className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${!node.isExcluded ? 'bg-blue-500' : 'bg-neutral-200 dark:bg-neutral-600'} ${shouldDisableToggle ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
-          <span className={`inline-block h-3 w-3 transform rounded-full bg-white shadow-sm transition-transform ${!isToggleOff ? 'translate-x-4' : 'translate-x-1'}`} />
+          <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition duration-200 ease-in-out ${!node.isExcluded ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
         </button>
+        <span className={`ml-2 text-[11px] font-bold select-none ${!node.isExcluded ? 'text-blue-600 dark:text-blue-400' : 'text-neutral-400'}`}>
+          {!node.isExcluded ? '상속인' : '제외됨'}
+        </span>
       </div>
 
       {/* 2. 성명 - 112px */}
@@ -199,7 +203,7 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
           {/* ⚖️ 상속권 없음 (회색 바탕 복구) */}
           {isToggleOff && (
             <div className="w-[96px] h-[26px] shrink-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 rounded-full border border-neutral-200 dark:border-neutral-700 shadow-sm">
-              <span className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400">상속권 없음</span>
+              <span className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400">제외됨</span>
             </div>
           )}
 
@@ -241,9 +245,9 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
           )}
       </div>
 
-      {/* 6. 25px 간격 및 재상속/대습상속 버튼 */}
-      <div className="w-[25px] shrink-0" />
-      <div className="w-28 flex justify-center shrink-0 pl-1.5">
+      {/* 6. 35px 간격 및 재상속/대습상속 버튼 */}
+      <div className="w-[35px] shrink-0" />
+      <div className="w-28 shrink-0 flex justify-center -ml-2.5">
         {shouldShowTabBtn && onTabClick && (
           <button
             type="button"
@@ -255,8 +259,8 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
         )}
       </div>
 
-      {/* 7. 5px 간격 후 휴지통 배치 */}
-      <div className="w-12 flex justify-center shrink-0 pr-1 pl-1.5 ml-auto">
+      {/* 7. 휴지통 배치 */}
+      <div className="w-12 shrink-0 flex justify-center pl-[36px]">
         <button
           type="button"
           onClick={() => removeHeir(node.id)}
@@ -268,7 +272,19 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
       </div>
 
     </div>
-  );
+
+    {/* 선사망자 하위 상속인 입력 유도 안내 문구 */}
+    {isPreDeceasedCondition && (!node.heirs || node.heirs.length === 0) && !node.isExcluded && (
+      <div className="flex px-4 py-1.5 bg-red-50/50 dark:bg-red-900/10 border-t border-dashed border-red-200 dark:border-red-900/30">
+        <div className="w-[90px] shrink-0"></div>
+        <div className="flex-1 text-[11px] font-bold text-red-500 dark:text-red-400 flex items-center gap-1.5">
+          <IconChevronRight className="w-3 h-3" />
+          선사망자의 대습상속인(배우자/자녀)을 추가해 주세요. 대습상속인이 없다면 좌측 스위치를 꺼서 '제외(상속인 없음)' 처리해 주세요.
+        </div>
+      </div>
+    )}
+  </>
+);
 };
 
 export default HeirRow;

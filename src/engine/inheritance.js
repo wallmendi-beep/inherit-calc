@@ -29,19 +29,9 @@ export const calculateInheritance = (tree, propertyValue) => {
     }
     const currentVisited = [...visitedIds, node.id];
 
-    // 유효성 검사: 피상속인/선사망자 사망일 누락 확인
-    if (node.isDeceased && !node.deathDate) {
-      warnings.push(`${node.name || '이름 미입력'} 님의 사망일자가 입력되지 않았습니다.`);
-    }
-
-    if (!node.isDeceased && !(node.isExcluded && node.exclusionOption === 'lost') || node.id === 'root') {
-      if (node.id !== 'root') results.push({ id: node.id, personId: node.personId, name: node.name, n: inN, d: inD, relation: node.relation });
-      if (!node.isDeceased && !(node.isExcluded && node.exclusionOption === 'lost')) return;
-    }
-
     let isSubstitution = false;
     let distributionDate = inheritedDate;
-    let isDisqualifiedOrLost = false; // ★ 결격/상실 플래그 추가
+    let isDisqualifiedOrLost = false;
 
     if (node.id !== 'root' && node.isDeceased && node.deathDate && !isBefore(node.deathDate, inheritedDate)) {
       distributionDate = node.deathDate;
@@ -49,27 +39,69 @@ export const calculateInheritance = (tree, propertyValue) => {
       isSubstitution = true;
     }
     
-    // 상속결격 및 상속권 상실의 경우: 선사망과 같이 취급하여 대습상속 발동
     if (node.id !== 'root' && node.isExcluded && (node.exclusionOption === 'lost' || node.exclusionOption === 'disqualified')) {
       isSubstitution = true;
-      isDisqualifiedOrLost = true; // ★ 플래그 ON
+      isDisqualifiedOrLost = true; 
       distributionDate = inheritedDate; 
     }
 
-    // ★ FIX 1: ReferenceError 방지를 위해 getLawEra 위치를 위로 끌어올림
     const law = getLawEra(distributionDate); 
 
-    // 🏛️ 법리적 상태 판별 헬퍼 (중복 제거 및 명확화)
-    const isRenounced = (h) => h.isExcluded && (h.exclusionOption === 'renounce' || !h.exclusionOption);
+    // 💡 최종 픽스: 하위 상속인이 전원 제외된 대습상속 가지를 소급 제외하되, '동명이인 참조 노드'의 자식들까지 정확히 불러와서 검사함
+    const isRenounced = (h, contextDate) => {
+      // 1. 본인이 직접 스위치가 꺼진 경우
+      if (h.isExcluded) return true; 
+
+      // 2. 본인이 선사망자(또는 결격/상실자)인 경우 하위 상속인 생존 여부 검사
+      const isPre = h.isDeceased && h.deathDate && contextDate && isBefore(h.deathDate, contextDate);
+      const isDisqualified = h.isExcluded && (h.exclusionOption === 'lost' || h.exclusionOption === 'disqualified');
+      
+      if (isPre || isDisqualified) {
+        let children = h.heirs || [];
+        
+        // 💡 충돌 방지: 복제 노드라서 자식이 비어있다면, 트리에서 원본 자식들을 빌려와서 검사
+        if (children.length === 0 && h.name) {
+          const borrowed = findHeirsByName(tree, h.name, h.id);
+          if (borrowed) children = borrowed;
+        }
+
+        // 빌려와봤는데도 진짜로 자식이 없으면 이 가지는 죽은 것
+        if (children.length === 0) return true;
+
+        // 자식이 있다면, 그 자식들이 모두 '제외' 처리되었는지 재귀적으로 검사
+        const validHeirs = children.filter(child => !isRenounced(child, h.deathDate || contextDate));
+        
+        // 자식들이 살아있지만 모두 제외(포기) 상태라면 이 가지도 죽은 것으로 처리 (지분 블랙홀 방지)
+        if (validHeirs.length === 0) return true;
+      }
+      return false;
+    };
+
     const isSubstitutionTrigger = (h) => 
       h.isDeceased || (h.isExcluded && (h.exclusionOption === 'disqualified' || h.exclusionOption === 'lost'));
 
-    // 1. 현재 노드의 상속권 상태 확인
-    if (node.isExcluded && node.exclusionOption === 'no_heir') {
-      return; // 명시적으로 상속권 소멸을 선택한 경우 즉시 중단
+    // 💡 유효성 검사 (입력 누락 방지 가이드)
+    if (!node.isExcluded) {
+      if (node.isDeceased && !node.deathDate) {
+        warnings.push(`${node.name || '이름 미입력'} 님의 사망일자가 입력되지 않았습니다.`);
+      }
+      if (node.id !== 'root' && node.isDeceased && node.deathDate && isBefore(node.deathDate, inheritedDate)) {
+        const activeHeirs = (node.heirs || []).filter(h => !h.isExcluded);
+        if (activeHeirs.length === 0) {
+          warnings.push(`선사망자 '${node.name}'의 대습상속인이 누락되었습니다. 상속인이 없다면 스위치를 꺼주세요.`);
+        }
+      }
     }
 
-    let targetHeirs = (node.heirs || []).filter(h => !isRenounced(h)); 
+    if (!node.isDeceased && !(node.isExcluded && node.exclusionOption === 'lost') || node.id === 'root') {
+      if (node.id !== 'root') results.push({ id: node.id, personId: node.personId, name: node.name, n: inN, d: inD, relation: node.relation });
+      if (!node.isDeceased && !(node.isExcluded && node.exclusionOption === 'lost')) return;
+    }
+
+    // 현재 노드가 분배 제외 대상이면 더 이상 하위 계산을 하지 않음 (블랙홀 차단)
+    if (isRenounced(node, inheritedDate)) return;
+
+    let targetHeirs = (node.heirs || []).filter(h => !isRenounced(h, distributionDate)); 
 
     // [2023년 전원합의체 판례 및 실무 반영] 
     // 본래 상속인이어야 할 자녀가 모두 포기한 경우의 처리
