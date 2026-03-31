@@ -144,39 +144,40 @@ export const calculateInheritance = (tree, propertyValue) => {
         return; 
       }
 
-      const isDirectChildOfRoot = tree.heirs.some(th => th.id === node.id);
-
-      if (isDirectChildOfRoot && (node.relation === 'son' || node.relation === 'daughter')) {
-         // ... (직계비속 관련 로직 유지)
-         const parents = tree.heirs.filter(th => 
-           (th.relation === 'wife' || th.relation === 'husband' || th.relation === 'spouse') && 
-           (!th.isDeceased || !isBefore(th.deathDate, distributionDate)) &&
-           !isRenounced(th)
-         );
-         
-         const virtualHeirs = [];
-         
-         if (parents.length > 0) {
-            parents.forEach((p) => {
-              virtualHeirs.push({ ...p, id: p.id, relation: 'parent' });
-            });
-         }
-         
-         if (virtualHeirs.length === 0) {
-            const siblings = tree.heirs.filter(th => 
+      // 💡 핵심 픽스: 피상속인의 직계뿐만 아니라, 손자/증손자 등 어떤 계층에서든 부모와 형제자매를 추적하여 지분 누수를 완벽 차단!
+      if (node.relation === 'son' || node.relation === 'daughter') {
+        let parentNode = null;
+        if (tree.heirs.some(th => th.id === node.id)) parentNode = tree;
+        else {
+          const findP = (curr) => {
+            if (curr.heirs && curr.heirs.some(h => h.id === node.id)) parentNode = curr;
+            else (curr.heirs || []).forEach(findP);
+          };
+          findP(tree);
+        }
+        
+        if (parentNode && parentNode.heirs) {
+          const virtualHeirs = [];
+          const survivingSpouses = parentNode.heirs.filter(th => 
+            (th.relation === 'wife' || th.relation === 'husband' || th.relation === 'spouse') && 
+            (!th.isDeceased || !isBefore(th.deathDate, distributionDate)) &&
+            !isRenounced(th, distributionDate)
+          );
+          survivingSpouses.forEach(p => virtualHeirs.push({ ...p, id: p.id, relation: 'parent' }));
+          
+          if (virtualHeirs.length === 0) {
+            const siblings = parentNode.heirs.filter(th => 
               th.id !== node.id && 
               (th.relation === 'son' || th.relation === 'daughter') &&
-              !isRenounced(th)
+              !isRenounced(th, distributionDate)
             );
             if (siblings.length > 0) {
-              siblings.forEach((s) => {
-                virtualHeirs.push({ ...s, id: s.id, relation: 'sibling' });
-              });
+              siblings.forEach(s => virtualHeirs.push({ ...s, id: s.id, relation: 'sibling' }));
             } else { return; }
-         }
-         targetHeirs = virtualHeirs;
+          }
+          targetHeirs = virtualHeirs;
+        } else { return; }
       } else if (node.relation === 'wife' || node.relation === 'husband' || node.relation === 'spouse') {
-          // 🏛️ 사망한 배우자의 자녀 자동 간주 로직 (대습/재상속 통합)
           let parentNode = null;
           const findParent = (curr) => {
              if (curr.heirs && curr.heirs.some(h => h.id === node.id)) { parentNode = curr; } 
@@ -185,8 +186,7 @@ export const calculateInheritance = (tree, propertyValue) => {
           findParent(tree);
           
           if (parentNode && parentNode.heirs) {
-             // 부모 노드(피상속인 등)의 자녀들을 가상 상속인으로 수집
-             const children = parentNode.heirs.filter(th => th.id !== node.id && (th.relation === 'son' || th.relation === 'daughter') && !isRenounced(th));
+             const children = parentNode.heirs.filter(th => th.id !== node.id && (th.relation === 'son' || th.relation === 'daughter') && !isRenounced(th, distributionDate));
              const virtualHeirs = [];
              children.forEach(c => { virtualHeirs.push({ ...c, id: c.id, relation: c.relation }); });
              
