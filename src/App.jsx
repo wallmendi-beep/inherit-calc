@@ -1420,7 +1420,7 @@ function App() {
             <div className="flex items-center gap-2 whitespace-nowrap shrink-0 overflow-visible">
               <div className="flex items-center text-[#37352f] dark:text-neutral-100 font-bold text-[18px] tracking-tight whitespace-nowrap shrink-0">
                 <IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-neutral-400 shrink-0" />
-                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v1.8.1</span>
+                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v1.8.4</span>
               </div>
               <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px] ml-8 whitespace-nowrap shrink-0">Designed by J.H. Lee</span>
             </div>
@@ -1844,10 +1844,12 @@ function App() {
                                 <div className="w-28 shrink-0 text-center">성명</div>
                                 <div className="w-24 shrink-0 text-center">관계</div>
                                 <div className="w-[150px] shrink-0 text-center">사망여부/일자</div>
-                                <div className="w-[200px] shrink-0 text-center">특수조건 (가감산)</div>
+                                <div className="w-[200px] shrink-0 text-center relative">
+                                  <span className="relative left-[20px]">특수조건 (가감산)</span>
+                                </div>
                                 <div className="w-[35px] shrink-0"></div> {/* 35px 간격 */}
-                                <div className="w-28 shrink-0 flex justify-center -ml-2.5">
-                                  <span className="whitespace-nowrap">재/대습상속</span>
+                                <div className="w-28 shrink-0 flex justify-center -ml-2.5 relative">
+                                  <span className="whitespace-nowrap relative left-[20px]">재/대습상속</span>
                                 </div>
                                 <div className="w-12 shrink-0 flex justify-center pl-[36px]">
                                   <span className="whitespace-nowrap">삭제</span>
