@@ -1754,7 +1754,8 @@ function App() {
           <div className="no-print">
             {activeTab === 'input' && (() => {
             const activeTabObj = deceasedTabs.find(t => t.id === activeDeceasedTab);
-            const currentNode = activeTabObj ? findNodeById(tree, activeTabObj.id) : tree;
+            // 💡 핵심 픽스: 가계도를 다시 뒤질 필요 없이, 탭에 이미 저장해둔 '진짜 인물(node)'을 바로 꺼내 씁니다!
+            const currentNode = activeTabObj ? activeTabObj.node : tree; 
             const nodeHeirs = currentNode ? (currentNode.heirs || []) : [];
             const isRootNode = currentNode && currentNode.id === 'root';
             
@@ -2155,7 +2156,15 @@ function App() {
                                       showSubHeirs={false}
                                       isRootChildren={activeDeceasedTab === 'root'}
                                       onTabClick={(id) => {
-                                        setActiveDeceasedTab(id);
+                                        // 💡 클릭한 좌석(id)에 앉아있는 진짜 사람의 DNA(personId)를 찾아 웜홀 이동!
+                                        let targetPId = id;
+                                        const findPId = (n) => {
+                                          if (n.id === id) targetPId = n.personId;
+                                          if (n.heirs) n.heirs.forEach(findPId);
+                                        };
+                                        findPId(tree);
+                                        
+                                        setActiveDeceasedTab(targetPId);
                                         setIsFolderFocused(true);
                                       }}
                                     />

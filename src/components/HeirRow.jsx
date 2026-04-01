@@ -8,6 +8,9 @@ import { CSS } from '@dnd-kit/utilities';
 const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inheritedDate, rootDeathDate, onKeyDown, toggleSignal, rootIsHoju, isRootChildren, onTabClick }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: node.id });
   
+  // 💡 Phase 2: 연혁 팝업창(Modal) 상태 추가
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+
   const lawEra = getLawEra(inheritedDate);
   const isSpouseType = node.relation === 'wife' || node.relation === 'husband' || node.relation === 'spouse';
   const isPreDeceasedCondition = node.isDeceased && node.deathDate && inheritedDate && isBefore(node.deathDate, inheritedDate);
@@ -59,6 +62,9 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
 
   const showHoju = node.relation === 'son' && lawEra !== '1991' && rootIsHoju !== false;
   const showMarriedDaughter = node.relation === 'daughter' && lawEra !== '1991';
+  
+  // 💡 입력된 연혁 데이터가 있는지 확인하여 버튼 색상 변경
+  const hasHistoryData = node.divorceDate || node.remarriageDate || node.marriageDate || node.restoreDate;
 
   return (
     <>
@@ -218,17 +224,17 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
               <div className="flex items-center gap-1.5 shrink-0">
                 {showHoju && (
                   <div className="flex items-center gap-1.5">
-                    <div onClick={() => handleUpdate(node.id, 'isHoju', !node.isHoju)} className="relative flex items-center w-[96px] h-[26px] bg-[#efefed] dark:bg-neutral-900 rounded-full border border-[#e5e5e5] dark:border-neutral-700 p-0.5 cursor-pointer select-none">
+                    <div onClick={() => handleUpdate(node.id, 'isHoju', !node.isHoju)} className="relative flex items-center w-[64px] h-[26px] bg-[#efefed] dark:bg-neutral-900 rounded-full border border-[#e5e5e5] dark:border-neutral-700 p-0.5 cursor-pointer select-none">
                       <div className={`absolute top-0.5 bottom-0.5 w-[calc(50%-1px)] bg-white dark:bg-neutral-700 rounded-full shadow-sm border border-[#e5e5e5] dark:border-neutral-600 transition-transform duration-300 ${node.isHoju ? 'translate-x-[calc(100%-1px)]' : 'translate-x-0'}`} />
                       <div className={`flex-1 text-center z-10 text-[11px] font-bold ${!node.isHoju ? 'text-[#37352f]' : 'text-[#a3a3a3]'}`}>일반</div>
                       <div className={`flex-1 text-center z-10 text-[11px] font-bold ${node.isHoju ? 'text-[#37352f]' : 'text-[#a3a3a3]'}`}>호주</div>
                     </div>
-                    {node.isHoju && <span className="px-2.5 py-0.5 rounded-full border border-sky-800/80 bg-white text-[11px] font-medium text-sky-800/80 shadow-sm whitespace-nowrap">x 1.5</span>}
+                    {node.isHoju && <span className="px-2 py-0.5 rounded-full border border-sky-800/80 bg-white text-[10px] font-medium text-sky-800/80 shadow-sm whitespace-nowrap">x 1.5</span>}
                   </div>
                 )}
                 {showMarriedDaughter && (
                   <div className="flex items-center gap-1.5">
-                    <div onClick={() => handleUpdate(node.id, 'isSameRegister', node.isSameRegister === false ? true : false)} className="relative flex items-center w-[96px] h-[26px] bg-[#efefed] dark:bg-neutral-900 rounded-full border border-[#e5e5e5] dark:border-neutral-700 p-0.5 cursor-pointer select-none">
+                    <div onClick={() => handleUpdate(node.id, 'isSameRegister', node.isSameRegister === false ? true : false)} className="relative flex items-center w-[64px] h-[26px] bg-[#efefed] dark:bg-neutral-900 rounded-full border border-[#e5e5e5] dark:border-neutral-700 p-0.5 cursor-pointer select-none">
                       <div className={`absolute top-0.5 bottom-0.5 w-[calc(50%-1px)] bg-white dark:bg-neutral-700 rounded-full shadow-sm border border-[#e5e5e5] dark:border-neutral-600 transition-transform duration-300 ${node.isSameRegister === false ? 'translate-x-[calc(100%-1px)]' : 'translate-x-0'}`} />
                       <div className={`flex-1 text-center z-10 text-[11px] font-bold ${node.isSameRegister !== false ? 'text-[#37352f]' : 'text-[#a3a3a3]'}`}>동일</div>
                       <div className={`flex-1 text-center z-10 text-[11px] font-bold ${node.isSameRegister === false ? 'text-[#37352f]' : 'text-[#a3a3a3]'}`}>출가</div>
@@ -237,7 +243,7 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
                       let m = '';
                       if (lawEra === '1960') m = node.isSameRegister !== false ? 'x 1/2' : 'x 1/4';
                       else if (lawEra === '1979' && node.isSameRegister === false) m = 'x 1/4';
-                      return m ? <span className="px-2.5 py-0.5 rounded-full border border-rose-800/80 bg-white text-[11px] font-medium text-rose-800/80 shadow-sm whitespace-nowrap">{m}</span> : null;
+                      return m ? <span className="px-2 py-0.5 rounded-full border border-rose-800/80 bg-white text-[10px] font-medium text-rose-800/80 shadow-sm whitespace-nowrap">{m}</span> : null;
                     })()}
                   </div>
                 )}
@@ -245,6 +251,19 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
             )}
           </>
         )}
+
+        {/* 💡 Phase 2: 호적 연혁 팝업창 띄우기 버튼 추가 */}
+        <button 
+          onClick={() => setIsHistoryModalOpen(true)}
+          className={`flex items-center gap-1 shrink-0 h-[26px] px-2 rounded-md font-bold text-[11px] transition-colors border shadow-sm ${
+            hasHistoryData 
+              ? 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800/50' 
+              : 'bg-white text-neutral-500 border-neutral-200 hover:bg-neutral-50 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-400'
+          }`}
+          title="상세 호적 연혁 (이혼, 재혼, 친가복적 등) 입력"
+        >
+          📜 {hasHistoryData && '✓'}
+        </button>
       </div>
 
       {/* 6. 재상속/대습상속 버튼 */}
@@ -284,6 +303,76 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
           ) : (
             "선사망자의 대습상속인(배우자/자녀)을 추가해 주세요. 대습상속인이 없다면 좌측 스위치를 꺼서 '제외' 처리해 주세요."
           )}
+        </div>
+      </div>
+    )}
+
+    {/* 💡 Phase 2: 호적 변동 연혁 모달창 추가 */}
+    {isHistoryModalOpen && (
+      <div className="fixed inset-0 bg-black/40 z-[10000] flex items-center justify-center no-print backdrop-blur-[1px]">
+        <div className="bg-white p-6 rounded-2xl shadow-2xl max-w-[360px] w-full mx-4 animate-in fade-in zoom-in duration-200 border border-[#e9e9e7]">
+          
+          {/* 헤더 영역 */}
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="text-[17px] font-black text-[#37352f]">
+              <span className="text-blue-600">'{node.name || '상속인'}'</span>님의 호적 연혁
+            </h2>
+            <button onClick={() => setIsHistoryModalOpen(false)} className="text-neutral-400 hover:text-neutral-700 p-1">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+          <p className="text-[12px] font-medium text-[#787774] mb-5 leading-tight">
+            입력된 날짜는 <span className="font-bold text-neutral-600 border-b border-neutral-300">피상속인 사망일({inheritedDate || '미상'})</span>과 대조되어 상속권 및 지분 판단에 자동 반영됩니다.
+          </p>
+
+          {/* 1. 상속권 차단 사유 (배우자/며느리/사위 용) */}
+          <div className="mb-4 p-4 bg-red-50/50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-xl relative">
+            <div className="absolute -top-2.5 left-3 bg-white px-2 text-[11px] font-black text-red-700 dark:text-red-400 flex items-center gap-1">
+               🛑 상속권 / 대습상속 차단 사유
+            </div>
+            <div className="space-y-3 mt-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-[13px] font-bold text-[#504f4c] flex items-center gap-1.5">
+                   <span className="text-[15px]">💔</span> 이혼 일자
+                </label>
+                <DateInput value={node.divorceDate || ''} onChange={v => handleUpdate(node.id, 'divorceDate', v)} className="w-[130px] border border-red-200/60 rounded-md px-2.5 py-1.5 text-[13px] text-center font-bold bg-white focus:border-red-400 focus:ring-1 focus:ring-red-400/20 outline-none" />
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-[13px] font-bold text-[#504f4c] flex items-center gap-1.5">
+                   <span className="text-[15px]">💍</span> 재혼 일자
+                </label>
+                <DateInput value={node.remarriageDate || ''} onChange={v => handleUpdate(node.id, 'remarriageDate', v)} className="w-[130px] border border-red-200/60 rounded-md px-2.5 py-1.5 text-[13px] text-center font-bold bg-white focus:border-red-400 focus:ring-1 focus:ring-red-400/20 outline-none" />
+              </div>
+            </div>
+          </div>
+
+          {/* 2. 지분율 판별 사유 (딸 용) */}
+          <div className="mb-6 p-4 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl relative">
+            <div className="absolute -top-2.5 left-3 bg-white px-2 text-[11px] font-black text-blue-700 dark:text-blue-400 flex items-center gap-1">
+               ⚖️ 과거 민법 지분율 판별 (딸)
+            </div>
+            <div className="space-y-3 mt-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-[13px] font-bold text-[#504f4c] flex items-center gap-1.5">
+                   <span className="text-[15px]">👰</span> 혼인 일자
+                </label>
+                <DateInput value={node.marriageDate || ''} onChange={v => handleUpdate(node.id, 'marriageDate', v)} className="w-[130px] border border-blue-200/60 rounded-md px-2.5 py-1.5 text-[13px] text-center font-bold bg-white focus:border-blue-400 focus:ring-1 focus:ring-blue-400/20 outline-none" />
+              </div>
+              <div className="flex items-center justify-between">
+                <label className="text-[13px] font-bold text-[#504f4c] flex items-center gap-1.5">
+                   <span className="text-[15px]">🏠</span> 친가복적 일자
+                </label>
+                <DateInput value={node.restoreDate || ''} onChange={v => handleUpdate(node.id, 'restoreDate', v)} className="w-[130px] border border-blue-200/60 rounded-md px-2.5 py-1.5 text-[13px] text-center font-bold bg-white focus:border-blue-400 focus:ring-1 focus:ring-blue-400/20 outline-none" />
+              </div>
+            </div>
+          </div>
+
+          <button 
+            onClick={() => setIsHistoryModalOpen(false)} 
+            className="w-full py-2.5 bg-[#2383e2] hover:bg-[#0073ea] text-white font-bold rounded-lg transition-colors text-[14px] shadow-sm flex items-center justify-center gap-2"
+          >
+            적용 및 닫기
+          </button>
         </div>
       </div>
     )}

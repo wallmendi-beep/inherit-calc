@@ -6,7 +6,6 @@ export const calculateInheritance = (tree, propertyValue) => {
   let warnings = [];
   let appliedLaws = new Set();
   
-  // 동명 노드의 상속인 정보를 참조하기 위한 헬퍼: 트리 전체에서 같은 이름을 가진 다른 노드의 heirs를 찾아주는 함수
   const findHeirsByName = (root, targetName, excludeId) => {
     if (!targetName || targetName.trim() === '') return null;
     let found = null;
@@ -49,11 +48,18 @@ export const calculateInheritance = (tree, propertyValue) => {
 
     // 💡 최종 진화: 1순위 가지 멸절 시 2순위/3순위로의 자동 이전을 완벽하게 제어하는 스마트 필터
     const isRenounced = (h, contextDate) => {
+      // 🤖 [Phase 2-2: 시계열 판별 AI] 날짜 기반 상속권/대습상속권 자동 박탈 (이혼/재혼)
+      const isDivorcedAuto = h.divorceDate && contextDate && !isBefore(contextDate, h.divorceDate);
+      const isRemarriedAuto = h.remarriageDate && contextDate && !isBefore(contextDate, h.remarriageDate);
+
       // 1. 제외 사유 판별 (결격 또는 상실선고)
       const isDisqualified = h.isExcluded && (h.exclusionOption === 'lost' || h.exclusionOption === 'disqualified');
       
-      // 2. 단순 상속포기/재혼/상속인없음 등은 지분 거부로 보아 즉시 제외 (형제들에게 재분배됨)
+      // 2. 단순 상속포기/수동제외 등은 지분 거부로 보아 즉시 제외 (형제들에게 재분배됨)
       if (h.isExcluded && !isDisqualified) return true;
+      
+      // 💡 AI 엔진 컷오프: 이혼이나 재혼 날짜가 사망일보다 빠르면 가차없이 명단에서 삭제!
+      if (isDivorcedAuto || isRemarriedAuto) return true; 
 
       // 3. 대습상속 유발 사유 (선사망 또는 결격/상실선고)
       const isPre = h.isDeceased && h.deathDate && contextDate && isBefore(h.deathDate, contextDate);
@@ -61,29 +67,23 @@ export const calculateInheritance = (tree, propertyValue) => {
       if (isPre || isDisqualified) {
         let children = h.heirs || [];
         
-        // 동명이인 데이터 참조 (원본 자식 빌려오기)
         if (children.length === 0 && h.name) {
           const borrowed = findHeirsByName(tree, h.name, h.id);
           if (borrowed) children = borrowed;
         }
 
-        // 🚨 [2024. 4. 25. 신법 핵심 로직] 결격/상실자의 배우자는 대습상속 원천 배제!
         if (isDisqualified) {
           const rootDDate = tree.deathDate || contextDate; 
           if (!isBefore(rootDDate, '2024-04-25')) {
-            // 배우자(며느리, 사위, 제수 등)를 상속인 명단에서 가차 없이 삭제
             children = children.filter(c => !(['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(c.relation)));
           }
         }
 
-        // 자녀도 없고, 배우자마저 신법으로 쫓겨나 아무도 남지 않았다면 이 가지(Branch)는 완전 멸절! -> 2순위, 3순위로 이전 유발
         if (children.length === 0) return true;
 
-        // 남아있는 자식들이라도 모두 포기/결격 상태인지 재귀적 검사
         const validHeirs = children.filter(child => !isRenounced(child, h.deathDate || contextDate));
         if (validHeirs.length === 0) return true;
 
-        // 유효한 대습상속인이 단 한 명이라도 존재하므로 이 가지는 대습상속 개시!
         return false;
       }
       return false;
@@ -92,7 +92,6 @@ export const calculateInheritance = (tree, propertyValue) => {
     const isSubstitutionTrigger = (h) => 
       h.isDeceased || (h.isExcluded && (h.exclusionOption === 'disqualified' || h.exclusionOption === 'lost'));
 
-    // 💡 유효성 검사 (입력 누락 방지 가이드)
     if (!node.isExcluded) {
       if (node.isDeceased && !node.deathDate) {
         warnings.push(`${node.name || '이름 미입력'} 님의 사망일자가 입력되지 않았습니다.`);
@@ -105,17 +104,13 @@ export const calculateInheritance = (tree, propertyValue) => {
       }
     }
 
-    // 💡 수정 1: 결격/상실자의 경우 본인은 지분을 받지 않도록(results에 넣지 않음) 하고,
-    // 계산을 중단하지 않고 하위 대습상속인에게 넘어가도록 로직 수정
     if (!node.isDeceased && !(node.isExcluded && (node.exclusionOption === 'lost' || node.exclusionOption === 'disqualified')) || node.id === 'root') {
       if (node.id !== 'root') {
         results.push({ id: node.id, personId: node.personId, name: node.name, n: inN, d: inD, relation: node.relation });
       }
-      // 일반 생존자라면 여기서 종료하지만, 결격/상실자는 조기 종료하지 않고 하위 탐색을 계속함
       if (!node.isDeceased && !isDisqualifiedOrLost) return;
     }
 
-    // 💡 수정 2: 결격/상실자 본인의 지분은 0으로 처리 (결과창에 0으로 뜨게 함)
     if (isDisqualifiedOrLost) {
       results.push({ id: node.id, personId: node.personId, name: node.name, n: 0, d: 1, relation: node.relation });
     }
@@ -124,7 +119,6 @@ export const calculateInheritance = (tree, propertyValue) => {
 
     let targetHeirs = (node.heirs || []).filter(h => !isRenounced(h, distributionDate)); 
 
-    // 💡 수정 3 [2024. 4. 25. 신법 적용]: 결격/상실자의 상속인을 계산할 때 배우자 차단 로직 추가
     if (isDisqualifiedOrLost && !isBefore(tree.deathDate || distributionDate, '2024-04-25')) {
       targetHeirs = targetHeirs.filter(h => !(['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(h.relation)));
     }
@@ -152,12 +146,9 @@ export const calculateInheritance = (tree, propertyValue) => {
       }
     }
 
-    // 3. 하위 상속인이 전혀 없는 경우 (스마트 프루닝이 끝난 후의 최종 안전장치)
     if (targetHeirs.length === 0) {
       if (node.id === 'root') return;
 
-      // 이미 isRenounced에 의해 걸러지지 않고 여기까지 내려왔다는 것은, 사용자가 스위치를 끄지 않은 생존/후사망 상태임을 의미.
-      // 억지로 지분을 뺏지 않고 본인 주머니에 깔끔하게 보관합니다.
       if (!node.isExcluded) {
         const isSubstitution = node.isDeceased && node.deathDate && inheritedDate && isBefore(node.deathDate, inheritedDate);
         if (isSubstitution) return; 
@@ -172,7 +163,6 @@ export const calculateInheritance = (tree, propertyValue) => {
 
     let total = 0;
     
-    // 순위 판별 (1순위:자녀, 2순위:존속, 3순위:형제)
     let hasRank1 = false, hasRank2 = false, hasRank3 = false, hasSpouse = false;
     targetHeirs.forEach(h => {
       if (h.relation === 'son' || h.relation === 'daughter') hasRank1 = true;
@@ -184,7 +174,6 @@ export const calculateInheritance = (tree, propertyValue) => {
     let activeRank = 0;
     if (hasRank1) activeRank = 1;
     else if (hasRank2) activeRank = 2;
-    // 2023 판례나 일반 실무에서 1,2순위가 전혀 없는 경우 배우자 단독
     else if (hasSpouse) activeRank = -1; 
     else if (hasRank3) activeRank = 3;
     
@@ -193,7 +182,6 @@ export const calculateInheritance = (tree, propertyValue) => {
       const isPre = h.isDeceased && h.deathDate && isBefore(h.deathDate, distributionDate);
       let modifier = ''; 
 
-      // 상속 순위 탈락 처리
       let skipped = false;
       if (activeRank === 1 && (h.relation === 'parent' || h.relation === 'sibling')) {
         h.r = 0; h.ex = '선순위(직계비속) 상속인이 존재하여 상속권 없음'; skipped = true;
@@ -211,7 +199,6 @@ export const calculateInheritance = (tree, propertyValue) => {
       }
       else if (isSp && isPre) { h.r = 0; h.ex = `${h.deathDate} 피상속인보다 먼저 사망`; }
       else if (node.id !== 'root' && h.relation === 'husband' && isSubstitution) {
-        // (나-①) 처의 사망일자가 91.1.1. 전이면 남편의 대습상속권 없음
         if (isBefore(node.deathDate, '1991-01-01')) {
           h.r = 0; h.ex = '1991년 이전 처 사망으로 사위 대습상속권 없음';
         } else if (law === '1960' || law === '1979') {
@@ -222,7 +209,6 @@ export const calculateInheritance = (tree, propertyValue) => {
       } else if (h.relation === 'wife' || (h.relation === 'spouse' && node.relation === 'son')) { 
          if (law === '1991' || law === '1979') { h.r = 1.5; modifier = '처(배우자) 5할 가산'; }
          else {
-           // 1960년 구민법: 직계존속과 공동상속 시 균분, 직계비속과 공동상속 시 1/2 감산
            if (activeRank === 2) { h.r = 1.0; modifier = '처 균분 (직계존속과 동순위)'; }
            else { h.r = 0.5; modifier = '처 감산 (직계비속의 1/2)'; }
          } 
@@ -234,10 +220,13 @@ export const calculateInheritance = (tree, propertyValue) => {
            h.r = 1.0;
          } else if (law === '1979') {
            if (h.relation === 'daughter') {
-             // 제적일(marriageDate)이 있는 경우 피상속인 사망일과 비교하여 자동 판정
+             // 🤖 [Phase 2-2: 시계열 판별 AI] 혼인 및 친가복적 자동 판별
              let isMarried = h.isSameRegister === false;
              if (h.marriageDate && distributionDate) {
-               isMarried = !isBefore(distributionDate, h.marriageDate);
+               isMarried = !isBefore(distributionDate, h.marriageDate); // 사망일 이전에 혼인했으면 출가녀
+             }
+             if (h.restoreDate && distributionDate && !isBefore(distributionDate, h.restoreDate)) {
+               isMarried = false; // 사망일 이전에 친가로 돌아왔으면 복적 완료! (동일가적)
              }
 
              if (!isMarried) { h.r = 1.0; }
@@ -248,10 +237,13 @@ export const calculateInheritance = (tree, propertyValue) => {
            } else h.r = 1.0;
          } else { // 1960년 구법
             if (h.relation === 'daughter') {
-              // 제적일(marriageDate)이 있는 경우 피상속인 사망일과 비교하여 자동 판정
+              // 🤖 [Phase 2-2: 시계열 판별 AI] 혼인 및 친가복적 자동 판별
               let isMarried = h.isSameRegister === false;
               if (h.marriageDate && distributionDate) {
                 isMarried = !isBefore(distributionDate, h.marriageDate);
+              }
+              if (h.restoreDate && distributionDate && !isBefore(distributionDate, h.restoreDate)) {
+                isMarried = false; // 복적 완료!
               }
 
               if (!isMarried) { h.r = 0.5; modifier = '여자 감산 (남자의 1/2)'; }
@@ -292,9 +284,8 @@ export const calculateInheritance = (tree, propertyValue) => {
   const initD = Math.max(1, Number(tree.shareD) || 1);
   traverse(tree, initN, initD, tree.deathDate, []);
   
-  // 📊 후처리: 동일 인물의 계산 step 병합 (personId 기준)
   const mergedSteps = [];
-  const stepByPersonId = {}; // 🔑 personId 기준으로 병합
+  const stepByPersonId = {}; 
   
   steps.forEach(step => {
     const pId = step.dec?.personId;
@@ -331,7 +322,6 @@ export const calculateInheritance = (tree, propertyValue) => {
   
   const merged = [];
   results.forEach(r => {
-    // 🔑 personId 기준으로 최종 합산
     const ex = merged.find(m => m.personId === r.personId);
     if (ex) { 
       const [nn, nd] = math.add(ex.n, ex.d, r.n, r.d); 
@@ -349,7 +339,6 @@ export const calculateInheritance = (tree, propertyValue) => {
   const categoryMap = {};
   tree.heirs.forEach((h, idx) => { if (!h.isDeceased) categoryMap[h.personId] = { type: 'direct', order: idx }; });
 
-  // 재귀적 가계 줄기 분류
   const buildCategory = (node, branchRoot, order) => {
     if (!node.heirs) return;
     node.heirs.forEach(h => {
