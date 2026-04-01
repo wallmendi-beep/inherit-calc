@@ -33,7 +33,7 @@ const TreeReportNode = ({ node, level, treeToggleSignal, rootDeathDate }) => {
     
     let underlineClass = '';
     if (hasHeirs && !isExpanded) {
-      // 접혀있을 때의 밑줄도 붉은색에서 차분한 회색으로 변경
+      // 접혀있을 때의 밑줄도 차분한 회색으로 변경하여 미니멀리즘 유지
       underlineClass = 'underline decoration-[#d4d4d4] dark:decoration-neutral-600 decoration-2 underline-offset-4'; 
     }
     return `${colorClass} ${underlineClass}`;

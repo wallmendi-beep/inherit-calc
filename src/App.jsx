@@ -239,69 +239,53 @@ function App() {
     return sanitize(rawTree) || getInitialTree();
   }, [rawTree]);
 
-  // 트리를 순회하여 사망한 인물들의 순서 목록 생성 (세대 레벨 및 기둥 ID 포함)
+  // 🧭 상속인 탭 목록 (💡 기준을 id에서 personId로 전면 통합!)
   const deceasedTabs = useMemo(() => {
     const tabMap = new Map();
-    const registeredNames = new Set();
-    tabMap.set('root', { id: 'root', name: tree.name || '피상속인', node: tree, parentName: null, level: 0, branchRootId: null });
-    if (tree.name) registeredNames.add(tree.name);
+    const registeredPersonIds = new Set(); // 이름이 아닌 DNA(personId) 기준으로 중복 방지
+    
+    tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속인', node: tree, parentName: null, level: 0, branchRootId: null });
 
-    // 깊이 우선 탐색(DFS) 대신 너비 우선 탐색(BFS) 큐 방식 사용
     const queue = [];
-    if (tree.heirs) {
-      tree.heirs.forEach(h => queue.push({ node: h, parentNode: tree, level: 1, branchRootId: h.id }));
-    }
+    if (tree.heirs) tree.heirs.forEach(h => queue.push({ node: h, parentNode: tree, level: 1, branchRootId: h.personId }));
 
     while (queue.length > 0) {
       const { node, parentNode, level, branchRootId } = queue.shift();
-
       const isTarget = node.isDeceased || (node.isExcluded && (node.exclusionOption === 'lost' || node.exclusionOption === 'disqualified'));
       const isSpouseOfRoot = parentNode.id === 'root' && (node.relation === 'wife' || node.relation === 'husband' || node.relation === 'spouse');
       const isDisqualifiedSpouse = isSpouseOfRoot && node.deathDate && tree.deathDate && isBefore(node.deathDate, tree.deathDate);
 
       let currentBranchRootId = branchRootId;
-      const isAnonymous = !node.name || node.name.trim() === '';
-      const nameToCheck = isAnonymous ? node.id : node.name.trim();
+      const pId = node.personId; // 💡 껍데기 id가 아닌 고유 personId 사용
 
       if (isTarget && !isDisqualifiedSpouse) {
-        if (!registeredNames.has(nameToCheck)) {
-          tabMap.set(node.id, {
-            id: node.id,
-            name: node.name || '(상속인)',
-            node: node,
-            parentNode: parentNode,
-            parentName: parentNode.id === 'root' ? (tree.name || '피상속인') : parentNode.name,
-            relation: node.relation,
-            level: level,
-            branchRootId: currentBranchRootId
+        if (!registeredPersonIds.has(pId)) {
+          // 💡 탭의 고유 ID 자체를 personId로 발급해 버림!
+          tabMap.set(pId, { 
+            id: pId, 
+            personId: pId, 
+            name: node.name || '(상속인)', 
+            node: node, 
+            parentNode: parentNode, 
+            parentName: parentNode.id === 'root' ? (tree.name || '피상속인') : parentNode.name, 
+            relation: node.relation, 
+            level: level, 
+            branchRootId: currentBranchRootId 
           });
-          registeredNames.add(nameToCheck);
+          registeredPersonIds.add(pId);
         } else {
-          // 이미 1세대 기둥으로 등록된 인물인 경우 (배우자 탭 하위로 중복 복사된 자녀 등)
-          // 원래 본인의 1세대 기둥 ID를 찾아서 하위 상속인들이 올바른 위치에 뜨도록 교정
-          const existingTabs = Array.from(tabMap.values());
-          const existingTab = existingTabs.find(t => t.name === nameToCheck);
-          if (existingTab) {
-            currentBranchRootId = existingTab.branchRootId;
-          }
+          const existingTab = tabMap.get(pId);
+          if (existingTab) currentBranchRootId = existingTab.branchRootId;
         }
-      } else if (!isTarget && registeredNames.has(nameToCheck)) {
-          // 사망자가 아니더라도 하위에 사망자가 있을 수 있으므로 기둥 ID 교정
-          const existingTabs = Array.from(tabMap.values());
-          const existingTab = existingTabs.find(t => t.name === nameToCheck);
-          if (existingTab) {
-            currentBranchRootId = existingTab.branchRootId;
-          }
+      } else if (!isTarget && registeredPersonIds.has(pId)) {
+          const existingTab = tabMap.get(pId);
+          if (existingTab) currentBranchRootId = existingTab.branchRootId;
       }
-
-      // 하위 상속인들을 큐에 추가
+      
       if (node.heirs && node.heirs.length > 0) {
-        node.heirs.forEach(h => {
-           queue.push({ node: h, parentNode: node, level: level + 1, branchRootId: currentBranchRootId });
-        });
+        node.heirs.forEach(h => queue.push({ node: h, parentNode: node, level: level + 1, branchRootId: currentBranchRootId }));
       }
     }
-
     return Array.from(tabMap.values());
   }, [tree]);
 
