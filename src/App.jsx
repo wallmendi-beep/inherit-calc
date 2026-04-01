@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   IconCalculator, IconUserPlus, IconSave, IconFolderOpen,
   IconPrinter, IconNetwork, IconTable, IconList,
@@ -109,9 +109,10 @@ const MiniTreeView = ({ node, level = 0, onSelectNode, visitedHeirs = new Set(),
             <span className="text-[12px] cursor-help opacity-100" title={warningTitle}>⚠️</span>
           )}
           {level > 0 && (() => {
-            const isPre = node.isDeceased && node.deathDate && deathDate && isBefore(node.deathDate, deathDate);
+            const isSpouse = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(node.relation);
+            const isPre = node.isDeceased && node.deathDate && deathDate && isBefore(node.deathDate, deathDate) && !isSpouse;
             return (
-              <span className={`text-[10px] font-bold opacity-40 uppercase tracking-tighter ${isPre ? 'text-[#ef4444]' : 'text-[#787774]'}`}>
+              <span className={`text-[10px] font-bold opacity-40 uppercase tracking-tighter ${isPre ? 'text-[#37352f] opacity-60' : 'text-[#787774]'}`}>
                 [{getRelStr(node.relation, deathDate) || '자녀'}]
               </span>
             );
@@ -140,6 +141,49 @@ function App() {
   const [isResetModalOpen, setIsResetModalOpen] = useState(false); 
   const [syncRequest, setSyncRequest] = useState(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  // 💡 제로 딜레이(Zero-Delay) 플로팅 스티커 엔진
+  const stickerRef = useRef(null);
+  const stickerPos = useRef({ x: 0, y: 0 });
+  const [isStickerDragging, setIsStickerDragging] = useState(false);
+
+  const handleStickerMouseDown = (e) => {
+    // 💡 1. 브라우저의 기본 드래그 기능(텍스트 블록 지정 등)을 강제로 막아 버벅거림 원천 차단
+    e.preventDefault(); 
+    
+    // 2. 시각적인 그림자 효과를 위해 상태만 켜둠 (이것을 기다리지 않음!)
+    setIsStickerDragging(true);
+
+    // 3. 클릭한 순간의 마우스 위치와 스티커 위치의 차이를 즉시 계산
+    const startX = e.clientX - stickerPos.current.x;
+    const startY = e.clientY - stickerPos.current.y;
+
+    // 4. 마우스가 움직일 때마다 즉각적으로 DOM을 움직이는 직통 함수
+    const handleMouseMove = (moveEvent) => {
+      const newX = moveEvent.clientX - startX;
+      const newY = moveEvent.clientY - startY;
+      stickerPos.current = { x: newX, y: newY };
+      
+      if (stickerRef.current) {
+        stickerRef.current.style.transform = `translate(${newX}px, ${newY}px)`;
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsStickerDragging(false);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    // 💡 5. 클릭(MouseDown) 하자마자 0.001초의 대기열도 없이 마우스 추적기를 바로 달아버림!
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    window.addEventListener('mouseup', handleMouseUp);
+  };
   
   // Undo/Redo 위한 History 기능 추가
   const [treeState, setTreeState] = useState({
@@ -698,21 +742,14 @@ function App() {
 
 
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
-
   const { finalShares, calcSteps } = useMemo(() => {
     return calculateInheritance(tree, propertyValue);
   }, [tree, propertyValue]);
 
-
-
   const [activeDeceasedTab, setActiveDeceasedTab] = useState('root');
   const tabRefs = React.useRef({});
 
-  // 🧭 상속 경로 및 브리핑 정보 계산
+  // 🧭 상속 경로 및 브리핑 정보 계산 (지분 합산 로직 완전 개편!)
   const getBriefingInfo = useMemo(() => {
     const findPath = (curr, target, currentPath = []) => {
       if (!curr) return null;
@@ -742,55 +779,50 @@ function App() {
     } else if (lineage.length > 1) {
       const parent = lineage[lineage.length - 2];
       const isChild = targetNode.relation === 'son' || targetNode.relation === 'daughter';
-      
       let parentNames = parent.name || '피상속인';
       
       if (isChild) {
         const parentIsSp = parent.relation === 'wife' || parent.relation === 'husband' || parent.relation === 'spouse';
         if (lineage.length > 2 && parentIsSp) {
           const grandparent = lineage[lineage.length - 3];
-          if (grandparent?.name) {
-            parentNames = `${grandparent.name}·${parent.name}`;
-          }
+          if (grandparent?.name) parentNames = `${grandparent.name}·${parent.name}`;
         } else if (parent.heirs) {
-          const spouse = parent.heirs.find(h => 
-            h.id !== targetNode.id &&
-            (h.relation === 'wife' || h.relation === 'husband' || h.relation === 'spouse') && 
-            h.name && h.name.trim() !== ''
-          );
-          if (spouse) {
-            parentNames = `${parent.name}·${spouse.name}`;
-          }
+          const spouse = parent.heirs.find(h => h.id !== targetNode.id && ['wife', 'husband', 'spouse'].includes(h.relation) && h.name && h.name.trim() !== '');
+          if (spouse) parentNames = `${parent.name}·${spouse.name}`;
         }
       }
       relationInfo = `(${parentNames}의 ${getRelStr(targetNode.relation, tree.deathDate)})`;
     }
 
+    let totalN = 0, totalD = 1;
     const sourceList = [];
-    let totalN = 0;
-    let totalD = 1;
 
-    if (calcSteps && Array.isArray(calcSteps)) {
-      calcSteps.forEach(s => {
-        const myShare = s.dists?.find(d => d.h?.id === targetNode.id); // 🔑 ID 기준으로 지분 합산
-        if (myShare && myShare.n > 0) {
-          sourceList.push({ 
-            from: s.dec?.name || '피상속인', 
-            n: myShare.sn, 
-            d: myShare.sd, 
-            fn: myShare.n, 
-            fd: myShare.d 
-          });
-          const [nn, nd] = math.add(totalN, totalD, myShare.n, myShare.d);
-          totalN = nn;
-          totalD = nd;
+    // 💡 핵심 픽스: '받는 사람'이 아니라 '나눠주는 사람(dec)'으로서의 지분을 가져옵니다. 
+    // (이미 양쪽에서 받은 지분이 병합되어 있으므로 완벽하게 14/117이 나옵니다!)
+    if (calcSteps && Array.isArray(calcSteps) && targetNode) {
+      const myStep = calcSteps.find(s => s.dec?.personId === targetNode.personId);
+      if (myStep) {
+        totalN = myStep.inN;
+        totalD = myStep.inD;
+        if (myStep.mergeSources && myStep.mergeSources.length > 0) {
+          myStep.mergeSources.forEach(src => sourceList.push({ from: src.from, n: src.n, d: src.d }));
+        } else {
+          sourceList.push({ from: myStep.parentDecName || '피상속인', n: myStep.inN, d: myStep.inD });
         }
-      });
+      } else {
+        // 생존자라서 나눠준 스텝이 없다면, 최종 결과표에서 본인 지분을 찾음
+        const myFinalShare = finalShares.direct.find(f => f.personId === targetNode.personId) || 
+                             finalShares.subGroups.flatMap(g => g.shares).find(f => f.personId === targetNode.personId);
+        if (myFinalShare) {
+          totalN = myFinalShare.n;
+          totalD = myFinalShare.d;
+        }
+      }
     }
 
     const shareStr = isRoot ? '1분의 1' : (totalN > 0 ? `${totalD}분의 ${totalN}` : '0');
     return { name, relationInfo, shareStr, sources: sourceList, isRoot };
-  }, [tree, activeDeceasedTab, calcSteps]);
+  }, [tree, activeDeceasedTab, calcSteps, finalShares]);
 
   // 탭 변경 시 자동 스크롤 (활성 탭이 화면 중앙에 오도록)
   useEffect(() => {
@@ -1012,7 +1044,9 @@ function App() {
 
   // 💡 글로벌 지분 검증 및 원인(이름) 추적 로직
   let showGlobalWarning = false;
-  let missingHeirNames = []; // 👈 범인들의 이름을 담을 빈 바구니 준비!
+  let showAutoCalcNotice = false; // 👈 자동계산 알림 스위치 추가
+  let missingHeirNames = [];
+  let autoCalculatedNames = [];   // 👈 자동계산 대상자 명단 바구니
 
   if (['calc', 'result', 'summary'].includes(activeTab)) {
     const calculateTotalSum = () => {
@@ -1034,70 +1068,160 @@ function App() {
     const targetN = tree.shareN || 1;
     const targetD = tree.shareD || 1;
     
-    // 지분 합계가 불일치할 경우 (정밀도 유지 비교)
+    // 지분 합계가 불일치할 경우 빨간 경고 켬
     if (sumN * targetD !== targetN * sumD) {
       showGlobalWarning = true;
+    }
 
-      // 🔍 트리 전체를 뒤져서 하위 상속인이 누락된 사망자 찾기
-      const findMissingNodes = (node) => {
-        // 본인이 사망했고, 밑에 상속인이 없는데, '상속인 없음(제외)' 스위치도 안 끈 사람!
-        if (node.id !== 'root' && node.isDeceased && (!node.heirs || node.heirs.length === 0) && !node.isExcluded) {
-          missingHeirNames.push(node.name || '이름 미상');
-        }
-        if (node.heirs) {
-          node.heirs.forEach(findMissingNodes);
-        }
-      };
+    // 🔍 트리 전체를 뒤져서 누락된 사망자 및 '자동계산'이 개입한 인물 찾기
+    const findMissingAndAutoNodes = (node, parentDeathDate) => {
+      const pDeath = parentDeathDate || tree.deathDate;
       
-      findMissingNodes(tree);
-      missingHeirNames = [...new Set(missingHeirNames)]; // 혹시 모를 중복 이름 제거
+      if (node.id !== 'root') {
+        const isSpouseType = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(node.relation);
+        const isPreDeceasedSpouse = isSpouseType && node.deathDate && pDeath && isBefore(node.deathDate, pDeath);
+
+        // 사망했고 상속인이 비어있는데 스위치도 안 껐다면? (엔진이 개입할 수밖에 없는 상황)
+        if (node.isDeceased && (!node.heirs || node.heirs.length === 0) && !node.isExcluded && !isPreDeceasedSpouse) {
+          
+          let hasVirtualHeirs = false;
+          let autoCalcTarget = ''; // 👈 어디로 지분이 넘어갔는지 기록
+
+          const parentNode = findParentNode(tree, node.id);
+          if (parentNode && parentNode.heirs) {
+             if (isSpouseType) {
+               // 배우자의 상속인이 비어있으면 자녀(직계비속)에게 넘어감
+               hasVirtualHeirs = parentNode.heirs.some(th => th.id !== node.id && ['son', 'daughter'].includes(th.relation) && !th.isExcluded);
+               if (hasVirtualHeirs) autoCalcTarget = '직계비속(자녀)';
+             } else if (['son', 'daughter'].includes(node.relation)) {
+               // 자녀의 상속인이 비어있으면 1순위: 부모(직계존속)
+               const survivingSpouse = parentNode.heirs.some(th => 
+                 ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(th.relation) && 
+                 (!th.isDeceased || !isBefore(th.deathDate, node.deathDate || pDeath)) &&
+                 !th.isExcluded
+               );
+               if (survivingSpouse) {
+                 hasVirtualHeirs = true;
+                 autoCalcTarget = '배우자(직계존속)';
+               } else {
+                 // 2순위: 형제자매
+                 const siblings = parentNode.heirs.some(th => 
+                   th.id !== node.id && 
+                   ['son', 'daughter'].includes(th.relation) &&
+                   !th.isExcluded
+                 );
+                 if (siblings) {
+                   hasVirtualHeirs = true;
+                   autoCalcTarget = '형제자매';
+                 }
+               }
+             }
+          }
+
+          if (!hasVirtualHeirs) {
+            missingHeirNames.push(node.name || '이름 미상');
+          } else {
+            // 엔진이 성공적으로 가상 상속인을 빌려와서 계산을 마친 경우
+            autoCalculatedNames.push({ name: node.name || '이름 미상', target: autoCalcTarget });
+          }
+        }
+      }
+      
+      if (node.heirs) {
+        node.heirs.forEach(h => findMissingAndAutoNodes(h, node.deathDate || pDeath));
+      }
+    };
+    
+    findMissingAndAutoNodes(tree, tree.deathDate);
+    
+    // 중복 이름 정리
+    missingHeirNames = [...new Set(missingHeirNames)];
+    const uniqueAuto = [];
+    const seenAuto = new Set();
+    autoCalculatedNames.forEach(a => {
+      if (!seenAuto.has(a.name)) {
+        seenAuto.add(a.name);
+        uniqueAuto.push(a);
+      }
+    });
+    autoCalculatedNames = uniqueAuto;
+
+    // 자동계산된 사람이 한 명이라도 있으면 파란색 알림 켬
+    if (autoCalculatedNames.length > 0) {
+      showAutoCalcNotice = true;
     }
   }
 
   return (
     <div className="w-full min-h-screen relative flex flex-col items-start pb-24 transition-colors duration-200 bg-[#f7f7f5] dark:bg-neutral-900 min-w-[1280px] print:min-w-0 print:w-full print:max-w-full">
       
-      {/* 📌 오른쪽 상단 똑똑해진 스티커 경고 메모 */}
-      {showGlobalWarning && (
-        <div className="fixed top-28 right-6 z-[9999] no-print animate-in fade-in slide-in-from-right-4 duration-500">
-          <div className="relative w-64 p-5 bg-[#fff9c4] dark:bg-[#fbc02d] shadow-2xl border-l-4 border-[#fbc02d] dark:border-[#f9a825] transform rotate-2 hover:rotate-0 transition-transform duration-300 group">
-            <div className="absolute top-0 right-0 w-8 h-8 bg-[#fdd835]/30 rounded-bl-full"></div>
+      {/* 📌 드래그 가능한 초고속 플로팅 스티커 메모장 */}
+      {(showGlobalWarning || showAutoCalcNotice) && (
+        <div
+          ref={stickerRef}
+          // 💡 불필요한 animate 속성 제거하여 버벅거림 원천 차단
+          className={`fixed top-24 right-8 z-[9999] no-print ${isStickerDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+          style={{
+            transform: `translate3d(${stickerPos.current.x}px, ${stickerPos.current.y}px, 0)`,
+            transition: 'none', // 💡 핵심: 마우스 이동 시 CSS 딜레이 강제 제거!
+            willChange: 'transform',
+            touchAction: 'none' 
+          }}
+          onMouseDown={handleStickerMouseDown}
+        >
+          <div 
+            className={`relative w-72 p-6 bg-[#fff8d1] dark:bg-[#e6ddaf] shadow-2xl border-l-[6px] border-[#f5e49c] dark:border-[#c9ba82] select-none ${isStickerDragging ? 'rotate-0 scale-105 shadow-[0_20px_40px_rgba(0,0,0,0.2)]' : 'rotate-1 hover:rotate-0 transition-all duration-200'}`}
+            style={{ backgroundImage: 'linear-gradient(transparent 23px, rgba(93, 64, 55, 0.05) 24px)', backgroundSize: '100% 24px' }}
+          >
+            <div className="absolute top-0 right-0 w-8 h-8 bg-black/5 rounded-bl-full"></div>
             
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-2 text-[#f57f17] dark:text-[#bf360c]">
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <span className="font-black text-[15px] tracking-tight">지분 불일치 주의!</span>
-              </div>
-              
-              <div className="text-[13px] font-bold text-[#5d4037] dark:text-[#3e2723] leading-relaxed break-keep">
-                전체 지분 합계가 맞지 않습니다.
-                
-                {/* 범인 이름이 담겨 있다면 빨간 박스로 확실하게 알려주기! */}
-                {missingHeirNames.length > 0 ? (
-                  <div className="mt-2.5 p-2.5 bg-red-100/90 dark:bg-red-900/40 rounded border border-red-300 dark:border-red-800 shadow-sm">
-                    <span className="text-red-700 dark:text-red-300 font-black flex items-center gap-1">
-                      🔍 누락 의심 대상:
-                    </span>
-                    <p className="text-red-600 dark:text-red-400 mt-1 text-[14px]">
-                      [{missingHeirNames.join(', ')}]
-                    </p>
-                    <p className="text-[11px] text-red-500/90 dark:text-red-400/80 mt-1.5 font-normal leading-tight">
-                      해당 인물 밑에 상속인을 추가하거나, 우측 스위치를 꺼서 정리해 주세요.
-                    </p>
-                  </div>
-                ) : (
-                  <p className="mt-1 font-normal">누락된 상속인이 있는지 확인해 주세요.</p>
-                )}
-              </div>
-
-              <div className="text-right text-[11px] font-medium text-[#8d6e63] mt-1 italic opacity-60">
-                - 상속 계산 엔진 -
-              </div>
+            {/* 📌 스티커 상단 반투명 테이프 (드래그 손잡이 시각 효과) */}
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-16 h-6 bg-white/50 dark:bg-black/10 backdrop-blur-[2px] shadow-sm border-x border-white/40 flex items-center justify-center">
+              <div className="w-6 h-1 rounded-full bg-black/10 dark:white/20"></div>
             </div>
 
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-12 h-6 bg-white/40 dark:bg-black/20 backdrop-blur-sm rotate-[-5deg] shadow-sm"></div>
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-2 text-[#5d4037] dark:text-[#3e2723]">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 shrink-0 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                <span className="font-black text-[15px] tracking-tight">
+                  {showGlobalWarning ? '상속 지분 검토 필요' : '지분 자동분배 안내'}
+                </span>
+              </div>
+              <div className="text-[13px] font-bold text-[#5d4037] dark:text-[#3e2723] leading-relaxed break-keep pointer-events-none">
+                {showGlobalWarning && "전체 지분 합계가 설정값과 일치하지 않습니다."}
+                {showGlobalWarning && missingHeirNames.length > 0 && (
+                  <div className="mt-2.5 p-3 bg-[#f5e9e8] dark:bg-red-900/10 rounded border border-[#e8dad9] dark:border-red-800/20 shadow-sm">
+                    <span className="text-[#a94442] dark:text-red-400 font-black flex items-center gap-1.5 text-[12.5px]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#a94442] animate-pulse" /> 누락 의심 대상:
+                    </span>
+                    <p className="text-[#b35e5e] dark:text-red-400/90 mt-1.5 text-[14px] font-black pl-3">[{missingHeirNames.join(', ')}]</p>
+                    <p className="text-[11px] text-[#a94442]/70 dark:text-red-400/60 mt-2 font-medium leading-tight pl-3">하위 상속인을 추가하거나, 우측 '제외' 스위치를 켜주세요.</p>
+                  </div>
+                )}
+                {showAutoCalcNotice && (
+                  <div className="mt-2.5 p-3 bg-[#ebf3f6] dark:bg-blue-900/10 rounded border border-[#dce9ef] dark:border-blue-800/20 shadow-sm">
+                    <span className="text-[#31708f] dark:text-blue-400 font-black flex items-center gap-1.5 text-[12.5px]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#31708f]" /> 지분 자동분배 내역:
+                    </span>
+                    <div className="mt-2 space-y-1.5 pl-3">
+                      {autoCalculatedNames.map((a, idx) => (
+                        <div key={idx} className="text-[#4b86a3] dark:text-blue-400/90 text-[12.5px] font-bold flex items-center gap-1.5">
+                          <span className="shrink-0">{a.name}</span>
+                          <svg className="w-3 h-3 opacity-40 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                          </svg>
+                          <span className="truncate opacity-90">{a.target}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-[#31708f]/70 dark:text-blue-400/60 mt-2.5 font-medium leading-tight pl-3 border-t border-[#31708f]/10 pt-2">법정 순위에 따라 지분이 자동 배분되었습니다.</p>
+                  </div>
+                )}
+              </div>
+              <div className="text-right text-[10px] font-bold text-[#8d6e63] mt-2 italic opacity-40 tracking-widest uppercase">Inheritance Engine v1.9.1</div>
+            </div>
           </div>
         </div>
       )}
@@ -1818,12 +1942,12 @@ function App() {
                             ? 'bg-white dark:bg-neutral-800 border border-[#e9e9e7] dark:border-neutral-700/50 rounded-xl' 
                             : 'bg-transparent'
                         }`}>
-                          {/* 📁 폴더 상단 액션 바 - 평면화 */}
-                          <div className="flex items-center justify-between px-8 py-5 border-b border-[#f1f1ef] dark:border-neutral-700/50 bg-[#f8f9fa] dark:bg-neutral-900/40 rounded-t-xl transition-colors">
-                            <div className="flex flex-col gap-1">
+                          {/* 📁 폴더 상단 액션 바 - 2줄 레이아웃으로 변경 */}
+                          <div className="flex items-center justify-between px-8 py-4 border-b border-[#f1f1ef] dark:border-neutral-700/50 bg-[#f8f9fa] dark:bg-neutral-900/40 rounded-t-xl transition-colors">
+                            <div className="flex flex-col gap-2">
                               {/* 🔙 상위 화면으로 돌아가기 (Breadcrumb Navigation) */}
                               {activeTabObj && activeTabObj.parentNode && activeDeceasedTab !== 'root' && (
-                                <div className="mb-2 flex items-center">
+                                <div className="mb-1 flex items-center">
                                   <button
                                     type="button"
                                     onClick={() => {
@@ -1841,31 +1965,53 @@ function App() {
                                   </button>
                                 </div>
                               )}
-                              <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full bg-blue-500" />
-                                <span className="text-[15px] font-black text-neutral-800 dark:text-neutral-100 flex items-center gap-2">
-                                  {getBriefingInfo.name}
-                                  <span className="text-[13px] text-neutral-400 font-bold">{getBriefingInfo.relationInfo}</span>
-                                </span>
-                                <span className="flex items-center gap-1 bg-[#fefce8] dark:bg-yellow-900/30 text-[#854d0e] dark:text-yellow-500 border border-[#fef08a] dark:border-yellow-700/50 px-2 py-0.5 rounded text-[11px] font-bold tracking-tight whitespace-nowrap shadow-sm ml-2">
-                                  ⚖️ {getLawEra(currentNode?.deathDate || tree.deathDate)}년 {getLawEra(currentNode?.deathDate || tree.deathDate) === '1960' ? '제정' : '개정'} 민법 적용
-                                </span>
-                                <span className="text-[14px] font-black text-blue-600 dark:text-blue-400 ml-3">
-                                  {getBriefingInfo.isRoot ? '상속할 지분' : '상속 지분'} : {getBriefingInfo.shareStr}
-                                </span>
-                                {!getBriefingInfo.isRoot && currentNode?.deathDate && (
-                                  <span className="text-[12px] font-bold text-[#c93f3a] dark:text-red-400 ml-2">
-                                    ({formatKorDate(currentNode.deathDate)} 사망)
+                              
+                              {/* 💡 헤더 레이아웃: 버튼 찌그러짐 방지를 위해 정보 영역을 2줄 + 좌우로 분리 */}
+                              <div className="flex flex-wrap items-center gap-4">
+                                {/* 1. 이름 및 관계 */}
+                                <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 rounded-full bg-blue-500" />
+                                  <span className="text-[16px] font-black text-neutral-800 dark:text-neutral-100 flex items-center gap-2">
+                                    {getBriefingInfo.name}
+                                    <span className="text-[13px] text-neutral-400 font-bold">{getBriefingInfo.relationInfo}</span>
                                   </span>
-                                )}
-                              </div>
-                              <div className="flex flex-wrap gap-x-4 gap-y-1 pl-4">
-                                {getBriefingInfo.sources.map((src, sidx) => (
-                                  <span key={sidx} className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400 whitespace-nowrap">
-                                    {src.from} 지분 {src.d}분의 {src.n}
+                                </div>
+
+                                <div className="w-[1px] h-10 bg-neutral-200 dark:bg-neutral-700 hidden sm:block"></div>
+
+                                {/* 2. 사망일자 & 법률 뱃지 (2줄) */}
+                                <div className="flex flex-col items-start gap-1">
+                                  <span className="text-[13px] font-bold text-[#c93f3a] dark:text-red-400">
+                                    {(!getBriefingInfo.isRoot && currentNode?.deathDate) ? `${formatKorDate(currentNode.deathDate)} 사망` : (tree.deathDate ? `${formatKorDate(tree.deathDate)} 사망` : '사망일자 미상')}
                                   </span>
-                                ))}
+                                  <span className="flex items-center gap-1 bg-[#fefce8] dark:bg-yellow-900/30 text-[#854d0e] dark:text-yellow-500 border border-[#fef08a] dark:border-yellow-700/50 px-2 py-0.5 rounded text-[11px] font-bold tracking-tight whitespace-nowrap shadow-sm">
+                                    ⚖️ {getLawEra(currentNode?.deathDate || tree.deathDate)}년 {getLawEra(currentNode?.deathDate || tree.deathDate) === '1960' ? '제정' : '개정'} 민법 적용
+                                  </span>
+                                </div>
+
+                                <div className="w-[1px] h-10 bg-neutral-200 dark:bg-neutral-700 hidden sm:block"></div>
+
+                                {/* 3. 상속 지분 */}
+                                <div className="flex flex-col items-start justify-center">
+                                  <span className="text-[11px] font-bold text-neutral-400 dark:text-neutral-500 mb-0.5">
+                                    {getBriefingInfo.isRoot ? '상속할 지분' : '상속 지분'}
+                                  </span>
+                                  <span className="text-[15px] font-black text-blue-600 dark:text-blue-400">
+                                    {getBriefingInfo.shareStr}
+                                  </span>
+                                </div>
                               </div>
+
+                              {/* 출처(Sources) 표시 */}
+                              {getBriefingInfo.sources.length > 0 && (
+                                <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 pl-4">
+                                  {getBriefingInfo.sources.map((src, sidx) => (
+                                    <span key={sidx} className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400 whitespace-nowrap">
+                                      {src.from} 지분 {src.d}분의 {src.n}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                             <div className="flex items-center gap-1.5">
                               {/* 🍎 애플 스타일 '상속인 없음' 토글 스위치 (축소 버전) */}

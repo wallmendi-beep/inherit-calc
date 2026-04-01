@@ -47,32 +47,44 @@ export const calculateInheritance = (tree, propertyValue) => {
 
     const law = getLawEra(distributionDate); 
 
-    // 💡 최종 픽스: 하위 상속인이 전원 제외된 대습상속 가지를 소급 제외하되, '동명이인 참조 노드'의 자식들까지 정확히 불러와서 검사함
+    // 💡 최종 진화: 1순위 가지 멸절 시 2순위/3순위로의 자동 이전을 완벽하게 제어하는 스마트 필터
     const isRenounced = (h, contextDate) => {
-      // 1. 본인이 직접 스위치가 꺼진 경우
-      if (h.isExcluded) return true; 
-
-      // 2. 본인이 선사망자(또는 결격/상실자)인 경우 하위 상속인 생존 여부 검사
-      const isPre = h.isDeceased && h.deathDate && contextDate && isBefore(h.deathDate, contextDate);
+      // 1. 제외 사유 판별 (결격 또는 상실선고)
       const isDisqualified = h.isExcluded && (h.exclusionOption === 'lost' || h.exclusionOption === 'disqualified');
+      
+      // 2. 단순 상속포기/재혼/상속인없음 등은 지분 거부로 보아 즉시 제외 (형제들에게 재분배됨)
+      if (h.isExcluded && !isDisqualified) return true;
+
+      // 3. 대습상속 유발 사유 (선사망 또는 결격/상실선고)
+      const isPre = h.isDeceased && h.deathDate && contextDate && isBefore(h.deathDate, contextDate);
       
       if (isPre || isDisqualified) {
         let children = h.heirs || [];
         
-        // 💡 충돌 방지: 복제 노드라서 자식이 비어있다면, 트리에서 원본 자식들을 빌려와서 검사
+        // 동명이인 데이터 참조 (원본 자식 빌려오기)
         if (children.length === 0 && h.name) {
           const borrowed = findHeirsByName(tree, h.name, h.id);
           if (borrowed) children = borrowed;
         }
 
-        // 빌려와봤는데도 진짜로 자식이 없으면 이 가지는 죽은 것
+        // 🚨 [2024. 4. 25. 신법 핵심 로직] 결격/상실자의 배우자는 대습상속 원천 배제!
+        if (isDisqualified) {
+          const rootDDate = tree.deathDate || contextDate; 
+          if (!isBefore(rootDDate, '2024-04-25')) {
+            // 배우자(며느리, 사위, 제수 등)를 상속인 명단에서 가차 없이 삭제
+            children = children.filter(c => !(['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(c.relation)));
+          }
+        }
+
+        // 자녀도 없고, 배우자마저 신법으로 쫓겨나 아무도 남지 않았다면 이 가지(Branch)는 완전 멸절! -> 2순위, 3순위로 이전 유발
         if (children.length === 0) return true;
 
-        // 자식이 있다면, 그 자식들이 모두 '제외' 처리되었는지 재귀적으로 검사
+        // 남아있는 자식들이라도 모두 포기/결격 상태인지 재귀적 검사
         const validHeirs = children.filter(child => !isRenounced(child, h.deathDate || contextDate));
-        
-        // 자식들이 살아있지만 모두 제외(포기) 상태라면 이 가지도 죽은 것으로 처리 (지분 블랙홀 방지)
         if (validHeirs.length === 0) return true;
+
+        // 유효한 대습상속인이 단 한 명이라도 존재하므로 이 가지는 대습상속 개시!
+        return false;
       }
       return false;
     };
@@ -93,41 +105,46 @@ export const calculateInheritance = (tree, propertyValue) => {
       }
     }
 
-    if (!node.isDeceased && !(node.isExcluded && node.exclusionOption === 'lost') || node.id === 'root') {
-      if (node.id !== 'root') results.push({ id: node.id, personId: node.personId, name: node.name, n: inN, d: inD, relation: node.relation });
-      if (!node.isDeceased && !(node.isExcluded && node.exclusionOption === 'lost')) return;
+    // 💡 수정 1: 결격/상실자의 경우 본인은 지분을 받지 않도록(results에 넣지 않음) 하고,
+    // 계산을 중단하지 않고 하위 대습상속인에게 넘어가도록 로직 수정
+    if (!node.isDeceased && !(node.isExcluded && (node.exclusionOption === 'lost' || node.exclusionOption === 'disqualified')) || node.id === 'root') {
+      if (node.id !== 'root') {
+        results.push({ id: node.id, personId: node.personId, name: node.name, n: inN, d: inD, relation: node.relation });
+      }
+      // 일반 생존자라면 여기서 종료하지만, 결격/상실자는 조기 종료하지 않고 하위 탐색을 계속함
+      if (!node.isDeceased && !isDisqualifiedOrLost) return;
     }
 
-    // 현재 노드가 분배 제외 대상이면 더 이상 하위 계산을 하지 않음 (블랙홀 차단)
+    // 💡 수정 2: 결격/상실자 본인의 지분은 0으로 처리 (결과창에 0으로 뜨게 함)
+    if (isDisqualifiedOrLost) {
+      results.push({ id: node.id, personId: node.personId, name: node.name, n: 0, d: 1, relation: node.relation });
+    }
+
     if (isRenounced(node, inheritedDate)) return;
 
     let targetHeirs = (node.heirs || []).filter(h => !isRenounced(h, distributionDate)); 
 
-    // [2023년 전원합의체 판례 및 실무 반영] 
-    // 본래 상속인이어야 할 자녀가 모두 포기한 경우의 처리
+    // 💡 수정 3 [2024. 4. 25. 신법 적용]: 결격/상실자의 상속인을 계산할 때 배우자 차단 로직 추가
+    if (isDisqualifiedOrLost && !isBefore(tree.deathDate || distributionDate, '2024-04-25')) {
+      targetHeirs = targetHeirs.filter(h => !(['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(h.relation)));
+    }
     const originalChildren = (node.heirs || []).filter(h => h.relation === 'son' || h.relation === 'daughter');
     const renouncedChildrenCount = originalChildren.filter(isRenounced).length;
     const isAllChildrenRenounced = originalChildren.length > 0 && renouncedChildrenCount === originalChildren.length;
-    
     const spouseInHeirs = (node.heirs || []).find(h => (h.relation === 'wife' || h.relation === 'husband' || h.relation === 'spouse') && !isRenounced(h));
 
     if (isAllChildrenRenounced) {
       if (spouseInHeirs && law === '1991') {
-        // 배우자가 있는 경우 -> 배우자 단독 상속 처리
         targetHeirs = [spouseInHeirs];
       } else if (!spouseInHeirs) {
-        // 배우자가 없는 경우 -> 그 다음 직계비속(손자녀)이 본위상속
         let grandchildren = [];
         originalChildren.forEach(child => {
-           if (child.heirs) {
-              grandchildren = grandchildren.concat(child.heirs.filter(h => !isRenounced(h)));
-           }
+           if (child.heirs) grandchildren = grandchildren.concat(child.heirs.filter(h => !isRenounced(h)));
         });
         if (grandchildren.length > 0) targetHeirs = grandchildren;
       }
     }
 
-    // 2. 대습상속/재상속 하위 탐색 자동 참조 로직
     if (targetHeirs.length === 0 && isSubstitutionTrigger(node) && node.id !== 'root') {
       const borrowed = findHeirsByName(tree, node.name, node.id);
       if (borrowed && borrowed.length > 0) {
@@ -135,77 +152,20 @@ export const calculateInheritance = (tree, propertyValue) => {
       }
     }
 
-    // 3. 하위 상속인이 전혀 없는 경우 (가상 상속인 배분 단계)
+    // 3. 하위 상속인이 전혀 없는 경우 (스마트 프루닝이 끝난 후의 최종 안전장치)
     if (targetHeirs.length === 0) {
       if (node.id === 'root') return;
 
-      // 재혼이나 상속권 소멸 명시 시 배분 로직 건너뜀 (지분 0 처리)
-      if (node.isExcluded && (node.exclusionOption === 'no_heir' || node.exclusionOption === 'remarried')) {
-        results.push({ id: node.id, personId: node.personId, name: node.name, n: 0, d: 1, relation: node.relation });
-        return; 
-      }
-
-      // 🚨 [버그 수정]: 대습상속(선사망) 또는 결격/상실인 경우, 하위 상속인이 없다면
-      // 부모나 형제에게 지분을 억지로 넘기지 않고 여기서 계산을 즉시 중단합니다.
-      // 💡 핵심 픽스: 계산을 멈추기 전에, 사망자 본인의 주머니(유령 지분)를 0으로 비워줍니다!
+      // 이미 isRenounced에 의해 걸러지지 않고 여기까지 내려왔다는 것은, 사용자가 스위치를 끄지 않은 생존/후사망 상태임을 의미.
+      // 억지로 지분을 뺏지 않고 본인 주머니에 깔끔하게 보관합니다.
       if (!node.isExcluded) {
-        return;
-      }
-      const isSubstitution = node.isDeceased || (node.isExcluded && (node.exclusionOption === 'disqualified' || node.exclusionOption === 'lost'));
-      if (isSubstitution) {
-        results.push({ id: node.id, personId: node.personId, name: node.name, n: 0, d: 1, relation: node.relation });
+        const isSubstitution = node.isDeceased && node.deathDate && inheritedDate && isBefore(node.deathDate, inheritedDate);
+        if (isSubstitution) return; 
+        
+        results.push({ id: node.id, personId: node.personId, name: node.name, n: inN, d: inD, relation: node.relation });
         return; 
       }
-      // 💡 핵심 픽스: 피상속인의 직계뿐만 아니라, 손자/증손자 등 어떤 계층에서든 부모와 형제자매를 추적하여 지분 누수를 완벽 차단!
-      if (node.relation === 'son' || node.relation === 'daughter') {        let parentNode = null;
-        if (tree.heirs.some(th => th.id === node.id)) parentNode = tree;
-        else {
-          const findP = (curr) => {
-            if (curr.heirs && curr.heirs.some(h => h.id === node.id)) parentNode = curr;
-            else (curr.heirs || []).forEach(findP);
-          };
-          findP(tree);
-        }
-        
-        if (parentNode && parentNode.heirs) {
-          const virtualHeirs = [];
-          const survivingSpouses = parentNode.heirs.filter(th => 
-            (th.relation === 'wife' || th.relation === 'husband' || th.relation === 'spouse') && 
-            (!th.isDeceased || !isBefore(th.deathDate, distributionDate)) &&
-            !isRenounced(th, distributionDate)
-          );
-          survivingSpouses.forEach(p => virtualHeirs.push({ ...p, id: p.id, relation: 'parent' }));
-          
-          if (virtualHeirs.length === 0) {
-            const siblings = parentNode.heirs.filter(th => 
-              th.id !== node.id && 
-              (th.relation === 'son' || th.relation === 'daughter') &&
-              !isRenounced(th, distributionDate)
-            );
-            if (siblings.length > 0) {
-              siblings.forEach(s => virtualHeirs.push({ ...s, id: s.id, relation: 'sibling' }));
-            } else { return; }
-          }
-          targetHeirs = virtualHeirs;
-        } else { return; }
-      } else if (node.relation === 'wife' || node.relation === 'husband' || node.relation === 'spouse') {
-          let parentNode = null;
-          const findParent = (curr) => {
-             if (curr.heirs && curr.heirs.some(h => h.id === node.id)) { parentNode = curr; } 
-             else { for (const child of curr.heirs || []) findParent(child); }
-          };
-          findParent(tree);
-          
-          if (parentNode && parentNode.heirs) {
-             const children = parentNode.heirs.filter(th => th.id !== node.id && (th.relation === 'son' || th.relation === 'daughter') && !isRenounced(th, distributionDate));
-             const virtualHeirs = [];
-             children.forEach(c => { virtualHeirs.push({ ...c, id: c.id, relation: c.relation }); });
-             
-             if (virtualHeirs.length > 0) {
-               targetHeirs = virtualHeirs;
-             } else { return; }
-          } else { return; }
-      } else { return; }
+      return; 
     }
     
     appliedLaws.add(law);

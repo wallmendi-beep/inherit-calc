@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { IconChevronRight } from './Icons';
-import { relStr, getLawEra, isBefore } from '../engine/utils';
+import { getRelStr, getLawEra, isBefore, formatKorDate } from '../engine/utils';
 
 const TreeReportNode = ({ node, level, treeToggleSignal, rootDeathDate }) => {
   const hasHeirs = node.heirs && node.heirs.length > 0;
@@ -62,57 +62,53 @@ const TreeReportNode = ({ node, level, treeToggleSignal, rootDeathDate }) => {
         <div className="flex items-center gap-1.5 ml-1 flex-wrap">
           {/* 🏷️ 신분 라벨 */}
           <span className="text-[13px] text-[#787774] dark:text-neutral-400 font-bold border border-[#e5e5e5] dark:border-neutral-700 bg-[#f8f8f7] dark:bg-neutral-800 px-1.5 py-0.5 rounded shadow-sm">
-            {level === 0 ? '피상속인' : (relStr[node.relation] || '자녀')}
+            {level === 0 ? '피상속인' : (getRelStr(node.relation, rootDeathDate || node.deathDate) || '자녀')}
           </span>
 
-          {/* ⚖️ 상속권 배제 처리 (최우선순위) */}
-          {isInheritanceLost ? (
-            <span className="px-2.5 py-1 rounded-full border border-neutral-300 bg-neutral-200 text-[12px] font-medium text-black shadow-sm whitespace-nowrap">
-              상속권 없음
-            </span>
-          ) : (
-            <>
-              {/* ⚖️ 1960년대 처 감산 뱃지 */}
-              {lawEra === '1960' && node.relation === 'wife' && (
-                <span className="flex items-center px-2 py-0.5 rounded-full border border-rose-800/80 bg-white text-[12px] font-bold text-rose-800/80 shadow-sm whitespace-nowrap">
-                  처 x 1/2
-                </span>
-              )}
-
-              {/* ⚖️ 호주 상속 가산 뱃지 */}
-              {node.relation === 'son' && node.isHoju && (
-                <span className="flex items-center px-2 py-0.5 rounded-full border border-sky-800/80 bg-white text-[12px] font-bold text-sky-800/80 shadow-sm whitespace-nowrap">
-                  호주 x 1.5
-                </span>
-              )}
-
-              {/* ⚖️ 출가녀/동일가적 감산 뱃지 */}
-              {node.relation === 'daughter' && (() => {
-                let multiplier = '';
-                let label = '';
-                if (lawEra === '1960') {
-                  label = node.isSameRegister !== false ? '여자' : '출가';
-                  multiplier = node.isSameRegister !== false ? 'x 1/2' : 'x 1/4';
-                } else if (lawEra === '1979' && node.isSameRegister === false) {
-                  label = '출가';
-                  multiplier = 'x 1/4';
-                }
-
-                return multiplier ? (
-                  <span className="flex items-center px-2 py-0.5 rounded-full border border-rose-800/80 bg-white text-[12px] font-bold text-rose-800/80 shadow-sm whitespace-nowrap">
-                    {label} {multiplier}
-                  </span>
-                ) : null;
-              })()}
-            </>
-          )}
-
-          {/* ⚰️ 사망 정보 */}
+          {/* 💀 사망일자 (심플하고 명확하게) */}
           {node.isDeceased && (
-            <span className="text-[12px] text-neutral-500 font-bold ml-1">
-              ({node.deathDate} 사망)
+            <span className="text-[12px] font-bold text-[#c93f3a] dark:text-red-400 whitespace-nowrap ml-1">
+              {node.deathDate} 사망
             </span>
           )}
+
+          {/* ⚖️ 상속권 상태 및 가감산 뱃지 (군더더기 싹 제거) */}
+          <div className="flex items-center gap-1.5 flex-wrap ml-1">
+            {isInheritanceLost ? (
+              <span className="px-2 py-0.5 rounded border border-neutral-300 bg-neutral-200 text-[11px] font-bold text-neutral-600 shadow-sm whitespace-nowrap">
+                상속권 없음
+              </span>
+            ) : (
+              <>
+                {lawEra === '1960' && node.relation === 'wife' && (
+                  <span className="flex items-center px-2 py-0.5 rounded border border-rose-800/80 bg-white text-[11px] font-bold text-rose-800/80 shadow-sm whitespace-nowrap">
+                    처 x 1/2
+                  </span>
+                )}
+                {node.relation === 'son' && node.isHoju && (
+                  <span className="flex items-center px-2 py-0.5 rounded border border-sky-800/80 bg-white text-[11px] font-bold text-sky-800/80 shadow-sm whitespace-nowrap">
+                    호주 x 1.5
+                  </span>
+                )}
+                {node.relation === 'daughter' && (() => {
+                  let m = '';
+                  let l = '';
+                  if (lawEra === '1960') {
+                    l = node.isSameRegister !== false ? '여자' : '출가';
+                    m = node.isSameRegister !== false ? 'x 1/2' : 'x 1/4';
+                  } else if (lawEra === '1979' && node.isSameRegister === false) {
+                    l = '출가';
+                    m = 'x 1/4';
+                  }
+                  return m ? (
+                    <span className="flex items-center px-2 py-0.5 rounded border border-rose-800/80 bg-white text-[11px] font-bold text-rose-800/80 shadow-sm whitespace-nowrap">
+                      {l} {m}
+                    </span>
+                  ) : null;
+                })()}
+              </>
+            )}
+          </div>
         </div>
         {hasHeirs && !isExpanded && (
            <span className="ml-2 text-[12px] text-[#854d0e] dark:text-yellow-400 font-bold bg-[#fef9c3] dark:bg-yellow-900/20 border border-[#fef08a] dark:border-yellow-800/50 px-2 py-0.5 rounded-full animate-in fade-in zoom-in duration-200 shadow-sm print:hidden">
