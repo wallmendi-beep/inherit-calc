@@ -3,7 +3,7 @@ import {
   IconCalculator, IconUserPlus, IconSave, IconFolderOpen,
   IconPrinter, IconNetwork, IconTable, IconList,
   IconReset, IconFileText, IconXCircle, IconX, IconChevronRight,
-  IconSun, IconMoon, IconUndo, IconRedo, IconUserGroup
+  IconSun, IconMoon, IconUndo, IconRedo, IconUserGroup, IconTrash2
 } from './components/Icons';
 import { DateInput } from './components/DateInput';
 import HeirRow from './components/HeirRow';
@@ -726,7 +726,8 @@ function App() {
 
 
 
-  const { finalShares, calcSteps } = useMemo(() => {
+  // 💡 Phase 2: 엔진이 잡아내는 누락 경고(warnings) 추가 연동
+  const { finalShares, calcSteps, warnings = [] } = useMemo(() => {
     return calculateInheritance(tree, propertyValue);
   }, [tree, propertyValue]);
 
@@ -1139,72 +1140,77 @@ function App() {
   return (
     <div className="w-full min-h-screen relative flex flex-col items-start pb-24 transition-colors duration-200 bg-[#f7f7f5] dark:bg-neutral-900 min-w-[1280px] print:min-w-0 print:w-full print:max-w-full">
       
-      {/* 📌 드래그 가능한 초고속 플로팅 스티커 메모장 */}
-      {(showGlobalWarning || showAutoCalcNotice) && (
+      {/* 📌 미니멀 무채색 플로팅 AI 가이드 */}
+      {((activeTab === 'input' && warnings.length > 0) || (['calc', 'result', 'summary'].includes(activeTab) && (showGlobalWarning || showAutoCalcNotice))) && (
         <div
           ref={stickerRef}
-          // 💡 불필요한 animate 속성 제거하여 버벅거림 원천 차단
-          className={`fixed top-24 right-8 z-[9999] no-print ${isStickerDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+          className={`fixed top-28 right-8 z-[9999] no-print ${isStickerDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
           style={{
             transform: `translate3d(${stickerPos.current.x}px, ${stickerPos.current.y}px, 0)`,
-            transition: 'none', // 💡 핵심: 마우스 이동 시 CSS 딜레이 강제 제거!
+            transition: 'none',
             willChange: 'transform',
             touchAction: 'none' 
           }}
           onMouseDown={handleStickerMouseDown}
         >
-          <div 
-            className={`relative w-72 p-6 bg-[#fff8d1] dark:bg-[#e6ddaf] shadow-2xl border-l-[6px] border-[#f5e49c] dark:border-[#c9ba82] select-none ${isStickerDragging ? 'rotate-0 scale-105 shadow-[0_20px_40px_rgba(0,0,0,0.2)]' : 'rotate-1 hover:rotate-0 transition-all duration-200'}`}
-            style={{ backgroundImage: 'linear-gradient(transparent 23px, rgba(93, 64, 55, 0.05) 24px)', backgroundSize: '100% 24px' }}
-          >
-            <div className="absolute top-0 right-0 w-8 h-8 bg-black/5 rounded-bl-full"></div>
+          <div className={`relative w-[300px] p-5 bg-white dark:bg-neutral-800 shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-[#e9e9e7] dark:border-neutral-700 rounded-xl select-none ${isStickerDragging ? 'scale-[1.02]' : 'transition-all duration-200'}`}>
             
-            {/* 📌 스티커 상단 반투명 테이프 (드래그 손잡이 시각 효과) */}
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-16 h-6 bg-white/50 dark:bg-black/10 backdrop-blur-[2px] shadow-sm border-x border-white/40 flex items-center justify-center">
-              <div className="w-6 h-1 rounded-full bg-black/10 dark:white/20"></div>
-            </div>
+            {/* 드래그 핸들 (상단 중앙의 작은 캡슐) */}
+            <div className="absolute top-2 left-1/2 -translate-x-1/2 w-8 h-1 bg-neutral-200 dark:bg-neutral-600 rounded-full pointer-events-none"></div>
 
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-2 text-[#5d4037] dark:text-[#3e2723]">
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 shrink-0 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            <div className="flex flex-col gap-3 mt-1">
+              <div className="flex items-center gap-2 text-[#37352f] dark:text-neutral-200">
+                {/* 💡 무채색 정보(Info) 아이콘 */}
+                <svg className="w-4 h-4 opacity-60 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span className="font-black text-[15px] tracking-tight">
-                  {showGlobalWarning ? '상속 지분 검토 필요' : '지분 자동분배 안내'}
+                <span className="font-bold text-[14px] tracking-tight">
+                  {activeTab === 'input' ? '입력 가이드' : (showGlobalWarning ? '지분 배분 오류 안내' : '지분 자동분배 안내')}
                 </span>
               </div>
-              <div className="text-[13px] font-bold text-[#5d4037] dark:text-[#3e2723] leading-relaxed break-keep pointer-events-none">
-                {showGlobalWarning && "전체 지분 합계가 설정값과 일치하지 않습니다."}
-                {showGlobalWarning && missingHeirNames.length > 0 && (
-                  <div className="mt-2.5 p-3 bg-[#f5e9e8] dark:bg-red-900/10 rounded border border-[#e8dad9] dark:border-red-800/20 shadow-sm">
-                    <span className="text-[#a94442] dark:text-red-400 font-black flex items-center gap-1.5 text-[12.5px]">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#a94442] animate-pulse" /> 누락 의심 대상:
-                    </span>
-                    <p className="text-[#b35e5e] dark:text-red-400/90 mt-1.5 text-[14px] font-black pl-3">[{missingHeirNames.join(', ')}]</p>
-                    <p className="text-[11px] text-[#a94442]/70 dark:text-red-400/60 mt-2 font-medium leading-tight pl-3">하위 상속인을 추가하거나, 우측 '제외' 스위치를 켜주세요.</p>
+              
+              <div className="text-[12.5px] font-medium text-[#787774] dark:text-neutral-400 leading-relaxed break-keep pointer-events-none">
+                
+                {/* 📍 [1] 데이터 입력 탭일 때: 누락 가이드 노출 */}
+                {activeTab === 'input' && warnings.map((w, i) => (
+                  <div key={i} className="mb-2 flex items-start gap-1.5 last:mb-0">
+                    <span className="text-neutral-300 dark:text-neutral-600 mt-0.5">•</span>
+                    <span className="flex-1">{w}</span>
                   </div>
+                ))}
+
+                {/* 📍 [2] 결과표 탭일 때: 전체 불일치 경고 */}
+                {['calc', 'result', 'summary'].includes(activeTab) && showGlobalWarning && (
+                  <>
+                    <div className="mb-2 text-[#e53e3e] dark:text-red-400 font-bold">전체 지분 합계가 설정값과 일치하지 않습니다.</div>
+                    {missingHeirNames.length > 0 && (
+                      <div className="mt-2 p-2.5 bg-[#f9f9f8] dark:bg-neutral-900 border border-[#e9e9e7] dark:border-neutral-700 rounded-md">
+                        <span className="text-[#37352f] dark:text-neutral-300 font-bold block mb-1">누락 의심: [{missingHeirNames.join(', ')}]</span>
+                        <span className="text-[11.5px]">하위 상속인을 추가하거나 '제외' 스위치를 켜주세요.</span>
+                      </div>
+                    )}
+                  </>
                 )}
-                {showAutoCalcNotice && (
-                  <div className="mt-2.5 p-3 bg-[#ebf3f6] dark:bg-blue-900/10 rounded border border-[#dce9ef] dark:border-blue-800/20 shadow-sm">
-                    <span className="text-[#31708f] dark:text-blue-400 font-black flex items-center gap-1.5 text-[12.5px]">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#31708f]" /> 지분 자동분배 내역:
-                    </span>
-                    <div className="mt-2 space-y-1.5 pl-3">
+
+                {/* 📍 [3] 결과표 탭일 때: 스마트 자동계산 내역 */}
+                {['calc', 'result', 'summary'].includes(activeTab) && showAutoCalcNotice && (
+                  <div className="mt-2 p-2.5 bg-[#f9f9f8] dark:bg-neutral-900 border border-[#e9e9e7] dark:border-neutral-700 rounded-md">
+                    <span className="text-[#37352f] dark:text-neutral-300 font-bold block mb-1.5 border-b border-neutral-200 dark:border-neutral-700 pb-1">자동분배 내역:</span>
+                    <div className="space-y-1">
                       {autoCalculatedNames.map((a, idx) => (
-                        <div key={idx} className="text-[#4b86a3] dark:text-blue-400/90 text-[12.5px] font-bold flex items-center gap-1.5">
-                          <span className="shrink-0">{a.name}</span>
-                          <svg className="w-3 h-3 opacity-40 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                          </svg>
-                          <span className="truncate opacity-90">{a.target}</span>
-                        </div>
+                         <div key={idx} className="text-[11.5px] flex items-center justify-between">
+                           <span className="font-bold">{a.name}</span>
+                           <span className="opacity-60 flex items-center gap-1">
+                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                             {a.target}
+                           </span>
+                         </div>
                       ))}
                     </div>
-                    <p className="text-[11px] text-[#31708f]/70 dark:text-blue-400/60 mt-2.5 font-medium leading-tight pl-3 border-t border-[#31708f]/10 pt-2">법정 순위에 따라 지분이 자동 배분되었습니다.</p>
                   </div>
                 )}
+
               </div>
-              <div className="text-right text-[10px] font-bold text-[#8d6e63] mt-2 italic opacity-40 tracking-widest uppercase">Inheritance Engine v1.9.1</div>
             </div>
           </div>
         </div>
@@ -2127,8 +2133,19 @@ function App() {
                                 <div className="w-[180px] shrink-0 text-center ml-[10px] relative">
                                   <span className="relative left-[-20px]">특수조건 (가감산)</span>
                                 </div>
-                                <div className="w-[180px] shrink-0 text-center ml-[10px] relative">
-                                  <span className="whitespace-nowrap relative left-[-45px]">재/대습상속</span>
+                                <div className="w-[180px] shrink-0 text-center ml-[10px] relative group/del-all">
+                                  <span className="whitespace-nowrap relative left-[-35px]">
+                                    재/대습상속
+                                    {/* 💡 전체 삭제 버튼 (30px 간격 유지) */}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleUpdate(currentNode.id, 'heirs', [])}
+                                      className="absolute left-[calc(100%+30px)] top-1/2 -translate-y-1/2 opacity-0 group-hover/del-all:opacity-100 transition-all text-[#a3a3a3] hover:text-red-500 p-1 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20"
+                                      title="전체삭제"
+                                    >
+                                      <IconTrash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </span>
                                 </div>
                                 <div className="w-12 shrink-0 text-center ml-0 mr-[10px]">
                                   <span className="whitespace-nowrap">삭제</span>

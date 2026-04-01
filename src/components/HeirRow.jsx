@@ -269,7 +269,7 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
       </div>
 
       {/* 6. 재상속/대습상속 버튼 */}
-      <div className="w-28 shrink-0 flex justify-center ml-[10px]">
+      <div className="w-28 shrink-0 flex justify-center ml-[20px]">
         {shouldShowTabBtn && onTabClick && (
           <button
             type="button"
@@ -282,7 +282,7 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
       </div>
 
       {/* 7. 삭제 버튼 */}
-      <div className="w-12 shrink-0 flex justify-center ml-0 mr-[10px]">
+      <div className="w-12 shrink-0 flex justify-center ml-[-10px] mr-[20px]">
         <button
           type="button"
           onClick={() => removeHeir(node.id)}
