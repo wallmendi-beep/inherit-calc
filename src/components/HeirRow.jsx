@@ -252,18 +252,20 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
           </>
         )}
 
-        {/* 💡 Phase 2: 호적 연혁 팝업창 띄우기 버튼 추가 */}
-        <button 
-          onClick={() => setIsHistoryModalOpen(true)}
-          className={`flex items-center gap-1 shrink-0 h-[26px] px-2 rounded-md font-bold text-[11px] transition-colors border shadow-sm ${
-            hasHistoryData 
-              ? 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800/50' 
-              : 'bg-white text-neutral-500 border-neutral-200 hover:bg-neutral-50 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-400'
-          }`}
-          title="상세 호적 연혁 (이혼, 재혼, 친가복적 등) 입력"
-        >
-          📜 {hasHistoryData && '✓'}
-        </button>
+        {/* 💡 Phase 2: 불필요한 상속인(아들 등)에게는 버튼 아예 숨기기! */}
+        {(isSpouseType || node.relation === 'daughter') && (
+          <button 
+            onClick={() => setIsHistoryModalOpen(true)}
+            className={`flex items-center gap-1 shrink-0 h-[26px] px-2 rounded-md font-bold text-[11px] transition-colors border shadow-sm ${
+              hasHistoryData 
+                ? 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800/50' 
+                : 'bg-white text-neutral-500 border-neutral-200 hover:bg-neutral-50 dark:bg-neutral-800 dark:border-neutral-700 dark:text-neutral-400'
+            }`}
+            title="상세 호적 연혁 (이혼, 재혼, 친가복적 등) 입력"
+          >
+            📜 {hasHistoryData && '✓'}
+          </button>
+        )}
       </div>
 
       {/* 6. 재상속/대습상속 버튼 */}
@@ -325,47 +327,51 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
             입력된 날짜는 <span className="font-bold text-neutral-600 border-b border-neutral-300">피상속인 사망일({inheritedDate || '미상'})</span>과 대조되어 상속권 및 지분 판단에 자동 반영됩니다.
           </p>
 
-          {/* 1. 상속권 차단 사유 (배우자/며느리/사위 용) */}
-          <div className="mb-4 p-4 bg-red-50/50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-xl relative">
-            <div className="absolute -top-2.5 left-3 bg-white px-2 text-[11px] font-black text-red-700 dark:text-red-400 flex items-center gap-1">
-               🛑 상속권 / 대습상속 차단 사유
-            </div>
-            <div className="space-y-3 mt-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-[13px] font-bold text-[#504f4c] flex items-center gap-1.5">
-                   <span className="text-[15px]">💔</span> 이혼 일자
-                </label>
-                <DateInput value={node.divorceDate || ''} onChange={v => handleUpdate(node.id, 'divorceDate', v)} className="w-[130px] border border-red-200/60 rounded-md px-2.5 py-1.5 text-[13px] text-center font-bold bg-white focus:border-red-400 focus:ring-1 focus:ring-red-400/20 outline-none" />
+          {/* 1. 상속권 차단 사유 (배우자/며느리/사위 에게만 노출) */}
+          {isSpouseType && (
+            <div className="mb-4 p-4 bg-red-50/50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-xl relative">
+              <div className="absolute -top-2.5 left-3 bg-white px-2 text-[11px] font-black text-red-700 dark:text-red-400 flex items-center gap-1">
+                 🛑 상속권 / 대습상속 차단 사유
               </div>
-              <div className="flex items-center justify-between">
-                <label className="text-[13px] font-bold text-[#504f4c] flex items-center gap-1.5">
-                   <span className="text-[15px]">💍</span> 재혼 일자
-                </label>
-                <DateInput value={node.remarriageDate || ''} onChange={v => handleUpdate(node.id, 'remarriageDate', v)} className="w-[130px] border border-red-200/60 rounded-md px-2.5 py-1.5 text-[13px] text-center font-bold bg-white focus:border-red-400 focus:ring-1 focus:ring-red-400/20 outline-none" />
+              <div className="space-y-3 mt-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[13px] font-bold text-[#504f4c] flex items-center gap-1.5">
+                     <span className="text-[15px]">💔</span> 이혼 일자
+                  </label>
+                  <DateInput value={node.divorceDate || ''} onChange={v => handleUpdate(node.id, 'divorceDate', v)} className="w-[130px] border border-red-200/60 rounded-md px-2.5 py-1.5 text-[13px] text-center font-bold bg-white focus:border-red-400 focus:ring-1 focus:ring-red-400/20 outline-none" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <label className="text-[13px] font-bold text-[#504f4c] flex items-center gap-1.5">
+                     <span className="text-[15px]">💍</span> 재혼 일자
+                  </label>
+                  <DateInput value={node.remarriageDate || ''} onChange={v => handleUpdate(node.id, 'remarriageDate', v)} className="w-[130px] border border-red-200/60 rounded-md px-2.5 py-1.5 text-[13px] text-center font-bold bg-white focus:border-red-400 focus:ring-1 focus:ring-red-400/20 outline-none" />
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* 2. 지분율 판별 사유 (딸 용) */}
-          <div className="mb-6 p-4 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl relative">
-            <div className="absolute -top-2.5 left-3 bg-white px-2 text-[11px] font-black text-blue-700 dark:text-blue-400 flex items-center gap-1">
-               ⚖️ 과거 민법 지분율 판별 (딸)
-            </div>
-            <div className="space-y-3 mt-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-[13px] font-bold text-[#504f4c] flex items-center gap-1.5">
-                   <span className="text-[15px]">👰</span> 혼인 일자
-                </label>
-                <DateInput value={node.marriageDate || ''} onChange={v => handleUpdate(node.id, 'marriageDate', v)} className="w-[130px] border border-blue-200/60 rounded-md px-2.5 py-1.5 text-[13px] text-center font-bold bg-white focus:border-blue-400 focus:ring-1 focus:ring-blue-400/20 outline-none" />
+          {/* 2. 지분율 판별 사유 (딸 에게만 노출) */}
+          {node.relation === 'daughter' && (
+            <div className="mb-6 p-4 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl relative">
+              <div className="absolute -top-2.5 left-3 bg-white px-2 text-[11px] font-black text-blue-700 dark:text-blue-400 flex items-center gap-1">
+                 ⚖️ 과거 민법 지분율 판별 (딸)
               </div>
-              <div className="flex items-center justify-between">
-                <label className="text-[13px] font-bold text-[#504f4c] flex items-center gap-1.5">
-                   <span className="text-[15px]">🏠</span> 친가복적 일자
-                </label>
-                <DateInput value={node.restoreDate || ''} onChange={v => handleUpdate(node.id, 'restoreDate', v)} className="w-[130px] border border-blue-200/60 rounded-md px-2.5 py-1.5 text-[13px] text-center font-bold bg-white focus:border-blue-400 focus:ring-1 focus:ring-blue-400/20 outline-none" />
+              <div className="space-y-3 mt-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[13px] font-bold text-[#504f4c] flex items-center gap-1.5">
+                     <span className="text-[15px]">👰</span> 혼인 일자
+                  </label>
+                  <DateInput value={node.marriageDate || ''} onChange={v => handleUpdate(node.id, 'marriageDate', v)} className="w-[130px] border border-blue-200/60 rounded-md px-2.5 py-1.5 text-[13px] text-center font-bold bg-white focus:border-blue-400 focus:ring-1 focus:ring-blue-400/20 outline-none" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <label className="text-[13px] font-bold text-[#504f4c] flex items-center gap-1.5">
+                     <span className="text-[15px]">🏠</span> 친가복적 일자
+                  </label>
+                  <DateInput value={node.restoreDate || ''} onChange={v => handleUpdate(node.id, 'restoreDate', v)} className="w-[130px] border border-blue-200/60 rounded-md px-2.5 py-1.5 text-[13px] text-center font-bold bg-white focus:border-blue-400 focus:ring-1 focus:ring-blue-400/20 outline-none" />
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           <button 
             onClick={() => setIsHistoryModalOpen(false)} 
