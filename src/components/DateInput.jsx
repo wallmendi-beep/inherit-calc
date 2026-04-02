@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export const DateInput = ({ value, onChange, placeholder, className, onKeyDown }) => {
+export const DateInput = ({ value, onChange, placeholder, className, onKeyDown, autoFocus }) => {
   const [localValue, setLocalValue] = useState(value || '');
 
   useEffect(() => {
@@ -32,6 +32,7 @@ export const DateInput = ({ value, onChange, placeholder, className, onKeyDown }
       onChange={handleChange} 
       onBlur={handleBlur}
       onFocus={e => e.target.select()} 
+      autoFocus={autoFocus}
       placeholder={placeholder || "YYYY-MM-DD"} 
       className={`${className} dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200`}
     />

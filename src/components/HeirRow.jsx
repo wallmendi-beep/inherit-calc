@@ -1,13 +1,34 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { IconChevronRight, IconTrash2, IconMenu } from './Icons';
 import { DateInput } from './DateInput';
 import { getLawEra, isBefore, getRelStr } from '../engine/utils';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-
-const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inheritedDate, rootDeathDate, onKeyDown, toggleSignal, rootIsHoju, isRootChildren, onTabClick }) => {
+// 💡 finalShares 프롭스 추가
+const HeirRow = ({ node, finalShares, level, handleUpdate, removeHeir, addHeir, siblings, inheritedDate, rootDeathDate, onKeyDown, toggleSignal, rootIsHoju, isRootChildren, onTabClick }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: node.id });
-  
+
+  // 💡 실시간 계산된 지분 당겨오기 (엔진 연동)
+  // finalShares.direct와 subGroups 전체를 뒤져서 내 personId에 맞는 지분을 찾습니다.
+  const calcShare = useMemo(() => {
+    if (!finalShares) return null;
+    const direct = finalShares.direct.find(s => s.personId === node.personId);
+    if (direct) return direct;
+
+    for (const group of (finalShares.subGroups || [])) {
+      const sub = group.shares.find(s => s.personId === node.personId);
+      if (sub) return sub;
+    }
+    return null;
+  }, [finalShares, node.personId]);
+
+  // 엔진 결과값이 있으면 그걸 보여주고, 없으면 노드에 저장된 기본값 노출
+  const displayN = calcShare ? calcShare.n : (node.shareN || 0);
+  const displayD = calcShare ? calcShare.d : (node.shareD || 1);
+
+  // 엔진이 계산한 값인지 판별 (글씨 색상 강조용)
+  const isAutoCalculated = !!calcShare;
+
   // 💡 Phase 2: 연혁 팝업창(Modal) 상태 추가
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
@@ -68,7 +89,12 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
 
   return (
     <>
-      <div ref={setNodeRef} style={dndStyle} className="group/row flex items-center justify-start w-full pr-0 pl-0 py-2 mb-1 bg-white dark:bg-neutral-800 rounded-md border border-[#e5e5e5] dark:border-neutral-700 hover:bg-[#f8f8f7] dark:hover:bg-neutral-700/50 transition-colors relative">
+      <div 
+        ref={setNodeRef} 
+        style={dndStyle} 
+        data-node-id={node.id} // 💡 추가: 스마트 가이드가 이 좌표로 이동합니다
+        className="group/row flex items-center justify-start w-full pr-0 pl-0 py-2 mb-1 bg-white dark:bg-neutral-800 rounded-md border border-[#e5e5e5] dark:border-neutral-700 hover:bg-[#f8f8f7] dark:hover:bg-neutral-700/50 transition-colors relative"
+      >
       
       {/* 0. 드래그 핸들 */}
       <div {...attributes} {...listeners} className="w-5 h-8 flex items-center justify-center cursor-grab active:cursor-grabbing text-neutral-300 hover:text-neutral-400 transition-colors ml-[10px] shrink-0">
@@ -158,14 +184,13 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
       </div>
 
       {/* 5. 특수조건 (드롭다운 OR 가감산) - 레이아웃 분리 성공! */}
-      <div className="w-[180px] ml-0 shrink-0 flex items-center gap-1.5">
-        {/* 💡 배우자 선사망은 특수조건 고정 뱃지 */}
+      <div className="w-[180px] ml-[10px] shrink-0 flex items-center gap-1.5">
+        {/* ... 중략 (배우자/호주/출가녀 로직 유지) ... */}
         {isToggleOff && isSpouseType && isPreDeceasedCondition ? (
           <div className="w-[150px] h-[26px] shrink-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 rounded-full border border-neutral-200 dark:border-neutral-700 shadow-sm">
             <span className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400">배우자 선사망 (상속권 없음)</span>
           </div>
         ) : isToggleOff ? (
-          /* 💡 스위치가 꺼지면 이 자리에 제외 사유 선택창이 나타남! */
           <div className="relative w-[150px] group/select bg-[#f8f8f7] dark:bg-neutral-800 px-2.5 py-1 rounded border border-[#e5e5e5] dark:border-neutral-700 hover:border-neutral-300 transition-colors">
             <select
               value={node.exclusionOption || 'renounce'}
@@ -173,7 +198,6 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
               className="w-full bg-transparent text-[13px] font-bold text-[#5d4037] dark:text-neutral-300 outline-none cursor-pointer appearance-none pr-5"
             >
               <option value="renounce">
-                {/* 💡 핵심 픽스: 하위 상속인(heirs)이 있다면 '대습상속' 관련 문구로, 없다면 '상속인 없음'으로 능동적으로 변환 */}
                 {node.heirs && node.heirs.length > 0 
                   ? (node.isDeceased ? '대습상속 발생' : '대습상속(상속포기)')
                   : (isPreDeceasedCondition && !isSpouseType ? '대습상속인 없음' : (node.isDeceased ? '상속인 없음 (지분 재분배)' : '상속포기'))
@@ -182,7 +206,6 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
               <option value="disqualified">
                 {node.heirs && node.heirs.length > 0 ? '상속결격 (대습상속)' : '상속결격'}
               </option>
-              {/* 🚨 2024-04-25 이후에만 상실선고 노출! */}
               {!isBefore(rootDeathDate, '2024-04-25') && (
                 <option value="lost">
                   {node.heirs && node.heirs.length > 0 ? '상실선고 (대습상속)' : '상실선고'}
@@ -197,9 +220,7 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
             </div>
           </div>
         ) : (
-          /* 💡 스위치가 켜져 있을 땐 정상적인 가감산 로직 노출 */
           <>
-            {/* 배우자 로직 */}
             {isSpouseType && (() => {
               let label = lawEra === '1991' ? '배우자' : (node.relation === 'wife' ? '처' : '남편');
               let multiplier = '';
@@ -219,7 +240,6 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
               );
             })()}
 
-            {/* 호주/출가녀 로직 */}
             {!isSpouseType && (
               <div className="flex items-center gap-1.5 shrink-0">
                 {showHoju && (
@@ -252,7 +272,6 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
           </>
         )}
 
-        {/* 💡 콤팩트 달력 아이콘 버튼 (대습/재상속 배우자 및 딸에게만 노출) */}
         {((isSpouseType && inheritedDate !== rootDeathDate && !isPreDeceasedCondition) || node.relation === 'daughter') && (
           <button 
             onClick={() => setIsHistoryModalOpen(true)}
@@ -270,13 +289,21 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
         )}
       </div>
 
-      {/* 6. 재상속/대습상속 버튼 */}
-      <div className="w-28 shrink-0 flex justify-center ml-[30px]">
+      {/* 6. 재상속/대습상속 버튼 (규정 복구: W 112px, ML 20px) */}
+      <div className="w-[112px] ml-[20px] shrink-0 flex flex-col items-center justify-center gap-1">
+        {/* 💡 지분 표시는 버튼 위나 아래에 콤팩트하게 배치 (전체 너비 유지) */}
+        {!node.isExcluded && !node.isDeceased && (
+          <div className="flex items-center gap-0.5 text-[11px] font-black leading-none mb-0.5">
+            <span className={isAutoCalculated ? 'text-blue-600 dark:text-blue-400' : 'text-neutral-400'}>{displayN}</span>
+            <span className="text-neutral-300 dark:text-neutral-600">/</span>
+            <span className={isAutoCalculated ? 'text-blue-600 dark:text-blue-400' : 'text-neutral-400'}>{displayD}</span>
+          </div>
+        )}
         {shouldShowTabBtn && onTabClick && (
           <button
             type="button"
             onClick={onBtnClick}
-            className={`px-3 py-1.5 rounded-md font-bold text-[13px] shrink-0 border transition-all shadow-sm ${tabBtnClass}`}
+            className={`w-full py-1 rounded-md font-bold text-[12px] shrink-0 border transition-all shadow-sm ${tabBtnClass}`}
           >
             {tabBtnText}
           </button>

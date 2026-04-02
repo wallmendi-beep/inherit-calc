@@ -302,6 +302,79 @@ function App() {
   const [inputToggleSignal] = useState(0);  
   const [propertyValue, setPropertyValue] = useState(''); 
   const [isAmountActive, setIsAmountActive] = useState(false);
+
+  // 💡 Phase 3: AI 내비게이터 상태 (별 버튼은 '켬' 기능만 수행)
+  const [showNavigator, setShowNavigator] = useState(false);
+
+  // 💡 특정 상속인 위치로 이동 및 하이라이트 (Warp 기능 개선: 탭 자동 전환 포함)
+  const handleNavigate = (nodeId) => {
+    setActiveTab('input');
+    
+    // 1. 해당 nodeId가 어느 탭(deceasedTabs)에 속해 있는지 찾습니다.
+    let targetTabId = 'root';
+    const findTabIdForNode = (currentNode, currentTabId) => {
+      if (currentNode.id === nodeId) return currentTabId;
+      if (currentNode.heirs) {
+        for (const h of currentNode.heirs) {
+          // 사망한 사람이나 특정 사유가 있는 사람은 자기만의 탭(personId)을 가집니다.
+          const isTabOwner = h.isDeceased || (h.isExcluded && ['lost', 'disqualified'].includes(h.exclusionOption));
+          const nextTabId = isTabOwner ? h.personId : currentTabId;
+          const found = findTabIdForNode(h, nextTabId);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    const foundTabId = findTabIdForNode(tree, 'root');
+    if (foundTabId) setActiveDeceasedTab(foundTabId);
+
+    // 2. 탭 전환 후 요소가 렌더링될 시간을 준 뒤 스크롤 및 하이라이트
+    setTimeout(() => {
+      const element = document.querySelector(`[data-node-id="${nodeId}"]`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2', 'bg-blue-50/50');
+        setTimeout(() => {
+          element.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2', 'bg-blue-50/50');
+        }, 2000);
+      }
+    }, 150); // 탭 전환 대기를 위해 시간을 소폭 늘림
+  };
+
+  // 💡 Phase 3: AI 가계도 마법사 상태
+  const [showWizard, setShowWizard] = useState(false);
+  const [wizardStep, setWizardStep] = useState(0);
+  const [wizardData, setWizardData] = useState({ name: '', deathDate: '', hasSpouse: true, sons: 0, daughters: 0 });
+
+  // 💡 마법사 완료 시 가계도 자동 생성 함수
+  const applyWizard = () => {
+    const genId = () => Math.random().toString(36).substring(2, 9);
+    const newTree = {
+      id: 'root',
+      personId: 'root',
+      name: wizardData.name || '피상속인',
+      deathDate: wizardData.deathDate || '',
+      shareN: 1, shareD: 1,
+      heirs: []
+    };
+
+    if (wizardData.hasSpouse) {
+      newTree.heirs.push({ id: `h_${genId()}`, personId: `p_${genId()}`, name: '배우자', relation: 'wife', isDeceased: false });
+    }
+    for(let i=0; i<wizardData.sons; i++) {
+      newTree.heirs.push({ id: `h_${genId()}`, personId: `p_${genId()}`, name: `아들${i+1}`, relation: 'son', isDeceased: false });
+    }
+    for(let i=0; i<wizardData.daughters; i++) {
+      newTree.heirs.push({ id: `h_${genId()}`, personId: `p_${genId()}`, name: `딸${i+1}`, relation: 'daughter', isDeceased: false });
+    }
+
+    setTree(newTree);
+    setShowWizard(false);
+    setWizardStep(0);
+    setActiveTab('input');
+  };
+
   const [isFolderFocused, setIsFolderFocused] = useState(false); // 서류철 포커스 모드 (폴더 열기)
   const [summaryExpanded, setSummaryExpanded] = useState(true); // 가계도 요약 표시 여부
   const [sidebarToggleSignal, setSidebarToggleSignal] = useState(1); // 가계도 요약 전체 접기/펼침 신호 (1: 펼침, -1: 접힘)
@@ -731,6 +804,50 @@ function App() {
     return calculateInheritance(tree, propertyValue);
   }, [tree, propertyValue]);
 
+  // 💡 Phase 3: 스마트 가이드 엔진 (필수/권고 분리 및 워프 좌표 제공)
+  const smartGuides = useMemo(() => {
+    if (activeTab !== 'input') return [];
+    const guides = [];
+    const law = getLawEra(tree.deathDate);
+    
+    const checkNode = (node, parentDate) => {
+      if (node.id === 'root') {
+        if (node.heirs) node.heirs.forEach(h => checkNode(h, node.deathDate));
+        return;
+      }
+      
+      if (node.isExcluded) return; // 제외된 사람은 패스
+
+      // 🚨 1. 필수(mandatory): 재상속/대습상속 누락 검사
+      if (node.isDeceased && node.deathDate && parentDate && !isBefore(node.deathDate, parentDate)) {
+         if (!node.heirs || node.heirs.length === 0) {
+           // 💡 단순 텍스트가 아닌, 클릭 시 이동할 id를 함께 묶어줍니다!
+           guides.push({
+             id: node.id,
+             type: 'mandatory', // 필수 태그
+             text: `'${node.name}' 님의 재상속 정보가 없습니다. 클릭하여 상속인을 추가하세요.`
+           });
+         }
+      }
+
+      // 💡 2. 권고(recommended): 과거법 딸 연혁 검사 (짧고 직관적인 문구)
+      if ((law === '1960' || law === '1979') && node.relation === 'daughter') {
+         if (!node.marriageDate && !node.restoreDate) {
+           guides.push({
+             id: node.id,
+             type: 'recommended', // 권고 태그
+             text: `'${node.name}' 님의 혼인/복적 연혁을 입력하면 복잡한 계산을 AI가 대신합니다.`
+           });
+         }
+      }
+
+      if (node.heirs) node.heirs.forEach(h => checkNode(h, node.deathDate || parentDate));
+    };
+
+    checkNode(tree, null);
+    return guides;
+  }, [tree, activeTab]);
+
   const [activeDeceasedTab, setActiveDeceasedTab] = useState('root');
   const tabRefs = React.useRef({});
 
@@ -1137,63 +1254,116 @@ function App() {
     }
   }
 
+  // 💡 Phase 3: 현재 탭에서 AI가 알려줄 항목이 있는지 전역으로 판별
+  const hasActionItems = (activeTab === 'input' && (warnings.length > 0 || smartGuides.length > 0)) || 
+                         (['calc', 'result', 'summary'].includes(activeTab) && (showGlobalWarning || showAutoCalcNotice));
+
   return (
     <div className="w-full min-h-screen relative flex flex-col items-start pb-24 transition-colors duration-200 bg-[#f7f7f5] dark:bg-neutral-900 min-w-[1280px] print:min-w-0 print:w-full print:max-w-full">
       
-      {/* 📌 미니멀 무채색 플로팅 AI 가이드 (테스트를 위해 조건 해제) */}
-      {true && (
+      {/* 🧭 스마트 가이드 팝업창 (필수/권고 분리형 + 나침반 아이콘) */}
+      {showNavigator && (
         <div
           ref={stickerRef}
           className={`fixed top-28 right-8 z-[9999] no-print ${isStickerDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-          style={{
-            transform: `translate3d(${stickerPos.current.x}px, ${stickerPos.current.y}px, 0)`,
-            transition: 'none',
-            willChange: 'transform',
-            touchAction: 'none' 
-          }}
+          style={{ transform: `translate3d(${stickerPos.current.x}px, ${stickerPos.current.y}px, 0)`, transition: 'none', willChange: 'transform', touchAction: 'none' }}
           onMouseDown={handleStickerMouseDown}
         >
-          <div className={`relative w-[300px] p-5 bg-white dark:bg-neutral-800 shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-[#e9e9e7] dark:border-neutral-700 rounded-xl select-none ${isStickerDragging ? 'scale-[1.02]' : 'transition-all duration-200'}`}>
+          <div className={`relative w-[340px] p-5 bg-white dark:bg-neutral-800 shadow-[0_12px_40px_rgb(0,0,0,0.15)] border border-[#e9e9e7] dark:border-neutral-700 rounded-xl select-none ${isStickerDragging ? 'scale-[1.02]' : 'transition-all duration-200'}`}>
             
-            {/* 드래그 핸들 (상단 중앙의 작은 캡슐) */}
-            <div className="absolute top-2 left-1/2 -translate-x-1/2 w-8 h-1 bg-neutral-200 dark:bg-neutral-600 rounded-full pointer-events-none"></div>
+            {/* 닫기(X) 버튼 */}
+            <button 
+              onMouseDown={(e) => e.stopPropagation()} 
+              onClick={() => setShowNavigator(false)} 
+              className="absolute top-3 right-3 w-6 h-6 flex items-center justify-center rounded-full text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700 hover:text-neutral-600 transition-colors pointer-events-auto"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
 
             <div className="flex flex-col gap-3 mt-1">
-              <div className="flex items-center gap-2 text-neutral-500 dark:text-neutral-400">
-                <svg className="w-5 h-5 opacity-80 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              {/* 타이틀 및 나침반 아이콘 */}
+              <div className="flex items-center gap-2 text-[#37352f] dark:text-neutral-100">
+                <svg className={`w-5 h-5 ${hasActionItems ? 'text-[#2383e2]' : 'text-neutral-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <circle cx="12" cy="12" r="10" />
+                  <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
                 </svg>
-                {/* 💡 제목: 너무 진하지 않은 그레이 톤으로 변경 */}
-                <span className="font-bold text-[15px] tracking-tight">
-                  {activeTab === 'input' ? '입력 데이터 검토' : (showGlobalWarning ? '지분 배분 오류 안내' : '지분 자동분배 내역')}
-                </span>
+                <span className="font-black text-[15px]">스마트 가이드</span>
               </div>
               
-              {/* 💡 본문: 가독성을 위해 노멀(medium) 폰트로 변경 */}
-              <div className="text-[13.5px] font-medium text-[#504f4c] dark:text-neutral-300 leading-relaxed break-keep pointer-events-none">
+              <div className="text-[13px] font-bold text-[#504f4c] dark:text-neutral-300 pointer-events-none">
                 
+                {/* 완벽 상태 */}
+                {!hasActionItems && (
+                  <div className="flex flex-col items-center justify-center py-6 text-center gap-2 bg-[#fcfcfb] dark:bg-neutral-800/50 rounded-lg border border-[#e9e9e7] dark:border-neutral-700/50 mt-2">
+                    <span className="text-2xl mb-1">✅</span>
+                    <span className="text-[#37352f] dark:text-neutral-300 font-black text-[13px]">완벽합니다!</span>
+                    <span className="text-[#787774] dark:text-neutral-500 text-[11.5px] font-medium leading-snug">
+                      현재 단계에서 가이드가 추천할<br/>추가 입력/수정 항목이 없습니다.
+                    </span>
+                  </div>
+                )}
+
+                {/* 🚨 하드 엔진 경고 */}
                 {activeTab === 'input' && warnings.map((w, i) => (
-                  <div key={i} className="mb-2.5 flex items-start gap-2 last:mb-0">
-                    <span className="text-[#a3a3a3] dark:text-neutral-500 mt-0.5">•</span>
-                    <span className="flex-1">{w}</span>
+                  <div key={`w-${i}`} className="flex items-start gap-2 text-red-600 p-2.5 bg-red-50/50 rounded-lg border border-red-100 mt-2">
+                    <span className="mt-0.5">⚠️</span><span className="flex-1 leading-snug">{w}</span>
                   </div>
                 ))}
 
+                {/* 👉 1. 필수 사항 (Mandatory) */}
+                {activeTab === 'input' && smartGuides.filter(g => g.type === 'mandatory').map((g, i) => (
+                  <button 
+                    key={`m-${i}`} 
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={() => handleNavigate(g.id)}
+                    className="w-full mt-2 text-left flex items-start gap-2 bg-blue-50/60 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200/60 dark:border-blue-800/30 hover:bg-blue-100/80 transition-all group pointer-events-auto shadow-sm"
+                  >
+                    <span className="mt-0.5 text-blue-600 group-hover:scale-125 transition-transform">👉</span>
+                    <span className="flex-1 leading-snug text-[#37352f] dark:text-neutral-200">{g.text}</span>
+                  </button>
+                ))}
+
+                {/* ✂️ 점선 구분선 (필수와 권고가 둘 다 있을 때만 노출) */}
+                {activeTab === 'input' && smartGuides.filter(g => g.type === 'mandatory').length > 0 && smartGuides.filter(g => g.type === 'recommended').length > 0 && (
+                  <div className="w-full border-t border-dashed border-[#d4d4d4] dark:border-neutral-600 my-4"></div>
+                )}
+
+                {/* 💡 2. 권고 사항 헤더 및 목록 (Recommended) */}
+                {activeTab === 'input' && smartGuides.filter(g => g.type === 'recommended').length > 0 && (
+                  <>
+                    <div className={`mt-2 mb-1.5 ${smartGuides.filter(m => m.type === 'mandatory').length === 0 ? 'mt-3' : ''}`}>
+                      <span className="text-[11px] font-bold text-[#a3a3a3] dark:text-neutral-500 tracking-tight px-1">[다음은 권고사항입니다]</span>
+                    </div>
+                    {smartGuides.filter(g => g.type === 'recommended').map((g, i) => (
+                      <button 
+                        key={`r-${i}`} 
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={() => handleNavigate(g.id)}
+                        className="w-full text-left flex items-start gap-2 bg-[#fbfbfb] dark:bg-neutral-800/40 p-2.5 rounded-lg border border-[#e9e9e7] dark:border-neutral-700 hover:bg-[#f2f2f0] transition-all group pointer-events-auto mb-1.5"
+                      >
+                        <span className="mt-0.5 text-[#a3a3a3] group-hover:text-amber-500 transition-colors">💡</span>
+                        <span className="flex-1 leading-snug text-[#787774] dark:text-neutral-400 font-medium text-[12.5px]">{g.text}</span>
+                      </button>
+                    ))}
+                  </>
+                )}
+
+                {/* 결과표 탭 안내문들 */}
                 {['calc', 'result', 'summary'].includes(activeTab) && showGlobalWarning && (
                   <>
-                    <div className="mb-2 text-[#e53e3e] dark:text-red-400 font-bold text-[14px]">전체 지분 합계가 설정값과 일치하지 않습니다.</div>
+                    <div className="mt-3 mb-2 text-[#e53e3e] dark:text-red-400 font-black text-[14px]">전체 지분 합계가 설정값과 일치하지 않습니다.</div>
                     {missingHeirNames.length > 0 && (
-                      <div className="mt-3 p-3 bg-[#f9f9f8] dark:bg-neutral-900 border border-[#e9e9e7] dark:border-neutral-700 rounded-md">
-                        <span className="text-[#37352f] dark:text-neutral-100 font-bold block mb-1.5 text-[13px]">누락 의심: [{missingHeirNames.join(', ')}]</span>
+                      <div className="p-3 bg-[#f9f9f8] dark:bg-neutral-900 border border-[#e9e9e7] dark:border-neutral-700 rounded-md">
+                        <span className="text-[#37352f] dark:text-neutral-100 font-black block mb-1.5 text-[13px]">누락 의심: [{missingHeirNames.join(', ')}]</span>
                         <span className="text-[12.5px] text-[#787774] dark:text-neutral-400">하위 상속인을 추가하거나 '제외' 스위치를 켜주세요.</span>
                       </div>
                     )}
                   </>
                 )}
-
+                {/* 자동분배 내역 */}
                 {['calc', 'result', 'summary'].includes(activeTab) && showAutoCalcNotice && (
                   <div className="mt-3 p-3 bg-[#f9f9f8] dark:bg-neutral-900 border border-[#e9e9e7] dark:border-neutral-700 rounded-md">
-                    <span className="text-[#37352f] dark:text-neutral-100 font-bold block mb-2 border-b border-[#e9e9e7] dark:border-neutral-700 pb-1.5 text-[13px]">자동분배 내역:</span>
+                    <span className="text-[#37352f] dark:text-neutral-100 font-black block mb-2 border-b border-[#e9e9e7] dark:border-neutral-700 pb-1.5 text-[13px]">자동분배 내역:</span>
                     <div className="space-y-1.5">
                       {autoCalculatedNames.map((a, idx) => (
                          <div key={idx} className="text-[12.5px] flex items-center justify-between">
@@ -1678,7 +1848,7 @@ function App() {
             <div className="flex items-center gap-2 whitespace-nowrap shrink-0 overflow-visible">
               <div className="flex items-center text-[#37352f] dark:text-neutral-100 font-bold text-[18px] tracking-tight whitespace-nowrap shrink-0">
                 <IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-neutral-400 shrink-0" />
-                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v1.9.7</span>
+                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v2.0.1</span>
               </div>
               <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px] ml-8 whitespace-nowrap shrink-0">Designed by J.H. Lee</span>
             </div>
@@ -1707,6 +1877,22 @@ function App() {
             </button>
             <div className="w-px h-3.5 bg-[#e9e9e7] dark:bg-neutral-600 mx-0.5"></div>
 
+            {/* 🧭 스마트 가이드 호출 버튼 (할 일이 있으면 파스텔 블루로 번쩍!) */}
+            <button 
+              onClick={() => setShowNavigator(true)} 
+              className={`flex items-center justify-center w-9 h-9 rounded-lg transition-all shadow-sm border ${
+                hasActionItems 
+                  ? 'bg-blue-100 text-blue-600 border-blue-200 hover:bg-blue-200 dark:bg-blue-900/60 dark:text-blue-400 dark:border-blue-800' 
+                  : 'bg-white text-[#787774] border-[#e9e9e7] hover:bg-[#f7f7f5] hover:text-[#37352f] dark:bg-neutral-800 dark:border-neutral-700 dark:hover:bg-neutral-700'
+              }`}
+              title={hasActionItems ? "새로운 스마트 가이드가 있습니다!" : "스마트 가이드 열기"}
+            >
+              {/* 🧭 극도로 미니멀한 나침반 (Circle + Diamond) */}
+              <svg className="w-[18px] h-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={hasActionItems ? 2.5 : 2}>
+                <circle cx="12" cy="12" r="10" />
+                <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+              </svg>
+            </button>
             <button onClick={() => setIsResetModalOpen(true)} className="text-[#787774] hover:text-[#37352f] hover:bg-[#efefed] px-2 py-1 rounded border border-transparent hover:border-[#d4d4d4] text-[12px] font-bold transition-colors flex items-center gap-1">
               <IconReset className="h-3.5 w-3.5" /> 초기화
             </button>
@@ -2157,6 +2343,7 @@ function App() {
                                     <HeirRow
                                       key={h.id}
                                       node={h}
+                                      finalShares={finalShares} // 💡 추가: 실시간 계산 엔진 결과를 쏴줍니다!
                                       level={1}
                                       handleUpdate={handleUpdate}
                                       removeHeir={removeHeir}
