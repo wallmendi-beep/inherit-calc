@@ -127,6 +127,10 @@ const HeirRow = ({ node, finalShares, level, handleUpdate, removeHeir, addHeir, 
           value={node.name} 
           onKeyDown={onKeyDown} 
           onChange={e => handleUpdate(node.id, 'name', e.target.value)} 
+          lang="ko"
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck="false"
           className="w-full text-[15px] font-bold text-[#37352f] dark:text-slate-200 outline-none bg-transparent border-b border-transparent hover:border-neutral-200 focus:border-amber-400" 
           placeholder="성명"
         />
@@ -323,31 +327,17 @@ const HeirRow = ({ node, finalShares, level, handleUpdate, removeHeir, addHeir, 
       </div>
     </div>
 
-    {/* 안내 문구 (무채색) */}
-    {isPreDeceasedCondition && (!node.heirs || node.heirs.length === 0) && !node.isExcluded && (
-      <div className="flex px-4 py-1.5 bg-neutral-50 dark:bg-neutral-900/40 border-t border-dashed border-neutral-200 dark:border-neutral-700">
-        <div className="w-[60px] shrink-0"></div>
-        <div className="flex-1 text-[11px] font-bold text-neutral-500 dark:text-neutral-400 flex items-center gap-1.5">
-          <IconChevronRight className="w-3 h-3" />
-          {isSpouseType ? (
-            "배우자 선사망은 대습상속이 일어나지 않습니다. 사망일자 오류가 있다면 수정해 주세요."
-          ) : (
-            "선사망자의 대습상속인(배우자/자녀)을 추가해 주세요. 대습상속인이 없다면 좌측 스위치를 꺼서 '제외' 처리해 주세요."
-          )}
-        </div>
-      </div>
-    )}
-
     {/* 💡 미니멀리즘 프로페셔널 테마 모달창 */}
     {isHistoryModalOpen && (
       <div className="fixed inset-0 bg-black/40 z-[10000] flex items-center justify-center no-print backdrop-blur-[1px]">
-        <div className="bg-white p-6 rounded-xl shadow-2xl max-w-[360px] w-full mx-4 animate-in fade-in zoom-in duration-200 border border-[#e9e9e7]">
+        <div className="bg-white p-6 rounded-xl shadow-2xl max-w-[360px] w-full mx-4 animate-in fade-in zoom-in duration-200 border border-[#e9e9e7] modal-content-container">
           
           <div className="flex justify-between items-center mb-3">
-            <h2 className="text-[17px] font-bold text-[#37352f] flex items-center gap-1.5">
-              <span className="text-neutral-500 font-medium">'{node.name || '상속인'}'</span> 호적 연혁
+            <h2 className="text-[17px] font-bold flex items-center gap-1.5">
+              <span className="text-black">'{node.name || '상속인'}'</span>
+              <span className="text-neutral-400 font-medium">호적 연혁</span>
             </h2>
-            <button onClick={() => setIsHistoryModalOpen(false)} className="text-neutral-400 hover:text-neutral-700 p-1 transition-colors">
+            <button onClick={() => setIsHistoryModalOpen(false)} className="text-neutral-400 hover:text-neutral-700 p-1 transition-colors focus:ring-2 focus:ring-blue-500 rounded-full outline-none">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
           </div>
@@ -356,43 +346,115 @@ const HeirRow = ({ node, finalShares, level, handleUpdate, removeHeir, addHeir, 
             입력된 날짜는 <span className="font-bold text-[#37352f]">피상속인 사망일({inheritedDate || '미상'})</span>과 대조되어 상속권 및 지분 판단에 자동 반영됩니다.
           </p>
 
-          {isSpouseType && (
-            <div className="mb-5 p-4 bg-white dark:bg-neutral-800 border border-[#e5e5e5] dark:border-neutral-700 rounded-lg relative">
-              <div className="absolute -top-2.5 left-3 bg-white px-2 text-[11px] font-bold text-[#787774] flex items-center gap-1">
-                 상속권 / 대습상속 차단 사유
-              </div>
-              <div className="space-y-3 mt-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-[13px] font-bold text-[#504f4c]">이혼 일자</label>
-                  <DateInput value={node.divorceDate || ''} onChange={v => handleUpdate(node.id, 'divorceDate', v)} className="w-[130px] border border-[#e5e5e5] rounded-md px-2.5 py-1.5 text-[13px] text-center font-medium bg-[#f8f8f7] focus:bg-white focus:border-neutral-400 focus:ring-1 focus:ring-neutral-400 outline-none transition-all" />
+          <div className="modal-nav-area">
+            {isSpouseType && (
+              <div className="mb-5 p-4 bg-white dark:bg-neutral-800 border border-[#e5e5e5] dark:border-neutral-700 rounded-lg relative">
+                <div className="absolute -top-2.5 left-3 bg-white px-2 text-[11px] font-bold text-[#787774] flex items-center gap-1">
+                   상속권 / 대습상속 차단 사유
                 </div>
-                <div className="flex items-center justify-between">
-                  <label className="text-[13px] font-bold text-[#504f4c]">재혼 일자</label>
-                  <DateInput value={node.remarriageDate || ''} onChange={v => handleUpdate(node.id, 'remarriageDate', v)} className="w-[130px] border border-[#e5e5e5] rounded-md px-2.5 py-1.5 text-[13px] text-center font-medium bg-[#f8f8f7] focus:bg-white focus:border-neutral-400 focus:ring-1 focus:ring-neutral-400 outline-none transition-all" />
+                <div className="space-y-3 mt-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[13px] font-bold text-[#504f4c]">이혼 일자</label>
+                    <DateInput 
+                      autoFocus
+                      value={node.divorceDate || ''} 
+                      onChange={v => handleUpdate(node.id, 'divorceDate', v)} 
+                      onKeyDown={e => {
+                        if (e.key === ' ') { e.preventDefault(); setIsHistoryModalOpen(false); }
+                        else if (e.key === 'Tab' || e.key === 'Enter' || e.key.includes('Arrow')) {
+                          e.preventDefault();
+                          const focusables = Array.from(e.currentTarget.closest('.modal-content-container').querySelectorAll('input, button:not([title="닫기"])'));
+                          const idx = focusables.indexOf(e.target);
+                          const next = e.shiftKey ? (idx - 1 + focusables.length) % focusables.length : (idx + 1) % focusables.length;
+                          focusables[next].focus();
+                        }
+                      }}
+                      className="w-[130px] border border-[#e5e5e5] rounded-md px-2.5 py-1.5 text-[13px] text-center font-medium bg-[#f8f8f7] focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all" 
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <label className="text-[13px] font-bold text-[#504f4c]">재혼 일자</label>
+                    <DateInput 
+                      value={node.remarriageDate || ''} 
+                      onChange={v => handleUpdate(node.id, 'remarriageDate', v)} 
+                      onKeyDown={e => {
+                        if (e.key === ' ') { e.preventDefault(); setIsHistoryModalOpen(false); }
+                        else if (e.key === 'Tab' || e.key === 'Enter' || e.key.includes('Arrow')) {
+                          e.preventDefault();
+                          const focusables = Array.from(e.currentTarget.closest('.modal-content-container').querySelectorAll('input, button:not([title="닫기"])'));
+                          const idx = focusables.indexOf(e.target);
+                          const next = e.shiftKey ? (idx - 1 + focusables.length) % focusables.length : (idx + 1) % focusables.length;
+                          focusables[next].focus();
+                        }
+                      }}
+                      className="w-[130px] border border-[#e5e5e5] rounded-md px-2.5 py-1.5 text-[13px] text-center font-medium bg-[#f8f8f7] focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all" 
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {node.relation === 'daughter' && (
-            <div className="mb-6 p-4 bg-white dark:bg-neutral-800 border border-[#e5e5e5] dark:border-neutral-700 rounded-lg relative">
-              <div className="absolute -top-2.5 left-3 bg-white px-2 text-[11px] font-bold text-[#787774] flex items-center gap-1">
-                 과거 민법 지분율 판별 (딸)
-              </div>
-              <div className="space-y-3 mt-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-[13px] font-bold text-[#504f4c]">혼인 일자</label>
-                  <DateInput value={node.marriageDate || ''} onChange={v => handleUpdate(node.id, 'marriageDate', v)} className="w-[130px] border border-[#e5e5e5] rounded-md px-2.5 py-1.5 text-[13px] text-center font-medium bg-[#f8f8f7] focus:bg-white focus:border-neutral-400 focus:ring-1 focus:ring-neutral-400 outline-none transition-all" />
+            {node.relation === 'daughter' && (
+              <div className="mb-6 p-4 bg-white dark:bg-neutral-800 border border-[#e5e5e5] dark:border-neutral-700 rounded-lg relative">
+                <div className="absolute -top-2.5 left-3 bg-white px-2 text-[11px] font-bold text-[#787774] flex items-center gap-1">
+                   과거 민법 지분율 판별 (딸)
                 </div>
-                <div className="flex items-center justify-between">
-                  <label className="text-[13px] font-bold text-[#504f4c]">친가복적 일자</label>
-                  <DateInput value={node.restoreDate || ''} onChange={v => handleUpdate(node.id, 'restoreDate', v)} className="w-[130px] border border-[#e5e5e5] rounded-md px-2.5 py-1.5 text-[13px] text-center font-medium bg-[#f8f8f7] focus:bg-white focus:border-neutral-400 focus:ring-1 focus:ring-neutral-400 outline-none transition-all" />
+                <div className="space-y-3 mt-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[13px] font-bold text-[#504f4c]">혼인 일자</label>
+                    <DateInput 
+                      autoFocus
+                      value={node.marriageDate || ''} 
+                      onChange={v => handleUpdate(node.id, { marriageDate: v, isSameRegister: v ? false : true })} 
+                      onKeyDown={e => {
+                        if (e.key === ' ') { e.preventDefault(); setIsHistoryModalOpen(false); }
+                        else if (e.key === 'Tab' || e.key === 'Enter' || e.key.includes('Arrow')) {
+                          e.preventDefault();
+                          const focusables = Array.from(e.currentTarget.closest('.modal-content-container').querySelectorAll('input, button:not([title="닫기"])'));
+                          const idx = focusables.indexOf(e.target);
+                          const next = e.shiftKey ? (idx - 1 + focusables.length) % focusables.length : (idx + 1) % focusables.length;
+                          focusables[next].focus();
+                        }
+                      }}
+                      className="w-[130px] border border-[#e5e5e5] rounded-md px-2.5 py-1.5 text-[13px] text-center font-medium bg-[#f8f8f7] focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all" 
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <label className="text-[13px] font-bold text-[#504f4c]">친가복적 일자</label>
+                    <DateInput 
+                      value={node.restoreDate || ''} 
+                      onChange={v => handleUpdate(node.id, { restoreDate: v, isSameRegister: v ? true : false })} 
+                      onKeyDown={e => {
+                        if (e.key === ' ') { e.preventDefault(); setIsHistoryModalOpen(false); }
+                        else if (e.key === 'Tab' || e.key === 'Enter' || e.key.includes('Arrow')) {
+                          e.preventDefault();
+                          const focusables = Array.from(e.currentTarget.closest('.modal-content-container').querySelectorAll('input, button:not([title="닫기"])'));
+                          const idx = focusables.indexOf(e.target);
+                          const next = e.shiftKey ? (idx - 1 + focusables.length) % focusables.length : (idx + 1) % focusables.length;
+                          focusables[next].focus();
+                        }
+                      }}
+                      className="w-[130px] border border-[#e5e5e5] rounded-md px-2.5 py-1.5 text-[13px] text-center font-medium bg-[#f8f8f7] focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all" 
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
-          <button onClick={() => setIsHistoryModalOpen(false)} className="w-full py-2 bg-[#2383e2] hover:bg-[#0073ea] text-white font-bold rounded-lg transition-colors text-[13px] shadow-sm flex items-center justify-center gap-2">
+          <button 
+            onClick={() => setIsHistoryModalOpen(false)} 
+            onKeyDown={e => {
+              if (e.key === 'Tab' || e.key === 'Enter' || e.key.includes('Arrow')) {
+                e.preventDefault();
+                const focusables = Array.from(e.currentTarget.closest('.modal-content-container').querySelectorAll('input, button:not([title="닫기"])'));
+                const idx = focusables.indexOf(e.target);
+                const next = e.shiftKey ? (idx - 1 + focusables.length) % focusables.length : (idx + 1) % focusables.length;
+                focusables[next].focus();
+              }
+            }}
+            className="w-full py-2.5 bg-[#f1f1ef] hover:bg-[#e5e5e1] dark:bg-neutral-700 dark:hover:bg-neutral-600 text-[#37352f] dark:text-neutral-200 font-bold rounded-lg transition-colors text-[13px] shadow-sm flex items-center justify-center gap-2 mt-2 focus:ring-2 focus:ring-blue-500 outline-none"
+          >
             입력 완료 및 닫기
           </button>
         </div>

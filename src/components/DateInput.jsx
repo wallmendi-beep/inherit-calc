@@ -33,6 +33,10 @@ export const DateInput = ({ value, onChange, placeholder, className, onKeyDown, 
       onBlur={handleBlur}
       onFocus={e => e.target.select()} 
       autoFocus={autoFocus}
+      lang="ko"
+      autoCapitalize="off"
+      autoCorrect="off"
+      spellCheck="false"
       placeholder={placeholder || "YYYY-MM-DD"} 
       className={`${className} dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200`}
     />

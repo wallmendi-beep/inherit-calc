@@ -591,14 +591,27 @@ function App() {
     const i = all.indexOf(e.target);
     if (i === -1) return;
 
+    // 💡 Tab 키: 자연스럽게 다음 칸으로 이동 (Shift 누르면 이전 칸)
+    if (e.key === 'Tab') {
+      if (e.shiftKey) {
+        e.preventDefault(); if (i > 0) all[i-1].focus();
+      } else {
+        e.preventDefault(); if (i < all.length - 1) all[i+1].focus();
+      }
+      return;
+    }
+
+    // 💡 상/하/Enter 키
     if (e.key === 'ArrowDown' || e.key === 'Enter') { 
-      e.preventDefault(); if(i < all.length - 1) all[i+1].focus(); 
-    } else if (e.key === 'ArrowUp' || e.key === 'Tab') { 
-      e.preventDefault(); if(i > 0) all[i-1].focus(); 
-    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-      const row = e.target.closest('.nav-row, .grid');
+      e.preventDefault(); if (i < all.length - 1) all[i+1].focus(); 
+    } else if (e.key === 'ArrowUp') { 
+      e.preventDefault(); if (i > 0) all[i-1].focus(); 
+    } 
+    // 💡 좌/우 방향키 (같은 행 안에서 이동)
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      const row = e.target.closest('.group\\/row, .nav-row, .grid');
       if (!row) return;
-      const rowEls = Array.from(row.querySelectorAll('input, select, button'));
+      const rowEls = Array.from(row.querySelectorAll('input:not([type="hidden"]), select, button:not(.no-print)'));
       const ri = rowEls.indexOf(e.target);
       if (e.key === 'ArrowLeft' && ri > 0) { e.preventDefault(); rowEls[ri-1].focus(); }
       else if (e.key === 'ArrowRight' && ri < rowEls.length-1) { e.preventDefault(); rowEls[ri+1].focus(); }
@@ -1852,7 +1865,7 @@ function App() {
             <div className="flex items-center gap-2 whitespace-nowrap shrink-0 overflow-visible">
               <div className="flex items-center text-[#37352f] dark:text-neutral-100 font-bold text-[18px] tracking-tight whitespace-nowrap shrink-0">
                 <IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-neutral-400 shrink-0" />
-                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v2.0.3</span>
+                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v2.0.4</span>
               </div>
               <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px] ml-8 whitespace-nowrap shrink-0">Designed by J.H. Lee</span>
             </div>
@@ -2142,12 +2155,10 @@ function App() {
                               </div>
                             </button>
                           ) : (
-                            <div className="flex items-center gap-2 opacity-40">
-                              <div className="w-7 h-7 rounded-full border border-dashed border-neutral-300 flex items-center justify-center text-[10px] font-bold text-neutral-400 italic">1</div>
-                              <span className="text-[11px] font-bold text-neutral-400">최초 상속 단계</span>
+                            <div className="flex items-center px-2">
+                              <span className="text-[12px] font-bold text-[#787774] dark:text-neutral-400 tracking-tight">최초 상속 단계</span>
                             </div>
-                          )}
-                        </div>
+                          )}                        </div>
                         <div className="w-px h-8 bg-[#e9e9e7] dark:bg-neutral-700 shrink-0"></div>
 
                         {/* 2. 현재 입력 대상자 (성함만 강조) */}
