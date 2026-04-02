@@ -16,17 +16,20 @@ import { SortableContext, verticalListSortingStrategy, sortableKeyboardCoordinat
 
 const getWarningState = (n, rootDeathDate, level = 1) => {
   if (!n) return { isDirect: false, hasDescendant: false };
-  // 💡 핵심 픽스: 상속포기, 상속인없음 등 소급 무시되는 상태는 경고창 완전히 차단
+  
+  // 1. 상속포기, 상속인없음 등 소급 무시되는 상태는 경고창 완전히 차단
   if (n.isExcluded && (n.exclusionOption === 'no_heir' || n.exclusionOption === 'renounce' || !n.exclusionOption)) {
     return { isDirect: false, hasDescendant: false };
   }
 
+  // 2. 배우자 선사망 체크 (배우자는 선사망 시 대습상속이 없으므로 예외 처리)
   const isRootSpouse = level === 1 && ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(n.relation);
   const isPreDeceasedSpouse = isRootSpouse && n.deathDate && rootDeathDate && isBefore(n.deathDate, rootDeathDate);
-  const isPreDeceasedContext = n.deathDate && rootDeathDate && isBefore(n.deathDate, rootDeathDate);
 
   const requiresHeirsIfExcluded = n.isExcluded && ['lost', 'disqualified'].includes(n.exclusionOption);
-  const requiresHeirsIfDeceased = !n.isExcluded && n.isDeceased && !isPreDeceasedSpouse && isPreDeceasedContext;
+  
+  // 💡 수정: 선사망(대습)이든 후사망(재상속)이든 '사망'했다면 무조건 하위 상속인이 필요함! (단, 선사망 배우자는 제외)
+  const requiresHeirsIfDeceased = !n.isExcluded && n.isDeceased && !isPreDeceasedSpouse;
 
   const isDirect = n.id !== 'root' && 
     (requiresHeirsIfExcluded || requiresHeirsIfDeceased) && 
@@ -1849,7 +1852,7 @@ function App() {
             <div className="flex items-center gap-2 whitespace-nowrap shrink-0 overflow-visible">
               <div className="flex items-center text-[#37352f] dark:text-neutral-100 font-bold text-[18px] tracking-tight whitespace-nowrap shrink-0">
                 <IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-neutral-400 shrink-0" />
-                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v2.0.2</span>
+                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v2.0.3</span>
               </div>
               <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px] ml-8 whitespace-nowrap shrink-0">Designed by J.H. Lee</span>
             </div>
@@ -2150,7 +2153,18 @@ function App() {
                         {/* 2. 현재 입력 대상자 (성함만 강조) */}
                         <div className="flex flex-col justify-center min-w-[80px] max-w-[140px]">
                           <span className="text-[10px] font-bold text-[#2383e2] dark:text-blue-400 uppercase tracking-tight mb-0.5">
-                            {activeDeceasedTab === 'root' ? '피상속인' : '피대습상속인'}
+                            {(() => {
+                              if (activeDeceasedTab === 'root') return '피상속인';
+                              
+                              // 부모 노드의 사망일 가져오기
+                              const pDeathDate = activeTabObj?.parentNode?.id === 'root' ? tree.deathDate : activeTabObj?.parentNode?.deathDate;
+                              
+                              // 대습상속 조건: 결격/상실이거나, 부모보다 먼저 사망(선사망)한 경우
+                              const isExcludedDaeseup = currentNode?.isExcluded && ['lost', 'disqualified'].includes(currentNode?.exclusionOption);
+                              const isPreDeceased = currentNode?.deathDate && pDeathDate && isBefore(currentNode.deathDate, pDeathDate);
+                              
+                              return (isExcludedDaeseup || isPreDeceased) ? '피대습상속인' : '피상속인';
+                            })()}
                           </span>
                           <div className="flex items-center overflow-hidden">
                             <span className="text-[16px] font-black text-neutral-800 dark:text-neutral-100 truncate">
