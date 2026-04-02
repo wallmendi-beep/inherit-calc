@@ -252,8 +252,8 @@ const HeirRow = ({ node, level, handleUpdate, removeHeir, addHeir, siblings, inh
           </>
         )}
 
-        {/* 💡 콤팩트 달력 아이콘 버튼 (텍스트 제거로 공간 확보) */}
-        {((isSpouseType && !isPreDeceasedCondition) || node.relation === 'daughter') && (
+        {/* 💡 콤팩트 달력 아이콘 버튼 (대습/재상속 배우자 및 딸에게만 노출) */}
+        {((isSpouseType && inheritedDate !== rootDeathDate && !isPreDeceasedCondition) || node.relation === 'daughter') && (
           <button 
             onClick={() => setIsHistoryModalOpen(true)}
             className={`flex items-center justify-center shrink-0 w-[32px] h-[26px] rounded-md transition-colors border shadow-sm ${
