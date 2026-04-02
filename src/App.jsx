@@ -1163,117 +1163,120 @@ function App() {
 
   // 💡 글로벌 지분 검증 및 원인(이름) 추적 로직
   let showGlobalWarning = false;
-  let showAutoCalcNotice = false; // 👈 자동계산 알림 스위치 추가
+  let showAutoCalcNotice = false; 
   let missingHeirNames = [];
-  let autoCalculatedNames = [];   // 👈 자동계산 대상자 명단 바구니
+  let autoCalculatedNames = [];   
 
-  if (['calc', 'result', 'summary'].includes(activeTab)) {
-    const calculateTotalSum = () => {
-      let tn = 0, td = 1;
-      const collect = (nodes) => {
-        nodes.forEach(s => {
-          if (s && s.n > 0) {
-            const [nn, nd] = math.add(tn, td, s.n, s.d);
-            tn = nn; td = nd;
-          }
-        });
-      };
-      collect(finalShares.direct || []);
-      (finalShares.subGroups || []).forEach(g => collect(g.shares || []));
-      return [tn, td];
+  // 💡 수정: 탭에 상관없이 실시간으로 에러를 추적하도록 if문 제거
+  const calculateTotalSum = () => {
+    let tn = 0, td = 1;
+    const collect = (nodes) => {
+      nodes.forEach(s => {
+        if (s && s.n > 0) {
+          const [nn, nd] = math.add(tn, td, s.n, s.d);
+          tn = nn; td = nd;
+        }
+      });
     };
+    collect(finalShares.direct || []);
+    (finalShares.subGroups || []).forEach(g => collect(g.shares || []));
+    return [tn, td];
+  };
 
-    const [sumN, sumD] = calculateTotalSum();
-    const targetN = tree.shareN || 1;
-    const targetD = tree.shareD || 1;
-    
-    // 지분 합계가 불일치할 경우 빨간 경고 켬
-    if (sumN * targetD !== targetN * sumD) {
-      showGlobalWarning = true;
-    }
+  const [sumN, sumD] = calculateTotalSum();
+  const targetN = tree.shareN || 1;
+  const targetD = tree.shareD || 1;
+  
+  if (sumN * targetD !== targetN * sumD) {
+    showGlobalWarning = true;
+  }
 
-    // 🔍 트리 전체를 뒤져서 누락된 사망자 및 '자동계산'이 개입한 인물 찾기
-    const findMissingAndAutoNodes = (node, parentDeathDate) => {
-      const pDeath = parentDeathDate || tree.deathDate;
+  const getDetailedMismatchReasons = (rootNode) => {
+    const reasons = [];
+    const rootDeathDate = rootNode.deathDate;
+    const scan = (n) => {
+      if (n.id !== 'root') {
+        const isSpouse = ['wife', 'husband', 'spouse'].includes(n.relation);
+        const isPre = n.deathDate && rootDeathDate && isBefore(n.deathDate, rootDeathDate);
+        const isPreSpouse = isSpouse && isPre;
+        if ((!n.isExcluded && n.isDeceased && !isPreSpouse && isPre) && (!n.heirs || n.heirs.length === 0)) {
+          reasons.push(`망 ${n.name}(${getRelStr(n.relation, rootDeathDate)})의 대습상속인이 누락되었습니다. (미혼/무자녀인 경우 스위치를 꺼서 '상속권 없음' 처리해주세요)`);
+        }
+      }
+      if (n.isExcluded && (n.exclusionOption === 'renounce' || !n.exclusionOption)) return;
+      if (n.heirs) n.heirs.forEach(scan);
+    };
+    scan(rootNode);
+    return Array.from(new Set(reasons));
+  };
+
+  // 💡 지분 합계(1/1) 판단과 무관하게 상세 경고를 무조건 계산합니다.
+  const globalMismatchReasons = getDetailedMismatchReasons(tree);
+  
+  // 💡 누락된 사람이 한 명이라도 있다면, 엔진이 1/1로 강제 분배했더라도 무조건 에러창을 켭니다!
+  if (globalMismatchReasons.length > 0) {
+    showGlobalWarning = true;
+  }
+
+  const findMissingAndAutoNodes = (node, parentDeathDate) => {
+    const pDeath = parentDeathDate || tree.deathDate;
+    if (node.id !== 'root') {
+      const isSpouseType = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(node.relation);
+      const isPreDeceasedSpouse = isSpouseType && node.deathDate && pDeath && isBefore(node.deathDate, pDeath);
       
-      if (node.id !== 'root') {
-        const isSpouseType = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(node.relation);
-        const isPreDeceasedSpouse = isSpouseType && node.deathDate && pDeath && isBefore(node.deathDate, pDeath);
+      // 💡 핵심: 현재 인물이 부모(또는 피상속인)보다 먼저 사망했는지(선사망/대습상속) 판별
+      const isPreDeceasedContext = node.deathDate && pDeath && isBefore(node.deathDate, pDeath);
 
-        // 사망했고 상속인이 비어있는데 스위치도 안 껐다면? (엔진이 개입할 수밖에 없는 상황)
-        if (node.isDeceased && (!node.heirs || node.heirs.length === 0) && !node.isExcluded && !isPreDeceasedSpouse) {
-          
-          let hasVirtualHeirs = false;
-          let autoCalcTarget = ''; // 👈 어디로 지분이 넘어갔는지 기록
-
+      if (node.isDeceased && (!node.heirs || node.heirs.length === 0) && !node.isExcluded && !isPreDeceasedSpouse) {
+        let hasVirtualHeirs = false;
+        let autoCalcTarget = ''; 
+        
+        // 💡 수정: '선사망(대습상속)'인 경우, 지분이 존속으로 넘어갈 수 없음! (자동분배 차단)
+        if (!isPreDeceasedContext) {
           const parentNode = findParentNode(tree, node.id);
           if (parentNode && parentNode.heirs) {
              if (isSpouseType) {
-               // 배우자의 상속인이 비어있으면 자녀(직계비속)에게 넘어감
                hasVirtualHeirs = parentNode.heirs.some(th => th.id !== node.id && ['son', 'daughter'].includes(th.relation) && !th.isExcluded);
                if (hasVirtualHeirs) autoCalcTarget = '직계비속(자녀)';
              } else if (['son', 'daughter'].includes(node.relation)) {
-               // 자녀의 상속인이 비어있으면 1순위: 부모(직계존속)
                const survivingSpouse = parentNode.heirs.some(th => 
                  ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(th.relation) && 
-                 (!th.isDeceased || !isBefore(th.deathDate, node.deathDate || pDeath)) &&
-                 !th.isExcluded
+                 (!th.isDeceased || !isBefore(th.deathDate, node.deathDate || pDeath)) && !th.isExcluded
                );
                if (survivingSpouse) {
-                 hasVirtualHeirs = true;
-                 autoCalcTarget = '배우자(직계존속)';
+                 hasVirtualHeirs = true; autoCalcTarget = '배우자(직계존속)';
                } else {
-                 // 2순위: 형제자매
-                 const siblings = parentNode.heirs.some(th => 
-                   th.id !== node.id && 
-                   ['son', 'daughter'].includes(th.relation) &&
-                   !th.isExcluded
-                 );
-                 if (siblings) {
-                   hasVirtualHeirs = true;
-                   autoCalcTarget = '형제자매';
-                 }
+                 const siblings = parentNode.heirs.some(th => th.id !== node.id && ['son', 'daughter'].includes(th.relation) && !th.isExcluded);
+                 if (siblings) { hasVirtualHeirs = true; autoCalcTarget = '형제자매'; }
                }
              }
           }
-
-          if (!hasVirtualHeirs) {
-            missingHeirNames.push(node.name || '이름 미상');
-          } else {
-            // 엔진이 성공적으로 가상 상속인을 빌려와서 계산을 마친 경우
-            autoCalculatedNames.push({ name: node.name || '이름 미상', target: autoCalcTarget });
-          }
         }
-      }
-      
-      if (node.heirs) {
-        node.heirs.forEach(h => findMissingAndAutoNodes(h, node.deathDate || pDeath));
-      }
-    };
-    
-    findMissingAndAutoNodes(tree, tree.deathDate);
-    
-    // 중복 이름 정리
-    missingHeirNames = [...new Set(missingHeirNames)];
-    const uniqueAuto = [];
-    const seenAuto = new Set();
-    autoCalculatedNames.forEach(a => {
-      if (!seenAuto.has(a.name)) {
-        seenAuto.add(a.name);
-        uniqueAuto.push(a);
-      }
-    });
-    autoCalculatedNames = uniqueAuto;
 
-    // 자동계산된 사람이 한 명이라도 있으면 파란색 알림 켬
-    if (autoCalculatedNames.length > 0) {
-      showAutoCalcNotice = true;
+        // 선사망자(hasVirtualHeirs가 무조건 false)는 강제로 에러(missingHeirNames)로 빠집니다!
+        if (!hasVirtualHeirs) missingHeirNames.push(node.name || '이름 미상');
+        else autoCalculatedNames.push({ name: node.name || '이름 미상', target: autoCalcTarget });
+      }
     }
-  }
+    if (node.heirs) node.heirs.forEach(h => findMissingAndAutoNodes(h, node.deathDate || pDeath));
+  };
+  
+  findMissingAndAutoNodes(tree, tree.deathDate);
+  missingHeirNames = [...new Set(missingHeirNames)];
+  const uniqueAuto = [];
+  const seenAuto = new Set();
+  autoCalculatedNames.forEach(a => { if (!seenAuto.has(a.name)) { seenAuto.add(a.name); uniqueAuto.push(a); } });
+  autoCalculatedNames = uniqueAuto;
+
+  if (autoCalculatedNames.length > 0) showAutoCalcNotice = true;
+
+  // 💡 생존 상속인이 단 한 명도 없는지 판별 (0/1 상황)
+  const noSurvivors = (finalShares.direct.length === 0 && finalShares.subGroups.length === 0);
 
   // 💡 Phase 3: 현재 탭에서 AI가 알려줄 항목이 있는지 전역으로 판별
-  const hasActionItems = (activeTab === 'input' && (warnings.length > 0 || smartGuides.length > 0)) || 
-                         (['calc', 'result', 'summary'].includes(activeTab) && (showGlobalWarning || showAutoCalcNotice));
+  const hasActionItems = noSurvivors || 
+                         (activeTab === 'input' && (warnings.length > 0 || smartGuides.length > 0)) || 
+                         showGlobalWarning || showAutoCalcNotice;
 
   return (
     <div className="w-full min-h-screen relative flex flex-col items-start pb-24 transition-colors duration-200 bg-[#f7f7f5] dark:bg-neutral-900 min-w-[1280px] print:min-w-0 print:w-full print:max-w-full">
@@ -1309,8 +1312,21 @@ function App() {
               
               <div className="text-[13px] font-bold text-[#504f4c] dark:text-neutral-300 pointer-events-none">
                 
-                {/* 완벽 상태 */}
-                {!hasActionItems && (
+                {/* 🚨 최우선 알림: 생존 상속인 전멸 상태 */}
+                {noSurvivors && (
+                  <div className="flex flex-col items-center justify-center py-6 text-center gap-2 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/50 rounded-lg mt-2 mb-4">
+                    <span className="text-2xl mb-1">👨‍👩‍👧‍👦</span>
+                    <span className="text-[#b45309] dark:text-amber-500 font-black text-[14px]">생존 상속인 없음</span>
+                    <span className="text-[#787774] dark:text-neutral-400 text-[11.5px] font-medium leading-relaxed px-4">
+                      현재 모든 상속인이 '사망' 또는 '제외' 상태입니다.<br/>
+                      실제 상속을 받을 생존자를 입력하거나,<br/>
+                      차순위 상속인을 추가해 주세요.
+                    </span>
+                  </div>
+                )}
+
+                {/* 완벽 상태 (생존자가 1명이라도 있고 에러가 없을 때만 노출) */}
+                {!hasActionItems && !noSurvivors && (
                   <div className="flex flex-col items-center justify-center py-6 text-center gap-2 bg-[#fcfcfb] dark:bg-neutral-800/50 rounded-lg border border-[#e9e9e7] dark:border-neutral-700/50 mt-2">
                     <span className="text-2xl mb-1">✅</span>
                     <span className="text-[#37352f] dark:text-neutral-300 font-black text-[13px]">완벽합니다!</span>
@@ -1365,20 +1381,27 @@ function App() {
                   </>
                 )}
 
-                {/* 결과표 탭 안내문들 */}
-                {['calc', 'result', 'summary'].includes(activeTab) && showGlobalWarning && (
-                  <>
-                    <div className="mt-3 mb-2 text-[#e53e3e] dark:text-red-400 font-black text-[14px]">전체 지분 합계가 설정값과 일치하지 않습니다.</div>
-                    {missingHeirNames.length > 0 && (
+                {/* 🚨 지분 불일치 상세 안내 (데이터 입력 탭 포함 모든 곳에서 노출!) */}
+                {showGlobalWarning && (
+                  <div className="mt-3 space-y-3">
+                    <div className="text-[#e53e3e] dark:text-red-400 font-black text-[14px]">전체 지분 합계가 일치하지 않습니다.</div>
+                    
+                    {/* 💡 요약표와 동일한 상세 메시지 출력 */}
+                    {globalMismatchReasons.length > 0 ? (
+                      <div className="p-3 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-lg animate-in fade-in zoom-in duration-300">
+                        <ul className="list-disc pl-4 space-y-1 text-[12.5px] text-[#c93f3a] dark:text-red-400 font-bold leading-relaxed">
+                          {globalMismatchReasons.map((r, idx) => <li key={idx}>{r}</li>)}
+                        </ul>
+                      </div>
+                    ) : (
                       <div className="p-3 bg-[#f9f9f8] dark:bg-neutral-900 border border-[#e9e9e7] dark:border-neutral-700 rounded-md">
-                        <span className="text-[#37352f] dark:text-neutral-100 font-black block mb-1.5 text-[13px]">누락 의심: [{missingHeirNames.join(', ')}]</span>
-                        <span className="text-[12.5px] text-[#787774] dark:text-neutral-400">하위 상속인을 추가하거나 '제외' 스위치를 켜주세요.</span>
+                        <span className="text-[12.5px] text-[#787774] dark:text-neutral-400 font-bold">지분 일부가 상속권 없음 처리되어 전체 합계가 미달합니다.</span>
                       </div>
                     )}
-                  </>
+                  </div>
                 )}
-                {/* 자동분배 내역 */}
-                {['calc', 'result', 'summary'].includes(activeTab) && showAutoCalcNotice && (
+                {/* 자동분배 내역 (모든 탭 노출) */}
+                {showAutoCalcNotice && (
                   <div className="mt-3 p-3 bg-[#f9f9f8] dark:bg-neutral-900 border border-[#e9e9e7] dark:border-neutral-700 rounded-md">
                     <span className="text-[#37352f] dark:text-neutral-100 font-black block mb-2 border-b border-[#e9e9e7] dark:border-neutral-700 pb-1.5 text-[13px]">자동분배 내역:</span>
                     <div className="space-y-1.5">
@@ -1865,7 +1888,7 @@ function App() {
             <div className="flex items-center gap-2 whitespace-nowrap shrink-0 overflow-visible">
               <div className="flex items-center text-[#37352f] dark:text-neutral-100 font-bold text-[18px] tracking-tight whitespace-nowrap shrink-0">
                 <IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-neutral-400 shrink-0" />
-                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v2.0.4</span>
+                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v2.0.5</span>
               </div>
               <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px] ml-8 whitespace-nowrap shrink-0">Designed by J.H. Lee</span>
             </div>
@@ -2240,6 +2263,18 @@ function App() {
                               </button>
                             </div>
                           )}
+                          {/* 💡 복구된 기능: 상속인 불러오기 (배우자나 자녀 탭에서만 활성화됨) */}
+                          {(canAutoFillSp || canAutoFillChild) && (
+                            <button 
+                              type="button"
+                              onClick={handleAutoFill}
+                              className="text-[11.5px] text-[#37352f] dark:text-neutral-200 font-bold bg-white dark:bg-neutral-800 hover:bg-[#f7f7f5] dark:hover:bg-neutral-700 px-2.5 py-1.5 rounded transition-colors flex items-center border border-[#e9e9e7] dark:border-neutral-700 gap-1.5 shadow-sm"
+                              title="상위 단계의 동일한 상속인 명단을 그대로 가져옵니다"
+                            >
+                              <IconUserGroup className="w-3.5 h-3.5 text-emerald-600" /> 불러오기
+                            </button>
+                          )}
+
                           <button 
                             type="button"
                             onClick={() => {
@@ -2558,7 +2593,7 @@ function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {results.map((r, i) => {
+                    {results.length > 0 ? results.map((r, i) => {
                       const total = r.sources.reduce((acc, s) => {
                         const [nn, nd] = math.add(acc.n, acc.d, s.n, s.d);
                         return { n: nn, d: nd };
@@ -2579,7 +2614,13 @@ function App() {
                           </td>
                         </tr>
                       );
-                    })}
+                    }) : (
+                      <tr>
+                        <td colSpan="3" className="border border-[#e9e9e7] dark:border-neutral-700 p-8 text-center text-[#b45309] dark:text-amber-500 font-bold bg-amber-50 dark:bg-amber-900/10">
+                          최종 생존 상속인이 없습니다.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </section>
@@ -2590,78 +2631,6 @@ function App() {
             const shareByPersonId = new Map();
             (finalShares.direct || []).forEach(s => shareByPersonId.set(s.personId, s));
             (finalShares.subGroups || []).forEach(g => g.shares.forEach(s => shareByPersonId.set(s.personId, s)));
-
-            const calculateTotalSum = () => {
-              let tn = 0, td = 1;
-              const collectFinalShares = (nodes) => {
-                nodes.forEach(s => {
-                  if (s && s.n > 0) {
-                    const [nn, nd] = math.add(tn, td, s.n, s.d);
-                    tn = nn; td = nd;
-                  }
-                });
-              };
-              collectFinalShares(finalShares.direct || []);
-              (finalShares.subGroups || []).forEach(g => collectFinalShares(g.shares || []));
-              return math.simplify(tn, td);
-            };
-
-            const [totalSumN, totalSumD] = calculateTotalSum();
-            const targetN = tree.shareN || 1;
-            const targetD = tree.shareD || 1;
-            const [simpleTargetN, simpleTargetD] = math.simplify(targetN, targetD);
-            const isMatch = totalSumN === simpleTargetN && totalSumD === simpleTargetD;
-
-            const getMismatchReasons = (rootNode) => {
-              const reasons = [];
-              const rootDeathDate = rootNode.deathDate;
-
-              if (!rootNode.heirs || rootNode.heirs.length === 0) {
-                reasons.push("입력된 상속인이 없어 분배할 지분이 계산되지 않았습니다.");
-              }
-
-              const scanMissingHeirs = (n) => {
-                if (n.id !== 'root') {
-                  const isRootSpouse = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(n.relation);
-                  const isPreDeceasedSpouse = isRootSpouse && n.deathDate && rootDeathDate && isBefore(n.deathDate, rootDeathDate);
-                  const isPreDeceasedContext = n.deathDate && rootDeathDate && isBefore(n.deathDate, rootDeathDate);
-
-                  const requiresHeirsIfExcluded = n.isExcluded && ['lost', 'disqualified'].includes(n.exclusionOption);
-                  const requiresHeirsIfDeceased = !n.isExcluded && n.isDeceased && !isPreDeceasedSpouse && isPreDeceasedContext;
-
-                  if ((requiresHeirsIfDeceased || requiresHeirsIfExcluded) && (!n.heirs || n.heirs.length === 0)) {
-                    if (requiresHeirsIfDeceased) {
-                      reasons.push(`망 ${n.name}(${getRelStr(n.relation, rootDeathDate)})의 대습상속인이 누락되었습니다. (미혼/무자녀인 경우 '상속권 없음' 토글 켜기)`);
-                    } else {
-                      reasons.push(`${n.name}의 상속권 상실/결격에 따른 대습상속인이 누락되었습니다.`);
-                    }
-                  }
-                }
-
-                // 💡 수정 코드: 포기/없음 상태면 하위 순회 및 누락 에러 표시 안 함
-                if (n.isExcluded && (n.exclusionOption === 'no_heir' || n.exclusionOption === 'renounce' || !n.exclusionOption)) return;
-
-                if (n.heirs) n.heirs.forEach(scanMissingHeirs);
-              };
-              
-              if (rootNode.heirs && rootNode.heirs.length > 0) {
-                scanMissingHeirs(rootNode);
-              }
-
-              if (reasons.length === 0) {
-                 if (totalSumN === 0) {
-                   reasons.push("💡 현재 모든 상속인이 '상속포기' 또는 '상속권 없음' 상태입니다.");
-                   reasons.push("민법 제1000조에 따라 차순위 상속인(직계존속 또는 형제자매)을 상속인 입력 창에 새로 추가하여 지분을 분배해 주세요.");
-                 } else {
-                   reasons.push("지분 일부가 '상속권 없음(소멸)' 처리되어 전체 합계가 피상속인 지분에 미달합니다.");
-                   reasons.push("지분을 공동상속인끼리 나누어 갖게 하려면 제외 사유를 '상속포기'로 변경해 주세요.");
-                 }
-              }
-              
-              return Array.from(new Set(reasons));
-            };
-
-            const mismatchReasons = !isMatch ? getMismatchReasons(tree) : [];
 
             const printedPersonIds = new Set();
 
@@ -2713,6 +2682,82 @@ function App() {
                 }
               }
             });
+
+            // 💡 핵심 픽스: 허공에 뜬 지분 무시! 화면에 표시된 생존자(topDirect, topGroups) 지분만 추출해서 합산!
+            const calculateTotalSum = () => {
+              let tn = 0, td = 1;
+              const addShare = (s) => {
+                if (s && s.n > 0) {
+                  const [nn, nd] = math.add(tn, td, s.n, s.d);
+                  tn = nn; td = nd;
+                }
+              };
+              topDirect.forEach(addShare);
+              const traverseGroup = (g) => {
+                g.directShares.forEach(addShare);
+                g.subGroups.forEach(traverseGroup);
+              };
+              topGroups.forEach(traverseGroup);
+              return math.simplify(tn, td);
+            };
+
+            const [totalSumN, totalSumD] = calculateTotalSum();
+            const targetN = tree.shareN || 1;
+            const targetD = tree.shareD || 1;
+            const [simpleTargetN, simpleTargetD] = math.simplify(targetN, targetD);
+            
+            // mismatchReasons 계산을 위해 isMatch를 먼저 정의
+            const getMismatchReasons = (rootNode, currentTotalSumN) => {
+              const reasons = [];
+              const rootDeathDate = rootNode.deathDate;
+
+              if (!rootNode.heirs || rootNode.heirs.length === 0) {
+                reasons.push("입력된 상속인이 없어 분배할 지분이 계산되지 않았습니다.");
+              }
+
+              const scanMissingHeirs = (n) => {
+                if (n.id !== 'root') {
+                  const isRootSpouse = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(n.relation);
+                  const isPreDeceasedSpouse = isRootSpouse && n.deathDate && rootDeathDate && isBefore(n.deathDate, rootDeathDate);
+                  const isPreDeceasedContext = n.deathDate && rootDeathDate && isBefore(n.deathDate, rootDeathDate);
+
+                  const requiresHeirsIfExcluded = n.isExcluded && ['lost', 'disqualified'].includes(n.exclusionOption);
+                  const requiresHeirsIfDeceased = !n.isExcluded && n.isDeceased && !isPreDeceasedSpouse && isPreDeceasedContext;
+
+                  if ((requiresHeirsIfDeceased || requiresHeirsIfExcluded) && (!n.heirs || n.heirs.length === 0)) {
+                    if (requiresHeirsIfDeceased) {
+                      reasons.push(`망 ${n.name}(${getRelStr(n.relation, rootDeathDate)})의 대습상속인이 누락되었습니다. (미혼/무자녀인 경우 '상속권 없음' 토글 켜기)`);
+                    } else {
+                      reasons.push(`${n.name}의 상속권상실/결격에 따른 대습상속인이 누락되었습니다.`);
+                    }
+                  }
+                }
+
+                if (n.isExcluded && (n.exclusionOption === 'no_heir' || n.exclusionOption === 'renounce' || !n.exclusionOption)) return;
+
+                if (n.heirs) n.heirs.forEach(scanMissingHeirs);
+              };
+              
+              if (rootNode.heirs && rootNode.heirs.length > 0) {
+                scanMissingHeirs(rootNode);
+              }
+
+              if (reasons.length === 0) {
+                 if (currentTotalSumN === 0) {
+                   reasons.push("💡 현재 모든 상속인이 '상속포기' 또는 '상속권 없음' 상태입니다.");
+                   reasons.push("민법 제1000조에 따라 차순위 상속인(직계존속 또는 형제자매)을 상속인 입력 창에 새로 추가하여 지분을 분배해 주세요.");
+                 } else {
+                   reasons.push("지분 일부가 '상속권 없음(소멸)' 처리되어 전체 합계가 피상속인 지분에 미달합니다.");
+                   reasons.push("지분을 공동상속인끼리 나누어 갖게 하려면 제외 사유를 '상속포기'로 변경해 주세요.");
+                 }
+              }
+              
+              return Array.from(new Set(reasons));
+            };
+
+            const mismatchReasonsTmp = (totalSumN !== simpleTargetN || totalSumD !== simpleTargetD) ? getMismatchReasons(tree, totalSumN) : [];
+            const isMatch = totalSumN === simpleTargetN && totalSumD === simpleTargetD && mismatchReasonsTmp.length === 0;
+            const mismatchReasons = !isMatch ? getMismatchReasons(tree, totalSumN) : [];
 
             const renderShareRow = (f, depth) => {
               const pl = `${12 + (depth > 0 ? 16 : 0)}px`; 
@@ -2786,11 +2831,23 @@ function App() {
                         {totalSumN} / {totalSumD}
                       </td>
                       <td colSpan={isAmountActive ? 2 : 1} className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left text-[12.5px]">
-                        {isMatch ? (
-                          <span className="text-[#504f4c]">✔️ 피상속인 지분과 일치 ({simpleTargetN}/{simpleTargetD})</span>
-                        ) : (
-                          <span className="text-red-500 font-bold">⚠️ 지분 합계 불일치 (아래 안내 참조)</span>
-                        )}
+                        {(() => {
+                          const sumVal = totalSumD ? totalSumN / totalSumD : 0;
+                          const targetVal = simpleTargetD ? simpleTargetN / simpleTargetD : 1;
+                          
+                          if (totalSumN === 0) {
+                            return <span className="text-[#b45309] dark:text-amber-500 font-bold">⚠️ 상속인이 입력되지 않았거나, 모두 사망/제외되어 생존 상속인이 없습니다.</span>;
+                          } else if (sumVal === targetVal) {
+                            if (mismatchReasons && mismatchReasons.length > 0) {
+                              return <span className="text-red-500 font-bold">⚠️ 합계는 일치하나, 하위 대습상속인 누락이 의심됩니다. (아래 안내 참조)</span>;
+                            }
+                            return <span className="text-[#504f4c] dark:text-neutral-300">✔️ 피상속인 지분과 일치 ({simpleTargetN}/{simpleTargetD})</span>;
+                          } else if (sumVal < targetVal) {
+                            return <span className="text-red-500 font-bold">⚠️ 지분 합계 미달 (누락된 지분이 있습니다. 아래 안내 참조)</span>;
+                          } else {
+                            return <span className="text-red-500 font-bold">⚠️ 지분 합계 초과 (오류)</span>;
+                          }
+                        })()}
                       </td>
                     </tr>
                   </tfoot>
