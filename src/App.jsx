@@ -1140,8 +1140,8 @@ function App() {
   return (
     <div className="w-full min-h-screen relative flex flex-col items-start pb-24 transition-colors duration-200 bg-[#f7f7f5] dark:bg-neutral-900 min-w-[1280px] print:min-w-0 print:w-full print:max-w-full">
       
-      {/* 📌 미니멀 무채색 플로팅 AI 가이드 */}
-      {((activeTab === 'input' && warnings.length > 0) || (['calc', 'result', 'summary'].includes(activeTab) && (showGlobalWarning || showAutoCalcNotice))) && (
+      {/* 📌 미니멀 무채색 플로팅 AI 가이드 (테스트를 위해 조건 해제) */}
+      {true && (
         <div
           ref={stickerRef}
           className={`fixed top-28 right-8 z-[9999] no-print ${isStickerDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
@@ -1159,49 +1159,47 @@ function App() {
             <div className="absolute top-2 left-1/2 -translate-x-1/2 w-8 h-1 bg-neutral-200 dark:bg-neutral-600 rounded-full pointer-events-none"></div>
 
             <div className="flex flex-col gap-3 mt-1">
-              <div className="flex items-center gap-2 text-[#37352f] dark:text-neutral-200">
-                {/* 💡 무채색 정보(Info) 아이콘 */}
-                <svg className="w-4 h-4 opacity-60 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <div className="flex items-center gap-2 text-neutral-500 dark:text-neutral-400">
+                <svg className="w-5 h-5 opacity-80 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span className="font-bold text-[14px] tracking-tight">
-                  {activeTab === 'input' ? '입력 가이드' : (showGlobalWarning ? '지분 배분 오류 안내' : '지분 자동분배 안내')}
+                {/* 💡 제목: 너무 진하지 않은 그레이 톤으로 변경 */}
+                <span className="font-bold text-[15px] tracking-tight">
+                  {activeTab === 'input' ? '입력 데이터 검토' : (showGlobalWarning ? '지분 배분 오류 안내' : '지분 자동분배 내역')}
                 </span>
               </div>
               
-              <div className="text-[12.5px] font-medium text-[#787774] dark:text-neutral-400 leading-relaxed break-keep pointer-events-none">
+              {/* 💡 본문: 가독성을 위해 노멀(medium) 폰트로 변경 */}
+              <div className="text-[13.5px] font-medium text-[#504f4c] dark:text-neutral-300 leading-relaxed break-keep pointer-events-none">
                 
-                {/* 📍 [1] 데이터 입력 탭일 때: 누락 가이드 노출 */}
                 {activeTab === 'input' && warnings.map((w, i) => (
-                  <div key={i} className="mb-2 flex items-start gap-1.5 last:mb-0">
-                    <span className="text-neutral-300 dark:text-neutral-600 mt-0.5">•</span>
+                  <div key={i} className="mb-2.5 flex items-start gap-2 last:mb-0">
+                    <span className="text-[#a3a3a3] dark:text-neutral-500 mt-0.5">•</span>
                     <span className="flex-1">{w}</span>
                   </div>
                 ))}
 
-                {/* 📍 [2] 결과표 탭일 때: 전체 불일치 경고 */}
                 {['calc', 'result', 'summary'].includes(activeTab) && showGlobalWarning && (
                   <>
-                    <div className="mb-2 text-[#e53e3e] dark:text-red-400 font-bold">전체 지분 합계가 설정값과 일치하지 않습니다.</div>
+                    <div className="mb-2 text-[#e53e3e] dark:text-red-400 font-bold text-[14px]">전체 지분 합계가 설정값과 일치하지 않습니다.</div>
                     {missingHeirNames.length > 0 && (
-                      <div className="mt-2 p-2.5 bg-[#f9f9f8] dark:bg-neutral-900 border border-[#e9e9e7] dark:border-neutral-700 rounded-md">
-                        <span className="text-[#37352f] dark:text-neutral-300 font-bold block mb-1">누락 의심: [{missingHeirNames.join(', ')}]</span>
-                        <span className="text-[11.5px]">하위 상속인을 추가하거나 '제외' 스위치를 켜주세요.</span>
+                      <div className="mt-3 p-3 bg-[#f9f9f8] dark:bg-neutral-900 border border-[#e9e9e7] dark:border-neutral-700 rounded-md">
+                        <span className="text-[#37352f] dark:text-neutral-100 font-bold block mb-1.5 text-[13px]">누락 의심: [{missingHeirNames.join(', ')}]</span>
+                        <span className="text-[12.5px] text-[#787774] dark:text-neutral-400">하위 상속인을 추가하거나 '제외' 스위치를 켜주세요.</span>
                       </div>
                     )}
                   </>
                 )}
 
-                {/* 📍 [3] 결과표 탭일 때: 스마트 자동계산 내역 */}
                 {['calc', 'result', 'summary'].includes(activeTab) && showAutoCalcNotice && (
-                  <div className="mt-2 p-2.5 bg-[#f9f9f8] dark:bg-neutral-900 border border-[#e9e9e7] dark:border-neutral-700 rounded-md">
-                    <span className="text-[#37352f] dark:text-neutral-300 font-bold block mb-1.5 border-b border-neutral-200 dark:border-neutral-700 pb-1">자동분배 내역:</span>
-                    <div className="space-y-1">
+                  <div className="mt-3 p-3 bg-[#f9f9f8] dark:bg-neutral-900 border border-[#e9e9e7] dark:border-neutral-700 rounded-md">
+                    <span className="text-[#37352f] dark:text-neutral-100 font-bold block mb-2 border-b border-[#e9e9e7] dark:border-neutral-700 pb-1.5 text-[13px]">자동분배 내역:</span>
+                    <div className="space-y-1.5">
                       {autoCalculatedNames.map((a, idx) => (
-                         <div key={idx} className="text-[11.5px] flex items-center justify-between">
-                           <span className="font-bold">{a.name}</span>
-                           <span className="opacity-60 flex items-center gap-1">
-                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                         <div key={idx} className="text-[12.5px] flex items-center justify-between">
+                           <span className="font-bold text-[#504f4c] dark:text-neutral-300">{a.name}</span>
+                           <span className="text-[#787774] dark:text-neutral-500 flex items-center gap-1.5">
+                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                              {a.target}
                            </span>
                          </div>
@@ -1209,7 +1207,6 @@ function App() {
                     </div>
                   </div>
                 )}
-
               </div>
             </div>
           </div>
@@ -1681,7 +1678,7 @@ function App() {
             <div className="flex items-center gap-2 whitespace-nowrap shrink-0 overflow-visible">
               <div className="flex items-center text-[#37352f] dark:text-neutral-100 font-bold text-[18px] tracking-tight whitespace-nowrap shrink-0">
                 <IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-neutral-400 shrink-0" />
-                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v1.9.1</span>
+                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v1.9.7</span>
               </div>
               <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px] ml-8 whitespace-nowrap shrink-0">Designed by J.H. Lee</span>
             </div>
