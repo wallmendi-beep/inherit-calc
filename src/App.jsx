@@ -241,7 +241,60 @@ function App() {
       }
       return copy;
     };
-    return sanitize(rawTree) || getInitialTree();
+
+    const sanitized = sanitize(rawTree) || getInitialTree();
+    
+    // 💡 2단계: 클론 동기화 — 동일 personId를 공유하는 노드들의 heirs 및 누락 필드를 통일
+    const syncCloneHeirs = (root) => {
+      // (a) 트리 전체를 순회하여 personId별 노드 참조 목록을 수집
+      const personIdMap = new Map();
+      const collectNodes = (node) => {
+        if (!node || !node.personId) return;
+        if (!personIdMap.has(node.personId)) personIdMap.set(node.personId, []);
+        personIdMap.get(node.personId).push(node);
+        if (node.heirs) node.heirs.forEach(collectNodes);
+      };
+      collectNodes(root);
+
+      // (b) 각 personId 그룹을 순회하며 동기화
+      for (const [pId, nodes] of personIdMap) {
+        if (nodes.length < 2) continue; // 클론이 없으면 스킵
+        
+        // 정본 선정: heirs 배열이 가장 긴 노드
+        let master = nodes[0];
+        for (const n of nodes) {
+          if ((n.heirs?.length || 0) > (master.heirs?.length || 0)) master = n;
+        }
+        
+        for (const clone of nodes) {
+          if (clone === master) continue;
+          
+          // (c-1) heirs 동기화: 정본보다 적으면 deep-copy
+          const masterHeirs = master.heirs || [];
+          if (masterHeirs.length > 0 && (clone.heirs?.length || 0) < masterHeirs.length) {
+            clone.heirs = masterHeirs.map(h => {
+              const deepClone = (n) => ({
+                ...n,
+                id: `n_${Math.random().toString(36).substr(2, 9)}`, // 화면 충돌 방지용 새 ID
+                personId: n.personId, // 진짜 인물 DNA는 유지
+                heirs: (n.heirs || []).map(deepClone)
+              });
+              return deepClone(h);
+            });
+          }
+          
+          // (c-2) isExcluded 동기화: 필드가 아예 없는(undefined) 클론만 정본 값으로 보정
+          //       (사용자가 명시적으로 설정한 true/false는 절대 건드리지 않음 — 상속포기 독립성 보장)
+          if (clone.isExcluded === undefined && master.isExcluded !== undefined) {
+            clone.isExcluded = master.isExcluded;
+            clone.exclusionOption = master.exclusionOption || '';
+          }
+        }
+      }
+      return root;
+    };
+
+    return syncCloneHeirs(sanitized);
   }, [rawTree]);
 
   // 🧭 상속인 탭 목록 (💡 기준을 id에서 personId로 전면 통합!)
@@ -1925,27 +1978,44 @@ function App() {
             const canAutoFillChild = !isRootNode && isChild;
 
             const handleAutoFill = () => {
-              const clone = (n) => ({ 
+              // 💡 1단계: 복제할 원본 데이터(baseAdd)를 먼저 만듭니다
+              const cloneBase = (n) => ({ 
                 ...n, 
-                id: `n_${Math.random().toString(36).substr(2,9)}`, // UI용 새 좌석 번호
-                personId: n.personId, // 💡 핵심: 진짜 인물 ID는 복제본도 똑같이 공유!
-                heirs: n.heirs?.map(clone) || [] 
+                personId: n.personId, 
+                heirs: n.heirs?.map(cloneBase) || [] 
               });
               const existingNames = new Set(nodeHeirs.map(h => h.name).filter(n => n.trim() !== ''));
               
+              let baseAdd = [];
+
               if (canAutoFillSp) {
                 const children = siblings ? siblings.filter(s => s.relation === 'son' || s.relation === 'daughter') : [];
                 let newItems = children.filter(c => c.name.trim() === '' || !existingNames.has(c.name));
                 if (children.length > 0 && newItems.length === 0) { alert('더 이상 불러올 동일한 상속인이 없습니다. (모두 등록됨)'); return; }
-                const toAdd = newItems.length > 0 ? newItems.map(clone) : [{ id: `auto_${Date.now()}`, name: '', relation: 'son', isDeceased: false, isSameRegister: true, heirs: [] }];
-                handleUpdate(currentNode.id, 'heirs', [...nodeHeirs, ...toAdd]);
+                baseAdd = newItems.length > 0 ? newItems.map(cloneBase) : [{ personId: `p_${Date.now()}`, name: '', relation: 'son', isDeceased: false, isSameRegister: true, heirs: [] }];
               } else if (canAutoFillChild) {
-                const siblingList = siblings ? siblings.filter(s => s.id !== currentNode.id && (s.relation === 'son' || s.relation === 'daughter')).map(s => ({ ...clone(s), relation: 'sibling', heirs: [] })) : [];
+                const siblingList = siblings ? siblings.filter(s => s.id !== currentNode.id && (s.relation === 'son' || s.relation === 'daughter')) : [];
                 let newItems = siblingList.filter(s => s.name.trim() === '' || !existingNames.has(s.name));
                 if (siblingList.length > 0 && newItems.length === 0) { alert('더 이상 불러올 동일한 상속인이 없습니다. (모두 등록됨)'); return; }
-                const toAdd = newItems.length > 0 ? newItems.map(clone) : [{ id: `auto_${Date.now()}`, name: '', relation: 'sibling', isDeceased: false, isSameRegister: true, heirs: [] }];
-                handleUpdate(currentNode.id, 'heirs', [...nodeHeirs, ...toAdd]);
+                baseAdd = newItems.length > 0 ? newItems.map(item => ({ ...cloneBase(item), relation: 'sibling' })) : [{ personId: `p_${Date.now()}`, name: '', relation: 'sibling', isDeceased: false, isSameRegister: true, heirs: [] }];
               }
+
+              // 💡 2단계: 가계도를 샅샅이 뒤져서 '윤종욱'의 모든 분신(Clone)들에게 빠짐없이 자녀들을 꽂아넣습니다!
+              setTree(prev => {
+                const syncHeirs = (n) => {
+                  if (n.id === currentNode.id || (currentNode.personId && n.personId === currentNode.personId)) {
+                    // 각 분신마다 화면 충돌을 막기 위해 고유 id를 새로 발급
+                    const finalAdd = baseAdd.map(item => {
+                       const assignNewIds = (node) => ({ ...node, id: `n_${Math.random().toString(36).substr(2,9)}`, heirs: node.heirs?.map(assignNewIds) || [] });
+                       return assignNewIds(item);
+                    });
+                    // 스위치도 자동으로 켜줌
+                    return { ...n, isExcluded: false, exclusionOption: '', heirs: [...(n.heirs || []), ...finalAdd] };
+                  }
+                  return { ...n, heirs: n.heirs?.map(syncHeirs) || [] };
+                };
+                return syncHeirs(prev);
+              });
             };
             
             return (
@@ -2168,7 +2238,6 @@ function App() {
                               <span 
                                 className={`text-[11px] font-bold transition-colors select-none cursor-pointer ${!currentNode.isExcluded ? 'text-[#37352f] dark:text-neutral-200' : 'text-[#787774] dark:text-neutral-500'}`}
                                 onClick={() => {
-                                  // 💡 빈 탭에서 억지로 켜려고 하면 경고창을 띄웁니다.
                                   if (currentNode.isExcluded && (!currentNode.heirs || currentNode.heirs.length === 0)) {
                                     alert("상속인을 먼저 입력해주세요. 입력이 완료되면 자동으로 스위치가 켜집니다.");
                                     return;
@@ -2177,7 +2246,15 @@ function App() {
                                   handleUpdate(currentNode.id, { isExcluded: nextVal, exclusionOption: nextVal ? '' : 'renounce' });
                                 }}
                               >
-                                {!currentNode.isExcluded ? '대습상속' : '상속권 없음'}
+                                {(() => {
+                                  if (currentNode.isExcluded) return '상속권 없음';
+                                  // 💡 사망일 비교를 통해 대습/재상속 용어 자동 선택
+                                  const pDeathDate = activeTabObj?.parentNode?.id === 'root' ? tree.deathDate : activeTabObj?.parentNode?.deathDate;
+                                  const isPre = currentNode?.deathDate && pDeathDate && isBefore(currentNode.deathDate, pDeathDate);
+                                  const isExcludedDaeseup = currentNode?.isExcluded && ['lost', 'disqualified'].includes(currentNode?.exclusionOption);
+                                  
+                                  return (isPre || isExcludedDaeseup) ? '대습상속' : '재상속';
+                                })()}
                               </span>
                               <button
                                 type="button"
