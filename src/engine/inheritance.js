@@ -81,7 +81,8 @@ export const calculateInheritance = (tree, propertyValue) => {
 
         if (children.length === 0) return true;
 
-        const validHeirs = children.filter(child => !isRenounced(child, h.deathDate || contextDate));
+        // 💡 대습상속 자격(재혼/결격 등)은 '피대습자(윤숙자)'가 아닌 상속이 개시된 '본래 피상속인(김명남)'의 사망일(contextDate)을 기준으로 엄격히 판별해야 합니다!
+        const validHeirs = children.filter(child => !isRenounced(child, contextDate));
         if (validHeirs.length === 0) return true;
 
         return false;

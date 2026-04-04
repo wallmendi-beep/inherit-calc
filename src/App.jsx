@@ -2657,15 +2657,38 @@ function App() {
                           <div className="w-[180px] shrink-0 text-center ml-[10px] relative">
                             <span className="relative left-[-20px]">특수조건 (가감산)</span>
                           </div>
-                          <div className="w-[180px] shrink-0 text-center ml-[10px] relative group/del-all">
-                            <span className="whitespace-nowrap relative left-[-35px]">
+                          <div className="w-[180px] shrink-0 text-center ml-[10px] relative">
+                            <span className="whitespace-nowrap relative left-[-10px] inline-flex items-center">
                               재/대습상속
-                              {/* 💡 전체 삭제 버튼 (30px 간격 유지) */}
+                              {/* 🗑️ 상속인 전체 삭제 버튼 (간격 조정: 글씨 왼쪽 5px, 아이콘 오른쪽 5px 이동) */}
                               <button
                                 type="button"
-                                onClick={() => handleUpdate(currentNode.id, 'heirs', [])}
-                                className="absolute left-[calc(100%+30px)] top-1/2 -translate-y-1/2 opacity-0 group-hover/del-all:opacity-100 transition-all text-[#a3a3a3] hover:text-red-500 p-1 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20"
-                                title="전체삭제"
+                                title="현재 탭 상속인 전체 삭제"
+                                onClick={() => {
+                                  if (!nodeHeirs || nodeHeirs.length === 0) {
+                                    alert('삭제할 상속인이 없습니다.');
+                                    return;
+                                  }
+                                  if (window.confirm('🚨 현재 탭에 입력된 [모든 상속인]을 정말 삭제하시겠습니까?\n(하위에 입력된 데이터까지 모두 함께 삭제됩니다!)')) {
+                                    setTree(prev => {
+                                      const cloneTree = JSON.parse(JSON.stringify(prev));
+
+                                      // 💡 트리를 끝까지 순회하며 일치하는 모든 분신의 자식들을 무자비하게 비웁니다!
+                                      const clearAll = (n) => {
+                                        if (n.id === activeDeceasedTab || n.personId === activeDeceasedTab) {
+                                          n.heirs = []; 
+                                        }
+                                        // return true 로 멈추지 않고 하위 노드까지 무조건 계속 스캔합니다.
+                                        if (n.heirs && n.heirs.length > 0) {
+                                          n.heirs.forEach(child => clearAll(child));
+                                        }
+                                      };
+
+                                      clearAll(cloneTree);
+                                      return cloneTree;
+                                    });
+                                  }                                }}
+                                className="ml-[30px] p-1 text-neutral-400 hover:text-red-600 dark:hover:text-red-400 transition-all hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md"
                               >
                                 <IconTrash2 className="w-3.5 h-3.5" />
                               </button>
