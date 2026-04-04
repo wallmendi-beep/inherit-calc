@@ -47,7 +47,7 @@ const getWarningState = (n, rootDeathDate, level = 1) => {
   return { isDirect, hasDescendant };
 };
 
-const MiniTreeView = ({ node, level = 0, onSelectNode, visitedHeirs = new Set(), deathDate, toggleSignal, searchQuery, matchIds, currentMatchId }) => {
+const MiniTreeView = ({ node, level = 0, onSelectNode, visitedHeirs = new Set(), deathDate, toggleSignal, searchQuery, matchIds, currentMatchId, guideStatusMap }) => {
   const [isExpanded, setIsExpanded] = React.useState(level === 0);
 
   const isMatch = matchIds && matchIds.includes(node.id);
@@ -58,7 +58,7 @@ const MiniTreeView = ({ node, level = 0, onSelectNode, visitedHeirs = new Set(),
     if (!searchQuery || !matchIds || matchIds.length === 0) return false;
     const check = (n) => {
       if (matchIds.includes(n.id)) return true;
-      if (n.heirs) return n.heirs.some(check);
+      if (n.heirs) n.heirs.some(check);
       return false;
     };
     return node.heirs ? node.heirs.some(check) : false;
@@ -78,7 +78,12 @@ const MiniTreeView = ({ node, level = 0, onSelectNode, visitedHeirs = new Set(),
 
   // ⚠️ 누락 경고 상태 계산 (법적 예외 로직 적용)
   const { isDirect: isDirectMissing, hasDescendant: hasMissingDescendant } = getWarningState(node, deathDate);
-  const showWarning = isDirectMissing || (!isExpanded && hasMissingDescendant);
+  
+  // 💡 새로운 가이드 상태 맵 연동 로직
+  const status = guideStatusMap?.[node.id] || guideStatusMap?.[node.name] || {};
+  const showMandatory = status.mandatory || isDirectMissing || (!isExpanded && hasMissingDescendant);
+  const showRecommended = status.recommended; // 💡 권고 사항(전등) 유무
+
   const warningTitle = isDirectMissing 
     ? "하위 상속인 입력 누락 의심 (지분 계산에서 제외될 수 있습니다)"
     : "하위 상속인 중 입력 누락 의심 (펼쳐서 확인하세요)";
@@ -129,11 +134,11 @@ const MiniTreeView = ({ node, level = 0, onSelectNode, visitedHeirs = new Set(),
           {node.name || (level === 0 ? '피상속인' : '(이름 없음)')}
         </span>
         
-        {/* 💡 수정: 경고 아이콘을 관계 표시 앞으로 이동 + 깜빡임(pulse) 제거 + 고정 정렬 */}
+        {/* 💡 수정: 에러면 🚨, 권고면 💡 를 띄워줍니다! */}
         <div className="flex items-center gap-1 shrink-0">
-          {showWarning && (
-            <span className="text-[12px] cursor-help opacity-100" title={warningTitle}>⚠️</span>
-          )}
+          {showMandatory && <span className="text-[12px] cursor-help opacity-100" title={warningTitle}>🚨</span>}
+          {!showMandatory && showRecommended && <span className="text-[12px] cursor-help opacity-100" title="권고 사항 (팁)">💡</span>}
+          
           {level > 0 && (() => {
             const isSpouse = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(node.relation);
             const isPre = node.isDeceased && node.deathDate && deathDate && isBefore(node.deathDate, deathDate) && !isSpouse;
@@ -157,6 +162,7 @@ const MiniTreeView = ({ node, level = 0, onSelectNode, visitedHeirs = new Set(),
               searchQuery={searchQuery}
               matchIds={matchIds}
               currentMatchId={currentMatchId}
+              guideStatusMap={guideStatusMap}
             />
           ))}
         </div>
@@ -1094,6 +1100,37 @@ function App() {
     autoCalculatedNames, smartGuides, noSurvivors, hasActionItems 
   } = guideInfo;
 
+  // ------------------------------------------------------------------
+  // 💡 사용자가 [X]를 눌러 숨긴 권고 가이드를 기억하는 메모리
+  const [hiddenGuideKeys, setHiddenGuideKeys] = useState(new Set());
+  const dismissGuide = (key) => setHiddenGuideKeys(prev => new Set(prev).add(key));
+
+  // 💡 사이드바에 띄울 가이드 상태 맵 (엔진 계산 결과 기반)
+  const guideStatusMap = useMemo(() => {
+    const map = {};
+    (smartGuides || []).forEach(g => {
+      // 숨긴 권고 가이드는 맵에서 제외 (아이콘도 지워짐)
+      if (g.type === 'recommended' && hiddenGuideKeys.has(g.uniqueKey)) return;
+      
+      // 1. ID 기준 매핑
+      if (g.id) {
+        if (!map[g.id]) map[g.id] = { mandatory: false, recommended: false };
+        if (g.type === 'mandatory') map[g.id].mandatory = true;
+        if (g.type === 'recommended') map[g.id].recommended = true;
+      }
+      // 2. 이름 기준 매핑 (분신 탭 처리를 위해 텍스트 속 [이름] 추출)
+      const nameMatch = g.text.match(/\[(.*?)\]/);
+      if (nameMatch && nameMatch[1]) {
+        const name = nameMatch[1];
+        if (!map[name]) map[name] = { mandatory: false, recommended: false };
+        if (g.type === 'mandatory') map[name].mandatory = true;
+        if (g.type === 'recommended') map[name].recommended = true;
+      }
+    });
+    return map;
+  }, [smartGuides, hiddenGuideKeys]);
+  // ------------------------------------------------------------------
+
   const [activeDeceasedTab, setActiveDeceasedTab] = useState('root');
   const tabRefs = React.useRef({});
 
@@ -1483,31 +1520,45 @@ function App() {
                       className="w-full mt-2 text-left flex items-start gap-2 bg-blue-50/60 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200/60 dark:border-blue-800/30 hover:bg-blue-100/80 transition-all group pointer-events-auto shadow-sm"
                     >
                       <span className="mt-0.5 text-blue-600 group-hover:scale-125 transition-transform">👉</span>
-                      <span className="flex-1 leading-snug text-[#37352f] dark:text-neutral-200">{g.text}</span>
+                      <span className="flex-1 leading-snug text-[#37352f] dark:text-neutral-200 font-bold">{g.text}</span>
                     </button>
                   ))}
 
                   {/* ✂️ 점선 구분선 (필수와 권고가 둘 다 있을 때만 노출) */}
-                  {activeTab === 'input' && smartGuides.filter(g => g.type === 'mandatory').length > 0 && smartGuides.filter(g => g.type === 'recommended').length > 0 && (
+                  {activeTab === 'input' && smartGuides.filter(g => g.type === 'mandatory').length > 0 && smartGuides.filter(g => g.type === 'recommended' && !hiddenGuideKeys.has(g.uniqueKey)).length > 0 && (
                     <div className="w-full border-t border-dashed border-[#d4d4d4] dark:border-neutral-600 my-4"></div>
                   )}
 
                   {/* 💡 2. 권고 사항 헤더 및 목록 (Recommended) */}
-                  {activeTab === 'input' && smartGuides.filter(g => g.type === 'recommended').length > 0 && (
+                  {activeTab === 'input' && smartGuides.filter(g => g.type === 'recommended' && !hiddenGuideKeys.has(g.uniqueKey)).length > 0 && (
                     <>
                       <div className={`mt-2 mb-1.5 ${smartGuides.filter(m => m.type === 'mandatory').length === 0 ? 'mt-3' : ''}`}>
                         <span className="text-[11px] font-bold text-[#a3a3a3] dark:text-neutral-500 tracking-tight px-1">[다음은 권고사항입니다]</span>
                       </div>
-                      {smartGuides.filter(g => g.type === 'recommended').map((g, i) => (
-                        <button 
-                          key={`r-${i}`} 
-                          onMouseDown={(e) => e.stopPropagation()}
-                          onClick={() => handleNavigate(g.id)}
-                          className="w-full text-left flex items-start gap-2 bg-[#fbfbfb] dark:bg-neutral-800/40 p-2.5 rounded-lg border border-[#e9e9e7] dark:border-neutral-700 hover:bg-[#f2f2f0] transition-all group pointer-events-auto mb-1.5"
+                      {smartGuides.filter(g => g.type === 'recommended' && !hiddenGuideKeys.has(g.uniqueKey)).map((g, i) => (
+                        <div 
+                          key={`r-${i}`}
+                          className="relative group pointer-events-auto mb-1.5"
                         >
-                          <span className="mt-0.5 text-[#a3a3a3] group-hover:text-amber-500 transition-colors">💡</span>
-                          <span className="flex-1 leading-snug text-[#787774] dark:text-neutral-400 font-medium text-[12.5px]">{g.text}</span>
-                        </button>
+                          <button 
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={() => handleNavigate(g.id)}
+                            className="w-full text-left flex items-start gap-2 bg-[#fbfbfb] dark:bg-neutral-800/40 p-2.5 rounded-lg border border-[#e9e9e7] dark:border-neutral-700 hover:bg-[#f2f2f0] transition-all"
+                          >
+                            <span className="mt-0.5 text-[#a3a3a3] group-hover:text-amber-500 transition-colors">💡</span>
+                            <span className="flex-1 leading-snug text-[#787774] dark:text-neutral-400 font-medium text-[12.5px] pr-6">{g.text}</span>
+                          </button>
+                          
+                          {/* 💡 권고형 가이드에만 달아주는 마법의 닫기(X) 버튼! */}
+                          <button 
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => { e.stopPropagation(); dismissGuide(g.uniqueKey); }} 
+                            className="absolute top-2.5 right-2 p-1 text-neutral-300 hover:text-neutral-600 dark:hover:text-neutral-300 rounded-full transition-all opacity-0 group-hover:opacity-100"
+                            title="이 권고 무시하기 (사이드바에서도 지워집니다)"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                          </button>
+                        </div>
                       ))}
                     </>
                   )}

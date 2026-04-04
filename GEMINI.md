@@ -52,4 +52,4 @@
 - 모든 답변과 코드 주석, 설명은 **한국어**로 작성합니다.
 - 위 **절대 고정 레이아웃 규정**을 엄격히 준수하며, 향후 수정 시 이 수치를 기준점으로 삼습니다.
 - 배우자 선사망 시 토글은 기본 OFF이되, 사용자가 직접 켜서 수정할 수 있도록 로직을 유지합니다.
-- 현재 버전: v2.0.8 (Main: Tauri Optimized / Legacy: Offline HTML)
+- 현재 버전: v2.0.9 (Main: Tauri Optimized / Legacy: Offline HTML)

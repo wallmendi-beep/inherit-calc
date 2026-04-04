@@ -203,8 +203,18 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
     checkIndependentExclusionGuide(tree, tree.name || '피상속인', 0);
     checkGuideNode(tree, null, 0);
 
-    // 💡 5. 스마트 가이드 최종 정렬 (Sorting Engine)
-    smartGuides.sort((a, b) => {
+    // 💡 5. 스마트 가이드 중복 제거 및 최종 정렬 (Deduplication & Sorting)
+    const uniqueGuidesMap = new Map();
+    smartGuides.forEach(g => {
+      // 텍스트 내용 자체를 고유 키로 사용하여, 여러 클론 탭에서 발생한 '동일한 경고'를 1개로 압축합니다!
+      const key = g.text;
+      if (!uniqueGuidesMap.has(key)) {
+        uniqueGuidesMap.set(key, { ...g, uniqueKey: key });
+      }
+    });
+    const uniqueGuides = Array.from(uniqueGuidesMap.values());
+
+    uniqueGuides.sort((a, b) => {
       // 1순위: 필수(mandatory)가 권고(recommended)보다 무조건 위로!
       if (a.type !== b.type) return a.type === 'mandatory' ? -1 : 1;
       
@@ -221,14 +231,14 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
       return 0; // 나머지는 가계도에 입력된 순서(형제 순서) 그대로 유지
     });
 
-    const hasActionItems = noSurvivors || warnings.length > 0 || smartGuides.length > 0 || showGlobalWarning || showAutoCalcNotice;
+    const hasActionItems = noSurvivors || warnings.length > 0 || uniqueGuides.length > 0 || showGlobalWarning || showAutoCalcNotice;
 
     return {
       showGlobalWarning,
       showAutoCalcNotice,
       globalMismatchReasons,
       autoCalculatedNames: uniqueAuto,
-      smartGuides,
+      smartGuides: uniqueGuides, // 💡 압축이 완료된 가이드 배열을 내보냅니다.
       noSurvivors,
       hasActionItems
     };

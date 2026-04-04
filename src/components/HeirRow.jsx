@@ -8,6 +8,9 @@ import { CSS } from '@dnd-kit/utilities';
 const HeirRow = ({ node, finalShares, level, handleUpdate, handleNameBlur, removeHeir, addHeir, siblings, inheritedDate, rootDeathDate, onKeyDown, toggleSignal, rootIsHoju, isRootChildren, onTabClick, parentNode }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: node.id });
 
+  // 💡 재혼으로 인한 스위치 강제 ON 방지용 슬라이드 경고창 상태
+  const [showRemarriageWarning, setShowRemarriageWarning] = useState(false);
+
   // 💡 실시간 계산된 지분 당겨오기 (엔진 연동)
   // finalShares.direct와 subGroups 전체를 뒤져서 내 personId에 맞는 지분을 찾습니다.
   const calcShare = useMemo(() => {
@@ -113,11 +116,21 @@ const HeirRow = ({ node, finalShares, level, handleUpdate, handleNameBlur, remov
           role="switch"
           aria-checked={!node.isExcluded}
           onClick={() => {
+            // 💡 대습 개시 전 재혼자인지 판별
+            const isPreRemarried = isSpouseType && node.remarriageDate && inheritedDate && isBefore(node.remarriageDate, inheritedDate);
+            
+            // 🚨 스위치를 켜려고(OFF -> ON) 하는데 대습 개시 전 재혼자라면?
+            if (node.isExcluded && isPreRemarried) {
+              setShowRemarriageWarning(true); // 슬라이드 창 오픈!
+              return; // 스위치가 켜지는 것을 원천 차단
+            }
+
             const nextExcluded = !node.isExcluded;
             handleUpdate(node.id, {
               isExcluded: nextExcluded,
               exclusionOption: nextExcluded ? (isDaeseupSpouse ? 'remarried' : 'renounce') : ''
             });
+            setShowRemarriageWarning(false); // 정상 작동 시 경고창 닫기
           }}
           className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer items-center rounded-full transition-all duration-200 ease-in-out focus:outline-none ${!node.isExcluded ? 'bg-[#15803d] opacity-80' : 'bg-neutral-200 dark:bg-neutral-600'}`}
         >
@@ -333,6 +346,37 @@ const HeirRow = ({ node, finalShares, level, handleUpdate, handleNameBlur, remov
         </button>
       </div>
     </div>
+
+    {/* 🚨 슬라이드 다운 경고창 (대습 개시 전 재혼) */}
+    {showRemarriageWarning && (
+      <div className="w-full pl-[70px] pr-[20px] pb-2 -mt-1 animate-in fade-in slide-in-from-top-2 duration-300 relative z-0">
+        <div className="bg-red-50/80 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-b-md p-2.5 flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-[14px]">🚨</span>
+            <span className="text-[12px] text-red-700 dark:text-red-400 font-bold tracking-tight">
+              피상속인 사망 전 재혼으로 상속권이 없습니다. 재혼일자를 수정하시겠습니까?
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => { 
+                setIsHistoryModalOpen(true); 
+                setShowRemarriageWarning(false); 
+              }} 
+              className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold rounded shadow-sm transition-colors"
+            >
+              수정하기
+            </button>
+            <button 
+              onClick={() => setShowRemarriageWarning(false)} 
+              className="px-3 py-1 bg-white hover:bg-neutral-100 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-600 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-600 text-[11px] font-bold rounded transition-colors"
+            >
+              닫기
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
 
     {/* 💡 미니멀리즘 프로페셔널 테마 모달창 */}
     {isHistoryModalOpen && (
