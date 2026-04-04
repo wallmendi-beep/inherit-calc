@@ -131,17 +131,12 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
     const smartGuides = [];
 
     // 💡 4. 권고사항 (Recommended): 상속포기/결격/상실의 개별성(독립성) 안내
-    const checkIndependentExclusionGuide = (node, parentName) => {
-      // 제외 스위치가 켜져있고, 사유가 포기/결격/상실 중 하나인 경우
+    // (파라미터에 level = 0 추가)
+    const checkIndependentExclusionGuide = (node, parentName, level = 0) => {
       if (node.id !== 'root' && node.isExcluded && ['renounce', 'disqualified', 'lost'].includes(node.exclusionOption)) {
-        
-        // 🚨 핵심 픽스: 이미 사망했고 하위 상속인(자녀/배우자)마저 없다면, 
-        // 물리적으로 다른 부모의 상속도 받을 수 없으므로(지분 소멸) '독립성/개별성'을 경고할 필요가 없습니다!
         const isDeadWithoutHeirs = node.isDeceased && (!node.heirs || node.heirs.length === 0);
         
-        // 💡 사망+무자녀가 '아닐 때만' 법률 안내를 띄웁니다!
         if (!isDeadWithoutHeirs) {
-          // exclusionOption 값에 따라 정확한 법률 용어로 변환
           let reasonText = '';
           if (node.exclusionOption === 'renounce') reasonText = '상속포기';
           else if (node.exclusionOption === 'disqualified') reasonText = '상속결격';
@@ -149,38 +144,68 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
 
           smartGuides.push({
             id: node.id,
-            type: 'recommended', // 🚨 에러가 아니라 권고사항(노란 전구)
-            text: `망 ${parentName}에 대한 [${node.name}]님의 ${reasonText} 처리가 적용되었습니다. ${reasonText}의 효력은 해당 피상속인에게만 개별적으로 미치므로, 다른 피상속인(배우자 등)의 상속에서도 제외되어야 할 사유가 있다면 해당 탭에서 별도로 스위치를 꺼주셔야 합니다.`
+            type: 'recommended',
+            text: `망 ${parentName}에 대한 [${node.name}]님의 ${reasonText} 처리가 적용되었습니다. ${reasonText}의 효력은 해당 피상속인에게만 개별적으로 미치므로, 다른 피상속인(배우자 등)의 상속에서도 제외되어야 할 사유가 있다면 해당 탭에서 별도로 스위치를 꺼주셔야 합니다.`,
+            level, // 💡 정렬용 데이터 추가
+            relation: node.relation // 💡 정렬용 데이터 추가
           });
         }
       }
-      
-      // 하위 상속인들도 재귀적으로 샅샅이 검사
       if (node.heirs) {
-        node.heirs.forEach(h => checkIndependentExclusionGuide(h, node.name || '피상속인'));
+        node.heirs.forEach(h => checkIndependentExclusionGuide(h, node.name || '피상속인', level + 1));
       }
     };
 
-    const checkGuideNode = (node, parentDate) => {
+    // (파라미터에 level = 0 추가)
+    const checkGuideNode = (node, parentDate, level = 0) => {
       if (node.id === 'root') {
         if (!node.name || !node.deathDate) {
-          smartGuides.push({ id: 'root', type: 'mandatory', text: '피상속인 기본정보(성함, 사망일자)를 먼저 입력해주세요.' });
+          smartGuides.push({ id: 'root', type: 'mandatory', text: '피상속인 기본정보(성함, 사망일자)를 먼저 입력해주세요.', level, relation: 'root' });
         }
       } else if (!node.isExcluded) {
         if (node.isDeceased && node.deathDate && parentDate && !isBefore(node.deathDate, parentDate)) {
           if (!node.heirs || node.heirs.length === 0) {
-            smartGuides.push({ id: node.id, type: 'mandatory', text: `'${node.name}' 님의 재상속 정보가 없습니다. 클릭하여 상속인을 추가하세요.` });
+            smartGuides.push({ id: node.id, type: 'mandatory', text: `'${node.name}' 님의 재상속 정보가 없습니다. 클릭하여 상속인을 추가하세요.`, level, relation: node.relation });
           }
         }
         if ((law === '1960' || law === '1979') && node.relation === 'daughter' && !node.marriageDate && !node.restoreDate) {
-          smartGuides.push({ id: node.id, type: 'recommended', text: `'${node.name}' 님의 혼인/복적 연혁을 입력하면 복잡한 계산을 AI가 대신합니다.` });
+          smartGuides.push({ id: node.id, type: 'recommended', text: `'${node.name}' 님의 혼인/복적 연혁을 입력하면 복잡한 계산을 AI가 대신합니다.`, level, relation: node.relation });
+        }
+        
+        // 결격/상실 노란색 안내
+        if (['disqualified', 'lost'].includes(node.exclusionOption) && (!node.heirs || node.heirs.length === 0)) {
+          smartGuides.push({
+            id: node.id,
+            type: 'recommended',
+            text: `[${node.name}]님이 제외 처리되었으나 대습상속인이 입력되지 않았습니다. (무자녀라면 무시하셔도 타 상속인에게 정상 배분됩니다)`,
+            level, relation: node.relation
+          });
         }
       }
-      if (node.heirs) node.heirs.forEach(h => checkGuideNode(h, node.deathDate || parentDate));
+      if (node.heirs) node.heirs.forEach(h => checkGuideNode(h, node.deathDate || parentDate, level + 1));
     };
 
-    checkIndependentExclusionGuide(tree, tree.name || '피상속인');
-    checkGuideNode(tree, null);
+    // 스캔 실행
+    checkIndependentExclusionGuide(tree, tree.name || '피상속인', 0);
+    checkGuideNode(tree, null, 0);
+
+    // 💡 5. 스마트 가이드 최종 정렬 (Sorting Engine)
+    smartGuides.sort((a, b) => {
+      // 1순위: 필수(mandatory)가 권고(recommended)보다 무조건 위로!
+      if (a.type !== b.type) return a.type === 'mandatory' ? -1 : 1;
+      
+      // 2순위: 세대(level)가 가까운 순서대로 (1세대 -> 2세대 -> 3세대...)
+      if (a.level !== b.level) return a.level - b.level;
+      
+      // 3순위: 같은 세대라면 배우자(wife, husband, spouse)가 1등, 나머지가 2등
+      const getRelScore = (rel) => ['wife', 'husband', 'spouse'].includes(rel) ? 1 : 2;
+      const aScore = getRelScore(a.relation);
+      const bScore = getRelScore(b.relation);
+      
+      if (aScore !== bScore) return aScore - bScore;
+      
+      return 0; // 나머지는 가계도에 입력된 순서(형제 순서) 그대로 유지
+    });
 
     const hasActionItems = noSurvivors || warnings.length > 0 || smartGuides.length > 0 || showGlobalWarning || showAutoCalcNotice;
 
