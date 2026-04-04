@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "상속지분계산기_PRO",
-  "version": "2.0.7",
+  "version": "2.0.8",
   "identifier": "com.inheritance.calc.pro",
   "build": {
     "frontendDist": "../dist",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "상속지분 계산기 PRO v2.0.6",
+        "title": "상속지분 계산기 PRO v2.0.8",
         "width": 1280,
         "height": 720,
         "resizable": true,

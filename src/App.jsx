@@ -411,7 +411,7 @@ function App() {
     }
     return null;
   };
-  // 퀵 입력 제출: 이름들을 파싱해서 상속인 추가 + 부모 노드 자동 사망 처리
+  // 퀵 입력 제출: 이름들을 파싱해서 상속인 추가 + 모든 클론(분신) 동기화
   const handleQuickSubmit = (parentId, parentNode, value) => {
     if (!value.trim()) return;
     const names = value.split(/[,，、\s]+/).map(n => n.trim()).filter(Boolean);
@@ -421,73 +421,66 @@ function App() {
       let newTree = JSON.parse(JSON.stringify(prev));
       const usedNames = new Set((parentNode.heirs || []).map(h => h.name));
 
-      const markDeceasedAndAdd = (node) => {
-        // 💡 수정: 일반 화면 ID('root')와 고유 ID(personId) 모두 호환되도록 완벽 방어!
-        if (node.id === parentId || node.personId === parentId) {
-          if (!node.isDeceased) node.isDeceased = true;
-          const hasSpouse = (node.heirs || []).some(h => h.relation === 'wife' || h.relation === 'husband');
-          
-          names.forEach((name, idx) => {
-            const isSpouse = idx === 0 && !hasSpouse;
-            const isRootFemale = parentNode.gender === 'female';
-            
-            // 🏷️ 중복 이름 자동 구분 (접미사 부여)
-            let finalName = name;
-            if (usedNames.has(finalName)) {
-               let suffix = 2;
-               while(usedNames.has(`${name}(${suffix})`)) suffix++;
-               finalName = `${name}(${suffix})`;
-            }
-            usedNames.add(finalName);
+      // 💡 1. 탭의 주인이 가진 진짜 DNA(personId) 찾기
+      let targetPersonId = parentId;
+      const findPId = (n) => {
+        if (n.id === parentId) targetPersonId = n.personId;
+        if (n.heirs) n.heirs.forEach(findPId);
+      };
+      findPId(newTree);
 
-            node.heirs = node.heirs || [];
+      // 💡 2. 새로 추가할 상속인들의 '기본 틀' 미리 만들기 
+      // (클론들마다 서로 다른 personId가 발급되는 대참사를 막기 위해!)
+      const hasSpouse = (parentNode.heirs || []).some(h => ['wife', 'husband', 'spouse'].includes(h.relation));
+      const isRootFemale = parentNode.gender === 'female'; 
+
+      const newHeirsBase = [];
+      names.forEach((name, idx) => {
+        const isSpouse = idx === 0 && !hasSpouse;
+        let finalName = name;
+        if (usedNames.has(finalName)) {
+           let suffix = 2;
+           while(usedNames.has(`${name}(${suffix})`)) suffix++;
+           finalName = `${name}(${suffix})`;
+        }
+        usedNames.add(finalName);
+
+        newHeirsBase.push({
+          baseId: `h_${Date.now()}_${idx}`,
+          personId: `p_${Date.now()}_${idx}`, // 모두가 공유할 고유 DNA
+          name: finalName,
+          relation: isSpouse ? (isRootFemale ? 'husband' : 'wife') : 'son',
+          isDeceased: false,
+          isSameRegister: true,
+          heirs: []
+        });
+      });
+
+      // 💡 3. 트리를 끝까지 다 뒤지며 모든 분신에게 빠짐없이 추가 (.some 대신 .forEach 사용)
+      const syncAllClones = (node) => {
+        if (node.id === parentId || node.personId === targetPersonId) {
+          if (!node.isDeceased) node.isDeceased = true;
+          
+          // 💡 자녀가 입력되는 순간, 부모의 상속권 스위치를 자동으로 켭니다(정상화).
+          node.isExcluded = false;
+          node.exclusionOption = '';
+          
+          node.heirs = node.heirs || [];
+          newHeirsBase.forEach(baseHeir => {
             node.heirs.push({
-              id: `h_${Date.now()}_${idx}`,
-              personId: `p_${Date.now()}_${idx}`,
-              name: finalName,
-              relation: isSpouse ? (isRootFemale ? 'husband' : 'wife') : 'son',              isDeceased: false,
-              isSameRegister: true,
-              heirs: []
+              ...baseHeir,
+              id: `${baseHeir.baseId}_${Math.random().toString(36).substr(2,4)}` // 화면용 ID만 다르게 생성
             });
           });
-          return true;
         }
-        if (node.heirs) return node.heirs.some(markDeceasedAndAdd);
-        return false;
+        if (node.heirs) node.heirs.forEach(syncAllClones);
       };
 
-      // 💡 수정: 최초 피상속인 탭('root')에서도 추가가 작동하도록 수정!
-      if (newTree.id === parentId || newTree.personId === parentId) {
-        const hasSpouse = (newTree.heirs || []).some(h => h.relation === 'wife' || h.relation === 'husband');
-        names.forEach((name, idx) => {
-          const isSpouse = idx === 0 && !hasSpouse;
-          const isRootFemale = newTree.gender === 'female';
-          
-          let finalName = name;
-          if (usedNames.has(finalName)) {
-             let suffix = 2;
-             while(usedNames.has(`${name}(${suffix})`)) suffix++;
-             finalName = `${name}(${suffix})`;
-          }
-          usedNames.add(finalName);
-
-          newTree.heirs = newTree.heirs || [];
-          newTree.heirs.push({
-            id: `h_${Date.now()}_${idx}`,
-            personId: `p_${Date.now()}_${idx}`,
-            name: finalName,
-            relation: isSpouse ? (isRootFemale ? 'husband' : 'wife') : 'son',
-            isDeceased: false,
-            isSameRegister: true,
-            heirs: []
-          });
-        });
-      } else {
-        (newTree.heirs || []).forEach(markDeceasedAndAdd);
-      }
+      syncAllClones(newTree);
       return newTree;
     });
   };
+
 
   // 💡 사이드 패널 상태
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -776,10 +769,21 @@ function App() {
     };
     findPersonId(tree);
 
+    // 💡 동기화할 '개인 신상 정보' 목록 (상속포기, 호주 등 법적 지위는 철저히 제외!)
+    const personalFields = ['name', 'isDeceased', 'deathDate', 'isRemarried', 'remarriageDate', 'marriageDate'];
+    const hasPersonalUpdate = Object.keys(updates).some(k => personalFields.includes(k));
+
     const updateNode = (n) => {
-      // 💡 화면 ID가 달라도 personId가 같으면 일괄 수정 (이름, 사망일 등 완벽 동기화)
-      if (n.id === id || (targetPersonId && n.personId === targetPersonId)) {
+      if (n.id === id) {
+         // 💡 타겟 노드(현재 클릭한 그 자리)는 상속포기 등 모든 속성을 정상 업데이트
          return { ...n, personId: targetPersonId || n.personId, ...updates };
+      } else if (targetPersonId && n.personId === targetPersonId && hasPersonalUpdate) {
+         // 💡 다른 방에 있는 동일인(클론)은 '이름, 사망일' 등 신상 정보만 제한적으로 동기화!
+         const filteredUpdates = {};
+         Object.keys(updates).forEach(k => {
+           if (personalFields.includes(k)) filteredUpdates[k] = updates[k];
+         });
+         return { ...n, ...filteredUpdates };
       }
       return { ...n, heirs: n.heirs?.map(updateNode) || [] };
     };
@@ -797,25 +801,52 @@ function App() {
   };
 
   const addHeir = (parentId) => {
+    let targetPersonId = null;
+    const findPId = (n) => {
+      if (n.id === parentId) targetPersonId = n.personId;
+      if (!targetPersonId && n.heirs) n.heirs.forEach(findPId);
+    };
+    findPId(tree);
+
     const newHash = Math.random().toString(36).substr(2, 9);
-    const newHeir = { 
-      id: `n_${newHash}`, 
-      personId: `p_${newHash}`, // 진짜 인물 ID 부여
+    const baseHeir = { 
+      personId: `p_${newHash}`, 
       name: '', 
       relation: 'son', 
       isDeceased: false, 
       isSameRegister: true, 
       heirs: [] 
     };
+    
+    // 💡 부모의 분신(클론)들을 모두 찾아 똑같이 자식을 추가!
     const addFn = (n) => {
-      if (n.id === parentId) return { ...n, heirs: [...(n.heirs || []), newHeir] };
+      if (n.id === parentId || (targetPersonId && n.personId === targetPersonId)) {
+        return { 
+          ...n, 
+          // 💡 개별 추가 시에도 상속권 스위치를 즉시 활성화합니다.
+          isExcluded: false,
+          exclusionOption: '',
+          heirs: [...(n.heirs || []), { ...baseHeir, id: `n_${Math.random().toString(36).substr(2,9)}` }] 
+        };
+      }
       return { ...n, heirs: n.heirs?.map(addFn) || [] };
     };
     setTree(prev => addFn(prev));
   };
 
   const removeHeir = (id) => {
-    const rmFn = (n) => ({ ...n, heirs: n.heirs?.filter(x => x.id !== id).map(rmFn) || [] });
+    let targetPersonId = null;
+    const findPId = (n) => {
+      if (n.id === id) targetPersonId = n.personId;
+      if (!targetPersonId && n.heirs) n.heirs.forEach(findPId);
+    };
+    findPId(tree);
+
+    // 💡 삭제하려는 대상의 분신(클론)들까지 싹 다 추적해서 일괄 삭제!
+    const rmFn = (n) => ({ 
+      ...n, 
+      heirs: n.heirs?.filter(x => !(x.id === id || (targetPersonId && x.personId === targetPersonId))).map(rmFn) || [] 
+    });
     setTree(prev => rmFn(prev));
   };
 
@@ -1123,150 +1154,11 @@ function App() {
   };
 
   const performReset = (withSave) => {
-
     if (withSave) saveFile();
     setTree(getEmptyTree());
     setActiveTab('input');
     setIsResetModalOpen(false);
   };
-
-  // 💡 글로벌 지분 검증 및 원인(이름) 추적 로직
-  let showGlobalWarning = false;
-  let showAutoCalcNotice = false; 
-  let missingHeirNames = [];
-  let autoCalculatedNames = [];   
-
-  // 💡 수정: 탭에 상관없이 실시간으로 에러를 추적하도록 if문 제거
-  const calculateTotalSum = () => {
-    let tn = 0, td = 1;
-    const collect = (nodes) => {
-      nodes.forEach(s => {
-        if (s && s.n > 0) {
-          const [nn, nd] = math.add(tn, td, s.n, s.d);
-          tn = nn; td = nd;
-        }
-      });
-    };
-    collect(finalShares.direct || []);
-    (finalShares.subGroups || []).forEach(g => collect(g.shares || []));
-    return [tn, td];
-  };
-
-  const [sumN, sumD] = calculateTotalSum();
-  const targetN = tree.shareN || 1;
-  const targetD = tree.shareD || 1;
-  
-  if (sumN * targetD !== targetN * sumD) {
-    showGlobalWarning = true;
-  }
-
-  const getDetailedMismatchReasons = (rootNode) => {
-    const reasons = [];
-    
-    // 💡 부모의 사망일을 계속해서 자식에게 물려주며 검사합니다 (scan 함수에 parentDate 추가)
-    const scan = (n, parentDate) => {
-      if (n.id !== 'root') {
-        const isSpouse = ['wife', 'husband', 'spouse'].includes(n.relation);
-        
-        // 🚨 핵심 픽스: 최초 피상속인이 아니라, '직속 부모의 사망일'과 비교하여 선사망 여부 판단!
-        const isPre = n.deathDate && parentDate && isBefore(n.deathDate, parentDate);
-        const isPreSpouse = isSpouse && isPre;
-        
-        // 부모보다 먼저 죽었으나(대습상속), 스위치가 켜져있고, 하위 상속인이 없는 경우 -> 에러!
-        if ((!n.isExcluded && n.isDeceased && !isPreSpouse && isPre) && (!n.heirs || n.heirs.length === 0)) {
-          // 💡 텍스트 대신 객체({id, text})를 저장하여 나중에 클릭 시 워프할 수 있게 만듭니다.
-          reasons.push({
-            id: n.id,
-            text: `망 ${n.name}(${getRelStr(n.relation, parentDate)})의 대습상속인이 누락되었습니다. (미혼/무자녀인 경우 스위치를 꺼서 '상속권 없음' 처리해주세요)`
-          });
-        }
-      }
-      
-      // 스위치가 꺼졌는데 '상속포기'가 아니면 그 아래는 검사 안 함
-      if (n.isExcluded && (n.exclusionOption === 'renounce' || !n.exclusionOption)) return;
-      
-      // 하위 상속인으로 내려갈 때, 현재 노드의 사망일이 있으면 그 날짜를 새로운 기준으로 넘겨줌
-      if (n.heirs) n.heirs.forEach(h => scan(h, n.deathDate || parentDate));
-    };
-    
-    scan(rootNode, rootNode.deathDate);
-    
-    // 중복 메시지 제거 (텍스트 기준)
-    const unique = [];
-    const seen = new Set();
-    reasons.forEach(r => {
-      if (!seen.has(r.text)) { seen.add(r.text); unique.push(r); }
-    });
-    return unique;
-  };
-
-  // 💡 지분 합계(1/1) 판단과 무관하게 상세 경고를 무조건 계산합니다.
-  const globalMismatchReasons = getDetailedMismatchReasons(tree);
-  
-  // 💡 누락된 사람이 한 명이라도 있다면, 엔진이 1/1로 강제 분배했더라도 무조건 에러창을 켭니다!
-  if (globalMismatchReasons.length > 0) {
-    showGlobalWarning = true;
-  }
-
-  const findMissingAndAutoNodes = (node, parentDeathDate) => {
-    const pDeath = parentDeathDate || tree.deathDate;
-    if (node.id !== 'root') {
-      const isSpouseType = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(node.relation);
-      const isPreDeceasedSpouse = isSpouseType && node.deathDate && pDeath && isBefore(node.deathDate, pDeath);
-      
-      // 💡 핵심: 현재 인물이 부모(또는 피상속인)보다 먼저 사망했는지(선사망/대습상속) 판별
-      const isPreDeceasedContext = node.deathDate && pDeath && isBefore(node.deathDate, pDeath);
-
-      if (node.isDeceased && (!node.heirs || node.heirs.length === 0) && !node.isExcluded && !isPreDeceasedSpouse) {
-        let hasVirtualHeirs = false;
-        let autoCalcTarget = ''; 
-        
-        // 💡 수정: '선사망(대습상속)'인 경우, 지분이 존속으로 넘어갈 수 없음! (자동분배 차단)
-        if (!isPreDeceasedContext) {
-          const parentNode = findParentNode(tree, node.id);
-          if (parentNode && parentNode.heirs) {
-             if (isSpouseType) {
-               hasVirtualHeirs = parentNode.heirs.some(th => th.id !== node.id && ['son', 'daughter'].includes(th.relation) && !th.isExcluded);
-               if (hasVirtualHeirs) autoCalcTarget = '직계비속(자녀)';
-             } else if (['son', 'daughter'].includes(node.relation)) {
-               const survivingSpouse = parentNode.heirs.some(th => 
-                 ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(th.relation) && 
-                 (!th.isDeceased || !isBefore(th.deathDate, node.deathDate || pDeath)) && !th.isExcluded
-               );
-               if (survivingSpouse) {
-                 hasVirtualHeirs = true; autoCalcTarget = '배우자(직계존속)';
-               } else {
-                 const siblings = parentNode.heirs.some(th => th.id !== node.id && ['son', 'daughter'].includes(th.relation) && !th.isExcluded);
-                 if (siblings) { hasVirtualHeirs = true; autoCalcTarget = '형제자매'; }
-               }
-             }
-          }
-        }
-
-        // 선사망자(hasVirtualHeirs가 무조건 false)는 강제로 에러(missingHeirNames)로 빠집니다!
-        if (!hasVirtualHeirs) missingHeirNames.push(node.name || '이름 미상');
-        else autoCalculatedNames.push({ name: node.name || '이름 미상', target: autoCalcTarget });
-      }
-    }
-    if (node.heirs) node.heirs.forEach(h => findMissingAndAutoNodes(h, node.deathDate || pDeath));
-  };
-  
-  findMissingAndAutoNodes(tree, tree.deathDate);
-  missingHeirNames = [...new Set(missingHeirNames)];
-  const uniqueAuto = [];
-  const seenAuto = new Set();
-  autoCalculatedNames.forEach(a => { if (!seenAuto.has(a.name)) { seenAuto.add(a.name); uniqueAuto.push(a); } });
-  autoCalculatedNames = uniqueAuto;
-
-  if (autoCalculatedNames.length > 0) showAutoCalcNotice = true;
-
-  // 💡 생존 상속인이 단 한 명도 없는지 판별 (0/1 상황)
-  const noSurvivors = (finalShares.direct.length === 0 && finalShares.subGroups.length === 0);
-
-  // 💡 Phase 3: 현재 탭에서 AI가 알려줄 항목이 있는지 전역으로 판별
-  const hasActionItems = noSurvivors || 
-                         (activeTab === 'input' && (warnings.length > 0 || smartGuides.length > 0)) || 
-                         showGlobalWarning || showAutoCalcNotice;
 
   return (
     <div className="w-full min-h-screen relative flex flex-col items-start pb-24 transition-colors duration-200 bg-[#f7f7f5] dark:bg-neutral-900 min-w-[1280px] print:min-w-0 print:w-full print:max-w-full">
@@ -1907,7 +1799,7 @@ function App() {
             <div className="flex items-center gap-2 whitespace-nowrap shrink-0 overflow-visible">
               <div className="flex items-center text-[#37352f] dark:text-neutral-100 font-bold text-[18px] tracking-tight whitespace-nowrap shrink-0">
                 <IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-neutral-400 shrink-0" />
-                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v2.0.6</span>
+                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v2.0.8</span>
               </div>
               <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px] ml-8 whitespace-nowrap shrink-0">Designed by J.H. Lee</span>
             </div>
@@ -2274,29 +2166,35 @@ function App() {
                           {!isRootNode && (
                             <div className="flex items-center gap-1.5 bg-white dark:bg-neutral-800 border border-[#e9e9e7] dark:border-neutral-700 px-2 py-1 rounded-full shadow-sm">
                               <span 
-                                className={`text-[11px] font-bold transition-colors select-none cursor-pointer ${currentNode.isExcluded ? 'text-[#37352f] dark:text-neutral-200' : 'text-[#787774]'}`}
+                                className={`text-[11px] font-bold transition-colors select-none cursor-pointer ${!currentNode.isExcluded ? 'text-[#37352f] dark:text-neutral-200' : 'text-[#787774] dark:text-neutral-500'}`}
                                 onClick={() => {
+                                  // 💡 빈 탭에서 억지로 켜려고 하면 경고창을 띄웁니다.
+                                  if (currentNode.isExcluded && (!currentNode.heirs || currentNode.heirs.length === 0)) {
+                                    alert("상속인을 먼저 입력해주세요. 입력이 완료되면 자동으로 스위치가 켜집니다.");
+                                    return;
+                                  }
                                   const nextVal = !currentNode.isExcluded;
-                                  const updates = { isExcluded: nextVal };
-                                  if (nextVal) updates.exclusionOption = 'renounce';
-                                  handleUpdate(currentNode.id, updates);
+                                  handleUpdate(currentNode.id, { isExcluded: nextVal, exclusionOption: nextVal ? '' : 'renounce' });
                                 }}
                               >
-                                상속권 없음
+                                {!currentNode.isExcluded ? '대습상속' : '상속권 없음'}
                               </span>
                               <button
                                 type="button"
                                 onClick={() => {
+                                  // 💡 스위치 버튼 클릭 시에도 동일한 방어 로직 적용
+                                  if (currentNode.isExcluded && (!currentNode.heirs || currentNode.heirs.length === 0)) {
+                                    alert("상속인을 먼저 입력해주세요. 입력이 완료되면 자동으로 스위치가 켜집니다.");
+                                    return;
+                                  }
                                   const nextVal = !currentNode.isExcluded;
-                                  const updates = { isExcluded: nextVal };
-                                  if (nextVal) updates.exclusionOption = 'renounce';
-                                  handleUpdate(currentNode.id, updates);
+                                  handleUpdate(currentNode.id, { isExcluded: nextVal, exclusionOption: nextVal ? '' : 'renounce' });
                                 }}
                                 className={`relative inline-flex h-3.5 w-6 items-center shrink-0 cursor-pointer rounded-full transition-colors duration-200 focus:outline-none ${
-                                  currentNode.isExcluded ? 'bg-[#15803d]' : 'bg-neutral-300 dark:bg-neutral-600'
+                                  !currentNode.isExcluded ? 'bg-[#15803d] opacity-80' : 'bg-neutral-200 dark:bg-neutral-600'
                                 }`}
                               >
-                                <span className={`pointer-events-none inline-block h-2.5 w-2.5 transform rounded-full bg-white shadow-sm transition duration-200 ${currentNode.isExcluded ? 'translate-x-2.5' : 'translate-x-0.5'}`} />
+                                <span className={`pointer-events-none inline-block h-2.5 w-2.5 transform rounded-full bg-white shadow-sm transition duration-200 ${!currentNode.isExcluded ? 'translate-x-2.5' : 'translate-x-0.5'}`} />
                               </button>
                             </div>
                           )}
@@ -2483,7 +2381,7 @@ function App() {
                                                   {potentialHeirsLabel === '피대습자의 자녀' 
                                                       ? '별도의 상속인을 입력하지 않으면 공동 상속인인 자녀(피상속인의 직계비속)를 상속인으로 간주하여 상속지분을 자동으로 계산합니다.' 
                                                       : potentialHeirsLabel === '대습상속 불가'
-                                                      ? '대습상속의 경우 미혼이거나 무자녀라면 상단의 [상속인 없음(제외)] 스위치를 켜서 제외 처리를 해주세요.'
+                                                      ? '대습상속인을 입력해주세요. 미혼이나 무자녀라면 상단의 [대습상속] 스위치를 OFF 해주세요.'
                                                       : '상속인을 입력하지 않으면 2순위(직계존속)를 우선하며, 직계존속 부재 시 3순위(형제자매)가 상속하는 것으로 계산합니다.'}
                                               </p>
                                               {potentialHeirsStr && potentialHeirsLabel !== '대습상속 불가' && (

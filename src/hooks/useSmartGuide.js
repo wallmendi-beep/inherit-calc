@@ -129,6 +129,38 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
 
     // 6. 스마트 가이드 (필수/권고사항) 생성
     const smartGuides = [];
+
+    // 💡 4. 권고사항 (Recommended): 상속포기/결격/상실의 개별성(독립성) 안내
+    const checkIndependentExclusionGuide = (node, parentName) => {
+      // 제외 스위치가 켜져있고, 사유가 포기/결격/상실 중 하나인 경우
+      if (node.id !== 'root' && node.isExcluded && ['renounce', 'disqualified', 'lost'].includes(node.exclusionOption)) {
+        
+        // 🚨 핵심 픽스: 이미 사망했고 하위 상속인(자녀/배우자)마저 없다면, 
+        // 물리적으로 다른 부모의 상속도 받을 수 없으므로(지분 소멸) '독립성/개별성'을 경고할 필요가 없습니다!
+        const isDeadWithoutHeirs = node.isDeceased && (!node.heirs || node.heirs.length === 0);
+        
+        // 💡 사망+무자녀가 '아닐 때만' 법률 안내를 띄웁니다!
+        if (!isDeadWithoutHeirs) {
+          // exclusionOption 값에 따라 정확한 법률 용어로 변환
+          let reasonText = '';
+          if (node.exclusionOption === 'renounce') reasonText = '상속포기';
+          else if (node.exclusionOption === 'disqualified') reasonText = '상속결격';
+          else if (node.exclusionOption === 'lost') reasonText = '상속권 상실선고';
+
+          smartGuides.push({
+            id: node.id,
+            type: 'recommended', // 🚨 에러가 아니라 권고사항(노란 전구)
+            text: `망 ${parentName}에 대한 [${node.name}]님의 ${reasonText} 처리가 적용되었습니다. ${reasonText}의 효력은 해당 피상속인에게만 개별적으로 미치므로, 다른 피상속인(배우자 등)의 상속에서도 제외되어야 할 사유가 있다면 해당 탭에서 별도로 스위치를 꺼주셔야 합니다.`
+          });
+        }
+      }
+      
+      // 하위 상속인들도 재귀적으로 샅샅이 검사
+      if (node.heirs) {
+        node.heirs.forEach(h => checkIndependentExclusionGuide(h, node.name || '피상속인'));
+      }
+    };
+
     const checkGuideNode = (node, parentDate) => {
       if (node.id === 'root') {
         if (!node.name || !node.deathDate) {
@@ -146,6 +178,8 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
       }
       if (node.heirs) node.heirs.forEach(h => checkGuideNode(h, node.deathDate || parentDate));
     };
+
+    checkIndependentExclusionGuide(tree, tree.name || '피상속인');
     checkGuideNode(tree, null);
 
     const hasActionItems = noSurvivors || warnings.length > 0 || smartGuides.length > 0 || showGlobalWarning || showAutoCalcNotice;

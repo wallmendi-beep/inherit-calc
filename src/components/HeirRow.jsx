@@ -5,7 +5,7 @@ import { getLawEra, isBefore, getRelStr } from '../engine/utils';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 // 💡 finalShares 프롭스 추가
-const HeirRow = ({ node, finalShares, level, handleUpdate, removeHeir, addHeir, siblings, inheritedDate, rootDeathDate, onKeyDown, toggleSignal, rootIsHoju, isRootChildren, onTabClick }) => {
+const HeirRow = ({ node, finalShares, level, handleUpdate, handleNameBlur, removeHeir, addHeir, siblings, inheritedDate, rootDeathDate, onKeyDown, toggleSignal, rootIsHoju, isRootChildren, onTabClick }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: node.id });
 
   // 💡 실시간 계산된 지분 당겨오기 (엔진 연동)
@@ -56,7 +56,7 @@ const HeirRow = ({ node, finalShares, level, handleUpdate, removeHeir, addHeir, 
       tabBtnText = '대습상속 입력 »';
       tabBtnClass = "bg-transparent text-neutral-400 border border-neutral-300 border-dashed hover:bg-emerald-50/50 hover:text-emerald-600 hover:border-emerald-200 hover:border-solid dark:border-neutral-700";
       onBtnClick = () => {
-        handleUpdate(node.id, 'isExcluded', false);
+        // 💡 탭에 그냥 들어가는 것만으로는 스위치를 켜지 않습니다. (자유로운 탐색 허용)
         if (onTabClick) onTabClick(node.id);
       };
     }
@@ -127,6 +127,7 @@ const HeirRow = ({ node, finalShares, level, handleUpdate, removeHeir, addHeir, 
           value={node.name} 
           onKeyDown={onKeyDown} 
           onChange={e => handleUpdate(node.id, 'name', e.target.value)} 
+          onBlur={e => handleNameBlur && handleNameBlur(node.id, e.target.value)}
           lang="ko"
           autoCapitalize="off"
           autoCorrect="off"
