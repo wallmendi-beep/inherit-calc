@@ -852,6 +852,40 @@ function App() {
       }
     }
 
+    // 💡 새로운 기능: 부모 관계(성별) 변경 시 하위 배우자 관계 자동 스위칭!
+    if (field === 'relation') {
+      const isFemale = ['daughter', 'mother', 'sister', 'wife'].includes(value);
+      const isMale = ['son', 'father', 'brother', 'husband'].includes(value);
+      
+      if (isFemale || isMale) {
+        let targetPersonId = null;
+        const findPId = (n) => {
+          if (n.id === id) targetPersonId = n.personId;
+          if (!targetPersonId && n.heirs) n.heirs.forEach(findPId);
+        };
+        findPId(tree);
+
+        setTree(prev => {
+          const syncRelation = (n) => {
+            // 모든 분신(Clone) 탭에 동일하게 적용
+            if (n.id === id || (targetPersonId && n.personId === targetPersonId)) {
+              const newHeirs = (n.heirs || []).map(h => {
+                // 하위 상속인 중 배우자가 있다면 성별을 반대로 휙! 뒤집어줍니다.
+                if (['wife', 'husband', 'spouse'].includes(h.relation)) {
+                  return { ...h, relation: isFemale ? 'husband' : 'wife' };
+                }
+                return h;
+              });
+              return { ...n, relation: value, heirs: newHeirs };
+            }
+            return { ...n, heirs: n.heirs?.map(syncRelation) || [] };
+          };
+          return syncRelation(prev);
+        });
+        return; // 자동 스위칭 완료 후 함수 종료
+      }
+    }
+
     let targetName = null;
     const syncFields = ['isDeceased', 'deathDate', 'isRemarried', 'remarriageDate', 'marriageDate'];
     
@@ -2412,7 +2446,9 @@ function App() {
                             <button
                               type="button"
                               onClick={() => {
-                                setActiveDeceasedTab(activeTabObj.parentNode.id);
+                                // 💡 고친 부분: 껍데기 id가 아니라 진짜 DNA인 personId로 넘겨야 정상적으로 탭을 찾습니다!
+                                const parentTargetId = activeTabObj.parentNode.id === 'root' ? 'root' : activeTabObj.parentNode.personId;
+                                setActiveDeceasedTab(parentTargetId);
                                 setIsFolderFocused(true);
                               }}
                               className="flex items-center gap-2 group transition-all"
