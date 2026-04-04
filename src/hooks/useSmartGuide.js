@@ -41,33 +41,9 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
       return [tn, td];
     };
 
-    // 3. 내부 헬퍼 함수: 대습상속 누락 상세 분석
+    // 3. 내부 헬퍼 함수: 대습상속 누락 상세 분석 (엔진 자동화로 인해 에러 로직 제거)
     const getDetailedMismatchReasons = (rootNode) => {
-      const reasons = [];
-      const scan = (n, parentDate) => {
-        if (n.id !== 'root') {
-          const isSpouse = ['wife', 'husband', 'spouse'].includes(n.relation);
-          const isPre = n.deathDate && parentDate && isBefore(n.deathDate, parentDate);
-          const isPreSpouse = isSpouse && isPre;
-          
-          if ((!n.isExcluded && n.isDeceased && !isPreSpouse && isPre) && (!n.heirs || n.heirs.length === 0)) {
-            reasons.push({
-              id: n.id,
-              text: `망 ${n.name}(${getRelStr(n.relation, parentDate)})의 대습상속인이 누락되었습니다. (미혼/무자녀인 경우 스위치를 꺼서 '상속권 없음' 처리해주세요)`
-            });
-          }
-        }
-        if (n.isExcluded && (n.exclusionOption === 'renounce' || !n.exclusionOption)) return;
-        if (n.heirs) n.heirs.forEach(h => scan(h, n.deathDate || parentDate));
-      };
-      scan(rootNode, rootNode.deathDate);
-      
-      const unique = [];
-      const seen = new Set();
-      reasons.forEach(r => {
-        if (!seen.has(r.text)) { seen.add(r.text); unique.push(r); }
-      });
-      return unique;
+      return []; // 엔진이 선사망 무자녀를 자동 제외하므로 더 이상 에러가 아님
     };
 
     // 4. 내부 헬퍼 함수: 자동분배 및 누락 노드 추적
@@ -163,25 +139,63 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
           smartGuides.push({ id: 'root', type: 'mandatory', text: '피상속인 기본정보(성함, 사망일자)를 먼저 입력해주세요.', level, relation: 'root' });
         }
       } else if (!node.isExcluded) {
-        if (node.isDeceased && node.deathDate && parentDate && !isBefore(node.deathDate, parentDate)) {
-          if (!node.heirs || node.heirs.length === 0) {
-            smartGuides.push({ id: node.id, type: 'mandatory', text: `'${node.name}' 님의 재상속 정보가 없습니다. 클릭하여 상속인을 추가하세요.`, level, relation: node.relation });
+        
+        const isSpouseType = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(node.relation);
+
+        if (node.isDeceased && node.deathDate && parentDate) {
+          if (!isBefore(node.deathDate, parentDate)) {
+            // 재상속: 자녀가 없으면 지분이 증발하므로 무조건 에러! 
+            if (!node.heirs || node.heirs.length === 0) {
+              smartGuides.push({ id: node.id, type: 'mandatory', text: `'${node.name}' 님의 재상속 정보가 없습니다. 클릭하여 상속인을 추가하세요.`, level, relation: node.relation });
+            }
+          } else {
+            // 💡 보완 1: 선사망(대습상속)인데 무자녀일 때, '배우자'는 대습상속 대상이 아니므로 안내를 생략합니다!
+            if (!isSpouseType && (!node.heirs || node.heirs.length === 0)) {
+              smartGuides.push({ 
+                id: node.id, 
+                type: 'recommended', 
+                text: `[${node.name}]님은 선사망하셨으나 대습상속인이 없어 상속에서 자동 제외되었습니다. 만약 대습상속인(자녀/배우자)이 있다면 추가해주세요.`, 
+                level, relation: node.relation 
+              });
+            }
           }
         }
+        
+        // 과거 민법 딸 관련 권고
         if ((law === '1960' || law === '1979') && node.relation === 'daughter' && !node.marriageDate && !node.restoreDate) {
           smartGuides.push({ id: node.id, type: 'recommended', text: `'${node.name}' 님의 혼인/복적 연혁을 입력하면 복잡한 계산을 AI가 대신합니다.`, level, relation: node.relation });
+        }
+
+        // 💡 보완 2: 배우자가 피상속인(또는 피대습자) 사망 '전'에 재혼했다면 대습상속권 차단!
+        if (isSpouseType && node.remarriageDate && parentDate) {
+          if (isBefore(node.remarriageDate, parentDate)) {
+            smartGuides.push({ 
+              id: node.id, type: 'mandatory', 
+              text: `🚨 [${node.name}]님은 피상속인 사망(${parentDate}) 전에 재혼하셨으므로 대습상속권이 소멸했습니다. 스위치를 눌러 [대습 개시 전 재혼]으로 제외 처리해주세요.`, 
+              level, relation: node.relation 
+            });
+          }
+        }
+
+        // 💡 보완 3: 재혼 연혁이 있는 경우 이부/이복형제 혼입 주의 안내
+        if (node.remarriageDate) {
+          smartGuides.push({ 
+            id: node.id, type: 'recommended', 
+            text: `[${node.name}]님의 재혼 연혁이 존재합니다. 하위에 상속인을 추가할 때, 전 배우자의 혈연 자녀가 아닌 '재혼 후 출생한 자녀(계자녀)'가 포함되지 않도록 주의하세요.`, 
+            level, relation: node.relation 
+          });
         }
         
         // 결격/상실 노란색 안내
         if (['disqualified', 'lost'].includes(node.exclusionOption) && (!node.heirs || node.heirs.length === 0)) {
           smartGuides.push({
-            id: node.id,
-            type: 'recommended',
-            text: `[${node.name}]님이 제외 처리되었으나 대습상속인이 입력되지 않았습니다. (무자녀라면 무시하셔도 타 상속인에게 정상 배분됩니다)`,
+            id: node.id, type: 'recommended',
+            text: `[${node.name}]님이 제외 처리되었으나 대습상속인이 입력되지 않았습니다. (무자녀라면 무시하셔도 타 상속인에게 배분됩니다)`,
             level, relation: node.relation
           });
         }
       }
+      
       if (node.heirs) node.heirs.forEach(h => checkGuideNode(h, node.deathDate || parentDate, level + 1));
     };
 

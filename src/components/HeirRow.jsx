@@ -5,7 +5,7 @@ import { getLawEra, isBefore, getRelStr } from '../engine/utils';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 // 💡 finalShares 프롭스 추가
-const HeirRow = ({ node, finalShares, level, handleUpdate, handleNameBlur, removeHeir, addHeir, siblings, inheritedDate, rootDeathDate, onKeyDown, toggleSignal, rootIsHoju, isRootChildren, onTabClick }) => {
+const HeirRow = ({ node, finalShares, level, handleUpdate, handleNameBlur, removeHeir, addHeir, siblings, inheritedDate, rootDeathDate, onKeyDown, toggleSignal, rootIsHoju, isRootChildren, onTabClick, parentNode }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: node.id });
 
   // 💡 실시간 계산된 지분 당겨오기 (엔진 연동)
@@ -87,6 +87,11 @@ const HeirRow = ({ node, finalShares, level, handleUpdate, handleNameBlur, remov
   // 💡 입력된 연혁 데이터가 있는지 확인하여 버튼 색상 변경
   const hasHistoryData = node.divorceDate || node.remarriageDate || node.marriageDate || node.restoreDate;
 
+  // 💡 부모 노드의 성별 판별 로직 (피상속인(root)은 제외하고 자녀/배우자 탭에서만 발동)
+  const isRootParent = parentNode?.id === 'root';
+  const isParentFemale = !isRootParent && ['wife', 'daughter', 'mother', 'sister'].includes(parentNode?.relation);
+  const isParentMale = !isRootParent && ['husband', 'son', 'father', 'brother'].includes(parentNode?.relation);
+
   return (
     <>
       <div 
@@ -144,8 +149,9 @@ const HeirRow = ({ node, finalShares, level, handleUpdate, handleNameBlur, remov
           onChange={e => handleUpdate(node.id, 'relation', e.target.value)} 
           className="w-full text-[15px] font-normal text-[#787774] dark:text-neutral-400 bg-transparent outline-none cursor-pointer"
         >
-          <option value="wife">{lawEra === '1991' ? '배우자' : '처'}</option>
-          <option value="husband">{lawEra === '1991' ? '배우자' : '남편'}</option>
+          {/* 💡 부모가 여성이면 '처'를 숨기고, 부모가 남성이면 '남편'을 숨깁니다! */}
+          {(!isParentFemale) && <option value="wife">{lawEra === '1991' ? '배우자' : '처'}</option>}
+          {(!isParentMale) && <option value="husband">{lawEra === '1991' ? '배우자' : '남편'}</option>}
           <option value="son">{lawEra === '1991' ? '자녀' : '아들'}</option>
           <option value="daughter">{lawEra === '1991' ? '자녀' : '딸'}</option>
           <option value="parent">직계존속</option>
