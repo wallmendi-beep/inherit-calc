@@ -11,6 +11,7 @@ import TreeReportNode from './components/TreeReportNode';
 import { math, getLawEra, getRelStr, formatKorDate, formatMoney, isBefore } from './engine/utils';
 import { calculateInheritance } from './engine/inheritance';
 import { getInitialTree, getEmptyTree } from './utils/initialData';
+import { useSmartGuide } from './hooks/useSmartGuide';
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 
@@ -144,6 +145,7 @@ function App() {
   const [isResetModalOpen, setIsResetModalOpen] = useState(false); 
   const [syncRequest, setSyncRequest] = useState(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1.0); // 💡 메인 입력창 확대/축소 상태 추가
   
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -307,7 +309,8 @@ function App() {
   const [isAmountActive, setIsAmountActive] = useState(false);
 
   // 💡 Phase 3: AI 내비게이터 상태 (별 버튼은 '켬' 기능만 수행)
-  const [showNavigator, setShowNavigator] = useState(false);
+  const [showNavigator, setShowNavigator] = useState(true);
+  const [isNavigatorRolledUp, setIsNavigatorRolledUp] = useState(false);
 
   // 💡 특정 상속인 위치로 이동 및 하이라이트 (Warp 기능 개선: 탭 자동 전환 포함)
   const handleNavigate = (nodeId) => {
@@ -419,7 +422,8 @@ function App() {
       const usedNames = new Set((parentNode.heirs || []).map(h => h.name));
 
       const markDeceasedAndAdd = (node) => {
-        if (node.id === parentId) {
+        // 💡 수정: 일반 화면 ID('root')와 고유 ID(personId) 모두 호환되도록 완벽 방어!
+        if (node.id === parentId || node.personId === parentId) {
           if (!node.isDeceased) node.isDeceased = true;
           const hasSpouse = (node.heirs || []).some(h => h.relation === 'wife' || h.relation === 'husband');
           
@@ -439,9 +443,9 @@ function App() {
             node.heirs = node.heirs || [];
             node.heirs.push({
               id: `h_${Date.now()}_${idx}`,
+              personId: `p_${Date.now()}_${idx}`,
               name: finalName,
-              relation: isSpouse ? (isRootFemale ? 'husband' : 'wife') : 'son',
-              isDeceased: false,
+              relation: isSpouse ? (isRootFemale ? 'husband' : 'wife') : 'son',              isDeceased: false,
               isSameRegister: true,
               heirs: []
             });
@@ -452,7 +456,8 @@ function App() {
         return false;
       };
 
-      if (newTree.id === parentId) {
+      // 💡 수정: 최초 피상속인 탭('root')에서도 추가가 작동하도록 수정!
+      if (newTree.id === parentId || newTree.personId === parentId) {
         const hasSpouse = (newTree.heirs || []).some(h => h.relation === 'wife' || h.relation === 'husband');
         names.forEach((name, idx) => {
           const isSpouse = idx === 0 && !hasSpouse;
@@ -469,6 +474,7 @@ function App() {
           newTree.heirs = newTree.heirs || [];
           newTree.heirs.push({
             id: `h_${Date.now()}_${idx}`,
+            personId: `p_${Date.now()}_${idx}`,
             name: finalName,
             relation: isSpouse ? (isRootFemale ? 'husband' : 'wife') : 'son',
             isDeceased: false,
@@ -820,49 +826,12 @@ function App() {
     return calculateInheritance(tree, propertyValue);
   }, [tree, propertyValue]);
 
-  // 💡 Phase 3: 스마트 가이드 엔진 (필수/권고 분리 및 워프 좌표 제공)
-  const smartGuides = useMemo(() => {
-    if (activeTab !== 'input') return [];
-    const guides = [];
-    const law = getLawEra(tree.deathDate);
-    
-    const checkNode = (node, parentDate) => {
-      if (node.id === 'root') {
-        if (node.heirs) node.heirs.forEach(h => checkNode(h, node.deathDate));
-        return;
-      }
-      
-      if (node.isExcluded) return; // 제외된 사람은 패스
-
-      // 🚨 1. 필수(mandatory): 재상속/대습상속 누락 검사
-      if (node.isDeceased && node.deathDate && parentDate && !isBefore(node.deathDate, parentDate)) {
-         if (!node.heirs || node.heirs.length === 0) {
-           // 💡 단순 텍스트가 아닌, 클릭 시 이동할 id를 함께 묶어줍니다!
-           guides.push({
-             id: node.id,
-             type: 'mandatory', // 필수 태그
-             text: `'${node.name}' 님의 재상속 정보가 없습니다. 클릭하여 상속인을 추가하세요.`
-           });
-         }
-      }
-
-      // 💡 2. 권고(recommended): 과거법 딸 연혁 검사 (짧고 직관적인 문구)
-      if ((law === '1960' || law === '1979') && node.relation === 'daughter') {
-         if (!node.marriageDate && !node.restoreDate) {
-           guides.push({
-             id: node.id,
-             type: 'recommended', // 권고 태그
-             text: `'${node.name}' 님의 혼인/복적 연혁을 입력하면 복잡한 계산을 AI가 대신합니다.`
-           });
-         }
-      }
-
-      if (node.heirs) node.heirs.forEach(h => checkNode(h, node.deathDate || parentDate));
-    };
-
-    checkNode(tree, null);
-    return guides;
-  }, [tree, activeTab]);
+  // 🧭 스마트 가이드 엔진 호출 (분석 로직 외부 분리)
+  const guideInfo = useSmartGuide(tree, finalShares, activeTab, warnings);
+  const { 
+    showGlobalWarning, showAutoCalcNotice, globalMismatchReasons, 
+    autoCalculatedNames, smartGuides, noSurvivors, hasActionItems 
+  } = guideInfo;
 
   const [activeDeceasedTab, setActiveDeceasedTab] = useState('root');
   const tabRefs = React.useRef({});
@@ -1193,21 +1162,42 @@ function App() {
 
   const getDetailedMismatchReasons = (rootNode) => {
     const reasons = [];
-    const rootDeathDate = rootNode.deathDate;
-    const scan = (n) => {
+    
+    // 💡 부모의 사망일을 계속해서 자식에게 물려주며 검사합니다 (scan 함수에 parentDate 추가)
+    const scan = (n, parentDate) => {
       if (n.id !== 'root') {
         const isSpouse = ['wife', 'husband', 'spouse'].includes(n.relation);
-        const isPre = n.deathDate && rootDeathDate && isBefore(n.deathDate, rootDeathDate);
+        
+        // 🚨 핵심 픽스: 최초 피상속인이 아니라, '직속 부모의 사망일'과 비교하여 선사망 여부 판단!
+        const isPre = n.deathDate && parentDate && isBefore(n.deathDate, parentDate);
         const isPreSpouse = isSpouse && isPre;
+        
+        // 부모보다 먼저 죽었으나(대습상속), 스위치가 켜져있고, 하위 상속인이 없는 경우 -> 에러!
         if ((!n.isExcluded && n.isDeceased && !isPreSpouse && isPre) && (!n.heirs || n.heirs.length === 0)) {
-          reasons.push(`망 ${n.name}(${getRelStr(n.relation, rootDeathDate)})의 대습상속인이 누락되었습니다. (미혼/무자녀인 경우 스위치를 꺼서 '상속권 없음' 처리해주세요)`);
+          // 💡 텍스트 대신 객체({id, text})를 저장하여 나중에 클릭 시 워프할 수 있게 만듭니다.
+          reasons.push({
+            id: n.id,
+            text: `망 ${n.name}(${getRelStr(n.relation, parentDate)})의 대습상속인이 누락되었습니다. (미혼/무자녀인 경우 스위치를 꺼서 '상속권 없음' 처리해주세요)`
+          });
         }
       }
+      
+      // 스위치가 꺼졌는데 '상속포기'가 아니면 그 아래는 검사 안 함
       if (n.isExcluded && (n.exclusionOption === 'renounce' || !n.exclusionOption)) return;
-      if (n.heirs) n.heirs.forEach(scan);
+      
+      // 하위 상속인으로 내려갈 때, 현재 노드의 사망일이 있으면 그 날짜를 새로운 기준으로 넘겨줌
+      if (n.heirs) n.heirs.forEach(h => scan(h, n.deathDate || parentDate));
     };
-    scan(rootNode);
-    return Array.from(new Set(reasons));
+    
+    scan(rootNode, rootNode.deathDate);
+    
+    // 중복 메시지 제거 (텍스트 기준)
+    const unique = [];
+    const seen = new Set();
+    reasons.forEach(r => {
+      if (!seen.has(r.text)) { seen.add(r.text); unique.push(r); }
+    });
+    return unique;
   };
 
   // 💡 지분 합계(1/1) 판단과 무관하게 상세 경고를 무조건 계산합니다.
@@ -1289,19 +1279,10 @@ function App() {
           style={{ transform: `translate3d(${stickerPos.current.x}px, ${stickerPos.current.y}px, 0)`, transition: 'none', willChange: 'transform', touchAction: 'none' }}
           onMouseDown={handleStickerMouseDown}
         >
-          <div className={`relative w-[340px] p-5 bg-white dark:bg-neutral-800 shadow-[0_12px_40px_rgb(0,0,0,0.15)] border border-[#e9e9e7] dark:border-neutral-700 rounded-xl select-none ${isStickerDragging ? 'scale-[1.02]' : 'transition-all duration-200'}`}>
+          <div className={`relative w-[340px] ${isNavigatorRolledUp ? 'p-3' : 'p-5'} bg-white dark:bg-neutral-800 shadow-[0_12px_40px_rgb(0,0,0,0.15)] border border-[#e9e9e7] dark:border-neutral-700 rounded-xl select-none transition-all duration-200 ${isStickerDragging ? 'scale-[1.02]' : ''}`}>
             
-            {/* 닫기(X) 버튼 */}
-            <button 
-              onMouseDown={(e) => e.stopPropagation()} 
-              onClick={() => setShowNavigator(false)} 
-              className="absolute top-3 right-3 w-6 h-6 flex items-center justify-center rounded-full text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700 hover:text-neutral-600 transition-colors pointer-events-auto"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-            </button>
-
-            <div className="flex flex-col gap-3 mt-1">
-              {/* 타이틀 및 나침반 아이콘 */}
+            {/* 🏷️ 헤더 영역: 타이틀과 버튼들을 한 행에 배치하여 수직 정렬 일치 */}
+            <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2 text-[#37352f] dark:text-neutral-100">
                 <svg className={`w-5 h-5 ${hasActionItems ? 'text-[#2383e2]' : 'text-neutral-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <circle cx="12" cy="12" r="10" />
@@ -1309,115 +1290,153 @@ function App() {
                 </svg>
                 <span className="font-black text-[15px]">스마트 가이드</span>
               </div>
-              
-              <div className="text-[13px] font-bold text-[#504f4c] dark:text-neutral-300 pointer-events-none">
-                
-                {/* 🚨 최우선 알림: 생존 상속인 전멸 상태 */}
-                {noSurvivors && (
-                  <div className="flex flex-col items-center justify-center py-6 text-center gap-2 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/50 rounded-lg mt-2 mb-4">
-                    <span className="text-2xl mb-1">👨‍👩‍👧‍👦</span>
-                    <span className="text-[#b45309] dark:text-amber-500 font-black text-[14px]">생존 상속인 없음</span>
-                    <span className="text-[#787774] dark:text-neutral-400 text-[11.5px] font-medium leading-relaxed px-4">
-                      현재 모든 상속인이 '사망' 또는 '제외' 상태입니다.<br/>
-                      실제 상속을 받을 생존자를 입력하거나,<br/>
-                      차순위 상속인을 추가해 주세요.
-                    </span>
-                  </div>
-                )}
 
-                {/* 완벽 상태 (생존자가 1명이라도 있고 에러가 없을 때만 노출) */}
-                {!hasActionItems && !noSurvivors && (
-                  <div className="flex flex-col items-center justify-center py-6 text-center gap-2 bg-[#fcfcfb] dark:bg-neutral-800/50 rounded-lg border border-[#e9e9e7] dark:border-neutral-700/50 mt-2">
-                    <span className="text-2xl mb-1">✅</span>
-                    <span className="text-[#37352f] dark:text-neutral-300 font-black text-[13px]">완벽합니다!</span>
-                    <span className="text-[#787774] dark:text-neutral-500 text-[11.5px] font-medium leading-snug">
-                      현재 단계에서 가이드가 추천할<br/>추가 입력/수정 항목이 없습니다.
-                    </span>
-                  </div>
-                )}
+              <div className="flex items-center">
+                {/* 롤업/롤다운 버튼 (닫기 버튼과 20px 간격 유지) */}
+                <button 
+                  onMouseDown={(e) => e.stopPropagation()} 
+                  onClick={() => setIsNavigatorRolledUp(!isNavigatorRolledUp)} 
+                  className="w-6 h-6 flex items-center justify-center rounded-full text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700 hover:text-neutral-600 transition-colors pointer-events-auto mr-5"
+                  title={isNavigatorRolledUp ? "내용 보기" : "제목만 보기"}
+                >
+                  {isNavigatorRolledUp ? (
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                  ) : (
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" /></svg>
+                  )}
+                </button>
 
-                {/* 🚨 하드 엔진 경고 */}
-                {activeTab === 'input' && warnings.map((w, i) => (
-                  <div key={`w-${i}`} className="flex items-start gap-2 text-red-600 p-2.5 bg-red-50/50 rounded-lg border border-red-100 mt-2">
-                    <span className="mt-0.5">⚠️</span><span className="flex-1 leading-snug">{w}</span>
-                  </div>
-                ))}
-
-                {/* 👉 1. 필수 사항 (Mandatory) */}
-                {activeTab === 'input' && smartGuides.filter(g => g.type === 'mandatory').map((g, i) => (
-                  <button 
-                    key={`m-${i}`} 
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={() => handleNavigate(g.id)}
-                    className="w-full mt-2 text-left flex items-start gap-2 bg-blue-50/60 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200/60 dark:border-blue-800/30 hover:bg-blue-100/80 transition-all group pointer-events-auto shadow-sm"
-                  >
-                    <span className="mt-0.5 text-blue-600 group-hover:scale-125 transition-transform">👉</span>
-                    <span className="flex-1 leading-snug text-[#37352f] dark:text-neutral-200">{g.text}</span>
-                  </button>
-                ))}
-
-                {/* ✂️ 점선 구분선 (필수와 권고가 둘 다 있을 때만 노출) */}
-                {activeTab === 'input' && smartGuides.filter(g => g.type === 'mandatory').length > 0 && smartGuides.filter(g => g.type === 'recommended').length > 0 && (
-                  <div className="w-full border-t border-dashed border-[#d4d4d4] dark:border-neutral-600 my-4"></div>
-                )}
-
-                {/* 💡 2. 권고 사항 헤더 및 목록 (Recommended) */}
-                {activeTab === 'input' && smartGuides.filter(g => g.type === 'recommended').length > 0 && (
-                  <>
-                    <div className={`mt-2 mb-1.5 ${smartGuides.filter(m => m.type === 'mandatory').length === 0 ? 'mt-3' : ''}`}>
-                      <span className="text-[11px] font-bold text-[#a3a3a3] dark:text-neutral-500 tracking-tight px-1">[다음은 권고사항입니다]</span>
-                    </div>
-                    {smartGuides.filter(g => g.type === 'recommended').map((g, i) => (
-                      <button 
-                        key={`r-${i}`} 
-                        onMouseDown={(e) => e.stopPropagation()}
-                        onClick={() => handleNavigate(g.id)}
-                        className="w-full text-left flex items-start gap-2 bg-[#fbfbfb] dark:bg-neutral-800/40 p-2.5 rounded-lg border border-[#e9e9e7] dark:border-neutral-700 hover:bg-[#f2f2f0] transition-all group pointer-events-auto mb-1.5"
-                      >
-                        <span className="mt-0.5 text-[#a3a3a3] group-hover:text-amber-500 transition-colors">💡</span>
-                        <span className="flex-1 leading-snug text-[#787774] dark:text-neutral-400 font-medium text-[12.5px]">{g.text}</span>
-                      </button>
-                    ))}
-                  </>
-                )}
-
-                {/* 🚨 지분 불일치 상세 안내 (데이터 입력 탭 포함 모든 곳에서 노출!) */}
-                {showGlobalWarning && (
-                  <div className="mt-3 space-y-3">
-                    <div className="text-[#e53e3e] dark:text-red-400 font-black text-[14px]">전체 지분 합계가 일치하지 않습니다.</div>
-                    
-                    {/* 💡 요약표와 동일한 상세 메시지 출력 */}
-                    {globalMismatchReasons.length > 0 ? (
-                      <div className="p-3 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-lg animate-in fade-in zoom-in duration-300">
-                        <ul className="list-disc pl-4 space-y-1 text-[12.5px] text-[#c93f3a] dark:text-red-400 font-bold leading-relaxed">
-                          {globalMismatchReasons.map((r, idx) => <li key={idx}>{r}</li>)}
-                        </ul>
-                      </div>
-                    ) : (
-                      <div className="p-3 bg-[#f9f9f8] dark:bg-neutral-900 border border-[#e9e9e7] dark:border-neutral-700 rounded-md">
-                        <span className="text-[12.5px] text-[#787774] dark:text-neutral-400 font-bold">지분 일부가 상속권 없음 처리되어 전체 합계가 미달합니다.</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {/* 자동분배 내역 (모든 탭 노출) */}
-                {showAutoCalcNotice && (
-                  <div className="mt-3 p-3 bg-[#f9f9f8] dark:bg-neutral-900 border border-[#e9e9e7] dark:border-neutral-700 rounded-md">
-                    <span className="text-[#37352f] dark:text-neutral-100 font-black block mb-2 border-b border-[#e9e9e7] dark:border-neutral-700 pb-1.5 text-[13px]">자동분배 내역:</span>
-                    <div className="space-y-1.5">
-                      {autoCalculatedNames.map((a, idx) => (
-                         <div key={idx} className="text-[12.5px] flex items-center justify-between">
-                           <span className="font-bold text-[#504f4c] dark:text-neutral-300">{a.name}</span>
-                           <span className="text-[#787774] dark:text-neutral-500 flex items-center gap-1.5">
-                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-                             {a.target}
-                           </span>
-                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                {/* 닫기(X) 버튼 */}
+                <button 
+                  onMouseDown={(e) => e.stopPropagation()} 
+                  onClick={() => setShowNavigator(false)} 
+                  className="w-6 h-6 flex items-center justify-center rounded-full text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700 hover:text-neutral-600 transition-colors pointer-events-auto"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
               </div>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              {!isNavigatorRolledUp && (
+                <div className="text-[13px] font-bold text-[#504f4c] dark:text-neutral-300 pointer-events-none animate-in fade-in slide-in-from-top-1 duration-200">
+                  
+                  {/* 🚨 최우선 알림: 생존 상속인 전멸 상태 */}
+                  {noSurvivors && (
+                    <div className="flex flex-col items-center justify-center py-6 text-center gap-2 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/50 rounded-lg mt-2 mb-4">
+                      <span className="text-2xl mb-1">👨‍👩‍👧‍👦</span>
+                      <span className="text-[#b45309] dark:text-amber-500 font-black text-[14px]">생존 상속인 없음</span>
+                      <span className="text-[#787774] dark:text-neutral-400 text-[11.5px] font-medium leading-relaxed px-4">
+                        현재 모든 상속인이 '사망' 또는 '제외' 상태입니다.<br/>
+                        실제 상속을 받을 생존자를 입력하거나,<br/>
+                        차순위 상속인을 추가해 주세요.
+                      </span>
+                    </div>
+                  )}
+
+                  {/* 완벽 상태 (생존자가 1명이라도 있고 에러가 없을 때만 노출) */}
+                  {!hasActionItems && !noSurvivors && (
+                    <div className="flex flex-col items-center justify-center py-6 text-center gap-2 bg-[#fcfcfb] dark:bg-neutral-800/50 rounded-lg border border-[#e9e9e7] dark:border-neutral-700/50 mt-2">
+                      <span className="text-2xl mb-1">✅</span>
+                      <span className="text-[#37352f] dark:text-neutral-300 font-black text-[13px]">완벽합니다!</span>
+                      <span className="text-[#787774] dark:text-neutral-500 text-[11.5px] font-medium leading-snug">
+                        현재 단계에서 가이드가 추천할<br/>추가 입력/수정 항목이 없습니다.
+                      </span>
+                    </div>
+                  )}
+
+                  {/* 🚨 하드 엔진 경고 */}
+                  {activeTab === 'input' && warnings.map((w, i) => (
+                    <div key={`w-${i}`} className="flex items-start gap-2 text-red-600 p-2.5 bg-red-50/50 rounded-lg border border-red-100 mt-2">
+                      <span className="mt-0.5">⚠️</span><span className="flex-1 leading-snug">{w}</span>
+                    </div>
+                  ))}
+
+                  {/* 👉 1. 필수 사항 (Mandatory) */}
+                  {activeTab === 'input' && smartGuides.filter(g => g.type === 'mandatory').map((g, i) => (
+                    <button 
+                      key={`m-${i}`} 
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={() => handleNavigate(g.id)}
+                      className="w-full mt-2 text-left flex items-start gap-2 bg-blue-50/60 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200/60 dark:border-blue-800/30 hover:bg-blue-100/80 transition-all group pointer-events-auto shadow-sm"
+                    >
+                      <span className="mt-0.5 text-blue-600 group-hover:scale-125 transition-transform">👉</span>
+                      <span className="flex-1 leading-snug text-[#37352f] dark:text-neutral-200">{g.text}</span>
+                    </button>
+                  ))}
+
+                  {/* ✂️ 점선 구분선 (필수와 권고가 둘 다 있을 때만 노출) */}
+                  {activeTab === 'input' && smartGuides.filter(g => g.type === 'mandatory').length > 0 && smartGuides.filter(g => g.type === 'recommended').length > 0 && (
+                    <div className="w-full border-t border-dashed border-[#d4d4d4] dark:border-neutral-600 my-4"></div>
+                  )}
+
+                  {/* 💡 2. 권고 사항 헤더 및 목록 (Recommended) */}
+                  {activeTab === 'input' && smartGuides.filter(g => g.type === 'recommended').length > 0 && (
+                    <>
+                      <div className={`mt-2 mb-1.5 ${smartGuides.filter(m => m.type === 'mandatory').length === 0 ? 'mt-3' : ''}`}>
+                        <span className="text-[11px] font-bold text-[#a3a3a3] dark:text-neutral-500 tracking-tight px-1">[다음은 권고사항입니다]</span>
+                      </div>
+                      {smartGuides.filter(g => g.type === 'recommended').map((g, i) => (
+                        <button 
+                          key={`r-${i}`} 
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={() => handleNavigate(g.id)}
+                          className="w-full text-left flex items-start gap-2 bg-[#fbfbfb] dark:bg-neutral-800/40 p-2.5 rounded-lg border border-[#e9e9e7] dark:border-neutral-700 hover:bg-[#f2f2f0] transition-all group pointer-events-auto mb-1.5"
+                        >
+                          <span className="mt-0.5 text-[#a3a3a3] group-hover:text-amber-500 transition-colors">💡</span>
+                          <span className="flex-1 leading-snug text-[#787774] dark:text-neutral-400 font-medium text-[12.5px]">{g.text}</span>
+                        </button>
+                      ))}
+                    </>
+                  )}
+
+                  {/* 🚨 지분 불일치 상세 안내 (데이터 입력 탭 포함 모든 곳에서 노출!) */}
+                  {showGlobalWarning && (
+                    <div className="mt-3 space-y-3">
+                      <div className="text-[#e53e3e] dark:text-red-400 font-black text-[14px]">전체 지분 합계가 일치하지 않습니다.</div>
+                      
+                      {/* 💡 요약표와 동일한 상세 메시지 출력 */}
+                      {globalMismatchReasons.length > 0 ? (
+                        <div className="space-y-1.5 animate-in fade-in zoom-in duration-300">
+                          {globalMismatchReasons.map((r, idx) => (
+                            <button
+                              key={idx}
+                              onMouseDown={(e) => e.stopPropagation()}
+                              onClick={() => r.id ? handleNavigate(r.id) : null}
+                              className="w-full text-left flex items-start gap-2 bg-red-50 dark:bg-red-900/10 p-2.5 rounded-lg border border-red-200 dark:border-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/40 transition-all group pointer-events-auto shadow-sm"
+                            >
+                              <span className="mt-0.5 text-red-600 dark:text-red-400 group-hover:scale-125 transition-transform">🚨</span>
+                              {/* 💡 핵심: r.text 로 객체 안의 글씨만 쏙 빼서 렌더링! */}
+                              <span className="flex-1 leading-snug text-[#c93f3a] dark:text-red-400 font-bold text-[12.5px]">{r.text || r}</span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-3 bg-[#f9f9f8] dark:bg-neutral-900 border border-[#e9e9e7] dark:border-neutral-700 rounded-md">
+                          <span className="text-[12.5px] text-[#787774] dark:text-neutral-400 font-bold">지분 일부가 상속권 없음 처리되어 전체 합계가 미달합니다.</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {/* 자동분배 내역 (모든 탭 노출) */}
+                  {showAutoCalcNotice && (
+                    <div className="mt-3 p-3 bg-[#f9f9f8] dark:bg-neutral-900 border border-[#e9e9e7] dark:border-neutral-700 rounded-md">
+                      <span className="text-[#37352f] dark:text-neutral-100 font-black block mb-2 border-b border-[#e9e9e7] dark:border-neutral-700 pb-1.5 text-[13px]">자동분배 내역:</span>
+                      <div className="space-y-1.5">
+                        {autoCalculatedNames.map((a, idx) => (
+                           <div key={idx} className="text-[12.5px] flex items-center justify-between">
+                             <span className="font-bold text-[#504f4c] dark:text-neutral-300">{a.name}</span>
+                             <span className="text-[#787774] dark:text-neutral-500 flex items-center gap-1.5">
+                               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                               {a.target}
+                             </span>
+                           </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1888,7 +1907,7 @@ function App() {
             <div className="flex items-center gap-2 whitespace-nowrap shrink-0 overflow-visible">
               <div className="flex items-center text-[#37352f] dark:text-neutral-100 font-bold text-[18px] tracking-tight whitespace-nowrap shrink-0">
                 <IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-neutral-400 shrink-0" />
-                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v2.0.5</span>
+                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v2.0.6</span>
               </div>
               <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px] ml-8 whitespace-nowrap shrink-0">Designed by J.H. Lee</span>
             </div>
@@ -1947,9 +1966,26 @@ function App() {
               <IconTable className="h-3.5 w-3.5" /> 엑셀
             </button>
             <div className="w-px h-3.5 bg-[#e9e9e7] mx-0.5"></div>
+
             <button onClick={handlePrint} className="text-white bg-[#2383e2] hover:bg-[#0073ea] px-3 py-1 rounded text-[12px] font-bold transition-colors flex items-center gap-1 shadow-sm whitespace-nowrap mr-1">
               <IconPrinter className="h-3.5 w-3.5" /> 인쇄
             </button>
+
+            {/* 💡 확대/축소 컨트롤러 (인쇄 우측, 다크모드 좌측으로 이동) */}
+            <div className="flex items-center gap-1 bg-[#f7f7f5] dark:bg-neutral-700 px-1.5 py-0.5 rounded border border-[#e9e9e7] dark:border-neutral-600 mr-1 transition-colors">
+              <button 
+                onClick={() => setZoomLevel(prev => Math.max(0.7, prev - 0.1))}
+                className="w-5 h-5 flex items-center justify-center text-[#787774] hover:text-[#37352f] dark:text-neutral-400 dark:hover:text-neutral-200 font-bold text-[14px]"
+                title="축소"
+              >-</button>
+              <span className="text-[10px] font-black w-8 text-center text-[#504f4c] dark:text-neutral-300">{Math.round(zoomLevel * 100)}%</span>
+              <button 
+                onClick={() => setZoomLevel(prev => Math.min(1.5, prev + 0.1))}
+                className="w-5 h-5 flex items-center justify-center text-[#787774] hover:text-[#37352f] dark:text-neutral-400 dark:hover:text-neutral-200 font-bold text-[14px]"
+                title="확대"
+              >+</button>
+            </div>
+
             <button onClick={() => setIsDarkMode(!isDarkMode)} className="w-7 h-7 flex justify-center items-center rounded-full text-[#787774] hover:bg-[#efefed] dark:text-neutral-400 dark:hover:bg-neutral-700 transition-colors mr-2 focus:outline-none" title={isDarkMode ? '라이트 모드' : '다크 모드'}>
               {isDarkMode ? <IconSun className="w-4 h-4 text-amber-300" /> : <IconMoon className="w-4 h-4" />}
             </button>
@@ -1961,9 +1997,10 @@ function App() {
         className={`flex-1 flex w-full transition-all duration-300 ${sidebarOpen ? 'justify-start' : 'justify-center'}`}
         style={{ paddingLeft: sidebarOpen ? (sidebarWidth + 50) : 0 }}
       >
-        {/* 💡 가변(max-w)을 버리고 절대 고정폭(w-[1080px]) 적용 */}
-        <div className="flex flex-col w-[1080px] min-w-[1080px] shrink-0 px-6 mt-6 print-compact print:!px-0 print:!min-w-0 print:!w-full relative z-10">
-          {/* 상단 탭 (네비게이션) - 제목과 정렬 동기화 */}
+        {/* 💡 핵심: 메인 콘텐츠(탭 + 입력창)만 확대/축소하는 줌 엔진 적용 */}
+        <div style={{ zoom: zoomLevel, width: '100%', display: 'flex', justifyContent: sidebarOpen ? 'flex-start' : 'center' }}>
+          <div className="flex flex-col w-[1080px] min-w-[1080px] shrink-0 px-6 mt-6 print-compact print:!px-0 print:!min-w-0 print:!w-full relative z-10">
+            {/* 상단 탭 (네비게이션) - 제목과 정렬 동기화 */}
           <div className="flex items-end pl-[48px] gap-1 no-print relative z-20">
           {tabData.map(t => {
             const isActive = activeTab === t.id;
@@ -2683,8 +2720,8 @@ function App() {
               }
             });
 
-            // 💡 핵심 픽스: 허공에 뜬 지분 무시! 화면에 표시된 생존자(topDirect, topGroups) 지분만 추출해서 합산!
-            const calculateTotalSum = () => {
+            // 💡 리팩토링: useSmartGuide에서 이미 계산된 값을 사용하도록 전면 교체
+            const [totalSumN, totalSumD] = (() => {
               let tn = 0, td = 1;
               const addShare = (s) => {
                 if (s && s.n > 0) {
@@ -2699,65 +2736,10 @@ function App() {
               };
               topGroups.forEach(traverseGroup);
               return math.simplify(tn, td);
-            };
+            })();
 
-            const [totalSumN, totalSumD] = calculateTotalSum();
-            const targetN = tree.shareN || 1;
-            const targetD = tree.shareD || 1;
-            const [simpleTargetN, simpleTargetD] = math.simplify(targetN, targetD);
-            
-            // mismatchReasons 계산을 위해 isMatch를 먼저 정의
-            const getMismatchReasons = (rootNode, currentTotalSumN) => {
-              const reasons = [];
-              const rootDeathDate = rootNode.deathDate;
-
-              if (!rootNode.heirs || rootNode.heirs.length === 0) {
-                reasons.push("입력된 상속인이 없어 분배할 지분이 계산되지 않았습니다.");
-              }
-
-              const scanMissingHeirs = (n) => {
-                if (n.id !== 'root') {
-                  const isRootSpouse = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(n.relation);
-                  const isPreDeceasedSpouse = isRootSpouse && n.deathDate && rootDeathDate && isBefore(n.deathDate, rootDeathDate);
-                  const isPreDeceasedContext = n.deathDate && rootDeathDate && isBefore(n.deathDate, rootDeathDate);
-
-                  const requiresHeirsIfExcluded = n.isExcluded && ['lost', 'disqualified'].includes(n.exclusionOption);
-                  const requiresHeirsIfDeceased = !n.isExcluded && n.isDeceased && !isPreDeceasedSpouse && isPreDeceasedContext;
-
-                  if ((requiresHeirsIfDeceased || requiresHeirsIfExcluded) && (!n.heirs || n.heirs.length === 0)) {
-                    if (requiresHeirsIfDeceased) {
-                      reasons.push(`망 ${n.name}(${getRelStr(n.relation, rootDeathDate)})의 대습상속인이 누락되었습니다. (미혼/무자녀인 경우 '상속권 없음' 토글 켜기)`);
-                    } else {
-                      reasons.push(`${n.name}의 상속권상실/결격에 따른 대습상속인이 누락되었습니다.`);
-                    }
-                  }
-                }
-
-                if (n.isExcluded && (n.exclusionOption === 'no_heir' || n.exclusionOption === 'renounce' || !n.exclusionOption)) return;
-
-                if (n.heirs) n.heirs.forEach(scanMissingHeirs);
-              };
-              
-              if (rootNode.heirs && rootNode.heirs.length > 0) {
-                scanMissingHeirs(rootNode);
-              }
-
-              if (reasons.length === 0) {
-                 if (currentTotalSumN === 0) {
-                   reasons.push("💡 현재 모든 상속인이 '상속포기' 또는 '상속권 없음' 상태입니다.");
-                   reasons.push("민법 제1000조에 따라 차순위 상속인(직계존속 또는 형제자매)을 상속인 입력 창에 새로 추가하여 지분을 분배해 주세요.");
-                 } else {
-                   reasons.push("지분 일부가 '상속권 없음(소멸)' 처리되어 전체 합계가 피상속인 지분에 미달합니다.");
-                   reasons.push("지분을 공동상속인끼리 나누어 갖게 하려면 제외 사유를 '상속포기'로 변경해 주세요.");
-                 }
-              }
-              
-              return Array.from(new Set(reasons));
-            };
-
-            const mismatchReasonsTmp = (totalSumN !== simpleTargetN || totalSumD !== simpleTargetD) ? getMismatchReasons(tree, totalSumN) : [];
-            const isMatch = totalSumN === simpleTargetN && totalSumD === simpleTargetD && mismatchReasonsTmp.length === 0;
-            const mismatchReasons = !isMatch ? getMismatchReasons(tree, totalSumN) : [];
+            const isMatch = !showGlobalWarning;
+            const mismatchReasons = globalMismatchReasons;
 
             const renderShareRow = (f, depth) => {
               const pl = `${12 + (depth > 0 ? 16 : 0)}px`; 
@@ -2855,13 +2837,20 @@ function App() {
 
                 {/* 💡 표 바깥으로 분리된 불일치 경고 메시지 영역 */}
                 {!isMatch && mismatchReasons.length > 0 && (
-                  <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 rounded-lg animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 rounded-lg animate-in fade-in slide-in-from-top-2 duration-300 no-print">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-red-600 dark:text-red-400 font-bold text-[14px]">⚠️ 상속 지분 배분 안내</span>
                     </div>
                     <ul className="list-disc pl-5 text-[#c93f3a] dark:text-red-400 space-y-1.5 text-[13px] font-medium leading-relaxed">
                       {mismatchReasons.map((r, idx) => (
-                        <li key={idx}>{r}</li>
+                        <li 
+                          key={idx} 
+                          onClick={() => r.id && r.id !== 'root' ? handleNavigate(r.id) : null}
+                          className={`transition-all ${r.id && r.id !== 'root' ? 'cursor-pointer hover:underline decoration-red-400 underline-offset-4' : ''}`}
+                          title={r.id && r.id !== 'root' ? "클릭 시 해당 상속인 위치로 이동합니다" : ""}
+                        >
+                          {r.text || r}
+                        </li>
                       ))}
                     </ul>
                   </div>
@@ -2870,6 +2859,8 @@ function App() {
             );
           })()}
           </div>
+        </div>
+        </div>
         </div>
 
         {/* 위로 가기 버튼 */}
@@ -2881,10 +2872,9 @@ function App() {
             <span className="text-[16px]">↑</span> 맨 위로
           </button>
         )}
-      </div>
-    </main>
-  </div>
-);
+      </main>
+    </div>
+  );
 }
 
 export default App;

@@ -94,7 +94,10 @@ export const calculateInheritance = (tree, propertyValue) => {
 
     if (!node.isExcluded) {
       if (node.isDeceased && !node.deathDate) {
-        warnings.push(`${node.name || '이름 미입력'} 님의 사망일자가 입력되지 않았습니다.`);
+        // 💡 피상속인(root)은 App.jsx의 smartGuides에서 이미 처리하므로 여기서는 일반 상속인만 체크
+        if (node.id !== 'root') {
+          warnings.push(`${node.name || '이름 미상'} 님의 사망일자가 입력되지 않았습니다.`);
+        }
       }
       if (node.id !== 'root' && node.isDeceased && node.deathDate && isBefore(node.deathDate, inheritedDate)) {
         const activeHeirs = (node.heirs || []).filter(h => !h.isExcluded);
