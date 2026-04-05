@@ -3329,7 +3329,7 @@ function App() {
               {/* 헤더 */}
               <div className="px-6 py-4 border-b border-gray-200 dark:border-neutral-700 flex justify-between items-center bg-indigo-50 dark:bg-indigo-900/30">
                 <h2 className="text-lg font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-2">
-                  <span>✨</span> AI 제적등본 자동 입력기
+                  <span>✨</span> AI 자동 입력기 <span className="text-sm font-medium opacity-70 ml-1">(제적등본 / 가계도)</span>
                 </h2>
                 <button onClick={() => setIsAiModalOpen(false)} className="text-gray-400 hover:text-gray-600">
                   <IconX className="w-6 h-6" />
@@ -3340,8 +3340,9 @@ function App() {
                 {/* 1단계: 프롬프트 영역 */}
                 <div className="mb-6 p-4 bg-gray-50 dark:bg-neutral-700/50 rounded-lg border border-gray-200 dark:border-neutral-600">
                   <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-2">1단계: 명령어 복사하기</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                    아래 버튼을 눌러 명령어를 복사한 후, <b>뤼튼, ChatGPT, 클로드, 제미나이</b> 앱에 제적등본(가족관계증명서) 사진과 함께 붙여넣으세요.
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 leading-relaxed">
+                    아래 버튼을 눌러 명령어를 복사한 후, <b>뤼튼, ChatGPT, 클로드, 제미나이</b> 앱에 문서 사진과 함께 붙여넣으세요.<br/>
+                    <span className="text-indigo-600 dark:text-indigo-400 font-medium">※ 공문서(제적등본, 가족관계증명서)는 물론, 신청인이 직접 손으로 그린 가계도 등 사문서 사진도 완벽하게 인식합니다!</span>
                   </p>
                   <button 
                     onClick={() => {
