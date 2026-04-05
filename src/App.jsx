@@ -1221,11 +1221,40 @@ function App() {
 
   // 🧭 스마트 가이드 엔진 호출 (분석 로직 외부 분리)
   const guideInfo = useSmartGuide(tree, finalShares, activeTab, warnings);
+
+  // 💡 [다중 배우자 감지 센서]
+  const multipleSpouseGuides = useMemo(() => {
+    const guides = [];
+    const checkSpouses = (node) => {
+      // 스위치가 켜져 있는(상속권이 있는) 배우자들만 수집
+      const activeSpouses = (node.heirs || []).filter(h => 
+        ['wife', 'husband', 'spouse'].includes(h.relation) && !h.isExcluded
+      );
+
+      // 배우자가 2명 이상이면 가이드 생성!
+      if (activeSpouses.length > 1) {
+        const spouseNames = activeSpouses.map(s => s.name || '(이름없음)').join(', ');
+        guides.push({
+          id: node.id, // 부모 탭으로 바로가기
+          uniqueKey: `multi-spouse-${node.id}`,
+          type: 'mandatory', // 필수 경고
+          text: `[${node.name || '피상속인'}]의 배우자가 2명 이상(${spouseNames}) 활성화되어 있습니다. 전혼/이혼 여부를 확인하여 한 분의 스위치를 꺼주세요.`
+        });
+      }
+      if (node.heirs) node.heirs.forEach(checkSpouses);
+    };
+    checkSpouses(tree);
+    return guides;
+  }, [tree]);
+
+  // 기존 가이드와 다중 배우자 경고를 하나로 합침
   const { 
     showGlobalWarning, showAutoCalcNotice, globalMismatchReasons, 
-    autoCalculatedNames, smartGuides, noSurvivors, hasActionItems 
+    autoCalculatedNames, noSurvivors 
   } = guideInfo;
 
+  const smartGuides = [...(guideInfo.smartGuides || []), ...multipleSpouseGuides];
+  const hasActionItems = guideInfo.hasActionItems || multipleSpouseGuides.length > 0;
   // ------------------------------------------------------------------
   // 💡 사용자가 [X]를 눌러 숨긴 권고 가이드를 기억하는 메모리
   const [hiddenGuideKeys, setHiddenGuideKeys] = useState(new Set());
@@ -3346,7 +3375,25 @@ function App() {
                   </p>
                   <button 
                     onClick={() => {
-                      const prompt = `첨부한 제적등본(또는 가계도 메모) 사진을 보고, 아래 JSON 양식에 맞춰 가족 관계를 추출해줘.\n\n[규칙]\n1. 남자는 relation을 "son", 여자는 "daughter", 배우자는 "wife" 또는 "husband"로 작성해.\n2. 사망자는 isDeceased를 true로 하고, deathDate를 "YYYY-MM-DD" 형태로 넣어.\n3. 자녀들은 반드시 부모의 heirs 배열 안에 넣어.\n4. 응답은 무조건 JSON 코드 블록으로만 출력해. 다른 설명은 절대 하지마.\n\n[출력 예시]\n{\n  "name": "홍길동", "isDeceased": true, "deathDate": "1980-01-01",\n  "heirs": [\n    { "name": "김철수", "relation": "son" },\n    { "name": "김영희", "relation": "daughter", "isDeceased": true, "deathDate": "2000-05-05", "heirs": [] }\n  ]\n}`;
+                      const prompt = `첨부한 문서(제적등본, 가족관계증명서, 가계도 메모 등) 사진을 보고, 아래 JSON 양식에 맞춰 가족 관계를 추출해줘.
+
+[규칙]
+1. 피상속인(망인)을 중심으로 남자는 "son", 여자는 "daughter", 배우자는 "wife" 또는 "husband"로 작성해.
+2. 사망자는 isDeceased를 true로 하고, deathDate를 "YYYY-MM-DD" 형태로 넣어.
+3. 🚨 [중요] 제적등본에 전처, 후처 등 배우자가 여러 명 기재되어 있다면 임의로 판단/삭제하지 말고 문서에 있는 대로 일단 전부 다 입력해!
+4. 문서에 출가일(혼인일)이 있으면 marriageDate에, 재혼일이 있으면 remarriageDate에 "YYYY-MM-DD" 형태로 기재해.
+5. 자녀들은 반드시 해당 부모의 heirs 배열 안에 정확히 넣어.
+6. 응답은 무조건 JSON 코드 블록으로만 출력해. 다른 설명은 절대 하지마.
+
+[출력 예시]
+{
+  "name": "김혁조", "isDeceased": true, "deathDate": "1980-01-01",
+  "heirs": [
+    { "name": "조홍이", "relation": "wife", "isDeceased": true, "deathDate": "1975-01-01" },
+    { "name": "구수명", "relation": "wife", "remarriageDate": "1985-05-05" },
+    { "name": "김영희", "relation": "daughter", "marriageDate": "1995-10-20" }
+  ]
+}`;
                       navigator.clipboard.writeText(prompt);
                       alert("✅ 명령어가 복사되었습니다! 쓰시는 AI 앱에 사진과 함께 붙여넣으세요.");
                     }}
