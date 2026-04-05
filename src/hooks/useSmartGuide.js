@@ -145,37 +145,56 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
         if (node.isDeceased && node.deathDate && parentDate) {
           if (!isBefore(node.deathDate, parentDate)) {
             if (!node.heirs || node.heirs.length === 0) {
-              // 💡 기계가 자동분배(2/3순위)를 해냈는지 검사합니다.
+              // 💡 기계가 자동분배를 해냈는지 검사합니다.
               const parentNode = findParentNodeInHook(tree, node.id);
+              const isSpouseType = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(node.relation);
               let canAutoCalc = false;
               let autoTarget = '';
               
-              if (parentNode && parentNode.heirs && !isSpouseType) {
-                const ascendants = parentNode.heirs.filter(h => ['wife', 'husband', 'spouse'].includes(h.relation) && (!h.isDeceased || isBefore(node.deathDate, h.deathDate)) && !h.isExcluded);
-                if (ascendants.length > 0) { canAutoCalc = true; autoTarget = '직계존속(어머니/아버지)'; }
-                else {
-                  const siblings = parentNode.heirs.filter(h => h.id !== node.id && ['son', 'daughter'].includes(h.relation) && !h.isExcluded);
-                  if (siblings.length > 0) { canAutoCalc = true; autoTarget = '형제자매'; }
+              if (parentNode && parentNode.heirs) {
+                if (!isSpouseType) {
+                  const ascendants = parentNode.heirs.filter(h => ['wife', 'husband', 'spouse'].includes(h.relation) && (!h.isDeceased || isBefore(node.deathDate, h.deathDate)) && !h.isExcluded);
+                  if (ascendants.length > 0) { canAutoCalc = true; autoTarget = '직계존속(어머니/아버지)'; }
+                  else {
+                    const siblings = parentNode.heirs.filter(h => h.id !== node.id && ['son', 'daughter'].includes(h.relation) && !h.isExcluded);
+                    if (siblings.length > 0) { canAutoCalc = true; autoTarget = '형제자매'; }
+                  }
+                } else {
+                  // 💡 [추가됨] 배우자의 경우: 남편(아내)의 자녀들을 검사
+                  const stepChildren = parentNode.heirs.filter(h => h.id !== node.id && ['son', 'daughter'].includes(h.relation) && !h.isExcluded);
+                  if (stepChildren.length > 0) { canAutoCalc = true; autoTarget = '공동 자녀들'; }
                 }
               }
 
               // 기계가 알아서 찾았다면 에러(🚨) 대신 권고/안내(💡)로 처리!
               if (canAutoCalc) {
                 smartGuides.push({ 
-                  id: `tab:${node.personId}`, // 💡 부모 탭이 아닌, 본인 탭 내부로 다이렉트 진입!
+                  id: `tab:${node.personId}`, 
                   type: 'recommended', 
                   text: `[${node.name}]님은 하위 상속인이 없어 시스템이 자동으로 ${autoTarget}에게 지분을 분배했습니다. 실제 재상속인 정보를 직접 입력하시려면 여기를 클릭하세요.`, 
                   level, 
                   relation: node.relation 
                 });
               } else {
-                smartGuides.push({ 
-                  id: `tab:${node.personId}`, // 💡 여기도 본인 탭 내부로 진입!
-                  type: 'mandatory', 
-                  text: `🚨 '${node.name}' 님의 재상속 정보가 없습니다. 대를 이을 사람이 없다면 스위치를 꺼주세요.`, 
-                  level, 
-                  relation: node.relation 
-                });
+                if (isSpouseType) {
+                  // 🚨 [추가됨] 배우자 전용 경고: 친정/본가 입력 유도 (법리적 대참사 방지)
+                  smartGuides.push({ 
+                    id: `tab:${node.personId}`, 
+                    type: 'mandatory', 
+                    text: `🚨 '${node.name}' 님의 상속인 정보가 없습니다. 무자녀라면 고인의 '친정(또는 본가) 식구들'을 상속인으로 직접 입력해야 합니다. (스위치를 끄면 지분이 타인에게 넘어가니 주의하세요)`, 
+                    level, 
+                    relation: node.relation 
+                  });
+                } else {
+                  // 🚨 기존 일반 혈족 경고
+                  smartGuides.push({ 
+                    id: `tab:${node.personId}`, 
+                    type: 'mandatory', 
+                    text: `🚨 '${node.name}' 님의 재상속 정보가 없습니다. 대를 이을 사람이 없다면 스위치를 꺼주세요.`, 
+                    level, 
+                    relation: node.relation 
+                  });
+                }
               }
             }
           } else {
@@ -189,17 +208,22 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
               });
             }
 
-            // 💡 [구법 대습상속 팁] 장남 선사망 시 장손에게 1.5 * 1.5 가산이 적용됨을 안내
+            // 💡 사용자님 기획: 엄격한 3대 요건이 충족될 때만 구법 대습 호주상속 팁 노출
             if (['1960', '1979'].includes(law) && node.relation === 'son' && node.heirs && node.heirs.length > 0) {
-              const hasGrandson = node.heirs.some(h => h.relation === 'son');
-              const isBothHojuOn = node.isHoju && node.heirs.some(h => h.relation === 'son' && h.isHoju);
+              // 1. 동일 항렬 내 호주상속 체크 여부 확인 (장남이 아닌 다른 형제가 이미 호주인지 판별)
+              const parentNode = findParentNodeInHook(tree, node.id);
+              const hasSiblingHoju = parentNode?.heirs?.some(h => h.id !== node.id && h.isHoju) || false;
               
-              // 장손이 있는데 둘 중 하나라도 호주 스위치가 꺼져있다면 전문가 팁 노출
-              if (hasGrandson && !isBothHojuOn) {
+              // 2. 대습상속인(손자)의 호주상속 체크 여부 확인
+              const isGrandsonHoju = node.heirs.some(h => h.relation === 'son' && h.isHoju);
+              
+              // 3. 최종 조건 검사 (동일 항렬 호주 없음 + 손자 호주 켜짐 + 본인(피대습자) 호주 꺼짐)
+              if (!hasSiblingHoju && isGrandsonHoju && !node.isHoju) {
                 smartGuides.push({
-                  id: `tab:${node.personId}`, // 클릭 시 장손이 있는 본인 탭으로 다이렉트 이동
+                  id: `tab:${node.personId}`,
                   type: 'recommended',
-                  text: `💡 [구법 대습상속 팁] '${node.name}'님이 장남이고 장손이 호주를 승계한다면, 부(父)와 자(子) 모두의 [호주상속] 스위치를 켜주세요. (선례 2-285호: 1.5배 중복 가산 자동 적용)`,
+                  // 🚨 UI와의 중복을 막기 위해 💡 이모지 텍스트 완전 제거!
+                  text: `[구법 대습상속 팁] '${node.name}'님이 장남이고 장손이 호주를 승계한다면, 부(父)와 자(子) 모두의 [호주상속] 스위치를 켜주세요. (선례 2-285호: 1.5배 중복 가산 자동 적용)`,
                   level,
                   relation: node.relation
                 });
@@ -232,16 +256,6 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
             level, relation: node.relation 
           });
         }
-        
-        // 결격/상실 노란색 안내
-        if (['disqualified', 'lost'].includes(node.exclusionOption) && (!node.heirs || node.heirs.length === 0)) {
-          smartGuides.push({
-            id: `tab:${node.personId}`, 
-            type: 'recommended',
-            text: `[${node.name}]님이 제외 처리되었으나 대습상속인이 입력되지 않았습니다. (무자녀라면 무시하셔도 타 상속인에게 배분됩니다)`,
-            level, relation: node.relation
-          });
-        }
       }
       
       if (node.heirs) node.heirs.forEach(h => checkGuideNode(h, node.deathDate || parentDate, level + 1));
@@ -254,10 +268,10 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
     // 💡 5. 스마트 가이드 중복 제거 및 최종 정렬 (Deduplication & Sorting)
     const uniqueGuidesMap = new Map();
     smartGuides.forEach(g => {
-      // 텍스트 내용 자체를 고유 키로 사용하여, 여러 클론 탭에서 발생한 '동일한 경고'를 1개로 압축합니다!
-      const key = g.text;
+      // 💡 공백 및 특수문자 차이로 인한 중복 방지를 위해 trim 및 정규화 적용
+      const key = g.text.replace(/\s+/g, '').trim(); 
       if (!uniqueGuidesMap.has(key)) {
-        uniqueGuidesMap.set(key, { ...g, uniqueKey: key });
+        uniqueGuidesMap.set(key, { ...g, uniqueKey: g.text }); // uniqueKey는 원래 텍스트 유지
       }
     });
     const uniqueGuides = Array.from(uniqueGuidesMap.values());

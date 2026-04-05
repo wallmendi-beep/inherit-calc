@@ -320,6 +320,12 @@ function App() {
         let master = nodes[0];
         for (const n of nodes) {
           if ((n.heirs?.length || 0) > (master.heirs?.length || 0)) master = n;
+          // 💡 [치유 엔진 1] heirs 길이가 같다면, 기본값('son')을 변경한 흔적이 있는 노드('daughter' 등)를 마스터로 우대!
+          else if ((n.heirs?.length || 0) === (master.heirs?.length || 0)) {
+            if (n.relation && n.relation !== 'son' && master.relation === 'son') {
+              master = n;
+            }
+          }
         }
         
         // 🚨 정본 선정 2: 누군가 명시적으로 스위치를 껐는지 확인 (무자녀 사망자 강제 동기화용)
@@ -334,6 +340,11 @@ function App() {
         }
         
         for (const clone of nodes) {
+          // 💡 [치유 엔진 2] 마스터가 가진 정확한 성별(관계)을 모든 분신에게 강제 복사하여 불일치 원천 차단!
+          if (master.relation && clone.relation !== master.relation) {
+            clone.relation = master.relation;
+          }
+
           // (c-1) heirs 동기화: 정본보다 적으면 deep-copy
           const masterHeirs = master.heirs || [];
           if (masterHeirs.length > 0 && (clone.heirs?.length || 0) < masterHeirs.length) {
@@ -1122,6 +1133,20 @@ function App() {
                   ...sib, id: `auto_${sib.id}`, relation: 'sibling', heirs: []
                 }));
               }
+            }
+          } else {
+            // 💡 [배우자 전용 마법] 옆에 있는 남편/아내의 자식들을 내 자식으로 100% 자동 복사!
+            const stepChildren = (parentNode.heirs || []).filter(h => 
+              h.id !== clone.id && ['son', 'daughter'].includes(h.relation) && !h.isExcluded
+            );
+            
+            if (stepChildren.length > 0) {
+              clone.heirs = stepChildren.map(child => ({
+                ...child, 
+                id: `auto_${child.id}`, 
+                relation: child.relation,
+                heirs: [] 
+              }));
             }
           }
         }
