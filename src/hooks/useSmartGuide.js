@@ -188,6 +188,23 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
                 level, relation: node.relation 
               });
             }
+
+            // 💡 [구법 대습상속 팁] 장남 선사망 시 장손에게 1.5 * 1.5 가산이 적용됨을 안내
+            if (['1960', '1979'].includes(law) && node.relation === 'son' && node.heirs && node.heirs.length > 0) {
+              const hasGrandson = node.heirs.some(h => h.relation === 'son');
+              const isBothHojuOn = node.isHoju && node.heirs.some(h => h.relation === 'son' && h.isHoju);
+              
+              // 장손이 있는데 둘 중 하나라도 호주 스위치가 꺼져있다면 전문가 팁 노출
+              if (hasGrandson && !isBothHojuOn) {
+                smartGuides.push({
+                  id: `tab:${node.personId}`, // 클릭 시 장손이 있는 본인 탭으로 다이렉트 이동
+                  type: 'recommended',
+                  text: `💡 [구법 대습상속 팁] '${node.name}'님이 장남이고 장손이 호주를 승계한다면, 부(父)와 자(子) 모두의 [호주상속] 스위치를 켜주세요. (선례 2-285호: 1.5배 중복 가산 자동 적용)`,
+                  level,
+                  relation: node.relation
+                });
+              }
+            }
           }
         }
         
