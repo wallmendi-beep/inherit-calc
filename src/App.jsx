@@ -192,6 +192,10 @@ function App() {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1.0); // 💡 메인 입력창 확대/축소 상태 추가
   
+  // 💡 AI 마법사 모달 상태 관리
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [aiInputText, setAiInputText] = useState("");
+
   // 💡 1단: 요약표 상속인 검색용 State 선언 (최상단 배치!)
   const [searchQuery, setSearchQuery] = useState('');
   const [matchIds, setMatchIds] = useState([]);
@@ -285,7 +289,9 @@ function App() {
          if (copy.name && nameToPersonId.has(copy.name)) {
              copy.personId = nameToPersonId.get(copy.name);
          } else {
-             copy.personId = `p_${copy.id.replace(/[^a-zA-Z0-9]/g, '')}_${Math.random().toString(36).substr(2,4)}`;
+             // 💡 안전 장치: id가 아예 누락된 불량 데이터가 들어와도 앱이 터지지 않게 방어!
+             const safeId = copy.id ? String(copy.id).replace(/[^a-zA-Z0-9]/g, '') : 'node';
+             copy.personId = `p_${safeId}_${Math.random().toString(36).substr(2,4)}`;
              if (copy.name) nameToPersonId.set(copy.name, copy.personId);
          }
       } else {
@@ -803,14 +809,17 @@ function App() {
     }
   };
 
-  const handleUpdate = (id, field, value) => {
+  // 💡 [업그레이드] 실시간 분신(Clone) 동기화 엔진이 탑재된 handleUpdate
+  const handleUpdate = (id, changes, value) => {
     // 🏷️ 이름 변경 시 중복 체크 로직
-    if (field === 'name' && value.trim() !== '') {
-      const trimmedValue = value.trim();
-      // 기본 이름뿐만 아니라 (2), (3) 등 접미사 붙은 이름들도 모두 찾기 (3번째+ 동명이인 처리)
+    const updates = (typeof changes === 'object' && changes !== null) ? changes : { [changes]: value };
+    const field = typeof changes === 'string' ? changes : Object.keys(changes)[0];
+    const val = updates[field];
+
+    if (field === 'name' && val && val.trim() !== '') {
+      const trimmedValue = val.trim();
       const baseName = trimmedValue.replace(/\(\d+\)$/, '');
       const dups = findDuplicates(tree, trimmedValue, id);
-      // 접미사가 붙은 형제들도 카운트 (예: 김세환, 김세환(2), 김세환(3))
       const allSameBaseDups = dups.length > 0
         ? (() => { const r = []; const scan = (n) => { if (n.id !== id && n.name && (n.name === baseName || n.name.match(new RegExp(`^${baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\(\\d+\\)$`)))) r.push(n); if (n.heirs) n.heirs.forEach(scan); }; scan(tree); return r; })()
         : [];
@@ -819,7 +828,6 @@ function App() {
         const parentNodeOfExisting = findParentNode(tree, existingNode.id);
         const parentNodeOfCurrent = findParentNode(tree, id);
         
-        // 1. 동일 트리(같은 부모) 내 중복
         if (parentNodeOfExisting?.id === parentNodeOfCurrent?.id) {
           setDuplicateRequest({
             name: trimmedValue,
@@ -828,10 +836,8 @@ function App() {
             isSameBranch: true,
             onConfirm: (isSame) => {
               if (isSame) {
-                // 동일인인 경우: 같은 부모 아래 한 사람이 두 번 있을 수 없으므로 차단
                 alert(`'${trimmedValue}'님은 이미 이 단계의 상속인으로 등록되어 있습니다.\n동일인이라면 한 번만 등록해 주세요.`);
               } else {
-                // 동명이인: 기존 baseName 노드를 (1)로 먼저 변경 (baseName(1)이 아직 없으면)
                 setTree(prev => {
                   const renameBase = (n) => {
                     if (n.id === existingNode.id && n.name === baseName) {
@@ -841,7 +847,6 @@ function App() {
                   };
                   return renameBase(prev);
                 });
-                // 신규 노드는 (2)부터 시작
                 const nextSuffix = allSameBaseDups.length + 1;
                 applyUpdate(id, 'name', `${baseName}(${nextSuffix})`, false);
               }
@@ -852,7 +857,6 @@ function App() {
           return;
         }
 
-        // 2. 다른 트리(다른 부모) 내 중복: 동일인 여부 확인
         const parentName = parentNodeOfExisting ? (parentNodeOfExisting.name || '피상속인') : '피상속인';
         setDuplicateRequest({
           name: trimmedValue,
@@ -861,14 +865,12 @@ function App() {
           isSameBranch: false,
           onConfirm: (isSame) => {
             if (isSame) {
-              // 동일인: 기존 인물의 ID를 부여하여 실질적으로 같은 사람으로 연동
               const syncIdInTree = (n) => {
                 if (n.id === id) return { ...n, name: trimmedValue, personId: existingNode.personId };
                 return { ...n, heirs: n.heirs?.map(syncIdInTree) || [] };
               };
               setTree(prev => syncIdInTree(prev));
             } else {
-              // 동명이인: 기존 baseName 노드를 (1)로 먼저 변경 (baseName(1)이 아직 없으면)
               setTree(prev => {
                 const renameBase = (n) => {
                   if (n.id === existingNode.id && n.name === baseName) {
@@ -878,7 +880,6 @@ function App() {
                 };
                 return renameBase(prev);
               });
-              // 신규 노드는 (2)부터 시작
               const nextSuffix = allSameBaseDups.length + 1;
               applyUpdate(id, 'name', `${baseName}(${nextSuffix})`, false);
             }
@@ -892,8 +893,8 @@ function App() {
 
     // 💡 새로운 기능: 부모 관계(성별) 변경 시 하위 배우자 관계 자동 스위칭!
     if (field === 'relation') {
-      const isFemale = ['daughter', 'mother', 'sister', 'wife'].includes(value);
-      const isMale = ['son', 'father', 'brother', 'husband'].includes(value);
+      const isFemale = ['daughter', 'mother', 'sister', 'wife'].includes(val);
+      const isMale = ['son', 'father', 'brother', 'husband'].includes(val);
       
       if (isFemale || isMale) {
         let targetPersonId = null;
@@ -903,59 +904,37 @@ function App() {
         };
         findPId(tree);
 
-        setTree(prev => {
+        setTree(prevTree => {
+          // 다른 방에 있는 분신들에게도 무조건 똑같이 맞춰줘야 할 '개인 고유 속성'들
+          const syncKeys = ['name', 'relation', 'isDeceased', 'deathDate', 'isHoju', 'isExcluded', 'exclusionOption', 'marriageDate'];
+
           const syncRelation = (n) => {
+            let nextNode = { ...n };
             // 모든 분신(Clone) 탭에 동일하게 적용
-            if (n.id === id || (targetPersonId && n.personId === targetPersonId)) {
-              const newHeirs = (n.heirs || []).map(h => {
+            if (nextNode.id === id || (targetPersonId && nextNode.personId === targetPersonId)) {
+              const newHeirs = (nextNode.heirs || []).map(h => {
                 // 하위 상속인 중 배우자가 있다면 성별을 반대로 휙! 뒤집어줍니다.
                 if (['wife', 'husband', 'spouse'].includes(h.relation)) {
                   return { ...h, relation: isFemale ? 'husband' : 'wife' };
                 }
                 return h;
               });
-              return { ...n, relation: value, heirs: newHeirs };
+              nextNode = { ...nextNode, relation: val, heirs: newHeirs };
             }
-            return { ...n, heirs: n.heirs?.map(syncRelation) || [] };
+
+            if (nextNode.heirs) {
+              nextNode.heirs = nextNode.heirs.map(syncRelation);
+            }
+            return nextNode;
           };
-          return syncRelation(prev);
+          return syncRelation(prevTree);
         });
-        return; // 자동 스위칭 완료 후 함수 종료
+        return;
       }
     }
 
-    let targetName = null;
-    const syncFields = ['isDeceased', 'deathDate', 'isRemarried', 'remarriageDate', 'marriageDate'];
-    
-    if (syncFields.includes(field) && field !== 'name') {
-      const findNode = (n) => {
-        if (n.id === id) targetName = n.name;
-        if (!targetName && n.heirs) n.heirs.forEach(findNode);
-      };
-      findNode(tree);
-      
-      // 자기 자신이 아닌 동일 ID(동일인)가 있는지 검사 (이름 기반에서 ID 기반 동기화로 업그레이드)
-      let hasSamePerson = false;
-      const findSamePerson = (n) => {
-        if (n.id === id && n !== tree) { /* 자기 자신 탐색 중 (root 제외) */ }
-        // 여기서 id가 같으면 동일인임
-        const getMyId = (nodeId) => {
-           // 현재 노드의 ID가 tree에서 어디 있는지 찾아서 반환
-           let foundId = null;
-           const search = (node) => {
-             if (node.id === nodeId) { foundId = node.id; return; }
-             if (node.heirs) node.heirs.forEach(search);
-           };
-           search(tree);
-           return foundId;
-        };
-        // 최적화: field별 동기화는 이미 같은 ID를 공유하고 있으므로, 
-        // 한 군데의 데이터만 바꿔도 됨 (applyUpdate가 id 기반이므로 자동으로 반영됨)
-      };
-    }
-
-    // ⚖️ 호주 상속인 단일 선택 로직: 한 명을 호주로 지정하면 다른 형제의 호주 상태를 해제
-    if (field === 'isHoju' && value === true) {
+    // ⚖️ 호주 상속인 단일 선택 로직
+    if (field === 'isHoju' && val === true) {
       setTree(prev => {
         const updateSingleHoju = (n) => {
           if (n.heirs && n.heirs.some(h => h.id === id)) {
@@ -971,11 +950,45 @@ function App() {
         };
         return updateSingleHoju(prev);
       });
-      return;
+      // 💡 여기서 멈추지 않고 아래의 applyUpdate로 넘어가서 다른 분신들도 동기화되게 함
     }
 
-    // 동기화 필요 없는 일반 업데이트 (applyUpdate 내부에서 id 기반으로 자동 연동됨)
-    applyUpdate(id, field, value, false);
+    setTree(prevTree => {
+      // 1. 현재 사용자가 수정한 인물의 고유 ID(personId)를 찾습니다.
+      let targetPersonId = null;
+      const findPersonId = (n) => {
+        if (n.id === id) targetPersonId = n.personId;
+        if (n.heirs) n.heirs.forEach(findPersonId);
+      };
+      findPersonId(prevTree);
+
+      // 2. 다른 방에 있는 분신들에게도 무조건 똑같이 맞춰줘야 할 '개인 고유 속성'들
+      const syncKeys = ['name', 'relation', 'isDeceased', 'deathDate', 'isHoju', 'isExcluded', 'exclusionOption', 'marriageDate', 'remarriageDate'];
+
+      const updateNode = (n) => {
+        let nextNode = { ...n };
+
+        if (nextNode.id === id) {
+          // 사용자가 화면에서 직접 클릭/수정한 바로 그 노드 업데이트
+          nextNode = { ...nextNode, ...updates };
+        } else if (targetPersonId && nextNode.personId === targetPersonId) {
+          // 💡 다른 탭에 숨어있는 분신(Clone) 노드를 찾아내어 실시간 동기화!
+          const cloneUpdates = {};
+          for (const key of syncKeys) {
+            if (updates[key] !== undefined) cloneUpdates[key] = updates[key];
+          }
+          nextNode = { ...nextNode, ...cloneUpdates };
+        }
+
+        // 하위 자녀들까지 재귀적으로 스캔
+        if (nextNode.heirs) {
+          nextNode.heirs = nextNode.heirs.map(updateNode);
+        }
+        return nextNode;
+      };
+
+      return updateNode(prevTree);
+    });
   };
 
   const applyUpdate = (id, changes, value, syncGlobal = false, syncName = '') => {
@@ -2255,12 +2268,21 @@ function App() {
               </div>
             </div>
 
-            {/* 🧭 스마트 가이드 호출 버튼 (좌우 10px 여백 확보) */}
+            {/* 💡 AI 가계도 마법사 버튼 (소프트 파스텔 + 사이즈 통일) */}
+            <button 
+              onClick={() => setIsAiModalOpen(true)}
+              title="AI 자동입력 마법사" 
+              className="flex items-center justify-center w-8 h-8 shrink-0 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 rounded-lg transition-all shadow-sm hover:scale-105 active:scale-95"
+            >
+              <span className="text-[16px] leading-none opacity-100 drop-shadow-sm mt-0.5">✨</span>
+            </button>
+
+            {/* 🧭 스마트 가이드 호출 버튼 (AI 버튼과 색상 및 테마 완벽 통일) */}
             <button 
               onClick={() => setShowNavigator(true)} 
-              className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all shadow-sm border shrink-0 mx-[10px] ${
+              className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all shadow-sm border shrink-0 mx-[10px] active:scale-95 ${
                 hasActionItems 
-                  ? 'bg-blue-100 text-blue-600 border-blue-200 hover:bg-blue-200 dark:bg-blue-900/60 dark:text-blue-400 dark:border-blue-800' 
+                  ? 'bg-indigo-50 text-indigo-600 border-indigo-100 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-400 dark:border-indigo-800/50 dark:hover:bg-indigo-900/40' 
                   : 'bg-white text-[#787774] border-[#e9e9e7] hover:bg-[#f7f7f5] hover:text-[#37352f] dark:bg-neutral-800 dark:border-neutral-700 dark:hover:bg-neutral-700'
               }`}
               title={hasActionItems ? "새로운 스마트 가이드가 있습니다!" : "스마트 가이드 열기"}
@@ -3297,6 +3319,79 @@ function App() {
           >
             <span className="text-[16px]">↑</span> 맨 위로
           </button>
+        )}
+
+        {/* 💡 AI 가계도 마법사 팝업창 */}
+        {isAiModalOpen && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+            <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+              
+              {/* 헤더 */}
+              <div className="px-6 py-4 border-b border-gray-200 dark:border-neutral-700 flex justify-between items-center bg-indigo-50 dark:bg-indigo-900/30">
+                <h2 className="text-lg font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-2">
+                  <span>✨</span> AI 제적등본 자동 입력기
+                </h2>
+                <button onClick={() => setIsAiModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                  <IconX className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <div className="p-6 overflow-y-auto flex-1">
+                {/* 1단계: 프롬프트 영역 */}
+                <div className="mb-6 p-4 bg-gray-50 dark:bg-neutral-700/50 rounded-lg border border-gray-200 dark:border-neutral-600">
+                  <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-2">1단계: 명령어 복사하기</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                    아래 버튼을 눌러 명령어를 복사한 후, <b>뤼튼, ChatGPT, 클로드, 제미나이</b> 앱에 제적등본(가족관계증명서) 사진과 함께 붙여넣으세요.
+                  </p>
+                  <button 
+                    onClick={() => {
+                      const prompt = `첨부한 제적등본(또는 가계도 메모) 사진을 보고, 아래 JSON 양식에 맞춰 가족 관계를 추출해줘.\n\n[규칙]\n1. 남자는 relation을 "son", 여자는 "daughter", 배우자는 "wife" 또는 "husband"로 작성해.\n2. 사망자는 isDeceased를 true로 하고, deathDate를 "YYYY-MM-DD" 형태로 넣어.\n3. 자녀들은 반드시 부모의 heirs 배열 안에 넣어.\n4. 응답은 무조건 JSON 코드 블록으로만 출력해. 다른 설명은 절대 하지마.\n\n[출력 예시]\n{\n  "name": "홍길동", "isDeceased": true, "deathDate": "1980-01-01",\n  "heirs": [\n    { "name": "김철수", "relation": "son" },\n    { "name": "김영희", "relation": "daughter", "isDeceased": true, "deathDate": "2000-05-05", "heirs": [] }\n  ]\n}`;
+                      navigator.clipboard.writeText(prompt);
+                      alert("✅ 명령어가 복사되었습니다! 쓰시는 AI 앱에 사진과 함께 붙여넣으세요.");
+                    }}
+                    className="w-full py-2.5 bg-white dark:bg-neutral-800 border-2 border-indigo-500 text-indigo-600 dark:text-indigo-400 rounded-md font-bold hover:bg-indigo-50 transition-colors shadow-sm"
+                  >
+                    📋 AI 전용 명령어 복사하기
+                  </button>
+                </div>
+
+                {/* 2단계: 붙여넣기 영역 */}
+                <div>
+                  <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-2">2단계: 결과 데이터 붙여넣기</h3>
+                  <textarea 
+                    value={aiInputText}
+                    onChange={(e) => setAiInputText(e.target.value)}
+                    placeholder="AI가 만들어준 { ... } 로 시작하는 코드를 이곳에 그대로 붙여넣으세요."
+                    className="w-full h-48 p-3 border border-gray-300 dark:border-neutral-600 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-mono bg-white dark:bg-neutral-900 text-gray-800 dark:text-gray-200"
+                  />
+                </div>
+              </div>
+
+              {/* 하단 버튼 */}
+              <div className="p-4 border-t border-gray-200 dark:border-neutral-700 flex justify-end gap-2 bg-gray-50 dark:bg-neutral-800/50">
+                <button onClick={() => setIsAiModalOpen(false)} className="px-4 py-2 text-gray-600 font-medium hover:bg-gray-200 rounded-md transition-colors">취소</button>
+                <button 
+                  onClick={() => {
+                    try {
+                      // 마크다운 제거 및 JSON 파싱
+                      const cleanJson = aiInputText.replace(/```json/g, '').replace(/```/g, '').trim();
+                      const parsedTree = JSON.parse(cleanJson);
+                      setTree({ ...parsedTree, id: 'root' });
+                      setIsAiModalOpen(false);
+                      setAiInputText(""); 
+                      alert("✨ 성공적으로 가계도가 입력되었습니다!");
+                    } catch (error) {
+                      alert("🚨 데이터 형식이 잘못되었습니다. AI가 만들어준 JSON 텍스트가 맞는지 다시 한번 확인해주세요.");
+                    }
+                  }}
+                  className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md font-bold shadow-md transition-colors"
+                >
+                  🚀 1초 만에 가계도 그리기
+                </button>
+              </div>
+              
+            </div>
+          </div>
         )}
       </main>
     </div>
