@@ -76,17 +76,31 @@ const MiniTreeView = ({ node, level = 0, onSelectNode, visitedHeirs = new Set(),
 
   if (!node) return null;
 
-  // ⚠️ 누락 경고 상태 계산 (법적 예외 로직 적용)
-  const { isDirect: isDirectMissing, hasDescendant: hasMissingDescendant } = getWarningState(node, deathDate);
-  
-  // 💡 새로운 가이드 상태 맵 연동 로직
+  // 💡 스마트 가이드 상태 맵(guideStatusMap) 100% 신뢰 로직으로 전면 교체!
   const status = guideStatusMap?.[node.id] || guideStatusMap?.[node.name] || {};
-  const showMandatory = status.mandatory || isDirectMissing || (!isExpanded && hasMissingDescendant);
-  const showRecommended = status.recommended; // 💡 권고 사항(전등) 유무
 
-  const warningTitle = isDirectMissing 
-    ? "하위 상속인 입력 누락 의심 (지분 계산에서 제외될 수 있습니다)"
-    : "하위 상속인 중 입력 누락 의심 (펼쳐서 확인하세요)";
+  // 자식 폴더들 중에 에러(🚨)나 권고(💡)가 숨어있는지 샅샅이 스캔합니다.
+  const checkChildren = (n) => {
+     let hasMan = false;
+     let hasRec = false;
+     const scan = (child) => {
+        const s = guideStatusMap?.[child.id] || guideStatusMap?.[child.name] || {};
+        if (s.mandatory) hasMan = true;
+        if (s.recommended) hasRec = true;
+        if (child.heirs) child.heirs.forEach(scan);
+     };
+     if (n.heirs) n.heirs.forEach(scan);
+     return { hasMan, hasRec };
+  };
+
+  const childStatus = checkChildren(node);
+
+  // 현재 노드가 에러거나, 폴더가 접혀있는데 자식 중에 에러가 있으면 🚨
+  const showMandatory = status.mandatory || (!isExpanded && childStatus.hasMan);
+  // 현재 노드가 권고거나, 폴더가 접혀있는데 자식 중에 권고가 있으면 💡 (단, 에러가 없을 때만)
+  const showRecommended = !showMandatory && (status.recommended || (!isExpanded && childStatus.hasRec));
+
+  const warningTitle = status.mandatory ? "하위 상속인 입력 누락 의심 (필수 조치 필요)" : "하위 상속인 중 입력 누락 의심 (펼쳐서 확인하세요)";
   
   // 🎨 상태별 스타일 정의 (생존 상속인 강조 및 사망자 선명한 검정색)
   const getStatusStyle = (node, hasSubHeirs) => {
@@ -421,16 +435,29 @@ function App() {
   // 💡 특정 상속인 위치로 이동 및 하이라이트 (Warp 기능 개선: 탭 자동 전환 포함)
   const handleNavigate = (nodeId) => {
     setActiveTab('input');
-    
+
+    // 💡 특수 명령어: "해당 상속인의 탭(방) 안으로 다이렉트 진입해라!"
+    if (typeof nodeId === 'string' && nodeId.startsWith('tab:')) {
+      const targetTabId = nodeId.split(':')[1];
+      setActiveDeceasedTab(targetTabId);
+      setIsFolderFocused(true);
+      return;
+    }
+
     // 1. 해당 nodeId가 어느 탭(deceasedTabs)에 속해 있는지 찾습니다.
-    let targetTabId = 'root';
     const findTabIdForNode = (currentNode, currentTabId) => {
-      if (currentNode.id === nodeId) return currentTabId;
+      // 루트(피상속인) 본인이거나 최초 진입점일 경우
+      if (currentNode.id === nodeId || currentNode.personId === nodeId) return currentTabId;
+      
       if (currentNode.heirs) {
         for (const h of currentNode.heirs) {
-          // 사망한 사람이나 특정 사유가 있는 사람은 자기만의 탭(personId)을 가집니다.
+          // 🚨 핵심 픽스: 자식(h)이 우리가 찾는 대상이라면, 이 사람의 '입력칸(Row)'이 화면에 나오는 곳은 본인의 탭이 아니라 '부모의 탭(currentTabId)'입니다!
+          if (h.id === nodeId || h.personId === nodeId) return currentTabId;
+
+          // 못 찾았으면 자식의 탭으로 계속 파고듭니다.
           const isTabOwner = h.isDeceased || (h.isExcluded && ['lost', 'disqualified'].includes(h.exclusionOption));
           const nextTabId = isTabOwner ? h.personId : currentTabId;
+          
           const found = findTabIdForNode(h, nextTabId);
           if (found) return found;
         }
@@ -1054,33 +1081,60 @@ function App() {
 
   // 💡 상속 계산 엔진에 넘기기 직전, 선사망+무자녀를 "자동 제외" 시켜주는 전처리 로직
   const { finalShares, calcSteps, warnings = [] } = useMemo(() => {
-    const applyAutoExclusion = (n, parentDate) => {
+    // 💡 사용자님 지시로 탄생한 '진짜 2/3순위 자동 주입 엔진'
+    const preprocessTree = (n, parentDate, parentNode) => {
       const clone = { ...n };
       const refDate = clone.id === 'root' ? clone.deathDate : parentDate;
       
-      // 루트가 아니고, 수동으로 꺼져있지 않은 노드에 대하여 검사
       if (clone.id !== 'root' && !clone.isExcluded) {
-        // 1. 피상속인보다 먼저 사망했는가? (선사망)
         const isPre = clone.deathDate && refDate && isBefore(clone.deathDate, refDate);
-        // 2. 하위에 입력된 자녀가 없는가? (무자녀)
         const isDeadWithoutHeirs = clone.isDeceased && (!clone.heirs || clone.heirs.length === 0);
         
-        // 🚨 핵심: 선사망인데 무자녀라면, 사람이 스위치를 안 꺼도 컴퓨터가 알아서 제외 처리!
         if (isPre && isDeadWithoutHeirs) {
           clone.isExcluded = true;
-          clone.exclusionOption = 'renounce'; // 엔진이 지분을 타 상속인에게 분배하도록 포기 처리
+          clone.exclusionOption = 'renounce'; 
+        }
+        // 🚨 재상속(후사망)인데 자녀가 비어있다면? 기계가 알아서 부모/형제를 찾아옵니다!
+        else if (!isPre && isDeadWithoutHeirs && parentNode) {
+          const isSpouseType = ['wife', 'husband', 'spouse'].includes(clone.relation);
+          
+          if (!isSpouseType) {
+            const pHeirs = parentNode.heirs || [];
+            
+            // 2순위: 사망 당시 살아있는 직계존속(어머니/아버지) 찾기
+            const aliveAscendants = pHeirs.filter(h => 
+              ['wife', 'husband', 'spouse'].includes(h.relation) && 
+              (!h.isDeceased || (h.deathDate && isBefore(clone.deathDate, h.deathDate))) &&
+              !h.isExcluded
+            );
+
+            if (aliveAscendants.length > 0) {
+              clone.heirs = aliveAscendants.map(asc => ({
+                ...asc, id: `auto_${asc.id}`, relation: 'parent', heirs: [] 
+              }));
+            } else {
+              // 3순위: 부모도 안 계시면 형제자매 찾기
+              const siblings = pHeirs.filter(h => 
+                h.id !== clone.id && ['son', 'daughter'].includes(h.relation) && !h.isExcluded
+              );
+              if (siblings.length > 0) {
+                clone.heirs = siblings.map(sib => ({
+                  ...sib, id: `auto_${sib.id}`, relation: 'sibling', heirs: []
+                }));
+              }
+            }
+          }
         }
       }
       
-      // 하위 노드들도 재귀적으로 샅샅이 검사
       if (clone.heirs) {
-        clone.heirs = clone.heirs.map(h => applyAutoExclusion(h, clone.deathDate || refDate));
+        clone.heirs = clone.heirs.map(h => preprocessTree(h, clone.deathDate || refDate, clone));
       }
       return clone;
     };
     
-    // 전처리가 완료된 트리를 계산 엔진에 투입!
-    const calcTree = applyAutoExclusion(tree, tree.deathDate);
+    // 전처리가 완료된 마법의 트리를 엔진에 투입!
+    const calcTree = preprocessTree(tree, tree.deathDate, null);
     return calculateInheritance(calcTree, propertyValue);
   }, [tree, propertyValue]);
 
@@ -1538,13 +1592,24 @@ function App() {
                     </div>
                   )}
 
-                  {/* 🚨 하드 엔진 경고 */}
+                  {/* 🚨 하드 엔진 경고 (내비게이션 지원) */}
                   {activeTab === 'input' && warnings.map((w, i) => (
-                    <div key={`w-${i}`} className="flex items-start gap-2 text-red-600 p-2.5 bg-red-50/50 rounded-lg border border-red-100 mt-2">
-                      <span className="mt-0.5">⚠️</span><span className="flex-1 leading-snug">{w}</span>
+                    <div 
+                      key={`w-${i}`} 
+                      onClick={() => {
+                        if (w.id) {
+                          handleNavigate(w.id); // 💡 클릭 시 수정을 위해 해당 부모 탭으로 즉시 이동
+                        }
+                      }}
+                      className={`pointer-events-auto flex items-start gap-2 p-2.5 bg-red-50/50 dark:bg-red-900/10 rounded-lg border border-red-100 dark:border-red-800/30 mt-2 transition-all ${w.id ? 'cursor-pointer hover:bg-red-100/60 dark:hover:bg-red-900/20' : ''}`}
+                      title={w.id ? "클릭 시 수정을 위해 해당 탭으로 이동합니다" : ""}
+                    >
+                      <span className="mt-0.5">🚨</span>
+                      <span className={`flex-1 leading-snug text-red-700 dark:text-red-400 font-bold text-[13px] ${w.id ? 'hover:underline decoration-red-400 underline-offset-4' : ''}`}>
+                        {w.text || w}
+                      </span>
                     </div>
                   ))}
-
                   {/* 👉 1. 필수 사항 (Mandatory) */}
                   {activeTab === 'input' && smartGuides.filter(g => g.type === 'mandatory').map((g, i) => (
                     <button 

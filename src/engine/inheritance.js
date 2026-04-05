@@ -21,7 +21,8 @@ export const calculateInheritance = (tree, propertyValue) => {
     return found;
   };
 
-  const traverse = (node, inN, inD, inheritedDate, visitedIds = [], parentDecName = '피상속인') => {
+  // 💡 parentPersonId를 추가하여 현재 어떤 탭(부모)을 처리 중인지 추적합니다.
+  const traverse = (node, inN, inD, inheritedDate, visitedIds = [], parentDecName = '피상속인', parentPersonId = 'root') => {
     if (visitedIds.includes(node.id)) {
       warnings.push(`순차상속 순환 참조가 발생하여 ${node.name || '상속인'}의 지분 전이가 중단되었습니다.`);
       return;
@@ -97,13 +98,15 @@ export const calculateInheritance = (tree, propertyValue) => {
       if (node.isDeceased && !node.deathDate) {
         // 💡 피상속인(root)은 App.jsx의 smartGuides에서 이미 처리하므로 여기서는 일반 상속인만 체크
         if (node.id !== 'root') {
-          warnings.push(`${node.name || '이름 미상'} 님의 사망일자가 입력되지 않았습니다.`);
+          // 💡 수정 완료: 내비게이션 엔진이 읽을 수 있도록 { id: node.id, text: "문구" } 형태로 보냅니다!
+          warnings.push({ id: node.id, text: `[${node.name || '이름 미상'}]님의 사망일자가 입력되지 않았습니다.` });
         }
       }
       if (node.id !== 'root' && node.isDeceased && node.deathDate && isBefore(node.deathDate, inheritedDate)) {
         const activeHeirs = (node.heirs || []).filter(h => !h.isExcluded);
         if (activeHeirs.length === 0) {
-          warnings.push(`선사망자 '${node.name}'의 대습상속인이 누락되었습니다. 상속인이 없다면 스위치를 꺼주세요.`);
+          // 💡 여기도 완벽하게 객체 형태로 묶어서 보냅니다!
+          warnings.push({ id: node.id, text: `선사망자 [${node.name}]의 대습상속인이 누락되었습니다. 상속인이 없다면 스위치를 꺼주세요.` });
         }
       }
     }
@@ -280,7 +283,10 @@ export const calculateInheritance = (tree, propertyValue) => {
         }
       });
       steps.push(step);
-      childrenToTraverse.forEach(child => { traverse(child.h, child.nn, child.nd, distributionDate, currentVisited, node.name || '피상속인'); });
+      childrenToTraverse.forEach(child => { 
+        // 💡 다음 세대를 검사할 때는 현재 노드의 personId를 부모 주소로 넘겨줍니다.
+        traverse(child.h, child.nn, child.nd, distributionDate, currentVisited, node.name || '피상속인', node.personId); 
+      });
     }
   };
 
@@ -382,10 +388,21 @@ export const calculateInheritance = (tree, propertyValue) => {
 
   const subGroups = Object.values(subMap).sort((a, b) => a.order - b.order);
   
+  // 💡 중복 에러 제거 (객체 형태 지원)
+  const uniqueWarnings = [];
+  const warningKeys = new Set();
+  warnings.forEach(w => {
+    const key = typeof w === 'string' ? w : w.text;
+    if (!warningKeys.has(key)) {
+      warningKeys.add(key);
+      uniqueWarnings.push(w);
+    }
+  });
+
   return {
     finalShares: { direct: directShares, subGroups: subGroups },
     calcSteps: steps,
-    warnings: Array.from(new Set(warnings)),
+    warnings: uniqueWarnings, // 💡 업그레이드된 에러 배열 내보내기
     appliedLaws: Array.from(appliedLaws).sort()
   };
 };

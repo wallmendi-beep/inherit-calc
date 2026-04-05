@@ -144,15 +144,45 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
 
         if (node.isDeceased && node.deathDate && parentDate) {
           if (!isBefore(node.deathDate, parentDate)) {
-            // 재상속: 자녀가 없으면 지분이 증발하므로 무조건 에러! 
             if (!node.heirs || node.heirs.length === 0) {
-              smartGuides.push({ id: node.id, type: 'mandatory', text: `'${node.name}' 님의 재상속 정보가 없습니다. 클릭하여 상속인을 추가하세요.`, level, relation: node.relation });
+              // 💡 기계가 자동분배(2/3순위)를 해냈는지 검사합니다.
+              const parentNode = findParentNodeInHook(tree, node.id);
+              let canAutoCalc = false;
+              let autoTarget = '';
+              
+              if (parentNode && parentNode.heirs && !isSpouseType) {
+                const ascendants = parentNode.heirs.filter(h => ['wife', 'husband', 'spouse'].includes(h.relation) && (!h.isDeceased || isBefore(node.deathDate, h.deathDate)) && !h.isExcluded);
+                if (ascendants.length > 0) { canAutoCalc = true; autoTarget = '직계존속(어머니/아버지)'; }
+                else {
+                  const siblings = parentNode.heirs.filter(h => h.id !== node.id && ['son', 'daughter'].includes(h.relation) && !h.isExcluded);
+                  if (siblings.length > 0) { canAutoCalc = true; autoTarget = '형제자매'; }
+                }
+              }
+
+              // 기계가 알아서 찾았다면 에러(🚨) 대신 권고/안내(💡)로 처리!
+              if (canAutoCalc) {
+                smartGuides.push({ 
+                  id: `tab:${node.personId}`, // 💡 부모 탭이 아닌, 본인 탭 내부로 다이렉트 진입!
+                  type: 'recommended', 
+                  text: `[${node.name}]님은 하위 상속인이 없어 시스템이 자동으로 ${autoTarget}에게 지분을 분배했습니다. 실제 재상속인 정보를 직접 입력하시려면 여기를 클릭하세요.`, 
+                  level, 
+                  relation: node.relation 
+                });
+              } else {
+                smartGuides.push({ 
+                  id: `tab:${node.personId}`, // 💡 여기도 본인 탭 내부로 진입!
+                  type: 'mandatory', 
+                  text: `🚨 '${node.name}' 님의 재상속 정보가 없습니다. 대를 이을 사람이 없다면 스위치를 꺼주세요.`, 
+                  level, 
+                  relation: node.relation 
+                });
+              }
             }
           } else {
             // 💡 보완 1: 선사망(대습상속)인데 무자녀일 때, '배우자'는 대습상속 대상이 아니므로 안내를 생략합니다!
             if (!isSpouseType && (!node.heirs || node.heirs.length === 0)) {
               smartGuides.push({ 
-                id: node.id, 
+                id: `tab:${node.personId}`, 
                 type: 'recommended', 
                 text: `[${node.name}]님은 선사망하셨으나 대습상속인이 없어 상속에서 자동 제외되었습니다. 만약 대습상속인(자녀/배우자)이 있다면 추가해주세요.`, 
                 level, relation: node.relation 
@@ -189,7 +219,8 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
         // 결격/상실 노란색 안내
         if (['disqualified', 'lost'].includes(node.exclusionOption) && (!node.heirs || node.heirs.length === 0)) {
           smartGuides.push({
-            id: node.id, type: 'recommended',
+            id: `tab:${node.personId}`, 
+            type: 'recommended',
             text: `[${node.name}]님이 제외 처리되었으나 대습상속인이 입력되지 않았습니다. (무자녀라면 무시하셔도 타 상속인에게 배분됩니다)`,
             level, relation: node.relation
           });
