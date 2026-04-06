@@ -84,16 +84,17 @@ const HeirRow = ({ node, finalShares, level, handleUpdate, handleNameBlur, remov
     opacity: isDragging ? 0.6 : 1,
   };
 
-  const showHoju = node.relation === 'son' && lawEra !== '1991' && rootIsHoju !== false;
+  // 💡 1. 부모 노드의 성별 판별 로직을 먼저 끌어올립니다.
+  const isRootParent = parentNode?.id === 'root';
+  const isParentFemale = !isRootParent && ['wife', 'daughter', 'mother', 'sister'].includes(parentNode?.relation);
+  const isParentMale = !isRootParent && ['husband', 'son', 'father', 'brother'].includes(parentNode?.relation);
+
+  // 🚨 2. 핵심 픽스: 현재 탭의 피상속인이 '여성(처/딸 등)'일 경우, 자녀의 '호주 가산' 스위치와 뱃지를 완전히 숨깁니다!
+  const showHoju = node.relation === 'son' && lawEra !== '1991' && rootIsHoju !== false && !isParentFemale;
   const showMarriedDaughter = node.relation === 'daughter' && lawEra !== '1991';
   
   // 💡 입력된 연혁 데이터가 있는지 확인하여 버튼 색상 변경
   const hasHistoryData = node.divorceDate || node.remarriageDate || node.marriageDate || node.restoreDate;
-
-  // 💡 부모 노드의 성별 판별 로직 (피상속인(root)은 제외하고 자녀/배우자 탭에서만 발동)
-  const isRootParent = parentNode?.id === 'root';
-  const isParentFemale = !isRootParent && ['wife', 'daughter', 'mother', 'sister'].includes(parentNode?.relation);
-  const isParentMale = !isRootParent && ['husband', 'son', 'father', 'brother'].includes(parentNode?.relation);
 
   return (
     <>
