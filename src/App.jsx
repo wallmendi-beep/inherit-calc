@@ -298,6 +298,18 @@ function App() {
          if (copy.name) nameToPersonId.set(copy.name, copy.personId);
       }
 
+      // 💡 [사용자님 지침 반영] 사망일자와 혼인일자 대조를 통한 출가녀 자동 판정
+      if (copy.relation === 'daughter' && copy.marriageDate && rawTree.deathDate) {
+         // 상속 개시(피상속인 사망) '전'에 혼인했는지 확인
+         const isMarriedBeforeDeath = isBefore(copy.marriageDate, rawTree.deathDate);
+         
+         if (isMarriedBeforeDeath) {
+            copy.isSameRegister = false; // 사망 전 혼인이면 '출가' (지분 감산 대상)
+         } else {
+            copy.isSameRegister = true;  // 사망 후 혼인이면 '동일호적' (일반 지분)
+         }
+      }
+
       if (copy.heirs && Array.isArray(copy.heirs)) {
         copy.heirs = copy.heirs.map(sanitize).filter(Boolean);
       }
@@ -3387,11 +3399,11 @@ function App() {
 
 [출력 예시]
 {
-  "name": "김혁조", "isDeceased": true, "deathDate": "1980-01-01",
+  "name": "홍길동", "isDeceased": true, "deathDate": "1980-01-01",
   "heirs": [
-    { "name": "조홍이", "relation": "wife", "isDeceased": true, "deathDate": "1975-01-01" },
-    { "name": "구수명", "relation": "wife", "remarriageDate": "1985-05-05" },
-    { "name": "김영희", "relation": "daughter", "marriageDate": "1995-10-20" }
+    { "name": "이갑순", "relation": "wife", "isDeceased": true, "deathDate": "1975-01-01" },
+    { "name": "박을녀", "relation": "wife", "remarriageDate": "1985-05-05" },
+    { "name": "홍바다", "relation": "daughter", "marriageDate": "1995-10-20" }
   ]
 }`;
                       navigator.clipboard.writeText(prompt);
@@ -3424,10 +3436,19 @@ function App() {
                       // 마크다운 제거 및 JSON 파싱
                       const cleanJson = aiInputText.replace(/```json/g, '').replace(/```/g, '').trim();
                       const parsedTree = JSON.parse(cleanJson);
+                      
+                      // 💡 [핵심 해결책!] AI가 만든 데이터에 고유 바코드(id)가 없다면 강제로 달아줍니다.
+                      const ensureIds = (node) => {
+                        if (!node.id) node.id = `ai_${Math.random().toString(36).substr(2, 9)}`;
+                        if (node.heirs) node.heirs.forEach(ensureIds);
+                      };
+                      ensureIds(parsedTree);
+
+                      // 이제 바코드가 완벽하게 달린 데이터를 앱에 밀어넣습니다.
                       setTree({ ...parsedTree, id: 'root' });
                       setIsAiModalOpen(false);
                       setAiInputText(""); 
-                      alert("✨ 성공적으로 가계도가 입력되었습니다!");
+                      alert("✨ 성공적으로 가계도가 자동 입력되었습니다!");
                     } catch (error) {
                       alert("🚨 데이터 형식이 잘못되었습니다. AI가 만들어준 JSON 텍스트가 맞는지 다시 한번 확인해주세요.");
                     }
