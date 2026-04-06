@@ -195,6 +195,7 @@ function App() {
   // 💡 AI 마법사 모달 상태 관리
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [aiInputText, setAiInputText] = useState("");
+  const [aiTargetId, setAiTargetId] = useState('root'); // 💡 AI가 데이터를 꽂아넣을 타겟 위치 기억!
 
   // 💡 1단: 요약표 상속인 검색용 State 선언 (최상단 배치!)
   const [searchQuery, setSearchQuery] = useState('');
@@ -2344,8 +2345,8 @@ function App() {
 
             {/* 💡 AI 가계도 마법사 버튼 (소프트 파스텔 + 사이즈 통일) */}
             <button 
-              onClick={() => setIsAiModalOpen(true)}
-              title="AI 자동입력 마법사" 
+              onClick={() => { setAiTargetId('root'); setIsAiModalOpen(true); }}
+              title="가계도 전체 AI 자동입력" 
               className="flex items-center justify-center w-8 h-8 shrink-0 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 rounded-lg transition-all shadow-sm hover:scale-105 active:scale-95"
             >
               <span className="text-[16px] leading-none opacity-100 drop-shadow-sm mt-0.5">✨</span>
@@ -2779,6 +2780,16 @@ function App() {
                             className="text-[11.5px] text-[#37352f] dark:text-neutral-200 font-bold bg-white dark:bg-neutral-800 hover:bg-[#f7f7f5] dark:hover:bg-neutral-700 px-2.5 py-1.5 rounded transition-colors flex items-center border border-[#e9e9e7] dark:border-neutral-700 gap-1.5 shadow-sm"
                           >
                             <IconUserPlus className="w-3.5 h-3.5 text-[#2383e2]" /> 상속인 추가
+                          </button>
+
+                          {/* 💡 현재 탭 전용 AI 마법사 버튼 (슬림 아이콘 버전) */}
+                          <button 
+                            type="button"
+                            onClick={() => { setAiTargetId(activeDeceasedTab); setIsAiModalOpen(true); }}
+                            title="현재 상속인 전용 AI 하위 입력"
+                            className="flex items-center justify-center w-7 h-7 shrink-0 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 rounded transition-all shadow-sm active:scale-95 ml-1"
+                          >
+                            <span className="text-[14px] leading-none opacity-100 drop-shadow-sm mt-0.5">✨</span>
                           </button>
                         </div>
                       </div>
@@ -3396,34 +3407,39 @@ function App() {
         )}
 
         {/* 💡 AI 가계도 마법사 팝업창 */}
-        {isAiModalOpen && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-              
-              {/* 헤더 */}
-              <div className="px-6 py-4 border-b border-gray-200 dark:border-neutral-700 flex justify-between items-center bg-indigo-50 dark:bg-indigo-900/30">
-                <h2 className="text-lg font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-2">
-                  <span>✨</span> AI 자동 입력기 <span className="text-sm font-medium opacity-70 ml-1">(제적등본 / 가계도)</span>
-                </h2>
-                <button onClick={() => setIsAiModalOpen(false)} className="text-gray-400 hover:text-gray-600">
-                  <IconX className="w-6 h-6" />
-                </button>
-              </div>
-              
-              <div className="p-6 overflow-y-auto flex-1">
-                {/* 1단계: 프롬프트 영역 */}
-                <div className="mb-6 p-4 bg-gray-50 dark:bg-neutral-700/50 rounded-lg border border-gray-200 dark:border-neutral-600">
-                  <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-2">1단계: 명령어 복사하기</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 leading-relaxed">
-                    아래 버튼을 눌러 명령어를 복사한 후, <b>뤼튼, ChatGPT, 클로드, 제미나이</b> 앱에 문서 사진과 함께 붙여넣으세요.<br/>
-                    <span className="text-indigo-600 dark:text-indigo-400 font-medium">※ 공문서(제적등본, 가족관계증명서)는 물론, 신청인이 직접 손으로 그린 가계도 등 사문서 사진도 완벽하게 인식합니다!</span>
-                  </p>
-                  <button 
-                    onClick={() => {
-                      const prompt = `첨부한 문서(제적등본, 가족관계증명서, 가계도 메모 등) 사진을 보고, 아래 JSON 양식에 맞춰 가족 관계를 추출해줘.
+        {isAiModalOpen && (() => {
+          // 현재 타겟의 이름을 찾아 모달창 제목에 표시!
+          const targetTab = deceasedTabs.find(t => t.id === aiTargetId);
+          const targetName = aiTargetId === 'root' ? '전체 가계도' : `[${targetTab?.name || '상속인'}] 하위`;
+
+          return (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+              <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                
+                {/* 헤더 */}
+                <div className="px-6 py-4 border-b border-gray-200 dark:border-neutral-700 flex justify-between items-center bg-indigo-50 dark:bg-indigo-900/30">
+                  <h2 className="text-lg font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-2">
+                    <span>✨</span> {targetName} AI 자동 입력기 <span className="text-sm font-medium opacity-70 ml-1">(제적등본 / 가계도)</span>
+                  </h2>
+                  <button onClick={() => setIsAiModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                    <IconX className="w-6 h-6" />
+                  </button>
+                </div>
+                
+                <div className="p-6 overflow-y-auto flex-1">
+                  {/* 1단계: 프롬프트 영역 */}
+                  <div className="mb-6 p-4 bg-gray-50 dark:bg-neutral-700/50 rounded-lg border border-gray-200 dark:border-neutral-600">
+                    <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-2">1단계: 명령어 복사하기</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 leading-relaxed">
+                      아래 버튼을 눌러 명령어를 복사한 후, <b>뤼튼, ChatGPT, 클로드, 제미나이</b> 앱에 문서 사진과 함께 붙여넣으세요.<br/>
+                      <span className="text-indigo-600 dark:text-indigo-400 font-medium">※ 공문서(제적등본, 가족관계증명서)는 물론, 신청인이 직접 손으로 그린 가계도 등 사문서 사진도 완벽하게 인식합니다!</span>
+                    </p>
+                    <button 
+                      onClick={() => {
+                        const prompt = `첨부한 문서(제적등본, 가족관계증명서, 가계도 메모 등) 사진을 보고, 아래 JSON 양식에 맞춰 가족 관계를 추출해줘.
 
 [규칙]
-1. 피상속인(망인)을 중심으로 남자는 "son", 여자는 "daughter", 배우자는 "wife" 또는 "husband"로 작성해.
+1. 중심 인물(망인)을 기준으로 남자는 "son", 여자는 "daughter", 배우자는 "wife" 또는 "husband"로 작성해.
 2. 사망자는 isDeceased를 true로 하고, deathDate를 "YYYY-MM-DD" 형태로 넣어.
 3. 🚨 [중요] 제적등본에 전처, 후처 등 배우자가 여러 명 기재되어 있다면 임의로 판단/삭제하지 말고 문서에 있는 대로 일단 전부 다 입력해!
 4. 문서에 출가일(혼인일)이 있으면 marriageDate에, 재혼일이 있으면 remarriageDate에 "YYYY-MM-DD" 형태로 기재해.
@@ -3439,62 +3455,116 @@ function App() {
     { "name": "홍바다", "relation": "daughter", "marriageDate": "1995-10-20" }
   ]
 }`;
-                      navigator.clipboard.writeText(prompt);
-                      alert("✅ 명령어가 복사되었습니다! 쓰시는 AI 앱에 사진과 함께 붙여넣으세요.");
+                        navigator.clipboard.writeText(prompt);
+                        alert("✅ 명령어가 복사되었습니다! 쓰시는 AI 앱에 사진과 함께 붙여넣으세요.");
+                      }}
+                      className="w-full py-2.5 bg-white dark:bg-neutral-800 border-2 border-indigo-500 text-indigo-600 dark:text-indigo-400 rounded-md font-bold hover:bg-indigo-50 transition-colors shadow-sm"
+                    >
+                      📋 AI 전용 명령어 복사하기
+                    </button>
+                  </div>
+
+                  {/* 2단계: 붙여넣기 영역 */}
+                  <div>
+                    <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-2">2단계: 결과 데이터 붙여넣기</h3>
+                    <textarea 
+                      value={aiInputText}
+                      onChange={(e) => setAiInputText(e.target.value)}
+                      placeholder="AI가 만들어준 { ... } 로 시작하는 코드를 이곳에 그대로 붙여넣으세요."
+                      className="w-full h-48 p-3 border border-gray-300 dark:border-neutral-600 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-mono bg-white dark:bg-neutral-900 text-gray-800 dark:text-gray-200"
+                    />
+                  </div>
+                </div>
+
+                {/* 하단 버튼 */}
+                <div className="p-4 border-t border-gray-200 dark:border-neutral-700 flex justify-end gap-2 bg-gray-50 dark:bg-neutral-800/50">
+                  <button onClick={() => setIsAiModalOpen(false)} className="px-4 py-2 text-gray-600 font-medium hover:bg-gray-200 rounded-md transition-colors">취소</button>
+                  <button 
+                    onClick={() => {
+                      try {
+                        const cleanJson = aiInputText.replace(/```json/g, '').replace(/```/g, '').trim();
+                        const parsedTree = JSON.parse(cleanJson);
+                        
+                        // 💡 [데이터 전처리] 바코드 발급 & 출가녀 자동 감지 (배열 형태도 완벽 지원)
+                        const processAiData = (node) => {
+                          if (Array.isArray(node)) {
+                            node.forEach(processAiData);
+                            return;
+                          }
+                          if (!node.id) node.id = `ai_${Math.random().toString(36).substr(2, 9)}`;
+                          if (node.relation === 'daughter' && node.marriageDate && tree.deathDate) {
+                            const isMarriedBeforeDeath = isBefore(node.marriageDate, tree.deathDate);
+                            node.isSameRegister = !isMarriedBeforeDeath;
+                          }
+                          if (node.heirs) node.heirs.forEach(processAiData);
+                        };
+                        processAiData(parsedTree);
+
+                        // 🎯 핵심: 타겟이 'root(메인)'면 전체 엎어쓰기, 아니면 특정 방 안에 쏙!
+                        if (aiTargetId === 'root') {
+                          setTree({ ...parsedTree, id: 'root' });
+                        } else {
+                          // 1. 화면의 탭 ID(personId)를 원본 데이터가 인식할 수 있는 실제 고유 ID로 번역
+                          const targetRawIds = [];
+                          const findRawIds = (n) => {
+                            if (n.id === aiTargetId || n.personId === aiTargetId) targetRawIds.push(n.id);
+                            if (n.heirs) n.heirs.forEach(findRawIds);
+                          };
+                          findRawIds(tree); // 완벽하게 매핑된 현재 화면 기준(tree)으로 검색
+
+                          setTree(prev => {
+                            const injectHeirs = (n) => {
+                              if (targetRawIds.includes(n.id)) {
+                                // 💡 클론(분신) 탭마다 복사될 때 ID 충돌이 나지 않도록 새 바코드 발급
+                                const generateNewHeirs = (heirsArray) => (heirsArray || []).map(h => ({
+                                  ...h,
+                                  id: `ai_${Math.random().toString(36).substr(2, 9)}`,
+                                  heirs: generateNewHeirs(h.heirs || [])
+                                }));
+                                
+                                const sourceHeirs = Array.isArray(parsedTree) ? parsedTree : (parsedTree.heirs || []);
+                                const newHeirs = generateNewHeirs(sourceHeirs);
+                                
+                                // 💡 타겟 본인(예: 김명수)의 누락된 정보(사망일자, 혼인일자 등)도 살려서 병합해 줍니다!
+                                const nodeUpdates = {};
+                                if (!Array.isArray(parsedTree)) {
+                                  if (parsedTree.deathDate) nodeUpdates.deathDate = parsedTree.deathDate;
+                                  if (parsedTree.marriageDate) nodeUpdates.marriageDate = parsedTree.marriageDate;
+                                  if (parsedTree.remarriageDate) nodeUpdates.remarriageDate = parsedTree.remarriageDate;
+                                  if (parsedTree.isDeceased !== undefined) nodeUpdates.isDeceased = parsedTree.isDeceased;
+                                }
+
+                                return { 
+                                  ...n, 
+                                  ...nodeUpdates, // 사망/혼인일자 덮어쓰기
+                                  isExcluded: false, 
+                                  exclusionOption: '',
+                                  heirs: [...(n.heirs || []), ...newHeirs] 
+                                };
+                              }
+                              return { ...n, heirs: n.heirs?.map(injectHeirs) || [] };
+                            };
+                            return injectHeirs(prev);
+                          });
+                        }
+
+                        setIsAiModalOpen(false);
+                        setAiInputText(""); 
+                        alert(`✨ 성공적으로 ${aiTargetId === 'root' ? '가계도가' : '상속인이'} 자동 입력되었습니다!`);
+                      } catch (error) {
+                        alert("🚨 데이터 형식이 잘못되었습니다. AI가 만들어준 JSON 텍스트가 맞는지 다시 한번 확인해주세요.");
+                      }
                     }}
-                    className="w-full py-2.5 bg-white dark:bg-neutral-800 border-2 border-indigo-500 text-indigo-600 dark:text-indigo-400 rounded-md font-bold hover:bg-indigo-50 transition-colors shadow-sm"
+                    className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md font-bold shadow-md transition-colors"
                   >
-                    📋 AI 전용 명령어 복사하기
+                    🚀 상속인 자동 입력
                   </button>
                 </div>
-
-                {/* 2단계: 붙여넣기 영역 */}
-                <div>
-                  <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-2">2단계: 결과 데이터 붙여넣기</h3>
-                  <textarea 
-                    value={aiInputText}
-                    onChange={(e) => setAiInputText(e.target.value)}
-                    placeholder="AI가 만들어준 { ... } 로 시작하는 코드를 이곳에 그대로 붙여넣으세요."
-                    className="w-full h-48 p-3 border border-gray-300 dark:border-neutral-600 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-mono bg-white dark:bg-neutral-900 text-gray-800 dark:text-gray-200"
-                  />
-                </div>
+                
               </div>
-
-              {/* 하단 버튼 */}
-              <div className="p-4 border-t border-gray-200 dark:border-neutral-700 flex justify-end gap-2 bg-gray-50 dark:bg-neutral-800/50">
-                <button onClick={() => setIsAiModalOpen(false)} className="px-4 py-2 text-gray-600 font-medium hover:bg-gray-200 rounded-md transition-colors">취소</button>
-                <button 
-                  onClick={() => {
-                    try {
-                      // 마크다운 제거 및 JSON 파싱
-                      const cleanJson = aiInputText.replace(/```json/g, '').replace(/```/g, '').trim();
-                      const parsedTree = JSON.parse(cleanJson);
-                      
-                      // 💡 [핵심 해결책!] AI가 만든 데이터에 고유 바코드(id)가 없다면 강제로 달아줍니다.
-                      const ensureIds = (node) => {
-                        if (!node.id) node.id = `ai_${Math.random().toString(36).substr(2, 9)}`;
-                        if (node.heirs) node.heirs.forEach(ensureIds);
-                      };
-                      ensureIds(parsedTree);
-
-                      // 이제 바코드가 완벽하게 달린 데이터를 앱에 밀어넣습니다.
-                      setTree({ ...parsedTree, id: 'root' });
-                      setIsAiModalOpen(false);
-                      setAiInputText(""); 
-                      alert("✨ 성공적으로 가계도가 자동 입력되었습니다!");
-                    } catch (error) {
-                      alert("🚨 데이터 형식이 잘못되었습니다. AI가 만들어준 JSON 텍스트가 맞는지 다시 한번 확인해주세요.");
-                    }
-                  }}
-                  className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md font-bold shadow-md transition-colors"
-                >
-                  🚀 상속인 자동 입력
-                </button>
-              </div>
-              
             </div>
-          </div>
-        )}
+          );
+        })()}
       </main>
     </div>
   );
