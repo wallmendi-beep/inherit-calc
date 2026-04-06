@@ -278,7 +278,8 @@ function App() {
     const seenIds = new Set();
     const nameToPersonId = new Map(); // 구버전 데이터의 동명이인 자동 묶음용
 
-    const sanitize = (node) => {
+    // 💡 기준일(effectiveDate)을 추적하여 대습/재상속을 정확히 판별
+    const sanitize = (node, effectiveDate) => {
       if (!node) return null;
       if (seenIds.has(node.id)) return null; 
       seenIds.add(node.id);
@@ -299,13 +300,31 @@ function App() {
          if (copy.name) nameToPersonId.set(copy.name, copy.personId);
       }
 
+      // 🚨 [핵심: 구조적 의도 반영 엔진] 자식이 있는 사망자는 대습/재상속 여부에 따라 스위치 자동 조정!
+      if (copy.heirs && copy.heirs.length > 0 && copy.isDeceased && effectiveDate) {
+          const isPre = copy.deathDate && isBefore(copy.deathDate, effectiveDate);
+          const isSpouseType = ['wife', 'husband', 'spouse'].includes(copy.relation);
+          
+          if (isPre && !isSpouseType) {
+              // 선사망(대습상속): 자식을 입력했다면 가이드가 묻기 전에 기계가 알아서 스위치를 끕니다.
+              copy.isExcluded = true;
+              if (!copy.exclusionOption) copy.exclusionOption = 'renounce';
+          } else if (!isPre) {
+              // 후사망(재상속): 자식을 입력했다면 상속을 받는 것이므로 기계가 알아서 스위치를 켭니다.
+              copy.isExcluded = false;
+              copy.exclusionOption = '';
+          }
+      }
+
       if (copy.heirs && Array.isArray(copy.heirs)) {
-        copy.heirs = copy.heirs.map(sanitize).filter(Boolean);
+        // 하위 자녀들에게 물려줄 새로운 기준일 계산
+        const nextEffective = (copy.deathDate && !isBefore(copy.deathDate, effectiveDate)) ? copy.deathDate : effectiveDate;
+        copy.heirs = copy.heirs.map(h => sanitize(h, nextEffective)).filter(Boolean);
       }
       return copy;
     };
 
-    const sanitized = sanitize(rawTree) || getInitialTree();
+    const sanitized = sanitize(rawTree, rawTree.deathDate) || getInitialTree();
     
     // 💡 2단계: 클론 동기화 — 동일 personId를 공유하는 노드들의 heirs 및 누락 필드를 통일
     const syncCloneHeirs = (root) => {
@@ -906,9 +925,6 @@ function App() {
         findPId(tree);
 
         setTree(prevTree => {
-          // 다른 방에 있는 분신들에게도 무조건 똑같이 맞춰줘야 할 '개인 고유 속성'들
-          const syncKeys = ['name', 'relation', 'isDeceased', 'deathDate', 'isHoju', 'isExcluded', 'exclusionOption', 'marriageDate'];
-
           const syncRelation = (n) => {
             let nextNode = { ...n };
             // 모든 분신(Clone) 탭에 동일하게 적용
@@ -951,37 +967,37 @@ function App() {
         };
         return updateSingleHoju(prev);
       });
-      // 💡 여기서 멈추지 않고 아래의 applyUpdate로 넘어가서 다른 분신들도 동기화되게 함
     }
 
     setTree(prevTree => {
-      // 1. 현재 사용자가 수정한 인물의 고유 ID(personId)를 찾습니다.
+      // 🚨 핵심 픽스 1: prevTree가 아닌 '현재 화면에 렌더링된 트리(tree)'에서 ID를 찾아야,
+      // 임시로 생성된 분신(Clone)의 다이내믹 ID도 완벽하게 찾아냅니다!
       let targetPersonId = null;
       const findPersonId = (n) => {
         if (n.id === id) targetPersonId = n.personId;
-        if (n.heirs) n.heirs.forEach(findPersonId);
+        if (!targetPersonId && n.heirs) n.heirs.forEach(findPersonId); // 최적화: 찾으면 즉시 중단
       };
-      findPersonId(prevTree);
+      findPersonId(tree); 
 
-      // 2. 다른 방에 있는 분신들에게도 무조건 똑같이 맞춰줘야 할 '개인 고유 속성'들
-      const syncKeys = ['name', 'relation', 'isDeceased', 'deathDate', 'isHoju', 'isExcluded', 'exclusionOption', 'marriageDate', 'remarriageDate'];
-
+      // 🚨 핵심 픽스 2: 하드코딩된 syncKeys 배열을 버리고, 
+      // personId가 같은 '모든 분신'에게 사용자의 변경사항(updates)을 100% 강제 복사합니다.
       const updateNode = (n) => {
         let nextNode = { ...n };
 
-        if (nextNode.id === id) {
-          // 사용자가 화면에서 직접 클릭/수정한 바로 그 노드 업데이트
-          nextNode = { ...nextNode, ...updates };
-        } else if (targetPersonId && nextNode.personId === targetPersonId) {
-          // 💡 다른 탭에 숨어있는 분신(Clone) 노드를 찾아내어 실시간 동기화!
+        if (targetPersonId && nextNode.personId === targetPersonId) {
           const cloneUpdates = {};
-          for (const key of syncKeys) {
-            if (updates[key] !== undefined) cloneUpdates[key] = updates[key];
+          for (const key of Object.keys(updates)) {
+            // 구조적 ID나 자녀 목록은 건드리지 않고, 스위치/이름/날짜 등 상태값만 완벽히 복사
+            if (key !== 'id' && key !== 'heirs' && key !== 'personId') {
+              cloneUpdates[key] = updates[key];
+            }
           }
           nextNode = { ...nextNode, ...cloneUpdates };
+        } else if (nextNode.id === id) {
+          // 💡 예외 상황: personId가 발급되기 전의 완전 초기 노드일 경우 id 매칭으로 직접 업데이트
+          nextNode = { ...nextNode, ...updates };
         }
 
-        // 하위 자녀들까지 재귀적으로 스캔
         if (nextNode.heirs) {
           nextNode.heirs = nextNode.heirs.map(updateNode);
         }
@@ -1716,7 +1732,7 @@ function App() {
               </div>
             </div>
 
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
               {!isNavigatorRolledUp && (
                 <div className="text-[13px] font-bold text-[#504f4c] dark:text-neutral-300 pointer-events-none animate-in fade-in slide-in-from-top-1 duration-200">
                   
