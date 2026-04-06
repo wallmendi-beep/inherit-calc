@@ -157,7 +157,7 @@ const MiniTreeView = ({ node, level = 0, onSelectNode, visitedHeirs = new Set(),
             const isSpouse = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(node.relation);
             const isPre = node.isDeceased && node.deathDate && deathDate && isBefore(node.deathDate, deathDate) && !isSpouse;
             return (
-              <span className={`text-[10px] font-bold opacity-40 uppercase tracking-tighter ${isPre ? 'text-[#37352f] opacity-60' : 'text-[#787774]'}`}>
+              <span className={`text-[10px] font-bold opacity-40 uppercase tracking-tighter ${isPre ? 'text-[#787774]' : 'text-[#37352f] dark:text-neutral-100 font-bold opacity-100'}`}>
                 [{getRelStr(node.relation, deathDate) || '자녀'}]
               </span>
             );
@@ -2805,15 +2805,15 @@ function App() {
                         <div className="flex items-center px-2 py-2 mb-2 bg-[#fcfcfb] dark:bg-neutral-800/50 rounded-md border border-[#e9e9e7] dark:border-neutral-700 text-[12px] font-bold text-[#787774] dark:text-neutral-400 select-none animate-in fade-in duration-300 w-full overflow-hidden">
                           <div className="w-[68px] shrink-0 text-center ml-[10px]"><span className="relative left-[15px]">상태</span></div>
                           <div className="w-[72px] shrink-0 text-center ml-[50px]"><span className="relative left-[-20px]">성명</span></div>
-                          <div className="w-[96px] shrink-0 text-center ml-[30px]"><span className="relative left-[-30px]">관계</span></div>
+                          <div className="w-[76px] shrink-0 text-center ml-[30px]"><span className="relative left-[-30px]">관계</span></div>
                           <div className="w-[150px] shrink-0 text-center ml-[30px]"><span className="relative left-[-40px]">사망여부/일자</span></div>
                           <div className="w-[180px] shrink-0 text-center ml-[10px] relative">
                             <span className="relative left-[-20px]">특수조건 (가감산)</span>
                           </div>
                           <div className="w-[180px] shrink-0 text-center ml-[10px] relative">
-                            <span className="whitespace-nowrap relative left-[-10px] inline-flex items-center">
+                            <span className="whitespace-nowrap relative left-[0px] inline-flex items-center">
                               재/대습상속
-                              {/* 🗑️ 상속인 전체 삭제 버튼 (간격 조정: 글씨 왼쪽 5px, 아이콘 오른쪽 5px 이동) */}
+                              {/* 🗑️ 상속인 전체 삭제 버튼 (글씨로부터 정확히 50px 오른쪽 배치) */}
                               <button
                                 type="button"
                                 title="현재 탭 상속인 전체 삭제"
@@ -2841,13 +2841,13 @@ function App() {
                                       return cloneTree;
                                     });
                                   }                                }}
-                                className="ml-[30px] p-1 text-neutral-400 hover:text-red-600 dark:hover:text-red-400 transition-all hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md"
+                                className="ml-[50px] p-1 text-neutral-400 hover:text-red-600 dark:hover:text-red-400 transition-all hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md"
                               >
                                 <IconTrash2 className="w-3.5 h-3.5" />
                               </button>
                             </span>
                           </div>
-                          <div className="w-12 shrink-0 text-center ml-0 mr-[10px]">
+                          <div className="w-12 shrink-0 text-center ml-[40px] mr-[10px]">
                             <span className="whitespace-nowrap">삭제</span>
                           </div>
                         </div>

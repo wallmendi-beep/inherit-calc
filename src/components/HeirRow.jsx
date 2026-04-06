@@ -156,7 +156,7 @@ const HeirRow = ({ node, finalShares, level, handleUpdate, handleNameBlur, remov
       </div>
 
       {/* 3. 관계 */}
-      <div className="w-24 ml-[30px] shrink-0">
+      <div className="w-[76px] ml-[30px] shrink-0">
         <select 
           value={node.relation}
           onChange={e => handleUpdate(node.id, 'relation', e.target.value)} 
@@ -198,7 +198,7 @@ const HeirRow = ({ node, finalShares, level, handleUpdate, handleNameBlur, remov
                   handleUpdate(node.id, 'exclusionOption', '');
                 }
               }}
-              className={`flex-1 text-[13px] font-bold outline-none bg-transparent ${isPreDeceasedCondition && !isSpouseType ? 'text-[#37352f]' : 'text-[#787774] dark:text-neutral-400'}`}
+              className={`flex-1 text-[13px] font-bold outline-none bg-transparent ${isPreDeceasedCondition && !isSpouseType ? 'text-[#787774] dark:text-neutral-400' : 'text-[#37352f] dark:text-neutral-100'}`}
               placeholder="사망일자"
             />
           ) : (
@@ -335,7 +335,7 @@ const HeirRow = ({ node, finalShares, level, handleUpdate, handleNameBlur, remov
       </div>
 
       {/* 7. 삭제 버튼 */}
-      <div className="w-12 shrink-0 flex justify-center ml-[-10px] mr-[20px]">
+      <div className="w-12 shrink-0 flex justify-center ml-[10px] mr-[20px]">
         <button
           type="button"
           onClick={() => removeHeir(node.id)}
