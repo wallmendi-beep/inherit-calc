@@ -3524,13 +3524,22 @@ function App() {
                         const cleanJson = aiInputText.replace(/```json/g, '').replace(/```/g, '').trim();
                         const parsedTree = JSON.parse(cleanJson);
                         
-                        // 💡 [데이터 전처리] 바코드 발급 (기계적인 스위치 조작 일절 금지!)
+                        // 💡 [데이터 전처리] 바코드 발급 및 명백한 구조적 의도(대습상속) 반영
                         const processAiData = (node) => {
                           if (Array.isArray(node)) {
                             node.forEach(processAiData);
                             return;
                           }
                           if (!node.id) node.id = `ai_${Math.random().toString(36).substr(2, 9)}`;
+                          
+                          // 🚨 [사용자님 지침 완벽 반영] 
+                          // 자식(대습상속인)이 같이 들어왔다는 건 대습상속이라는 명백한 의도! 
+                          // 바보같이 가이드로 묻지 말고 알아서 스위치를 [대습상속]으로 세팅해줍니다.
+                          if (node.heirs && node.heirs.length > 0) {
+                            node.isExcluded = true;
+                            node.exclusionOption = 'predeceased';
+                          }
+
                           if (node.heirs) node.heirs.forEach(processAiData);
                         };
                         processAiData(parsedTree);
@@ -3568,6 +3577,12 @@ function App() {
                                   if (parsedTree.isDeceased !== undefined) nodeUpdates.isDeceased = parsedTree.isDeceased;
                                 }
 
+                                // 🚨 여기서도 동일하게: 특정 탭에 자식을 새로 꽂아넣었다면 그 탭 주인의 스위치를 알아서 꺼줍니다!
+                                if (newHeirs.length > 0) {
+                                  nodeUpdates.isExcluded = true;
+                                  nodeUpdates.exclusionOption = 'predeceased';
+                                }
+
                                 return { 
                                   ...n, 
                                   ...nodeUpdates, 
@@ -3578,6 +3593,15 @@ function App() {
                             };
                             return injectHeirs(prev);
                           });
+                        }
+
+                        setIsAiModalOpen(false);
+                        setAiInputText(""); 
+                        alert(`✨ 성공적으로 ${aiTargetId === 'root' ? '가계도가' : '상속인이'} 자동 입력되었습니다!\n왼쪽의 [스마트 가이드]를 확인하며 검수해 주세요.`);
+                      } catch (error) {
+                        alert("🚨 데이터 형식이 잘못되었습니다. AI가 만들어준 JSON 텍스트가 맞는지 다시 한번 확인해주세요.");
+                      }
+                    }}
                         }
 
                         setIsAiModalOpen(false);
