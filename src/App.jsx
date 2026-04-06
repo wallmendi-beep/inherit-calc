@@ -1259,15 +1259,48 @@ function App() {
     return guides;
   }, [tree]);
 
+  // 💡 [호주 상속인 미지정 감지 센서] 
+  const hojuMissingGuides = useMemo(() => {
+    const guides = [];
+
+    // 1. 피상속인(root) 사망일이 1991년 이전이고, 호주제가 살아있던 때인지 확인
+    const lawEra = getLawEra(tree.deathDate);
+    const isHojuEra = lawEra !== '1991'; 
+
+    if (isHojuEra) {
+      // 2. 현재 트리 전체에서 isHoju: true인 사람이 한 명이라도 있는지 체크
+      let hasHoju = false;
+      const scanHoju = (node) => {
+        if (node.isHoju === true) hasHoju = true;
+        if (!hasHoju && node.heirs) node.heirs.forEach(scanHoju);
+      };
+      scanHoju(tree);
+
+      // 3. 호주 상속 시대인데 호주가 없다면? 경고 발동!
+      if (!hasHoju) {
+        guides.push({
+          id: 'root', // 피상속인 탭으로 바로가기
+          uniqueKey: `missing-hoju-root`,
+          type: 'mandatory', // 빨간색 필수 조치 아이콘
+          text: `[${getLawEra(tree.deathDate)}년 법률 적용] 호주 상속인(장남 등)이 지정되지 않았습니다. 지분 5할 가산을 위해 호주 승계인을 선택해 주세요.`
+        });
+      }
+    }
+    return guides;
+  }, [tree]);
+
   // 기존 가이드와 다중 배우자 경고를 하나로 합침
   const { 
     showGlobalWarning, showAutoCalcNotice, globalMismatchReasons, 
     autoCalculatedNames, noSurvivors 
   } = guideInfo;
 
-  const smartGuides = [...(guideInfo.smartGuides || []), ...multipleSpouseGuides];
-  const hasActionItems = guideInfo.hasActionItems || multipleSpouseGuides.length > 0;
-  // ------------------------------------------------------------------
+  const smartGuides = [
+    ...(guideInfo.smartGuides || []), 
+    ...multipleSpouseGuides,
+    ...hojuMissingGuides
+  ];
+  const hasActionItems = guideInfo.hasActionItems || multipleSpouseGuides.length > 0 || hojuMissingGuides.length > 0;  // ------------------------------------------------------------------
   // 💡 사용자가 [X]를 눌러 숨긴 권고 가이드를 기억하는 메모리
   const [hiddenGuideKeys, setHiddenGuideKeys] = useState(new Set());
   const dismissGuide = (key) => setHiddenGuideKeys(prev => new Set(prev).add(key));
@@ -3455,7 +3488,7 @@ function App() {
                   }}
                   className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md font-bold shadow-md transition-colors"
                 >
-                  🚀 1초 만에 가계도 그리기
+                  🚀 상속인 자동 입력
                 </button>
               </div>
               
