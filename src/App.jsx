@@ -15,6 +15,144 @@ import { useSmartGuide } from './hooks/useSmartGuide';
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 
+// ============================================================================
+// 🚀 [v3.0 코어 엔진] 옵시디언 아키텍처 (State Normalization)
+// ============================================================================
+
+// 1️⃣ 마이그레이션 엔진: 기존의 중첩된 폴더(Tree)를 평면화된 볼트(Vault)로 변환
+export const migrateToVault = (oldTree) => {
+  const vault = {
+    meta: {
+      caseNo: oldTree.caseNo || '',
+      rootPersonId: oldTree.personId || oldTree.id || 'root',
+      targetShareN: oldTree.shareN || 1,
+      targetShareD: oldTree.shareD || 1,
+    },
+    persons: {},
+    relationships: {} // parentId: [ { targetId, relation, isExcluded ... } ]
+  };
+
+  const traverse = (node, parentId = null) => {
+    if (!node) return;
+
+    // 1. 고유 ID (DNA) 확보
+    const pId = node.personId || node.id || `p_${Math.random().toString(36).substr(2,9)}`;
+    if (node.id === 'root') vault.meta.rootPersonId = pId; // root ID 보정
+
+    // 2. 단일 진실 공급원(Persons) 등록 및 정보 병합
+    if (!vault.persons[pId]) {
+      vault.persons[pId] = {
+        id: pId, // personId와 동일
+        name: node.name || '',
+        isDeceased: !!node.isDeceased,
+        deathDate: node.deathDate || '',
+        marriageDate: node.marriageDate || '',
+        remarriageDate: node.remarriageDate || '',
+        gender: node.gender || ''
+      };
+    } else {
+      // 다른 탭의 분신(Clone)에 더 많은 정보가 있다면 끌어와서 병합
+      const p = vault.persons[pId];
+      if (!p.deathDate && node.deathDate) p.deathDate = node.deathDate;
+      if (!p.marriageDate && node.marriageDate) p.marriageDate = node.marriageDate;
+      if (!p.name && node.name) p.name = node.name;
+    }
+
+    // 3. 관계(Links) 맺어주기
+    if (parentId) {
+      if (!vault.relationships[parentId]) vault.relationships[parentId] = [];
+
+      // 이미 연결된 링크인지 확인 (중복 방지)
+      const existingLink = vault.relationships[parentId].find(link => link.targetId === pId);
+      if (!existingLink) {
+        vault.relationships[parentId].push({
+          targetId: pId,
+          relation: node.relation || 'son',
+          isExcluded: !!node.isExcluded,
+          exclusionOption: node.exclusionOption || '',
+          isHoju: !!node.isHoju,
+          isSameRegister: node.isSameRegister !== false // 기본값 true
+        });
+      } else {
+         // 만약 어느 한쪽 탭에서 스위치가 꺼져있다면, 꺼진 상태(true)를 정본으로 인정
+         if (node.isExcluded) {
+           existingLink.isExcluded = true;
+           existingLink.exclusionOption = node.exclusionOption || existingLink.exclusionOption;
+         }
+      }
+    }
+
+    // 4. 자식들 순회 (배 속의 아이들을 모두 꺼내서 링크로 변환)
+    if (node.heirs && Array.isArray(node.heirs)) {
+      node.heirs.forEach(child => traverse(child, pId));
+    }
+  };
+
+  traverse(oldTree);
+  return vault;
+};
+
+
+// 2️⃣ 렌더링 조립기: 옵시디언 볼트(Vault)를 다시 UI용 폴더(Tree)로 조립해서 던져줌
+export const buildTreeFromVault = (vault) => {
+  if (!vault || !vault.meta) return null;
+  const rootId = vault.meta.rootPersonId;
+  const rootPerson = vault.persons[rootId];
+  if (!rootPerson) return null;
+
+  // 무한 루프 방지용 Set (혹시 모를 순환 참조 방어)
+  const buildNode = (personId, visited = new Set()) => {
+    if (visited.has(personId)) return null; 
+    const newVisited = new Set(visited).add(personId);
+
+    const person = vault.persons[personId];
+    if (!person) return null;
+
+    // 기본 신상 정보 세팅
+    const node = {
+      id: personId, // UI 컴포넌트 호환을 위해 id에도 personId 주입
+      personId: personId,
+      name: person.name,
+      isDeceased: person.isDeceased,
+      deathDate: person.deathDate,
+      marriageDate: person.marriageDate,
+      remarriageDate: person.remarriageDate,
+      gender: person.gender,
+      heirs: []
+    };
+
+    // 피상속인(Root)일 경우 메타 데이터 추가
+    if (personId === rootId) {
+      node.caseNo = vault.meta.caseNo;
+      node.shareN = vault.meta.targetShareN;
+      node.shareD = vault.meta.targetShareD;
+      node.id = 'root'; // UI 호환용 강제 고정
+    }
+
+    // 내 자식 명단(Links)을 보고 한 명씩 불러와서 조립
+    const links = vault.relationships[personId] || [];
+    links.forEach(link => {
+      const childNode = buildNode(link.targetId, newVisited);
+      if (childNode) {
+        // 링크에 적혀있던 관계/스위치(Edge 데이터)를 자식 노드 껍데기에 입혀줌
+        childNode.id = `n_${personId}_${link.targetId}`; // 화면 충돌 방지용 가상 ID
+        childNode.relation = link.relation;
+        childNode.isExcluded = link.isExcluded;
+        childNode.exclusionOption = link.exclusionOption;
+        childNode.isHoju = link.isHoju;
+        childNode.isSameRegister = link.isSameRegister;
+
+        node.heirs.push(childNode);
+      }
+    });
+
+    return node;
+  };
+
+  return buildNode(rootId);
+};
+// ============================================================================
+
 const getWarningState = (n, rootDeathDate, level = 1) => {
   if (!n) return { isDirect: false, hasDescendant: false };
   
@@ -251,155 +389,48 @@ function App() {
     window.addEventListener('mouseup', handleMouseUp);
   };
   
-  // Undo/Redo 위한 History 기능 추가
-  const [treeState, setTreeState] = useState({
-    history: [getInitialTree()],
+  // 💡 [v3.0] 옵시디언 볼트(Vault) 기반 History 상태 관리
+  const [vaultState, setVaultState] = useState({
+    history: [ migrateToVault(getInitialTree()) ],
     currentIndex: 0
   });
 
-  const rawTree = treeState.history[treeState.currentIndex] || getInitialTree();
+  const rawVault = vaultState.history[vaultState.currentIndex];
 
-  const setTree = (action) => {
-    setTreeState(prev => {
-      const currentTree = prev.history[prev.currentIndex];
-      const newTree = typeof action === 'function' ? action(currentTree) : action;
-      const parsedTree = JSON.parse(JSON.stringify(newTree)); // 깊은 복사 보장
+  // 💡 [v3.0] Vault 직접 제어 엔진 (단일 진실 공급원)
+  const setVault = (action) => {
+    setVaultState(prev => {
+      const currentVault = prev.history[prev.currentIndex];
+      const newVault = typeof action === 'function' ? action(JSON.parse(JSON.stringify(currentVault))) : action;
+      const parsedVault = JSON.parse(JSON.stringify(newVault)); 
       
       const newHistory = prev.history.slice(0, prev.currentIndex + 1);
-      newHistory.push(parsedTree);
+      newHistory.push(parsedVault);
       if (newHistory.length > 50) newHistory.shift();
       
       return { history: newHistory, currentIndex: newHistory.length - 1 };
     });
   };
 
-  // 1. Tree 파싱 및 구버전 JSON 마이그레이션 (personId 자동 부여)
-  const tree = useMemo(() => {
-    const seenIds = new Set();
-    const nameToPersonId = new Map(); // 구버전 데이터의 동명이인 자동 묶음용
-
-    // 💡 기준일(effectiveDate)을 추적하여 대습/재상속을 정확히 판별
-    const sanitize = (node, effectiveDate) => {
-      if (!node) return null;
-      if (seenIds.has(node.id)) return null; 
-      seenIds.add(node.id);
+  // 🚨 [v3.0] 마법의 프록시 (구버전 완벽 호환성 방어막)
+  // 화면에서 기존 코드가 트리를 조작하려 하면, 알아서 옵시디언 링크로 압축 변환해서 저장해 줍니다!
+  const setTree = (action) => {
+    setVaultState(prev => {
+      const currentVault = prev.history[prev.currentIndex];
+      const currentTree = buildTreeFromVault(currentVault); 
+      const newTree = typeof action === 'function' ? action(currentTree) : action; 
+      const newVault = migrateToVault(newTree); 
       
-      const copy = { ...node };
+      const newHistory = prev.history.slice(0, prev.currentIndex + 1);
+      newHistory.push(newVault);
+      if (newHistory.length > 50) newHistory.shift();
       
-      // 💡 핵심: personId가 없으면 생성 (구버전 호환)
-      if (!copy.personId) {
-         if (copy.name && nameToPersonId.has(copy.name)) {
-             copy.personId = nameToPersonId.get(copy.name);
-         } else {
-             // 💡 안전 장치: id가 아예 누락된 불량 데이터가 들어와도 앱이 터지지 않게 방어!
-             const safeId = copy.id ? String(copy.id).replace(/[^a-zA-Z0-9]/g, '') : 'node';
-             copy.personId = `p_${safeId}_${Math.random().toString(36).substr(2,4)}`;
-             if (copy.name) nameToPersonId.set(copy.name, copy.personId);
-         }
-      } else {
-         if (copy.name) nameToPersonId.set(copy.name, copy.personId);
-      }
+      return { history: newHistory, currentIndex: newHistory.length - 1 };
+    });
+  };
 
-      // 🚨 [핵심: 구조적 의도 반영 엔진] 자식이 있는 사망자는 대습/재상속 여부에 따라 스위치 자동 조정!
-      if (copy.heirs && copy.heirs.length > 0 && copy.isDeceased && effectiveDate) {
-          const isPre = copy.deathDate && isBefore(copy.deathDate, effectiveDate);
-          const isSpouseType = ['wife', 'husband', 'spouse'].includes(copy.relation);
-          
-          if (isPre && !isSpouseType) {
-              // 선사망(대습상속): 자식을 입력했다면 가이드가 묻기 전에 기계가 알아서 스위치를 끕니다.
-              copy.isExcluded = true;
-              if (!copy.exclusionOption) copy.exclusionOption = 'renounce';
-          } else if (!isPre) {
-              // 후사망(재상속): 자식을 입력했다면 상속을 받는 것이므로 기계가 알아서 스위치를 켭니다.
-              copy.isExcluded = false;
-              copy.exclusionOption = '';
-          }
-      }
-
-      if (copy.heirs && Array.isArray(copy.heirs)) {
-        // 하위 자녀들에게 물려줄 새로운 기준일 계산
-        const nextEffective = (copy.deathDate && !isBefore(copy.deathDate, effectiveDate)) ? copy.deathDate : effectiveDate;
-        copy.heirs = copy.heirs.map(h => sanitize(h, nextEffective)).filter(Boolean);
-      }
-      return copy;
-    };
-
-    const sanitized = sanitize(rawTree, rawTree.deathDate) || getInitialTree();
-    
-    // 💡 2단계: 클론 동기화 — 동일 personId를 공유하는 노드들의 heirs 및 누락 필드를 통일
-    const syncCloneHeirs = (root) => {
-      // (a) 트리 전체를 순회하여 personId별 노드 참조 목록을 수집
-      const personIdMap = new Map();
-      const collectNodes = (node) => {
-        if (!node || !node.personId) return;
-        if (!personIdMap.has(node.personId)) personIdMap.set(node.personId, []);
-        personIdMap.get(node.personId).push(node);
-        if (node.heirs) node.heirs.forEach(collectNodes);
-      };
-      collectNodes(root);
-
-      // (b) 각 personId 그룹을 순회하며 동기화
-      for (const [pId, nodes] of personIdMap) {
-        if (nodes.length < 2) continue; // 클론이 없으면 스킵
-        
-        // 정본 선정 1: heirs 배열이 가장 긴 노드
-        let master = nodes[0];
-        for (const n of nodes) {
-          if ((n.heirs?.length || 0) > (master.heirs?.length || 0)) master = n;
-          // 💡 [치유 엔진 1] heirs 길이가 같다면, 기본값('son')을 변경한 흔적이 있는 노드('daughter' 등)를 마스터로 우대!
-          else if ((n.heirs?.length || 0) === (master.heirs?.length || 0)) {
-            if (n.relation && n.relation !== 'son' && master.relation === 'son') {
-              master = n;
-            }
-          }
-        }
-        
-        // 🚨 정본 선정 2: 누군가 명시적으로 스위치를 껐는지 확인 (무자녀 사망자 강제 동기화용)
-        let isExcludedTrue = false;
-        let extOption = '';
-        for (const n of nodes) {
-          if (n.isExcluded === true) {
-            isExcludedTrue = true;
-            extOption = n.exclusionOption || 'renounce';
-            break;
-          }
-        }
-        
-        for (const clone of nodes) {
-          // 💡 [치유 엔진 2] 마스터가 가진 정확한 성별(관계)을 모든 분신에게 강제 복사하여 불일치 원천 차단!
-          if (master.relation && clone.relation !== master.relation) {
-            clone.relation = master.relation;
-          }
-
-          // (c-1) heirs 동기화: 정본보다 적으면 deep-copy
-          const masterHeirs = master.heirs || [];
-          if (masterHeirs.length > 0 && (clone.heirs?.length || 0) < masterHeirs.length) {
-            clone.heirs = masterHeirs.map(h => {
-              const deepClone = (n) => ({
-                ...n,
-                id: `n_${Math.random().toString(36).substr(2, 9)}`, // 화면 충돌 방지용 새 ID
-                personId: n.personId, // 진짜 인물 DNA는 유지
-                heirs: (n.heirs || []).map(deepClone)
-              });
-              return deepClone(h);
-            });
-            // 자녀가 복사되어 생겼으므로 강제로 스위치 ON (정상화)
-            clone.isExcluded = false;
-            clone.exclusionOption = '';
-          }
-          // 🚨 (c-2) 핵심 픽스: 자녀가 0명인 사망자인데 다른 방에서 스위치가 꺼져있다면, 
-          // 이것은 "물리적 선사망 무자녀"이므로 무조건 모든 방의 스위치를 함께 끕니다!
-          else if ((clone.heirs?.length || 0) === 0 && clone.isDeceased && isExcludedTrue) {
-            clone.isExcluded = true;
-            clone.exclusionOption = extOption;
-          }
-        }
-      }
-      return root;
-    };
-
-    return syncCloneHeirs(sanitized);
-  }, [rawTree]);
+  // 💡 [v3.0] 화면(UI)에 뿌려주는 트리는 중앙 창고에서 0.001초 만에 조립해서 제공
+  const tree = useMemo(() => buildTreeFromVault(rawVault) || getInitialTree(), [rawVault]);
 
   // 🧭 상속인 탭 목록 (💡 기준을 id에서 personId로 전면 통합!)
   const deceasedTabs = useMemo(() => {
@@ -452,10 +483,10 @@ function App() {
   }, [tree]);
 
   const undoTree = () => {
-    setTreeState(prev => prev.currentIndex > 0 ? { ...prev, currentIndex: prev.currentIndex - 1 } : prev);
+    setVaultState(prev => prev.currentIndex > 0 ? { ...prev, currentIndex: prev.currentIndex - 1 } : prev);
   };
   const redoTree = () => {
-    setTreeState(prev => prev.currentIndex < prev.history.length - 1 ? { ...prev, currentIndex: prev.currentIndex + 1 } : prev);
+    setVaultState(prev => prev.currentIndex < prev.history.length - 1 ? { ...prev, currentIndex: prev.currentIndex + 1 } : prev);
   };
 
 
@@ -969,42 +1000,34 @@ function App() {
       });
     }
 
-    setTree(prevTree => {
-      // 🚨 핵심 픽스 1: prevTree가 아닌 '현재 화면에 렌더링된 트리(tree)'에서 ID를 찾아야,
-      // 임시로 생성된 분신(Clone)의 다이내믹 ID도 완벽하게 찾아냅니다!
-      let targetPersonId = null;
-      const findPersonId = (n) => {
-        if (n.id === id) targetPersonId = n.personId;
-        if (!targetPersonId && n.heirs) n.heirs.forEach(findPersonId); // 최적화: 찾으면 즉시 중단
+    // 💡 [v3.0] 옵시디언 동기화: 중앙 창고 하나만 수정하면 우주의 모든 탭이 0.001초만에 동기화됨!
+    setVault(prev => {
+      let targetPersonId = id;
+      let parentPersonId = null;
+      
+      const findNode = (n, pId) => {
+        if (n.id === id) { targetPersonId = n.personId; parentPersonId = pId; return true; }
+        return (n.heirs || []).some(child => findNode(child, n.personId));
       };
-      findPersonId(tree); 
+      findNode(tree, null);
 
-      // 🚨 핵심 픽스 2: 하드코딩된 syncKeys 배열을 버리고, 
-      // personId가 같은 '모든 분신'에게 사용자의 변경사항(updates)을 100% 강제 복사합니다.
-      const updateNode = (n) => {
-        let nextNode = { ...n };
+      // 1. 개인 신상 정보 수정 (모든 탭에 자동 반영)
+      const personalKeys = ['name', 'isDeceased', 'deathDate', 'marriageDate', 'remarriageDate', 'gender'];
+      personalKeys.forEach(k => {
+        if (updates[k] !== undefined) prev.persons[targetPersonId][k] = updates[k];
+      });
 
-        if (targetPersonId && nextNode.personId === targetPersonId) {
-          const cloneUpdates = {};
-          for (const key of Object.keys(updates)) {
-            // 구조적 ID나 자녀 목록은 건드리지 않고, 스위치/이름/날짜 등 상태값만 완벽히 복사
-            if (key !== 'id' && key !== 'heirs' && key !== 'personId') {
-              cloneUpdates[key] = updates[key];
-            }
-          }
-          nextNode = { ...nextNode, ...cloneUpdates };
-        } else if (nextNode.id === id) {
-          // 💡 예외 상황: personId가 발급되기 전의 완전 초기 노드일 경우 id 매칭으로 직접 업데이트
-          nextNode = { ...nextNode, ...updates };
+      // 2. 부모-자식 간의 관계/스위치 수정 (현재 부모 탭에서만 반영)
+      const linkKeys = ['relation', 'isExcluded', 'exclusionOption', 'isHoju', 'isSameRegister'];
+      if (parentPersonId && prev.relationships[parentPersonId]) {
+        const link = prev.relationships[parentPersonId].find(l => l.targetId === targetPersonId);
+        if (link) {
+          linkKeys.forEach(k => {
+            if (updates[k] !== undefined) link[k] = updates[k];
+          });
         }
-
-        if (nextNode.heirs) {
-          nextNode.heirs = nextNode.heirs.map(updateNode);
-        }
-        return nextNode;
-      };
-
-      return updateNode(prevTree);
+      }
+      return prev;
     });
   };
 
@@ -1060,58 +1083,73 @@ function App() {
     setSyncRequest(null);
   };
 
+  // 💡 [v3.0] 피상속인(Root) 메타데이터 업데이트
   const handleRootUpdate = (field, value) => {
-    setTree(prev => ({ ...prev, [field]: value }));
-  };
-
-  const addHeir = (parentId) => {
-    let targetPersonId = null;
-    const findPId = (n) => {
-      if (n.id === parentId) targetPersonId = n.personId;
-      if (!targetPersonId && n.heirs) n.heirs.forEach(findPId);
-    };
-    findPId(tree);
-
-    const newHash = Math.random().toString(36).substr(2, 9);
-    const baseHeir = { 
-      personId: `p_${newHash}`, 
-      name: '', 
-      relation: 'son', 
-      isDeceased: false, 
-      isSameRegister: true, 
-      heirs: [] 
-    };
-    
-    // 💡 부모의 분신(클론)들을 모두 찾아 똑같이 자식을 추가!
-    const addFn = (n) => {
-      if (n.id === parentId || (targetPersonId && n.personId === targetPersonId)) {
-        return { 
-          ...n, 
-          // 💡 개별 추가 시에도 상속권 스위치를 즉시 활성화합니다.
-          isExcluded: false,
-          exclusionOption: '',
-          heirs: [...(n.heirs || []), { ...baseHeir, id: `n_${Math.random().toString(36).substr(2,9)}` }] 
-        };
+    setVault(prev => {
+      const rootId = prev.meta.rootPersonId;
+      if (['caseNo', 'shareN', 'shareD'].includes(field)) {
+        if (field === 'caseNo') prev.meta.caseNo = value;
+        if (field === 'shareN') prev.meta.targetShareN = value;
+        if (field === 'shareD') prev.meta.targetShareD = value;
+      } else {
+        prev.persons[rootId][field] = value;
       }
-      return { ...n, heirs: n.heirs?.map(addFn) || [] };
-    };
-    setTree(prev => addFn(prev));
+      return prev;
+    });
   };
 
-  const removeHeir = (id) => {
-    let targetPersonId = null;
+  // 💡 [v3.0] 상속인 추가 (사람 1명 만들고, 링크 1줄 긋기 끝!)
+  const addHeir = (parentId) => {
+    let parentPersonId = parentId;
     const findPId = (n) => {
-      if (n.id === id) targetPersonId = n.personId;
-      if (!targetPersonId && n.heirs) n.heirs.forEach(findPId);
+      if (n.id === parentId) parentPersonId = n.personId;
+      if (n.heirs) n.heirs.forEach(findPId);
     };
     findPId(tree);
 
-    // 💡 삭제하려는 대상의 분신(클론)들까지 싹 다 추적해서 일괄 삭제!
-    const rmFn = (n) => ({ 
-      ...n, 
-      heirs: n.heirs?.filter(x => !(x.id === id || (targetPersonId && x.personId === targetPersonId))).map(rmFn) || [] 
+    setVault(prev => {
+      const newPersonId = `p_${Math.random().toString(36).substr(2, 9)}`;
+      
+      prev.persons[newPersonId] = {
+        id: newPersonId, name: '', isDeceased: false, deathDate: '', marriageDate: '', remarriageDate: '', gender: ''
+      };
+
+      if (!prev.relationships[parentPersonId]) prev.relationships[parentPersonId] = [];
+      prev.relationships[parentPersonId].push({
+        targetId: newPersonId, relation: 'son', isExcluded: false, exclusionOption: '', isHoju: false, isSameRegister: true
+      });
+
+      // 자녀가 생기면 부모의 상속권 스위치 자동 정상화
+      if (parentPersonId !== prev.meta.rootPersonId) {
+         Object.values(prev.relationships).forEach(links => {
+            const pLink = links.find(l => l.targetId === parentPersonId);
+            if (pLink) { pLink.isExcluded = false; pLink.exclusionOption = ''; }
+         });
+      }
+      return prev;
     });
-    setTree(prev => rmFn(prev));
+  };
+
+  // 💡 [v3.0] 상속인 삭제 (존재를 지우는 게 아니라 연결선만 싹둑 자름!)
+  const removeHeir = (id) => {
+    let targetPersonId = id;
+    let parentPersonId = null;
+    
+    const findNode = (n, pId) => {
+      if (n.id === id) { targetPersonId = n.personId; parentPersonId = pId; return true; }
+      return (n.heirs || []).some(child => findNode(child, n.personId));
+    };
+    findNode(tree, null);
+
+    if (!parentPersonId) return;
+
+    setVault(prev => {
+      // 해당 부모의 명단에서 자식과의 연결 링크만 지워버립니다. (다른 탭 무사함)
+      if (prev.relationships[parentPersonId]) {
+        prev.relationships[parentPersonId] = prev.relationships[parentPersonId].filter(l => l.targetId !== targetPersonId);
+      }
+      return prev;
+    });
   };
 
 
@@ -2922,22 +2960,13 @@ function App() {
                                     return;
                                   }
                                   if (window.confirm('🚨 현재 탭에 입력된 [모든 상속인]을 정말 삭제하시겠습니까?\n(하위에 입력된 데이터까지 모두 함께 삭제됩니다!)')) {
-                                    setTree(prev => {
-                                      const cloneTree = JSON.parse(JSON.stringify(prev));
-
-                                      // 💡 트리를 끝까지 순회하며 일치하는 모든 분신의 자식들을 무자비하게 비웁니다!
-                                      const clearAll = (n) => {
-                                        if (n.id === activeDeceasedTab || n.personId === activeDeceasedTab) {
-                                          n.heirs = []; 
-                                        }
-                                        // return true 로 멈추지 않고 하위 노드까지 무조건 계속 스캔합니다.
-                                        if (n.heirs && n.heirs.length > 0) {
-                                          n.heirs.forEach(child => clearAll(child));
-                                        }
-                                      };
-
-                                      clearAll(cloneTree);
-                                      return cloneTree;
+                                    // 💡 [v3.0] 볼트 직접 타격: 해당 탭 주인의 '자녀 링크 명단'을 완전히 비워버립니다.
+                                    const targetPersonId = currentNode.personId;
+                                    setVault(prev => {
+                                      if (prev.relationships[targetPersonId]) {
+                                        prev.relationships[targetPersonId] = [];
+                                      }
+                                      return prev;
                                     });
                                   }                                }}
                                 className="ml-[50px] p-1 text-neutral-400 hover:text-red-600 dark:hover:text-red-400 transition-all hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md"
