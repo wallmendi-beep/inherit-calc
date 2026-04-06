@@ -299,18 +299,6 @@ function App() {
          if (copy.name) nameToPersonId.set(copy.name, copy.personId);
       }
 
-      // 💡 [사용자님 지침 반영] 사망일자와 혼인일자 대조를 통한 출가녀 자동 판정
-      if (copy.relation === 'daughter' && copy.marriageDate && rawTree.deathDate) {
-         // 상속 개시(피상속인 사망) '전'에 혼인했는지 확인
-         const isMarriedBeforeDeath = isBefore(copy.marriageDate, rawTree.deathDate);
-         
-         if (isMarriedBeforeDeath) {
-            copy.isSameRegister = false; // 사망 전 혼인이면 '출가' (지분 감산 대상)
-         } else {
-            copy.isSameRegister = true;  // 사망 후 혼인이면 '동일호적' (일반 지분)
-         }
-      }
-
       if (copy.heirs && Array.isArray(copy.heirs)) {
         copy.heirs = copy.heirs.map(sanitize).filter(Boolean);
       }
@@ -1290,6 +1278,56 @@ function App() {
     return guides;
   }, [tree]);
 
+  // 💡 [논리 불일치 감지 센서: 날짜 데이터 vs UI 스위치 상태]
+  const logicalMismatchGuides = useMemo(() => {
+    const guides = [];
+    
+    const checkMismatch = (node, parentDeathDate) => {
+      const effectiveDate = parentDeathDate || tree.deathDate;
+
+      // 🚨 불일치 1: 출가녀 (혼인일자가 기준일보다 빠른데 스위치가 '동일'인 경우)
+      if (node.relation === 'daughter' && node.marriageDate && effectiveDate) {
+        const isMarriedBeforeDeath = isBefore(node.marriageDate, effectiveDate);
+        if (isMarriedBeforeDeath && node.isSameRegister !== false) {
+          guides.push({
+            id: node.id, // 클릭 시 해당 탭으로 바로가기
+            uniqueKey: `mismatch-married-${node.id}`,
+            type: 'mandatory', // 필수 조치 경고
+            text: `[${node.name || '이름없음'}]님의 혼인일자(${node.marriageDate})가 상속개시일(${effectiveDate})보다 빠르지만, 스위치가 [동일]로 되어 있습니다. 확인 후 [출가]로 변경해 주세요.`
+          });
+        }
+      }
+
+      // 🚨 불일치 2: 대습상속 (사망일자가 기준일보다 빠른데 대습상속 스위치가 안 켜져 있는 경우)
+      const isSpouse = ['wife', 'husband', 'spouse'].includes(node.relation);
+      if (node.deathDate && effectiveDate && isBefore(node.deathDate, effectiveDate) && !isSpouse) {
+        if (!node.isExcluded) {
+          guides.push({
+            id: node.id,
+            uniqueKey: `mismatch-predeceased-${node.id}`,
+            type: 'mandatory',
+            text: `[${node.name || '이름없음'}]님의 사망일자(${node.deathDate})가 상속개시일(${effectiveDate})보다 빠릅니다. 대습상속 처리를 위해 스위치를 조작하여 [상속권 없음/대습상속]으로 변경해 주세요.`
+          });
+        }
+      }
+
+      // 하위 자녀들도 계속 스캔 (기준일은 재상속 여부에 따라 갱신)
+      if (node.heirs) {
+        node.heirs.forEach(h => {
+           let nextEffectiveDate = effectiveDate;
+           if (node.deathDate && !isBefore(node.deathDate, effectiveDate)) {
+              nextEffectiveDate = node.deathDate;
+           }
+           checkMismatch(h, nextEffectiveDate);
+        });
+      }
+    };
+    
+    if (tree.heirs) tree.heirs.forEach(h => checkMismatch(h, tree.deathDate));
+    
+    return guides;
+  }, [tree]);
+
   // 기존 가이드와 다중 배우자 경고를 하나로 합침
   const { 
     showGlobalWarning, showAutoCalcNotice, globalMismatchReasons, 
@@ -1299,9 +1337,10 @@ function App() {
   const smartGuides = [
     ...(guideInfo.smartGuides || []), 
     ...multipleSpouseGuides,
-    ...hojuMissingGuides
+    ...hojuMissingGuides,
+    ...logicalMismatchGuides
   ];
-  const hasActionItems = guideInfo.hasActionItems || multipleSpouseGuides.length > 0 || hojuMissingGuides.length > 0;  // ------------------------------------------------------------------
+  const hasActionItems = guideInfo.hasActionItems || multipleSpouseGuides.length > 0 || hojuMissingGuides.length > 0 || logicalMismatchGuides.length > 0;  // ------------------------------------------------------------------
   // 💡 사용자가 [X]를 눌러 숨긴 권고 가이드를 기억하는 메모리
   const [hiddenGuideKeys, setHiddenGuideKeys] = useState(new Set());
   const dismissGuide = (key) => setHiddenGuideKeys(prev => new Set(prev).add(key));
@@ -3485,37 +3524,32 @@ function App() {
                         const cleanJson = aiInputText.replace(/```json/g, '').replace(/```/g, '').trim();
                         const parsedTree = JSON.parse(cleanJson);
                         
-                        // 💡 [데이터 전처리] 바코드 발급 & 출가녀 자동 감지 (배열 형태도 완벽 지원)
+                        // 💡 [데이터 전처리] 바코드 발급 (기계적인 스위치 조작 일절 금지!)
                         const processAiData = (node) => {
                           if (Array.isArray(node)) {
                             node.forEach(processAiData);
                             return;
                           }
                           if (!node.id) node.id = `ai_${Math.random().toString(36).substr(2, 9)}`;
-                          if (node.relation === 'daughter' && node.marriageDate && tree.deathDate) {
-                            const isMarriedBeforeDeath = isBefore(node.marriageDate, tree.deathDate);
-                            node.isSameRegister = !isMarriedBeforeDeath;
-                          }
                           if (node.heirs) node.heirs.forEach(processAiData);
                         };
                         processAiData(parsedTree);
 
-                        // 🎯 핵심: 타겟이 'root(메인)'면 전체 엎어쓰기, 아니면 특정 방 안에 쏙!
+                        // 🎯 타겟이 'root(메인)'면 전체 엎어쓰기, 아니면 특정 방 안에 쏙!
                         if (aiTargetId === 'root') {
                           setTree({ ...parsedTree, id: 'root' });
                         } else {
-                          // 1. 화면의 탭 ID(personId)를 원본 데이터가 인식할 수 있는 실제 고유 ID로 번역
+                          // 화면의 탭 ID(personId)를 원본 데이터가 인식할 수 있는 실제 고유 ID로 번역
                           const targetRawIds = [];
                           const findRawIds = (n) => {
                             if (n.id === aiTargetId || n.personId === aiTargetId) targetRawIds.push(n.id);
                             if (n.heirs) n.heirs.forEach(findRawIds);
                           };
-                          findRawIds(tree); // 완벽하게 매핑된 현재 화면 기준(tree)으로 검색
+                          findRawIds(tree);
 
                           setTree(prev => {
                             const injectHeirs = (n) => {
                               if (targetRawIds.includes(n.id)) {
-                                // 💡 클론(분신) 탭마다 복사될 때 ID 충돌이 나지 않도록 새 바코드 발급
                                 const generateNewHeirs = (heirsArray) => (heirsArray || []).map(h => ({
                                   ...h,
                                   id: `ai_${Math.random().toString(36).substr(2, 9)}`,
@@ -3525,7 +3559,7 @@ function App() {
                                 const sourceHeirs = Array.isArray(parsedTree) ? parsedTree : (parsedTree.heirs || []);
                                 const newHeirs = generateNewHeirs(sourceHeirs);
                                 
-                                // 💡 타겟 본인(예: 김명수)의 누락된 정보(사망일자, 혼인일자 등)도 살려서 병합해 줍니다!
+                                // 💡 타겟 본인의 누락된 정보(사망/혼인일자 등)만 안전하게 병합
                                 const nodeUpdates = {};
                                 if (!Array.isArray(parsedTree)) {
                                   if (parsedTree.deathDate) nodeUpdates.deathDate = parsedTree.deathDate;
@@ -3536,9 +3570,7 @@ function App() {
 
                                 return { 
                                   ...n, 
-                                  ...nodeUpdates, // 사망/혼인일자 덮어쓰기
-                                  isExcluded: false, 
-                                  exclusionOption: '',
+                                  ...nodeUpdates, 
                                   heirs: [...(n.heirs || []), ...newHeirs] 
                                 };
                               }
@@ -3550,7 +3582,7 @@ function App() {
 
                         setIsAiModalOpen(false);
                         setAiInputText(""); 
-                        alert(`✨ 성공적으로 ${aiTargetId === 'root' ? '가계도가' : '상속인이'} 자동 입력되었습니다!`);
+                        alert(`✨ 성공적으로 ${aiTargetId === 'root' ? '가계도가' : '상속인이'} 자동 입력되었습니다!\n왼쪽의 [스마트 가이드]를 확인하며 검수해 주세요.`);
                       } catch (error) {
                         alert("🚨 데이터 형식이 잘못되었습니다. AI가 만들어준 JSON 텍스트가 맞는지 다시 한번 확인해주세요.");
                       }
