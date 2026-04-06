@@ -33,15 +33,30 @@ export const relStr = {
   'parent': '직계존속'
 };
 
+// 💡 사용자님 기획: 1991년 이후 개정 민법 적용 시 '자녀', '배우자' 명칭 자동 전환
 export const getRelStr = (relation, deathDate) => {
-  const law = getLawEra(deathDate);
-  if (law === '1991') {
-    if (relation === 'parent') return '직계존속';
-    if (relation === 'son' || relation === 'daughter') return relStr['child'];
-    if (relation === 'wife' || relation === 'husband' || relation === 'spouse') return '배우자';
+  // 사망일자가 1991-01-01 이후인지 판단 (남녀 평등 상속 시대)
+  const isModern = deathDate && !isBefore(deathDate, '1991-01-01');
+
+  switch (relation) {
+    case 'wife': 
+      return isModern ? '배우자' : '처';
+    case 'husband': 
+      return isModern ? '배우자' : '남편';
+    case 'spouse': 
+      return '배우자';
+    case 'son': 
+      return isModern ? '자녀' : '아들';
+    case 'daughter': 
+      return isModern ? '자녀' : '딸';
+    case 'sibling': 
+      return '형제자매';
+    case 'parent': 
+      return '직계존속';
+    default: 
+      return relation;
   }
-  return relStr[relation] || relation;
-}
+};
 
 export const getLawEra = (deathDate) => {
   if (!deathDate || deathDate.length < 4) return '1991';

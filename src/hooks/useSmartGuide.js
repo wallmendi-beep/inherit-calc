@@ -106,7 +106,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
     // 6. 스마트 가이드 (필수/권고사항) 생성
     const smartGuides = [];
 
-    // 💡 4. 권고사항 (Recommended): 상속포기/결격/상실의 개별성(독립성) 안내
+    // 4. 권고사항 (Recommended): 상속포기/결격/상실의 개별성(독립성) 안내
     // (파라미터에 level = 0 추가)
     const checkIndependentExclusionGuide = (node, parentName, level = 0) => {
       if (node.id !== 'root' && node.isExcluded && ['renounce', 'disqualified', 'lost'].includes(node.exclusionOption)) {
@@ -122,8 +122,8 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
             id: node.id,
             type: 'recommended',
             text: `망 ${parentName}에 대한 [${node.name}]님의 ${reasonText} 처리가 적용되었습니다. ${reasonText}의 효력은 해당 피상속인에게만 개별적으로 미치므로, 다른 피상속인(배우자 등)의 상속에서도 제외되어야 할 사유가 있다면 해당 탭에서 별도로 스위치를 꺼주셔야 합니다.`,
-            level, // 💡 정렬용 데이터 추가
-            relation: node.relation // 💡 정렬용 데이터 추가
+            level, // 정렬용 데이터 추가
+            relation: node.relation // 정렬용 데이터 추가
           });
         }
       }
@@ -145,7 +145,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
         if (node.isDeceased && node.deathDate && parentDate) {
           if (!isBefore(node.deathDate, parentDate)) {
             if (!node.heirs || node.heirs.length === 0) {
-              // 💡 기계가 자동분배를 해냈는지 검사합니다.
+              // 기계가 자동분배를 해냈는지 검사합니다.
               const parentNode = findParentNodeInHook(tree, node.id);
               const isSpouseType = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(node.relation);
               let canAutoCalc = false;
@@ -160,13 +160,13 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
                     if (siblings.length > 0) { canAutoCalc = true; autoTarget = '형제자매'; }
                   }
                 } else {
-                  // 💡 [추가됨] 배우자의 경우: 남편(아내)의 자녀들을 검사
+                  // [추가됨] 배우자의 경우: 남편(아내)의 자녀들을 검사
                   const stepChildren = parentNode.heirs.filter(h => h.id !== node.id && ['son', 'daughter'].includes(h.relation) && !h.isExcluded);
                   if (stepChildren.length > 0) { canAutoCalc = true; autoTarget = '공동 자녀들'; }
                 }
               }
 
-              // 기계가 알아서 찾았다면 에러(🚨) 대신 권고/안내(💡)로 처리!
+              // 기계가 알아서 찾았다면 에러 대신 권고/안내로 처리!
               if (canAutoCalc) {
                 smartGuides.push({ 
                   id: `tab:${node.personId}`, 
@@ -177,20 +177,20 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
                 });
               } else {
                 if (isSpouseType) {
-                  // 🚨 [추가됨] 배우자 전용 경고: 친정/본가 입력 유도 (법리적 대참사 방지)
+                  // [추가됨] 배우자 전용 경고: 친정/본가 입력 유도 (법리적 대참사 방지)
                   smartGuides.push({ 
                     id: `tab:${node.personId}`, 
                     type: 'mandatory', 
-                    text: `🚨 '${node.name}' 님의 상속인 정보가 없습니다. 무자녀라면 고인의 '친정(또는 본가) 식구들'을 상속인으로 직접 입력해야 합니다. (스위치를 끄면 지분이 타인에게 넘어가니 주의하세요)`, 
+                    text: `'${node.name}' 님의 상속인 정보가 없습니다. 무자녀라면 고인의 '친정(또는 본가) 식구들'을 상속인으로 직접 입력해야 합니다. (스위치를 끄면 지분이 타인에게 넘어가니 주의하세요)`, 
                     level, 
                     relation: node.relation 
                   });
                 } else {
-                  // 🚨 기존 일반 혈족 경고
+                  // 기존 일반 혈족 경고
                   smartGuides.push({ 
                     id: `tab:${node.personId}`, 
                     type: 'mandatory', 
-                    text: `🚨 '${node.name}' 님의 재상속 정보가 없습니다. 대를 이을 사람이 없다면 스위치를 꺼주세요.`, 
+                    text: `'${node.name}' 님의 재상속 정보가 없습니다. 대를 이을 사람이 없다면 스위치를 꺼주세요.`, 
                     level, 
                     relation: node.relation 
                   });
@@ -198,7 +198,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
               }
             }
           } else {
-            // 💡 보완 1: 선사망(대습상속)인데 무자녀일 때, '배우자'는 대습상속 대상이 아니므로 안내를 생략합니다!
+            // 보완 1: 선사망(대습상속)인데 무자녀일 때, '배우자'는 대습상속 대상이 아니므로 안내를 생략합니다!
             if (!isSpouseType && (!node.heirs || node.heirs.length === 0)) {
               smartGuides.push({ 
                 id: `tab:${node.personId}`, 
@@ -208,7 +208,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
               });
             }
 
-            // 💡 사용자님 기획: 엄격한 3대 요건이 충족될 때만 구법 대습 호주상속 팁 노출
+            // 사용자님 기획: 엄격한 3대 요건이 충족될 때만 구법 대습 호주상속 팁 노출
             if (['1960', '1979'].includes(law) && node.relation === 'son' && node.heirs && node.heirs.length > 0) {
               // 1. 동일 항렬 내 호주상속 체크 여부 확인 (장남이 아닌 다른 형제가 이미 호주인지 판별)
               const parentNode = findParentNodeInHook(tree, node.id);
@@ -222,7 +222,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
                 smartGuides.push({
                   id: `tab:${node.personId}`,
                   type: 'recommended',
-                  // 🚨 UI와의 중복을 막기 위해 💡 이모지 텍스트 완전 제거!
+                  // UI와의 중복을 막기 위해 이모지 텍스트 완전 제거!
                   text: `[구법 대습상속 팁] '${node.name}'님이 장남이고 장손이 호주를 승계한다면, 부(父)와 자(子) 모두의 [호주상속] 스위치를 켜주세요. (선례 2-285호: 1.5배 중복 가산 자동 적용)`,
                   level,
                   relation: node.relation
@@ -237,18 +237,18 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
           smartGuides.push({ id: node.id, type: 'recommended', text: `'${node.name}' 님의 혼인/복적 연혁을 입력하면 복잡한 계산을 AI가 대신합니다.`, level, relation: node.relation });
         }
 
-        // 💡 보완 2: 배우자가 피상속인(또는 피대습자) 사망 '전'에 재혼했다면 대습상속권 차단!
+        // 보완 2: 배우자가 피상속인(또는 피대습자) 사망 '전'에 재혼했다면 대습상속권 차단!
         if (isSpouseType && node.remarriageDate && parentDate) {
           if (isBefore(node.remarriageDate, parentDate)) {
             smartGuides.push({ 
               id: node.id, type: 'mandatory', 
-              text: `🚨 [${node.name}]님은 피상속인 사망(${parentDate}) 전에 재혼하셨으므로 대습상속권이 소멸했습니다. 스위치를 눌러 [대습 개시 전 재혼]으로 제외 처리해주세요.`, 
+              text: `[${node.name}]님은 피상속인 사망(${parentDate}) 전에 재혼하셨으므로 대습상속권이 소멸했습니다. 스위치를 눌러 [대습 개시 전 재혼]으로 제외 처리해주세요.`, 
               level, relation: node.relation 
             });
           }
         }
 
-        // 💡 보완 3: 재혼 연혁이 있는 경우 이부/이복형제 혼입 주의 안내
+        // 보완 3: 재혼 연혁이 있는 경우 이부/이복형제 혼입 주의 안내
         if (node.remarriageDate) {
           smartGuides.push({ 
             id: node.id, type: 'recommended', 
@@ -265,10 +265,10 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
     checkIndependentExclusionGuide(tree, tree.name || '피상속인', 0);
     checkGuideNode(tree, null, 0);
 
-    // 💡 5. 스마트 가이드 중복 제거 및 최종 정렬 (Deduplication & Sorting)
+    // 5. 스마트 가이드 중복 제거 및 최종 정렬 (Deduplication & Sorting)
     const uniqueGuidesMap = new Map();
     smartGuides.forEach(g => {
-      // 💡 공백 및 특수문자 차이로 인한 중복 방지를 위해 trim 및 정규화 적용
+      // 공백 및 특수문자 차이로 인한 중복 방지를 위해 trim 및 정규화 적용
       const key = g.text.replace(/\s+/g, '').trim(); 
       if (!uniqueGuidesMap.has(key)) {
         uniqueGuidesMap.set(key, { ...g, uniqueKey: g.text }); // uniqueKey는 원래 텍스트 유지
@@ -300,7 +300,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
       showAutoCalcNotice,
       globalMismatchReasons,
       autoCalculatedNames: uniqueAuto,
-      smartGuides: uniqueGuides, // 💡 압축이 완료된 가이드 배열을 내보냅니다.
+      smartGuides: uniqueGuides, // 압축이 완료된 가이드 배열을 내보냅니다.
       noSurvivors,
       hasActionItems
     };

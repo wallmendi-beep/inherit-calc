@@ -21,7 +21,7 @@ export const calculateInheritance = (tree, propertyValue) => {
     return found;
   };
 
-  // 💡 parentPersonId를 추가하여 현재 어떤 탭(부모)을 처리 중인지 추적합니다.
+  //  parentPersonId를 추가하여 현재 어떤 탭(부모)을 처리 중인지 추적합니다.
   const traverse = (node, inN, inD, inheritedDate, visitedIds = [], parentDecName = '피상속인', parentPersonId = 'root') => {
     if (visitedIds.includes(node.id)) {
       warnings.push(`순차상속 순환 참조가 발생하여 ${node.name || '상속인'}의 지분 전이가 중단되었습니다.`);
@@ -47,7 +47,7 @@ export const calculateInheritance = (tree, propertyValue) => {
 
     const law = getLawEra(distributionDate); 
 
-    // 💡 최종 진화: 1순위 가지 멸절 시 2순위/3순위로의 자동 이전을 완벽하게 제어하는 스마트 필터
+    //  최종 진화: 1순위 가지 멸절 시 2순위/3순위로의 자동 이전을 완벽하게 제어하는 스마트 필터
     const isRenounced = (h, contextDate) => {
       // 🤖 [Phase 2-2: 시계열 판별 AI] 날짜 기반 상속권/대습상속권 자동 박탈 (이혼/재혼)
       const isDivorcedAuto = h.divorceDate && contextDate && !isBefore(contextDate, h.divorceDate);
@@ -59,7 +59,7 @@ export const calculateInheritance = (tree, propertyValue) => {
       // 2. 단순 상속포기/수동제외 등은 지분 거부로 보아 즉시 제외 (형제들에게 재분배됨)
       if (h.isExcluded && !isDisqualified) return true;
       
-      // 💡 AI 엔진 컷오프: 이혼이나 재혼 날짜가 사망일보다 빠르면 가차없이 명단에서 삭제!
+      //  AI 엔진 컷오프: 이혼이나 재혼 날짜가 사망일보다 빠르면 가차없이 명단에서 삭제!
       if (isDivorcedAuto || isRemarriedAuto) return true; 
 
       // 3. 대습상속 유발 사유 (선사망 또는 결격/상실선고)
@@ -82,7 +82,7 @@ export const calculateInheritance = (tree, propertyValue) => {
 
         if (children.length === 0) return true;
 
-        // 💡 대습상속 자격(재혼/결격 등)은 '피대습자(윤숙자)'가 아닌 상속이 개시된 '본래 피상속인(김명남)'의 사망일(contextDate)을 기준으로 엄격히 판별해야 합니다!
+        //  대습상속 자격(재혼/결격 등)은 '피대습자(윤숙자)'가 아닌 상속이 개시된 '본래 피상속인(김명남)'의 사망일(contextDate)을 기준으로 엄격히 판별해야 합니다!
         const validHeirs = children.filter(child => !isRenounced(child, contextDate));
         if (validHeirs.length === 0) return true;
 
@@ -96,16 +96,16 @@ export const calculateInheritance = (tree, propertyValue) => {
 
     if (!node.isExcluded) {
       if (node.isDeceased && !node.deathDate) {
-        // 💡 피상속인(root)은 App.jsx의 smartGuides에서 이미 처리하므로 여기서는 일반 상속인만 체크
+        //  피상속인(root)은 App.jsx의 smartGuides에서 이미 처리하므로 여기서는 일반 상속인만 체크
         if (node.id !== 'root') {
-          // 💡 수정 완료: 내비게이션 엔진이 읽을 수 있도록 { id: node.id, text: "문구" } 형태로 보냅니다!
+          //  수정 완료: 내비게이션 엔진이 읽을 수 있도록 { id: node.id, text: "문구" } 형태로 보냅니다!
           warnings.push({ id: node.id, text: `[${node.name || '이름 미상'}]님의 사망일자가 입력되지 않았습니다.` });
         }
       }
       if (node.id !== 'root' && node.isDeceased && node.deathDate && isBefore(node.deathDate, inheritedDate)) {
         const activeHeirs = (node.heirs || []).filter(h => !h.isExcluded);
         if (activeHeirs.length === 0) {
-          // 💡 여기도 완벽하게 객체 형태로 묶어서 보냅니다!
+          //  여기도 완벽하게 객체 형태로 묶어서 보냅니다!
           warnings.push({ id: node.id, text: `선사망자 [${node.name}]의 대습상속인이 누락되었습니다. 상속인이 없다면 스위치를 꺼주세요.` });
         }
       }
@@ -239,7 +239,7 @@ export const calculateInheritance = (tree, propertyValue) => {
              if (!isMarried) { h.r = 1.0; }
              else { h.r = 0.25; modifier = '출가녀 감산 (아들의 1/4)'; }
            } else if (h.relation === 'son') {
-             // 💡 피상속인(node)이 여성이면 호주상속 가산(1.5)을 적용하지 않음 (대법원 판례 반영)
+             //  피상속인(node)이 여성이면 호주상속 가산(1.5)을 적용하지 않음 (대법원 판례 반영)
              const isFemaleDeceased = ['wife', 'daughter'].includes(node.relation);
              
              if (h.isHoju && !isFemaleDeceased && (!isSubstitution || node.isHoju)) { 
@@ -262,7 +262,7 @@ export const calculateInheritance = (tree, propertyValue) => {
               if (!isMarried) { h.r = 0.5; modifier = '여자 감산 (남자의 1/2)'; }
               else { h.r = 0.25; modifier = '출가녀 감산 (남자의 1/4)'; }
            } else if (h.relation === 'son') {
-             // 💡 피상속인(node)이 여성이면 호주상속 가산(1.5)을 적용하지 않음 (대법원 판례 반영)
+             //  피상속인(node)이 여성이면 호주상속 가산(1.5)을 적용하지 않음 (대법원 판례 반영)
              const isFemaleDeceased = ['wife', 'daughter'].includes(node.relation);
              
              if (h.isHoju && !isFemaleDeceased && (!isSubstitution || node.isHoju)) { 
@@ -296,7 +296,7 @@ export const calculateInheritance = (tree, propertyValue) => {
       });
       steps.push(step);
       childrenToTraverse.forEach(child => { 
-        // 💡 다음 세대를 검사할 때는 현재 노드의 personId를 부모 주소로 넘겨줍니다.
+        //  다음 세대를 검사할 때는 현재 노드의 personId를 부모 주소로 넘겨줍니다.
         traverse(child.h, child.nn, child.nd, distributionDate, currentVisited, node.name || '피상속인', node.personId); 
       });
     }
@@ -400,7 +400,7 @@ export const calculateInheritance = (tree, propertyValue) => {
 
   const subGroups = Object.values(subMap).sort((a, b) => a.order - b.order);
   
-  // 💡 중복 에러 제거 (객체 형태 지원)
+  //  중복 에러 제거 (객체 형태 지원)
   const uniqueWarnings = [];
   const warningKeys = new Set();
   warnings.forEach(w => {
@@ -414,7 +414,7 @@ export const calculateInheritance = (tree, propertyValue) => {
   return {
     finalShares: { direct: directShares, subGroups: subGroups },
     calcSteps: steps,
-    warnings: uniqueWarnings, // 💡 업그레이드된 에러 배열 내보내기
+    warnings: uniqueWarnings, //  업그레이드된 에러 배열 내보내기
     appliedLaws: Array.from(appliedLaws).sort()
   };
 };

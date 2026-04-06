@@ -246,7 +246,7 @@ const HeirRow = ({ node, finalShares, level, handleUpdate, handleNameBlur, remov
         ) : (
           <>
             {isSpouseType && (() => {
-              let label = lawEra === '1991' ? '배우자' : (node.relation === 'wife' ? '처' : '남편');
+              let label = getRelStr(node.relation, inheritedDate || rootDeathDate);
               let multiplier = '';
               if (lawEra === '1960' && node.relation === 'wife') multiplier = 'x 1/2';
               else if (lawEra === '1979' && node.relation === 'wife') multiplier = 'x 1.5';
