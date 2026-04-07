@@ -341,6 +341,41 @@ function App() {
   const undoTree = () => { setVaultState(prev => prev.currentIndex > 0 ? { ...prev, currentIndex: prev.currentIndex - 1 } : prev); };
   const redoTree = () => { setVaultState(prev => prev.currentIndex < prev.history.length - 1 ? { ...prev, currentIndex: prev.currentIndex + 1 } : prev); };
 
+  // ⌨️ [v3.0] 키보드 네비게이션 및 단축키 핸들러 복구
+  const handleKeyDown = (e) => {
+    const navKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter'];
+    if (!navKeys.includes(e.key)) return;
+    if (isResetModalOpen) return;
+
+    // input, select, button 요소들만 추출 (인쇄 제외)
+    const all = Array.from(document.querySelectorAll('input:not([type="hidden"]), select, button:not(.no-print)'));
+    const i = all.indexOf(e.target);
+    if (i === -1) return;
+
+    if (e.key === 'Tab') {
+      if (e.shiftKey) {
+        e.preventDefault(); if (i > 0) all[i-1].focus();
+      } else {
+        e.preventDefault(); if (i < all.length - 1) all[i+1].focus();
+      }
+      return;
+    }
+
+    if (e.key === 'ArrowDown' || e.key === 'Enter') { 
+      e.preventDefault(); if (i < all.length - 1) all[i+1].focus(); 
+    } else if (e.key === 'ArrowUp') { 
+      e.preventDefault(); if (i > 0) all[i-1].focus(); 
+    } 
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      const row = e.target.closest('.group\\/row, .nav-row, .grid');
+      if (!row) return;
+      const rowEls = Array.from(row.querySelectorAll('input:not([type="hidden"]), select, button:not(.no-print)'));
+      const ri = rowEls.indexOf(e.target);
+      if (e.key === 'ArrowLeft' && ri > 0) { e.preventDefault(); rowEls[ri-1].focus(); }
+      else if (e.key === 'ArrowRight' && ri < rowEls.length-1) { e.preventDefault(); rowEls[ri+1].focus(); }
+    }
+  };
+
   const [treeToggleSignal, setTreeToggleSignal] = useState(0); 
   const [isAllExpanded, setIsAllExpanded] = useState(false); 
   const [showNavigator, setShowNavigator] = useState(true);
@@ -597,7 +632,7 @@ function App() {
           if (!isSpouseType) {
             const pHeirs = parentNode.heirs || []; const aliveAscendants = pHeirs.filter(h => ['wife', 'husband', 'spouse'].includes(h.relation) && (!h.isDeceased || (h.deathDate && isBefore(clone.deathDate, h.deathDate))) && !h.isExcluded);
             if (aliveAscendants.length > 0) clone.heirs = aliveAscendants.map(asc => ({ ...asc, id: `auto_${asc.id}`, relation: 'parent', heirs: [] }));
-            else { const siblings = pHeirs.filter(h => h.id !== clone.id && ['son', 'daughter'].includes(h.relation) && !h.isExcluded); if (siblings.length > 0) clone.heirs = siblings.map(sib => ({ ...sib, id: `auto_${sib.id}`, relation: 'sibling', heirs: [] })); }
+            else { const siblings = pHeirs.filter(h => h.id !== node.id && ['son', 'daughter'].includes(h.relation) && !h.isExcluded); if (siblings.length > 0) clone.heirs = siblings.map(sib => ({ ...sib, id: `auto_${sib.id}`, relation: 'sibling', heirs: [] })); }
           } else { const stepChildren = parentNode.heirs.filter(h => h.id !== clone.id && ['son', 'daughter'].includes(h.relation) && !h.isExcluded); if (stepChildren.length > 0) clone.heirs = stepChildren.map(child => ({ ...child, id: `auto_${child.id}`, relation: child.relation, heirs: [] })); }
         }
       }
@@ -649,9 +684,30 @@ function App() {
     checkSpouses(tree); return guides;
   }, [tree]);
 
+  // 💡 [호주 누락 감지 센서]
   const hojuMissingGuides = useMemo(() => {
-    const guides = []; const checkHoju = (node) => { if (node.isDeceased && node.heirs && node.heirs.length > 0) { const hasHoju = node.heirs.some(h => h.isHoju && !h.isExcluded); const needsHoju = getLawEra(node.deathDate) !== '1991'; if (needsHoju && !hasHoju) { guides.push({ id: node.id, uniqueKey: `missing-hoju-${node.personId}`, targetTabId: node.personId, type: 'mandatory', text: `[${node.name || '이름없음'}] 1990년 이전 사망자(${node.deathDate || '일자 미상'} 사망)입니다. 하위 자녀 중 호주 스위치를 켜주세요.` }); } } if (node.heirs) node.heirs.forEach(checkHoju); };
-    checkHoju(tree); return guides;
+    const guides = [];
+    const checkHoju = (node) => {
+      if (node.isDeceased && node.heirs && node.heirs.length > 0) {
+        const hasHoju = node.heirs.some(h => h.isHoju && !h.isExcluded);
+        
+        // 🌟 핵심 수정: 1990년 이전 사망자 중 '본인(root)'이거나 '아들(son)'인 경우에만 호주를 요구함! (딸/배우자는 무시)
+        const needsHoju = getLawEra(node.deathDate) !== '1991' && (node.id === 'root' || ['son', '아들'].includes(node.relation));
+        
+        if (needsHoju && !hasHoju) {
+          guides.push({
+            id: node.id,
+            uniqueKey: `missing-hoju-${node.personId}`,
+            targetTabId: node.personId,
+            type: 'mandatory',
+            text: `[${node.name || '이름없음'}] 구법(1989-12-31 사망) 적용 대상. 하위 상속인 중 호주상속인 지정 요망`
+          });
+        }
+      }
+      if (node.heirs) node.heirs.forEach(checkHoju);
+    };
+    checkHoju(tree);
+    return guides;
   }, [tree]);
 
   const logicalMismatchGuides = useMemo(() => {
@@ -823,7 +879,7 @@ function App() {
               {activeTab === 'calc' && <section className="w-full text-[#37352f] dark:text-neutral-200"><div className="mb-4 text-[13px] text-[#787774] dark:text-neutral-500">※ 피상속인부터 시작하여 각 대습/재상속 발생 시점마다 지분이 산출된 계산 흐름표입니다.</div><div className="space-y-6 print-mt-4">{calcSteps.map((s, i) => (<div key={'p-s'+i}><div className="mb-2 text-[13px] text-[#504f4c] dark:text-neutral-300">[STEP {i+1}] <span className="font-medium text-[#37352f] dark:text-neutral-100">망 {s.dec.name}</span> ({formatKorDate(s.dec.deathDate)} 사망) ─ 분배 지분: {s.inN}/{s.inD}{s.mergeSources && s.mergeSources.length > 1 && (<span className="text-[#787774]">{` (= ${s.mergeSources.map(src => `${src.from} ${src.d}분의 ${src.n}`).join(' + ')})`}</span>)}</div><table className="w-full border-collapse text-[13px]"><thead className="bg-[#fcfcfb] dark:bg-neutral-800/40"><tr><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2 font-medium text-center w-[15%] text-[#787774]">성명</th><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2 font-medium text-center w-[12%] text-[#787774]">관계</th><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2 font-medium text-center w-[25%] text-[#787774]">계산식</th><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2 font-medium text-center w-[18%] text-[#787774]">계산된 지분</th><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2 font-medium text-left w-[30%] pl-4 text-[#787774]">비고</th></tr></thead><tbody>{s.dists.map((d, di) => { const memo = []; if (d.ex) memo.push(`상속권 없음(${d.ex})`); if (d.h.isDeceased && !(d.ex && (d.ex.includes('사망')||d.ex.includes('선사망')))) memo.push('망인'); if (d.mod) memo.push(...d.mod.split(',').map(m => m.trim())); return (<tr key={di} className="hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20"><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2 text-center font-medium">{d.h.name}</td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2 text-center text-[#787774]">{getRelStr(d.h.relation, s.dec.deathDate) || '상속인'}</td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2 text-center text-[#787774]">{s.inN}/{s.inD} × {d.sn}/{d.sd}</td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2 text-center font-medium">{d.n}/{d.d}</td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2 text-left pl-4 text-[#787774]">{memo.join(', ')}</td></tr>); })}</tbody></table></div>))}</div></section>}
               {activeTab === 'result' && (() => { const heirMap = new Map(); calcSteps.forEach(s => { s.dists.forEach(d => { if (d.n > 0) { const key = d.h.personId; if (!heirMap.has(key)) heirMap.set(key, { name: d.h.name, relation: d.h.relation, sources: [], isDeceased: d.h.isDeceased }); heirMap.get(key).sources.push({ decName: s.dec.name, n: d.n, d: d.d }); } }); }); const results = Array.from(heirMap.values()).filter(r => !r.isDeceased); return (<section className="w-full text-[#37352f] dark:text-neutral-200"><div className="mb-4 text-[13px] text-[#787774] dark:text-neutral-500">※ 최종 생존 상속인 기준으로 승계받은 지분들을 합산한 검증표입니다.</div><table className="w-full border-collapse text-[13px]"><thead className="bg-[#fcfcfb] dark:bg-neutral-800/40"><tr><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[20%] text-[#787774]">최종 상속인</th><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[60%] text-[#787774]">지분 취득 내역</th><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[20%] text-[#787774]">최종 합계 지분</th></tr></thead><tbody>{results.length > 0 ? results.map((r, i) => { const total = r.sources.reduce((acc, s) => { const [nn, nd] = math.add(acc.n, acc.d, s.n, s.d); return { n: nn, d: nd }; }, { n: 0, d: 1 }); const sourceText = r.sources.map(s => `${s.n}/${s.d} (망 ${s.decName})`).join('  +  '); return (<tr key={i} className="hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20"><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">{r.name} <span className="text-[#787774] font-normal ml-1">[{getRelStr(r.relation, tree.deathDate)}]</span></td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center text-[#787774]">{sourceText}</td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">{total.n} / {total.d}</td></tr>); }) : <tr><td colSpan="3" className="border border-[#e9e9e7] dark:border-neutral-700 p-8 text-center text-[#b45309] font-bold bg-amber-50">최종 생존 상속인이 없습니다.</td></tr>}</tbody></table></section>); })()}
               {activeTab === 'summary' && (() => {
-                const shareByPersonId = new Map(); (finalShares.direct || []).forEach(s => shareByPersonId.set(s.personId, s)); (finalShares.subGroups || []).forEach(g => g.shares.forEach(s => shareByPersonId.set(s.personId, s)));
+                const shareByPersonId = new Map(); (finalShares.direct || []).forEach(s => shareByPersonId.set(s.personId, s)); (finalShares.subGroups || []).forEach(g => g.shares.forEach(s => shareByPersonId.set(s.personId, s)));  
                 const printedPersonIds = new Set();
                 const buildGroups = (node, parentDeathDate) => {
                   const directShares = []; const subGroups = []; const seenInThisGroup = new Set();
@@ -835,11 +891,11 @@ function App() {
                 const [totalSumN, totalSumD] = (() => { let tn = 0, td = 1; const addShare = (s) => { if (s && s.n > 0) { const [nn, nd] = math.add(tn, td, s.n, s.d); tn = nn; td = nd; } }; topDirect.forEach(addShare); const traverseGroup = (g) => { g.directShares.forEach(addShare); g.subGroups.forEach(traverseGroup); }; topGroups.forEach(traverseGroup); return math.simplify(tn, td); })();
                 const isMatch = !showGlobalWarning; const mismatchReasons = globalMismatchReasons;
                 const renderShareRow = (f, depth, groupAncestorId = null) => { const pl = `${12 + (depth > 0 ? 16 : 0)}px`; const rowId = groupAncestorId ? `summary-row-${f.personId}-${groupAncestorId}` : `summary-row-${f.personId}`; const isCurrentMatch = matchIds[currentMatchIdx] === rowId; return (<tr key={'sr-'+f.id} id={rowId} className={`transition-colors duration-300 ${isCurrentMatch ? 'bg-yellow-100 dark:bg-yellow-900/50 border-l-4 border-l-yellow-500' : 'hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20'}`}><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left font-medium" style={{paddingLeft: pl}}>{f.name} <span className="text-[#787774] font-normal ml-1">[{getRelStr(f.relation, tree.deathDate)}]</span></td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center text-[#504f4c]">{f.n} / {f.d}</td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">{f.un} / {f.ud}</td></tr>); };
-                const renderGroup = (group, depth) => (<React.Fragment key={'grp-'+group.ancestor.id}><tr className="bg-[#fcfcfb] dark:bg-neutral-800/40"><td colSpan={3} className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left text-[#504f4c] dark:text-neutral-400 pl-4">※ {formatKorDate(group.ancestor.deathDate)} 공동상속인 중 {group.ancestor.name}은(는) 사망하였으므로 그 {group.type === '대습상속' ? '대습상속인' : '상속인'}</td></tr>{group.directShares.map(f => renderShareRow(f, depth + 1, group.ancestor.id))}{group.subGroups.map(sg => renderGroup(sg, depth + 1))}</React.Fragment>);
+                const renderGroup = (group, depth) => (<React.Fragment key={'grp-'+group.ancestor.id}><tr className="bg-[#fcfcfb] dark:bg-neutral-800/40"><td colSpan={3} className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left text-[#504f4c] dark:text-neutral-400 pl-4">※ {formatKorDate(group.ancestor.deathDate)} 공동상속인 중 [{group.ancestor.name}]은(는) 사망하였으므로 그 {group.type === '대습상속' ? '대습상속인' : '상속인'}</td></tr>{group.directShares.map(f => renderShareRow(f, depth + 1, group.ancestor.id))}{group.subGroups.map(sg => renderGroup(sg, depth + 1))}</React.Fragment>);
                 return (
                   <div className="w-full text-[#37352f] dark:text-neutral-200">
                     <div className="mb-4 flex items-center justify-between no-print"><div className="flex items-center gap-6"><h2 className="text-lg font-black text-[#37352f] dark:text-neutral-200 flex items-center gap-2"><IconList className="w-5 h-5 text-[#787774]"/> 지분 요약표</h2><div className="flex items-center gap-2 bg-white dark:bg-neutral-800 border border-[#e5e5e5] dark:border-neutral-700 rounded-full px-3 py-1.5 shadow-sm focus-within:ring-2 focus-within:ring-blue-100"><svg className="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg><input type="text" placeholder="이름 검색" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="bg-transparent border-none outline-none text-[13px] w-16 focus:w-28 transition-all" />{matchIds.length > 0 && <span className="text-[11px] text-neutral-500 font-medium ml-1">{currentMatchIdx + 1}/{matchIds.length}</span>}</div></div></div>
-                    <table className="w-full border-collapse text-[13px]"><thead className="bg-[#fcfcfb] dark:bg-neutral-800/40"><tr><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[40%] text-[#787774]">상속인 성명</th><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[30%] text-[#787774]">최종 지분 (통분 전)</th><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[30%] text-[#787774]">최종 지분 (통분 후)</th></tr></thead><tbody>{topDirect.map(f => renderShareRow(f, 0))}{topGroups.map(g => renderGroup(g, 0))}</tbody><tfoot className="bg-[#fcfcfb] dark:bg-neutral-800/40"><tr><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-right font-medium text-[#787774]">합계 검증</td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">{totalSumN} / {totalSumD}</td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left text-[12.5px]">{(() => { const sumVal = totalSumD ? totalSumN / totalSumD : 0; const targetVal = simpleTargetD ? simpleTargetN / simpleTargetD : 1; if (totalSumN === 0) return <span className="text-[#b45309] font-bold">⚠️ 생존 상속인 없음</span>; if (sumVal === targetVal) return <span className="text-[#504f4c]">✔️ 피상속인 지분과 일치</span>; return <span className="text-red-500 font-bold">⚠️ 지분 합계 불일치</span>; })()}</td></tr></tfoot></table>
+                    <table className="w-full border-collapse text-[13px]"><thead className="bg-[#fcfcfb] dark:bg-neutral-800/40"><tr><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[40%] text-[#787774]">상속인 성명</th><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[30%] text-[#787774]">최종 지분 (통분 전)</th><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[30%] text-[#787774]">최종 지분 (통분 후)</th></tr></thead><tbody>{topDirect.map(f => renderShareRow(f, 0))}{topGroups.map(g => renderGroup(g, 0))}</tbody><tfoot className="bg-[#fcfcfb] dark:bg-neutral-800/40"><tr><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-right font-medium text-[#787774]">합계 검증</td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">{totalSumN} / {totalSumD}</td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left text-[12.5px]">{(() => { const sumVal = totalSumD ? totalSumN / totalSumD : 0; const targetVal = simpleTargetD ? simpleTargetN / simpleTargetD : 1; if (totalSumN === 0) return <span className="text-[#b45309] font-bold">⚠️ 생존 상속인 없음</span>; if (sumVal === targetVal) return <span className="text-[#504f4c]">✅ 법정상속인 지분과 일치</span>; return <span className="text-red-500 font-bold">❌ 지분 합계 불일치</span>; })()}</td></tr></tfoot></table>
                     {!isMatch && mismatchReasons.length > 0 && <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 rounded-lg"><div className="flex items-center gap-2 mb-2"><span className="text-red-600 font-bold text-[14px]">⚠️ 상속 지분 배분 안내</span></div><ul className="list-disc pl-5 text-[#c93f3a] space-y-1.5 text-[13px] font-medium">{mismatchReasons.map((r, idx) => (<li key={idx}>{r.text || r}</li>))}</ul></div>}
                   </div>
                 );
@@ -847,7 +903,65 @@ function App() {
               {activeTab === 'amount' && (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
                   <div className="bg-white dark:bg-neutral-800 p-6 rounded-xl border border-neutral-200 dark:border-neutral-700 shadow-sm"><h2 className="text-lg font-bold text-neutral-800 dark:text-neutral-100 mb-4 flex items-center gap-2"><span>💰</span> 상속재산가액 입력</h2><div className="flex items-center gap-3"><input type="text" placeholder="예: 1,000,000,000" value={propertyValue} onChange={(e) => { const val = e.target.value.replace(/[^0-9]/g, ''); setPropertyValue(val ? Number(val).toLocaleString() : ''); }} className="flex-1 max-w-md px-4 py-2 text-lg border border-neutral-300 dark:border-neutral-600 rounded-lg bg-neutral-50 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-blue-500 text-right font-mono" /><span className="text-neutral-600 dark:text-neutral-400 font-medium">원</span></div></div>
-                  <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 shadow-sm overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-sm text-left"><thead className="bg-neutral-50 dark:bg-neutral-900/50 text-neutral-600 dark:text-neutral-400 font-semibold border-b border-neutral-200"><tr><th className="px-4 py-3 text-center w-24">상속인</th><th className="px-4 py-3 text-center w-24">법정 지분</th><th className="px-4 py-3 text-center">특별수익 (-)</th><th className="px-4 py-3 text-center">기여분 (+)</th><th className="px-4 py-3 text-right text-blue-600">최종 산출액</th></tr></thead><tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">{amountCalculations?.results.map((res) => (<tr key={res.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50"><td className="px-4 py-3 text-center font-bold">{res.name}</td><td className="px-4 py-3 text-center font-mono text-neutral-500">{res.un} / {res.ud}</td><td className="px-4 py-3"><input type="text" placeholder="0" value={specialBenefits[res.personId] || ''} onChange={(e) => { const val = e.target.value.replace(/[^0-9]/g, ''); setSpecialBenefits(prev => ({ ...prev, [res.personId]: val ? Number(val).toLocaleString() : '' })); }} className="w-full px-3 py-1.5 border border-neutral-300 rounded text-right font-mono text-red-600 focus:ring-1 focus:ring-red-500 outline-none" /></td><td className="px-4 py-3"><input type="text" placeholder="0" value={contributions[res.personId] || ''} onChange={(e) => { const val = e.target.value.replace(/[^0-9]/g, ''); setContributions(prev => ({ ...prev, [res.personId]: val ? Number(val).toLocaleString() : '' })); }} className="w-full px-3 py-1.5 border border-neutral-300 rounded text-right font-mono text-green-600 focus:ring-1 focus:ring-green-500 outline-none" /></td><td className="px-4 py-3 text-right font-mono font-bold text-lg">{res.finalAmount.toLocaleString()} <span className="text-sm font-normal text-neutral-500">원</span></td></tr>))}</tbody><tfoot className="bg-neutral-50 dark:bg-neutral-900/50 font-bold border-t-2 border-neutral-300"><tr><td colSpan="4" className="px-4 py-3 text-right text-neutral-600">합계액 (분배 완료):</td><td className="px-4 py-3 text-right font-mono text-xl text-blue-600">{amountCalculations?.totalDistributed.toLocaleString()} <span className="text-sm font-normal text-neutral-500">원</span></td></tr></tfoot></table></div></div>
+                  <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700 shadow-sm overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm text-left whitespace-nowrap">
+                        <thead className="bg-neutral-50 dark:bg-neutral-900/50 text-neutral-600 dark:text-neutral-400 font-semibold border-b border-neutral-200 dark:border-neutral-700">
+                          <tr>
+                            <th className="px-4 py-3 text-center">상속인</th>
+                            <th className="px-4 py-3 text-center">법정 지분</th>
+                            {/* 입력창 넓이를 w-40 (약 160px)로 제한하여 절반 이하로 축소 */}
+                            <th className="px-4 py-3 text-center w-40">특별수익 (-)</th>
+                            <th className="px-4 py-3 text-center w-40">기여분 (+)</th>
+                            <th className="px-4 py-3 text-right text-blue-600 dark:text-blue-400">최종 산출액</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
+                          {amountCalculations?.results.map((res) => (
+                            <tr key={res.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors">
+                              <td className="px-4 py-3 text-center font-bold text-neutral-800 dark:text-neutral-200">{res.name}</td>
+                              <td className="px-4 py-3 text-center font-mono text-neutral-500">{res.un} / {res.ud}</td>
+                              <td className="px-4 py-3 text-center">
+                                <input
+                                  type="text"
+                                  placeholder="0"
+                                  value={specialBenefits[res.personId] || ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value.replace(/[^0-9]/g, '');
+                                    setSpecialBenefits(prev => ({ ...prev, [res.personId]: val ? Number(val).toLocaleString() : '' }));
+                                  }}
+                                  className="w-full px-3 py-1.5 border border-neutral-300 dark:border-neutral-600 rounded text-right font-mono bg-white dark:bg-neutral-900 text-red-600 dark:text-red-400 focus:ring-1 focus:ring-red-500 outline-none"
+                                />
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <input
+                                  type="text"
+                                  placeholder="0"
+                                  value={contributions[res.personId] || ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value.replace(/[^0-9]/g, '');
+                                    setContributions(prev => ({ ...prev, [res.personId]: val ? Number(val).toLocaleString() : '' }));
+                                  }}
+                                  className="w-full px-3 py-1.5 border border-neutral-300 dark:border-neutral-600 rounded text-right font-mono bg-white dark:bg-neutral-900 text-green-600 dark:text-green-400 focus:ring-1 focus:ring-green-500 outline-none"
+                                />
+                              </td>
+                              <td className="px-4 py-3 text-right font-mono font-bold text-lg text-neutral-900 dark:text-neutral-100">
+                                {res.finalAmount.toLocaleString()} <span className="text-sm font-normal text-neutral-500">원</span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot className="bg-neutral-50 dark:bg-neutral-900/50 font-bold border-t-2 border-neutral-300 dark:border-neutral-700">
+                          <tr>
+                            <td colSpan="4" className="px-4 py-3 text-right text-neutral-600 dark:text-neutral-300">합계액 (분배 완료):</td>
+                            <td className="px-4 py-3 text-right font-mono text-xl text-blue-600 dark:text-blue-400">
+                              {amountCalculations?.totalDistributed.toLocaleString()} <span className="text-sm font-normal text-neutral-500">원</span>
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
                   {amountCalculations?.remainder > 0 && <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-800"><span className="text-xl shrink-0 mt-0.5">ℹ️</span><div><h4 className="font-bold text-sm mb-1">[단수 처리 안내] 미분배 잔여금 발생</h4><p className="text-sm opacity-90 leading-relaxed">소수점 이하 버림 계산으로 인해 <strong>{amountCalculations.remainder.toLocaleString()}원</strong>의 미분배 잔여금이 발생했습니다.<br/>상속재산분할협의서 작성 시, 상속인 중 1명(주로 연장자)의 산출액에 잔여금을 가산하여 총액({amountCalculations.estateVal.toLocaleString()}원)을 일치시켜 주세요.</p></div></div>}
                 </div>
               )}
