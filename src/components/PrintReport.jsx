@@ -12,6 +12,16 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
     amount: '구체적 상속분 (금액) 정산서'
   }[activeTab] || '상속지분 계산 보고서';
 
+  // 🌟 영어로 된 제외 사유를 한글 실무 용어로 변환하는 사전
+  const exclusionDict = {
+    'predeceased': '선사망',
+    'renounce': '상속포기',
+    'unworthy': '상속결격',
+    'disqualified': '상속결격',
+    'lost': '대습원인 소멸(재혼 등)'
+  };
+  const translateExclusion = (val) => exclusionDict[val] || val;
+
   // 2. 가계도 평탄화 (상속인 명부용)
   const flatHeirs = useMemo(() => {
     if (!tree) return [];
@@ -27,7 +37,7 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
     return flatten(tree);
   }, [tree]);
 
-  // 3. 계산결과 탭용 그룹화 로직 (App.jsx와 동일)
+  // 3. 계산결과 탭용 그룹화 로직
   const resultGroups = useMemo(() => {
     if (!calcSteps) return [];
     const heirMap = new Map();
@@ -43,7 +53,7 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
     return Array.from(heirMap.values()).filter(r => !r.isDeceased);
   }, [calcSteps]);
 
-  // 인쇄 시에만 렌더링되도록 강제 (hidden print:block)
+  // 인쇄 시에만 렌더링
   return (
     <div className="hidden print:block w-full bg-white text-black font-sans text-[12px] leading-relaxed">
       
@@ -52,7 +62,7 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
         <h1 className="text-[24px] font-bold border-b-2 border-black pb-2 inline-block mb-4 px-4">{reportTitle}</h1>
       </div>
 
-      <table className="w-full border-collapse border-2 border-black mb-8 text-[12px]">
+      <table className="w-full border-collapse border-2 border-black mb-6 text-[12px]">
         <tbody>
           <tr>
             <th className="border border-black bg-gray-100 py-1.5 px-3 text-left w-[15%] font-bold">사건번호</th>
@@ -73,7 +83,7 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
       {/* 탭 1: 가계도 (상속인 명부 형태) */}
       {/* ========================================== */}
       {(activeTab === 'input' || activeTab === 'tree') && (
-        <div className="mb-8 break-inside-avoid">
+        <div className="mb-8"> {/* 🌟 전체 박스의 페이지 넘김 방지 옵션 제거 (용지 낭비 해결) */}
           <table className="w-full border-collapse border border-black text-[11px]">
             <thead className="bg-gray-100 text-center font-bold">
               <tr>
@@ -87,7 +97,8 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
             </thead>
             <tbody>
               {flatHeirs.map(h => (
-                <tr key={h.id} className="border-b border-gray-400">
+                // 🌟 tr(행) 단위로만 안 잘리게 break-inside-avoid 적용
+                <tr key={h.id} className="border-b border-gray-400 break-inside-avoid">
                   <td className="border border-black py-1.5 px-2 text-center text-gray-600">{h.prefix}</td>
                   <td className="border border-black py-1.5 px-2" style={{ paddingLeft: `${(h.depth * 12) + 8}px` }}>
                     {h.depth > 0 && <span className="text-gray-400 mr-1">└</span>}
@@ -105,7 +116,8 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
                     {!h.marriageDate && !h.remarriageDate && !h.divorceDate && !h.restoreDate && '-'}
                   </td>
                   <td className="border border-black py-1.5 px-2 text-center text-[10px]">
-                    {h.isExcluded ? <span className="text-red-600 font-bold">상속권 없음 ({h.exclusionOption})</span> : ''}
+                    {/* 🌟 번역기 적용 */}
+                    {h.isExcluded ? <span className="text-red-600 font-bold">상속권 없음 ({translateExclusion(h.exclusionOption)})</span> : ''}
                     {h.isHoju ? <div className="text-blue-600 font-bold">호주상속인</div> : ''}
                     {h.isSameRegister === false ? <div className="text-orange-600">출가</div> : ''}
                   </td>
@@ -122,7 +134,7 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
       {activeTab === 'calc' && calcSteps && (
         <div className="space-y-6">
           {calcSteps.map((s, i) => (
-            <div key={`calc-${i}`} className="break-inside-avoid mb-6">
+            <div key={`calc-${i}`} className="mb-6 break-inside-avoid">
               <div className="font-bold text-[13px] mb-2">
                 [STEP {i + 1}] 망 {s.dec.name} ({formatKorDate(s.dec.deathDate)} 사망) ─ 분배 대상 지분: {s.inN}/{s.inD}
               </div>
@@ -139,11 +151,12 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
                 <tbody>
                   {s.dists.map((d, di) => {
                     const memo = [];
-                    if (d.ex) memo.push(`상속권 없음(${d.ex})`);
+                    // 🌟 번역기 적용
+                    if (d.ex) memo.push(`상속권 없음(${translateExclusion(d.ex)})`);
                     if (d.h.isDeceased && !d.ex) memo.push('망인');
                     if (d.mod) memo.push(d.mod);
                     return (
-                      <tr key={di}>
+                      <tr key={di} className="break-inside-avoid">
                         <td className="border border-black py-1.5 px-2 text-center font-bold">{d.h.name}</td>
                         <td className="border border-black py-1.5 px-2 text-center">{getRelStr(d.h.relation, s.dec.deathDate)}</td>
                         <td className="border border-black py-1.5 px-2 text-center">{s.inN}/{s.inD} × {d.sn}/{d.sd}</td>
@@ -163,7 +176,7 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
       {/* 탭 3: 계산결과 (합산 표) */}
       {/* ========================================== */}
       {activeTab === 'result' && (
-        <div className="break-inside-avoid">
+        <div className="mb-8">
           <table className="w-full border-collapse border border-black text-[11px]">
             <thead className="bg-gray-100 text-center font-bold">
               <tr>
@@ -181,7 +194,7 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
                 const unifiedN = total.n * (commonD / total.d);
                 
                 return (
-                  <tr key={i} className="align-top">
+                  <tr key={i} className="align-top break-inside-avoid">
                     <td className="border border-black py-2 px-2 text-center">
                       <span className="font-bold">{r.name}</span><br/>
                       <span className="text-gray-600">[{getRelStr(r.relation, tree.deathDate)}]</span>
@@ -212,7 +225,7 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
       {/* 탭 4: 법정 상속분 요약 */}
       {/* ========================================== */}
       {activeTab === 'summary' && finalShares && (
-        <div className="break-inside-avoid">
+        <div className="mb-8">
           <table className="w-full border-collapse border border-black text-[12px]">
             <thead className="bg-gray-100 text-center font-bold">
               <tr>
@@ -223,7 +236,7 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
             </thead>
             <tbody>
               {finalShares.direct && finalShares.direct.map(f => (
-                <tr key={f.id}>
+                <tr key={f.id} className="break-inside-avoid">
                   <td className="border border-black py-2 px-3 font-bold">{f.name} <span className="font-normal text-gray-600">[{getRelStr(f.relation, tree.deathDate)}]</span></td>
                   <td className="border border-black py-2 px-3 text-center">{f.n} / {f.d}</td>
                   <td className="border border-black py-2 px-3 text-center font-bold">{f.un} / {f.ud}</td>
@@ -231,13 +244,13 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
               ))}
               {finalShares.subGroups && finalShares.subGroups.map((g, gi) => (
                 <React.Fragment key={`sg-${gi}`}>
-                  <tr className="bg-gray-50">
+                  <tr className="bg-gray-50 break-inside-avoid">
                     <td colSpan="3" className="border border-black py-1.5 px-3 font-bold text-gray-700">
                       ※ {formatKorDate(g.ancestor.deathDate)} 공동상속인 중 [{g.ancestor.name}] 사망에 따른 {g.type}
                     </td>
                   </tr>
                   {g.shares.map(f => (
-                    <tr key={f.id}>
+                    <tr key={f.id} className="break-inside-avoid">
                       <td className="border border-black py-2 px-3 pl-6 font-bold">└ {f.name} <span className="font-normal text-gray-600">[{getRelStr(f.relation, g.ancestor.deathDate)}]</span></td>
                       <td className="border border-black py-2 px-3 text-center">{f.n} / {f.d}</td>
                       <td className="border border-black py-2 px-3 text-center font-bold">{f.un} / {f.ud}</td>
@@ -254,7 +267,7 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
       {/* 탭 5: 구체적 상속분 (금액 계산) */}
       {/* ========================================== */}
       {activeTab === 'amount' && amountCalculations && (
-        <div className="break-inside-avoid">
+        <div className="mb-8">
           <div className="mb-2 font-bold text-[13px]">
             ■ 총 상속재산가액: {amountCalculations.estateVal.toLocaleString()} 원 
             (간주상속재산: {amountCalculations.deemedEstate.toLocaleString()} 원)
@@ -271,7 +284,7 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
             </thead>
             <tbody>
               {amountCalculations.results.map((r, idx) => (
-                <tr key={idx}>
+                <tr key={idx} className="break-inside-avoid">
                   <td className="border border-black py-2 px-2 text-center font-bold">{r.name}</td>
                   <td className="border border-black py-2 px-2 text-center">{r.un} / {r.ud}</td>
                   <td className="border border-black py-2 px-2 text-right text-red-700">{r.specialBenefit > 0 ? r.specialBenefit.toLocaleString() : '0'}</td>
@@ -280,7 +293,7 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
                 </tr>
               ))}
             </tbody>
-            <tfoot>
+            <tfoot className="break-inside-avoid">
               <tr className="bg-gray-50 font-bold">
                 <td colSpan="4" className="border border-black py-2 px-2 text-right">분배액 합계:</td>
                 <td className="border border-black py-2 px-2 text-right text-blue-800">{amountCalculations.totalDistributed.toLocaleString()}</td>
