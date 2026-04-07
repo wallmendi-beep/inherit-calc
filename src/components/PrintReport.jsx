@@ -1,224 +1,303 @@
-import React from 'react';
-import { getLawEra, getRelStr, formatKorDate, isBefore } from '../engine/utils';
+import React, { useMemo } from 'react';
+import { getLawEra, getRelStr, formatKorDate, math } from '../engine/utils';
 
-// 금액 포맷터
-const formatMoney = (val) => {
-  if (val === undefined || val === null || isNaN(val)) return '0';
-  return Number(val).toLocaleString('ko-KR');
-};
+const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculations, propertyValue }) => {
+  // 1. 공통 헤더 제목 매핑
+  const reportTitle = {
+    input: '상속인 명부 및 가계 연혁',
+    tree: '상속인 명부 및 가계 연혁',
+    calc: '상속지분 산출 내역서 (단계별)',
+    result: '상속지분 취득 경로 및 최종 결과표',
+    summary: '법정 상속분 요약표',
+    amount: '구체적 상속분 (금액) 정산서'
+  }[activeTab] || '상속지분 계산 보고서';
 
-const PrintReport = ({ tree, propertyValue, finalShares, calcSteps, amountCalculations, activeTab, activeDeceasedTab }) => {
-  // 인쇄는 calc(계산표), summary(법정상속분 요약), amount(구체적 상속분) 탭 등에서 각각 수행됨
-  // 인풋(input) 탭에서는 출력 방지 (handlePrint 내부에서 방어)
+  // 2. 가계도 평탄화 (상속인 명부용)
+  const flatHeirs = useMemo(() => {
+    if (!tree) return [];
+    const flatten = (node, depth = 0, prefix = '1') => {
+      let list = [{ ...node, depth, prefix }];
+      if (node.heirs) {
+        node.heirs.forEach((h, i) => {
+          list = list.concat(flatten(h, depth + 1, `${prefix}-${i + 1}`));
+        });
+      }
+      return list;
+    };
+    return flatten(tree);
+  }, [tree]);
 
-  const topDirect = finalShares?.direct || [];
-  const topGroups = finalShares?.subGroups || [];
-  const totalSumN = finalShares?.totalSumN || 0;
-  const totalSumD = finalShares?.totalSumD || 1;
-  const warnings = calcSteps?.warnings || [];
+  // 3. 계산결과 탭용 그룹화 로직 (App.jsx와 동일)
+  const resultGroups = useMemo(() => {
+    if (!calcSteps) return [];
+    const heirMap = new Map();
+    calcSteps.forEach(s => {
+      s.dists.forEach(d => {
+        if (d.n > 0) {
+          const key = d.h.personId;
+          if (!heirMap.has(key)) heirMap.set(key, { name: d.h.name, relation: d.h.relation, sources: [], isDeceased: d.h.isDeceased });
+          heirMap.get(key).sources.push({ decName: s.dec.name, decDeathDate: s.dec.deathDate, relation: d.h.relation, lawEra: s.lawEra, mod: d.mod || '', n: d.n, d: d.d });
+        }
+      });
+    });
+    return Array.from(heirMap.values()).filter(r => !r.isDeceased);
+  }, [calcSteps]);
 
-  // 1. 계산과정(calc) 모드용 구적 (Step 배열 구조 App.jsx 엔진과 동기화)
-  const stepsList = Array.isArray(calcSteps) ? calcSteps : (calcSteps?.steps || []);
-  
-  // 2. 분수 단순화 헬퍼 (App.js에서 가져오는 대신 직접 수행 가능한 부분)
-  // 여기서는 단순히 n/d 문자열로 보여줍니다.
-
+  // 인쇄 시에만 렌더링되도록 강제 (hidden print:block)
   return (
-    <div className="hidden print:block print:w-full print:bg-white print:text-black font-sans text-[11pt]">
-      {/* 1. 공통 헤더: 피상속인(사건본인) 정보 */}
-      <HeaderSection tree={tree} />
+    <div className="hidden print:block w-full bg-white text-black font-sans text-[12px] leading-relaxed">
+      
+      {/* [공통 헤더] 문서 타이틀 및 메타 정보 */}
+      <div className="mb-6 text-center">
+        <h1 className="text-[24px] font-bold border-b-2 border-black pb-2 inline-block mb-4 px-4">{reportTitle}</h1>
+      </div>
 
-      {/* 2. 경고창 (데이터 문제 시) */}
-      {warnings.length > 0 && (
-        <div className="border border-red-500 bg-red-50 text-red-700 p-3 mb-6 relative">
-          <strong className="block mb-1">⚠️ 계산 주의사항</strong>
-          <ul className="list-disc pl-5">
-            {warnings.map((w, i) => <li key={i}>{w.text || w}</li>)}
-          </ul>
+      <table className="w-full border-collapse border-2 border-black mb-8 text-[12px]">
+        <tbody>
+          <tr>
+            <th className="border border-black bg-gray-100 py-1.5 px-3 text-left w-[15%] font-bold">사건번호</th>
+            <td className="border border-black py-1.5 px-3 w-[35%] font-medium">{tree.caseNo || '미입력'}</td>
+            <th className="border border-black bg-gray-100 py-1.5 px-3 text-left w-[15%] font-bold">피상속인</th>
+            <td className="border border-black py-1.5 px-3 w-[35%] font-bold text-blue-800">{tree.name || '미입력'}</td>
+          </tr>
+          <tr>
+            <th className="border border-black bg-gray-100 py-1.5 px-3 text-left font-bold">사망일자</th>
+            <td className="border border-black py-1.5 px-3 font-medium">{tree.deathDate || '미입력'}</td>
+            <th className="border border-black bg-gray-100 py-1.5 px-3 text-left font-bold">적용법령</th>
+            <td className="border border-black py-1.5 px-3 font-medium">{getLawEra(tree.deathDate)}년 민법</td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* ========================================== */}
+      {/* 탭 1: 가계도 (상속인 명부 형태) */}
+      {/* ========================================== */}
+      {(activeTab === 'input' || activeTab === 'tree') && (
+        <div className="mb-8 break-inside-avoid">
+          <table className="w-full border-collapse border border-black text-[11px]">
+            <thead className="bg-gray-100 text-center font-bold">
+              <tr>
+                <th className="border border-black py-2 px-2 w-[8%]">순번</th>
+                <th className="border border-black py-2 px-2 w-[22%]">상속인 성명</th>
+                <th className="border border-black py-2 px-2 w-[12%]">관계</th>
+                <th className="border border-black py-2 px-2 w-[20%]">생존 여부(사망일)</th>
+                <th className="border border-black py-2 px-2 w-[20%]">호적 연혁</th>
+                <th className="border border-black py-2 px-2 w-[18%]">특수 조건</th>
+              </tr>
+            </thead>
+            <tbody>
+              {flatHeirs.map(h => (
+                <tr key={h.id} className="border-b border-gray-400">
+                  <td className="border border-black py-1.5 px-2 text-center text-gray-600">{h.prefix}</td>
+                  <td className="border border-black py-1.5 px-2" style={{ paddingLeft: `${(h.depth * 12) + 8}px` }}>
+                    {h.depth > 0 && <span className="text-gray-400 mr-1">└</span>}
+                    <span className="font-bold">{h.name || '(이름없음)'}</span>
+                  </td>
+                  <td className="border border-black py-1.5 px-2 text-center">{h.depth === 0 ? '피상속인' : getRelStr(h.relation, tree.deathDate)}</td>
+                  <td className="border border-black py-1.5 px-2 text-center">
+                    {h.isDeceased ? `사망 (${h.deathDate || '일자미상'})` : '생존'}
+                  </td>
+                  <td className="border border-black py-1.5 px-2 text-center text-[10px]">
+                    {h.marriageDate && <div>혼인: {h.marriageDate}</div>}
+                    {h.remarriageDate && <div>재혼: {h.remarriageDate}</div>}
+                    {h.divorceDate && <div>이혼: {h.divorceDate}</div>}
+                    {h.restoreDate && <div>복적: {h.restoreDate}</div>}
+                    {!h.marriageDate && !h.remarriageDate && !h.divorceDate && !h.restoreDate && '-'}
+                  </td>
+                  <td className="border border-black py-1.5 px-2 text-center text-[10px]">
+                    {h.isExcluded ? <span className="text-red-600 font-bold">상속권 없음 ({h.exclusionOption})</span> : ''}
+                    {h.isHoju ? <div className="text-blue-600 font-bold">호주상속인</div> : ''}
+                    {h.isSameRegister === false ? <div className="text-orange-600">출가</div> : ''}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
-      {/* --- 탭별 내용 표출 분기 --- */}
-
-      {/* A. 상속지분 산출 내역 (산출 과정) */}
-      {activeTab === 'calc' && (
-        <section className="mb-8">
-          <h2 className="text-[14pt] font-extrabold mb-3 border-l-4 border-black pl-3">상속지분 산출 내역</h2>
-          {stepsList.map((step, i) => (
-            <div key={i} className="mb-6 break-inside-avoid">
-              <div className="mb-2 bg-gray-100 p-2 border-y border-black font-bold">
-                [STEP {i + 1}] 망 {step.dec?.name || '미상'} ({formatKorDate(step.dec?.deathDate)})
-                <span className="ml-4 font-normal text-[10pt] text-gray-700">분배 지분: {step.inN}/{step.inD}</span>
+      {/* ========================================== */}
+      {/* 탭 2: 계산표 (단계별 산출) */}
+      {/* ========================================== */}
+      {activeTab === 'calc' && calcSteps && (
+        <div className="space-y-6">
+          {calcSteps.map((s, i) => (
+            <div key={`calc-${i}`} className="break-inside-avoid mb-6">
+              <div className="font-bold text-[13px] mb-2">
+                [STEP {i + 1}] 망 {s.dec.name} ({formatKorDate(s.dec.deathDate)} 사망) ─ 분배 대상 지분: {s.inN}/{s.inD}
               </div>
-              <table className="w-full border-collapse border border-gray-400 text-[10pt]">
-                <thead>
-                  <tr className="bg-gray-50 border-b-2 border-gray-400">
-                    <th className="border border-gray-400 py-1.5 px-2 text-center w-[20%]">상속인</th>
-                    <th className="border border-gray-400 py-1.5 px-2 text-center w-[15%]">관계</th>
-                    <th className="border border-gray-400 py-1.5 px-2 text-center w-[25%]">계산식</th>
-                    <th className="border border-gray-400 py-1.5 px-2 text-center w-[15%]">취득지분</th>
-                    <th className="border border-gray-400 py-1.5 px-2 text-center w-[25%]">비고</th>
+              <table className="w-full border-collapse border border-black text-[11px]">
+                <thead className="bg-gray-100 text-center font-bold">
+                  <tr>
+                    <th className="border border-black py-1.5 px-2 w-[15%]">상속인</th>
+                    <th className="border border-black py-1.5 px-2 w-[12%]">관계</th>
+                    <th className="border border-black py-1.5 px-2 w-[25%]">계산식</th>
+                    <th className="border border-black py-1.5 px-2 w-[18%]">산출 지분</th>
+                    <th className="border border-black py-1.5 px-2 w-[30%]">비고 (가감산 사유)</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {step.dists.map((d, di) => (
-                    <tr key={di} className="border-b border-gray-300">
-                      <td className="border border-gray-400 py-1 px-2 text-center font-bold">{d.node?.name || '미상'}</td>
-                      <td className="border border-gray-400 py-1 px-2 text-center text-gray-600">{getRelStr(d.node?.relation)}</td>
-                      <td className="border border-gray-400 py-1 px-2 text-center">{d.expr}</td>
-                      <td className="border border-gray-400 py-1 px-2 text-center font-bold">{d.n}/{d.d}</td>
-                      <td className="border border-gray-400 py-1 px-2 text-center text-[9pt]">{d.reason}</td>
-                    </tr>
-                  ))}
-                  {step.dists.length === 0 && (
-                    <tr>
-                      <td colSpan="5" className="border border-gray-400 py-2 px-2 text-center text-gray-500">
-                        귀속될 상속인이 없습니다.
-                      </td>
-                    </tr>
-                  )}
+                  {s.dists.map((d, di) => {
+                    const memo = [];
+                    if (d.ex) memo.push(`상속권 없음(${d.ex})`);
+                    if (d.h.isDeceased && !d.ex) memo.push('망인');
+                    if (d.mod) memo.push(d.mod);
+                    return (
+                      <tr key={di}>
+                        <td className="border border-black py-1.5 px-2 text-center font-bold">{d.h.name}</td>
+                        <td className="border border-black py-1.5 px-2 text-center">{getRelStr(d.h.relation, s.dec.deathDate)}</td>
+                        <td className="border border-black py-1.5 px-2 text-center">{s.inN}/{s.inD} × {d.sn}/{d.sd}</td>
+                        <td className="border border-black py-1.5 px-2 text-center font-bold">{d.n}/{d.d}</td>
+                        <td className="border border-black py-1.5 px-2 text-left">{memo.join(', ')}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           ))}
-        </section>
-      )}
-      {/* A-2. 가계도(input) 탭 인쇄 방어 (Ctrl+P 강제 인쇄 시 빈 평면 방지) */}
-      {activeTab === 'input' && (
-        <section className="mb-8 text-center text-gray-500 py-10 border-2 border-dashed border-gray-300">
-          <h2 className="text-[16pt] font-extrabold mb-4 text-black">가계도(데이터 입력) 화면입니다</h2>
-          <p>가계도 구조는 너비가 넓고 상호작용이 필요하므로 화면 캡처 장비를 이용해 주시길 권장합니다.</p>
-          <p>종이 인쇄용 보고서를 원하시면 상단의 <strong>[산출내역]</strong>, <strong>[지분요약]</strong>, <strong>[상속금액]</strong> 탭 중 하나를 선택한 후 인쇄해 주세요.</p>
-        </section>
+        </div>
       )}
 
-      {/* B. 법정 상속분 요약표 */}
-      {activeTab === 'summary' && (
-        <section className="mb-8">
-          <h2 className="text-[14pt] font-extrabold mb-3 border-l-4 border-black pl-3">법정 상속지분 요약표</h2>
-          <table className="w-full border-collapse border-2 border-black text-[11pt]">
-            <thead>
-              <tr className="bg-gray-100 border-b-2 border-black">
-                <th className="border border-black py-2 px-2 text-center w-[30%] font-bold">상속인 성명</th>
-                <th className="border border-black py-2 px-2 text-center w-[35%] font-bold">최종 지분 (기본)</th>
-                <th className="border border-black py-2 px-2 text-center w-[35%] font-bold">최종 지분 (통분)</th>
+      {/* ========================================== */}
+      {/* 탭 3: 계산결과 (합산 표) */}
+      {/* ========================================== */}
+      {activeTab === 'result' && (
+        <div className="break-inside-avoid">
+          <table className="w-full border-collapse border border-black text-[11px]">
+            <thead className="bg-gray-100 text-center font-bold">
+              <tr>
+                <th className="border border-black py-2 px-2 w-[18%]">최종 생존 상속인</th>
+                <th className="border border-black py-2 px-2 w-[52%]">지분 취득 경로 및 산출 근거</th>
+                <th className="border border-black py-2 px-2 w-[15%]">최종 합계</th>
+                <th className="border border-black py-2 px-2 w-[15%]">통분 지분</th>
               </tr>
             </thead>
             <tbody>
-              {topDirect.map((share, idx) => (
-                <tr key={'dir-'+idx} className="border-b border-gray-400">
-                  <td className="border border-black py-2 px-2 text-center font-bold">{share.name}</td>
-                  <td className="border border-black py-2 px-2 text-center">{share.un} / {share.ud}</td>
-                  <td className="border border-black py-2 px-2 text-center font-bold">{share.n} / {share.d}</td>
+              {resultGroups.map((r, i) => {
+                const total = r.sources.reduce((acc, s) => { const [nn, nd] = math.add(acc.n, acc.d, s.n, s.d); return { n: nn, d: nd }; }, { n: 0, d: 1 });
+                let commonD = 1;
+                resultGroups.forEach(res => { const t = res.sources.reduce((acc, s) => { const [nn, nd] = math.add(acc.n, acc.d, s.n, s.d); return { n: nn, d: nd }; }, { n: 0, d: 1 }); if (t.n > 0) commonD = math.lcm(commonD, t.d); });
+                const unifiedN = total.n * (commonD / total.d);
+                
+                return (
+                  <tr key={i} className="align-top">
+                    <td className="border border-black py-2 px-2 text-center">
+                      <span className="font-bold">{r.name}</span><br/>
+                      <span className="text-gray-600">[{getRelStr(r.relation, tree.deathDate)}]</span>
+                    </td>
+                    <td className="border border-black py-2 px-2 text-left">
+                      {r.sources.map((src, si) => (
+                        <div key={si} className="mb-1">
+                          • 망 {src.decName}의 {getRelStr(src.relation, src.decDeathDate)}로서 ({src.n}/{src.d})
+                        </div>
+                      ))}
+                      {r.sources.length > 1 && (
+                        <div className="mt-1 pt-1 border-t border-gray-300 font-bold">
+                          = 합계: {total.n}/{total.d}
+                        </div>
+                      )}
+                    </td>
+                    <td className="border border-black py-2 px-2 text-center font-bold">{total.n}/{total.d}</td>
+                    <td className="border border-black py-2 px-2 text-center font-bold">{unifiedN}/{commonD}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ========================================== */}
+      {/* 탭 4: 법정 상속분 요약 */}
+      {/* ========================================== */}
+      {activeTab === 'summary' && finalShares && (
+        <div className="break-inside-avoid">
+          <table className="w-full border-collapse border border-black text-[12px]">
+            <thead className="bg-gray-100 text-center font-bold">
+              <tr>
+                <th className="border border-black py-2 px-3 w-[40%]">상속인 성명</th>
+                <th className="border border-black py-2 px-3 w-[30%]">최종 지분 (통분 전)</th>
+                <th className="border border-black py-2 px-3 w-[30%]">최종 지분 (통분 후)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {finalShares.direct && finalShares.direct.map(f => (
+                <tr key={f.id}>
+                  <td className="border border-black py-2 px-3 font-bold">{f.name} <span className="font-normal text-gray-600">[{getRelStr(f.relation, tree.deathDate)}]</span></td>
+                  <td className="border border-black py-2 px-3 text-center">{f.n} / {f.d}</td>
+                  <td className="border border-black py-2 px-3 text-center font-bold">{f.un} / {f.ud}</td>
                 </tr>
               ))}
-              {topGroups.map((group, gIdx) => (
-                <React.Fragment key={'grp-'+gIdx}>
-                  <tr className="bg-gray-50 border-b-2 border-dashed border-gray-500">
-                    <td colSpan="3" className="border border-black py-1.5 px-3 text-left font-bold text-gray-700 bg-gray-100">
-                      망 {group.ancestor.name} ({getRelStr(group.ancestor.relation)})의 {group.ancestor.deathDate && isBefore(group.ancestor.deathDate, tree.deathDate) ? '대습' : '재'}상속 그룹
+              {finalShares.subGroups && finalShares.subGroups.map((g, gi) => (
+                <React.Fragment key={`sg-${gi}`}>
+                  <tr className="bg-gray-50">
+                    <td colSpan="3" className="border border-black py-1.5 px-3 font-bold text-gray-700">
+                      ※ {formatKorDate(g.ancestor.deathDate)} 공동상속인 중 [{g.ancestor.name}] 사망에 따른 {g.type}
                     </td>
                   </tr>
-                  {group.shares.map((share, idx) => (
-                    <tr key={`g-${gIdx}-${idx}`} className="border-b border-gray-400">
-                      <td className="border border-black py-2 px-2 text-center pl-6 font-bold truncate">└ {share.name}</td>
-                      <td className="border border-black py-2 px-2 text-center">{share.un} / {share.ud}</td>
-                      <td className="border border-black py-2 px-2 text-center font-bold">{share.n} / {share.d}</td>
+                  {g.shares.map(f => (
+                    <tr key={f.id}>
+                      <td className="border border-black py-2 px-3 pl-6 font-bold">└ {f.name} <span className="font-normal text-gray-600">[{getRelStr(f.relation, g.ancestor.deathDate)}]</span></td>
+                      <td className="border border-black py-2 px-3 text-center">{f.n} / {f.d}</td>
+                      <td className="border border-black py-2 px-3 text-center font-bold">{f.un} / {f.ud}</td>
                     </tr>
                   ))}
-                  {/* Nested rendering omitted for print simplicity unless deeply nested. If needed, can extract recursive row render. */}
                 </React.Fragment>
               ))}
             </tbody>
-            <tfoot>
-              <tr className="bg-gray-200 font-bold border-t-2 border-black">
-                <td className="border border-black py-2 px-2 text-center">합계</td>
-                <td colSpan="2" className="border border-black py-2 px-2 text-center tracking-widest text-[12pt]">
-                  {totalSumN} / {totalSumD} {totalSumN !== totalSumD && <span className="text-red-600 ml-2">(일치여부 확인 필요)</span>}
-                </td>
-              </tr>
-            </tfoot>
           </table>
-        </section>
+        </div>
       )}
 
-
-      {/* C. 구체적 상속분 (금액 포함표) */}
+      {/* ========================================== */}
+      {/* 탭 5: 구체적 상속분 (금액 계산) */}
+      {/* ========================================== */}
       {activeTab === 'amount' && amountCalculations && (
-        <section className="mb-8">
-          <h2 className="text-[14pt] font-extrabold mb-3 border-l-4 border-black pl-3 flex justify-between items-baseline">
-            <span>구체적 상속분 산정 최종 결과</span>
-            <span className="text-[11pt] font-normal tracking-wide">
-              (간주상속재산: <strong className="text-black">{formatMoney(amountCalculations.deemedEstate)} 원</strong>)
-            </span>
-          </h2>
-          <table className="w-full border-collapse border-2 border-black text-[10pt]">
-            <thead>
-              <tr className="bg-gray-100 border-b-2 border-black">
-                <th className="border border-black py-2 px-1 text-center w-[15%] font-bold">상속인</th>
-                <th className="border border-black py-2 px-1 text-center w-[12%] font-bold">법정지분</th>
-                <th className="border border-black py-2 px-1 text-center w-[18%] font-bold text-gray-700">법정상속분액</th>
-                <th className="border border-black py-2 px-1 text-center w-[15%] font-bold text-blue-700">기여분 (+)</th>
-                <th className="border border-black py-2 px-1 text-center w-[15%] font-bold text-red-700">특별수익 (-)</th>
-                <th className="border border-black py-2 px-1 text-center w-[25%] font-bold text-[11pt]">최종 구체적상속분</th>
+        <div className="break-inside-avoid">
+          <div className="mb-2 font-bold text-[13px]">
+            ■ 총 상속재산가액: {amountCalculations.estateVal.toLocaleString()} 원 
+            (간주상속재산: {amountCalculations.deemedEstate.toLocaleString()} 원)
+          </div>
+          <table className="w-full border-collapse border border-black text-[12px]">
+            <thead className="bg-gray-100 text-center font-bold">
+              <tr>
+                <th className="border border-black py-2 px-2 w-[20%]">상속인</th>
+                <th className="border border-black py-2 px-2 w-[15%]">법정 지분</th>
+                <th className="border border-black py-2 px-2 w-[20%]">특별수익 (-)</th>
+                <th className="border border-black py-2 px-2 w-[20%]">기여분 (+)</th>
+                <th className="border border-black py-2 px-2 w-[25%]">구체적 상속 산출액 (원)</th>
               </tr>
             </thead>
             <tbody>
-              {amountCalculations.results.map((res, idx) => (
-                <tr key={idx} className="border-b border-gray-400">
-                  <td className="border border-black py-2 px-2 text-center font-bold bg-gray-50">{res.name}</td>
-                  <td className="border border-black py-2 px-2 text-center">{res.n}/{res.d}</td>
-                  <td className="border border-black py-2 px-2 text-right">{formatMoney(res.statutoryAmount)}</td>
-                  <td className="border border-black py-2 px-2 text-right text-blue-800">{formatMoney(res.contribution)}</td>
-                  <td className="border border-black py-2 px-2 text-right text-red-800">{formatMoney(res.specialBenefit)}</td>
-                  <td className="border border-black py-2 px-2 text-right font-extrabold text-[12pt] tracking-wider bg-gray-50">{formatMoney(res.finalAmount)}</td>
+              {amountCalculations.results.map((r, idx) => (
+                <tr key={idx}>
+                  <td className="border border-black py-2 px-2 text-center font-bold">{r.name}</td>
+                  <td className="border border-black py-2 px-2 text-center">{r.un} / {r.ud}</td>
+                  <td className="border border-black py-2 px-2 text-right text-red-700">{r.specialBenefit > 0 ? r.specialBenefit.toLocaleString() : '0'}</td>
+                  <td className="border border-black py-2 px-2 text-right text-green-700">{r.contribution > 0 ? r.contribution.toLocaleString() : '0'}</td>
+                  <td className="border border-black py-2 px-2 text-right font-bold">{r.finalAmount.toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
-              <tr className="bg-gray-200 border-t-2 border-black font-bold">
-                <td className="border border-black py-2 px-2 text-center">합계</td>
-                <td className="border border-black py-2 px-2 text-center">{totalSumN}/{totalSumD}</td>
-                <td colSpan="3" className="border border-black py-2 px-2 text-right tracking-widest text-[11pt]">
-                  총 분배 후 잔액: {formatMoney(amountCalculations.remainder)}
-                </td>
-                <td className="border border-black py-2 px-2 text-right tracking-widest text-[12pt]">
-                  {formatMoney(amountCalculations.totalDistributed)}원
-                </td>
+              <tr className="bg-gray-50 font-bold">
+                <td colSpan="4" className="border border-black py-2 px-2 text-right">분배액 합계:</td>
+                <td className="border border-black py-2 px-2 text-right text-blue-800">{amountCalculations.totalDistributed.toLocaleString()}</td>
               </tr>
+              {amountCalculations.remainder > 0 && (
+                <tr className="font-bold">
+                  <td colSpan="4" className="border border-black py-1.5 px-2 text-right text-gray-600">미분배 잔여금 (소수점 단수):</td>
+                  <td className="border border-black py-1.5 px-2 text-right text-red-600">{amountCalculations.remainder.toLocaleString()}</td>
+                </tr>
+              )}
             </tfoot>
           </table>
-        </section>
+        </div>
       )}
-      {/* C-2. 금액 관련 데이터가 없거나 로딩되지 않았을 경우 방어 */}
-      {activeTab === 'amount' && !amountCalculations && (
-        <section className="mb-8 text-center text-gray-500 py-10">
-          구체적 상속분 계산을 위한 상속인 데이터가 없습니다. (분배 대상자 없음)
-        </section>
-      )}
-      {/* 하단 인쇄 스탬프/푸터 */}
-      <div className="mt-8 pt-4 border-t border-gray-300 text-center text-gray-500 text-[9pt]">
-        본 보고서는 [상속지분 계산기 PRO v3.0]에 의해 작성되었습니다. ({new Date().toLocaleDateString()})
-      </div>
+
     </div>
   );
 };
-
-// 미니 컴포넌트: 사건 정보 (재사용)
-const HeaderSection = ({ tree }) => (
-  <div className="mb-6 pb-4 border-b-2 border-black text-[11pt] tracking-wide">
-    <div className="grid grid-cols-2 gap-4">
-      <div>
-        <h1 className="text-[18pt] font-black tracking-tight mb-2">상속지분 분석 보고서</h1>
-        <div className="text-[12pt] font-bold text-gray-800">사건번호: {tree.caseNo || '(사건번호 미기재)'}</div>
-      </div>
-      <div className="text-right flex flex-col justify-end">
-        <div><strong>피상속인:</strong> <span className="text-[13pt] font-bold underline underline-offset-4">{tree.name || '미상'}</span></div>
-        <div className="mt-1"><strong>사망일자:</strong> {formatKorDate(tree.deathDate)}</div>
-        <div className="mt-1"><strong>적용법령:</strong> {getLawEra(tree.deathDate)}년 민법</div>
-      </div>
-    </div>
-  </div>
-);
 
 export default PrintReport;
