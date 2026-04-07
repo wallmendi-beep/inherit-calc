@@ -1327,7 +1327,7 @@ function App() {
                         const processAiData = (node) => {
                           if (Array.isArray(node)) { node.forEach(processAiData); return; }
                           if (!node.id) node.id = `ai_${Math.random().toString(36).substr(2, 9)}`;
-                          if (node.heirs && node.heirs.length > 0) { node.isExcluded = true; node.exclusionOption = 'predeceased'; }
+                          // 🚨 [오류 해결] 자녀가 있다고 무조건 상속권 없음(선사망)으로 강제 처리하던 코드 삭제
                           if (node.heirs) node.heirs.forEach(processAiData);
                         };
                         processAiData(parsedTree);
@@ -1344,7 +1344,7 @@ function App() {
                                 const newHeirs = generateNewHeirs(sourceHeirs);
                                 const nodeUpdates = {};
                                 if (!Array.isArray(parsedTree)) { if (parsedTree.deathDate) nodeUpdates.deathDate = parsedTree.deathDate; if (parsedTree.marriageDate) nodeUpdates.marriageDate = parsedTree.marriageDate; if (parsedTree.remarriageDate) nodeUpdates.remarriageDate = parsedTree.remarriageDate; if (parsedTree.isDeceased !== undefined) nodeUpdates.isDeceased = parsedTree.isDeceased; }
-                                if (newHeirs.length > 0) { nodeUpdates.isExcluded = true; nodeUpdates.exclusionOption = 'predeceased'; }
+                                // 🚨 [오류 해결] 하위 상속인 추가 시 무조건 상속권 없음으로 강제 처리하던 코드 삭제
                                 return { ...n, ...nodeUpdates, heirs: [...(n.heirs || []), ...newHeirs] };
                               }
                               return { ...n, heirs: n.heirs?.map(injectHeirs) || [] };
