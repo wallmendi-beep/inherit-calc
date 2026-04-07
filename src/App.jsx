@@ -8,6 +8,7 @@ import {
 import { DateInput } from './components/DateInput';
 import HeirRow from './components/HeirRow';
 import TreeReportNode from './components/TreeReportNode';
+import PrintReport from './components/PrintReport';
 import { math, getLawEra, getRelStr, formatKorDate, formatMoney, isBefore } from './engine/utils';
 import { calculateInheritance } from './engine/inheritance';
 import { getInitialTree, getEmptyTree } from './utils/initialData';
@@ -801,7 +802,21 @@ function App() {
     setTree(prev => { const newTree = JSON.parse(JSON.stringify(prev)); const reorderList = (list) => { if (!list) return false; const activeIdx = list.findIndex(item => item.id === active.id); const overIdx = list.findIndex(item => item.id === over.id); if (activeIdx !== -1 && overIdx !== -1) { const [movedItem] = list.splice(activeIdx, 1); list.splice(overIdx, 0, movedItem); return true; } for (let item of list) { if (item.heirs && item.heirs.length > 0 && reorderList(item.heirs)) return true; } return false; }; reorderList(newTree.heirs); return newTree; });
   } };
 
-  const handlePrint = () => { if (activeTab === 'input') { alert('보고서 탭(가계도, 계산표, 계산결과, 요약표) 중 하나를 선택한 후 인쇄해주세요.'); return; } const tabNames = { tree: '가계도', calc: '계산표', result: '계산결과', summary: '요약표' }; const currentTabName = tabNames[activeTab] || '보고서'; const safeCaseNo = (tree.caseNo || '사건번호없음').replace(/[^a-zA-Z0-9가-힣_-]/g, ''); const safeName = (tree.name || '피상속인없음').replace(/[^a-zA-Z0-9가-힣_-]/g, ''); const printFileName = `${safeCaseNo}_${safeName}_${currentTabName}_${new Date().toISOString().slice(0, 10)}`; const originalTitle = document.title; document.title = printFileName; window.print(); document.title = originalTitle; };
+  const handlePrint = () => { 
+    if (activeTab === 'input') { alert('보고서 탭(산출내역, 지분요약, 상속금액) 중 하나를 선택한 후 인쇄해주세요.'); return; } 
+    // 탭별 인쇄용 파일명 접미사 매핑
+    const tabNames = { input: '가계도', calc: '상속지분_산출내역', summary: '법정상속분_요약표', amount: '구체적상속분_결과' }; 
+    const currentTabName = tabNames[activeTab] || '보고서'; 
+    const safeCaseNo = (tree.caseNo || '사건번호없음').replace(/[^a-zA-Z0-9가-힣_-]/g, ''); 
+    const safeName = (tree.name || '피상속인없음').replace(/[^a-zA-Z0-9가-힣_-]/g, ''); 
+    const printFileName = `${safeCaseNo}_${safeName}_${currentTabName}_${new Date().toISOString().slice(0, 10)}`; 
+    
+    // 브라우저 기본 인쇄 파일명 지정을 위해 임시로 타이틀 변경
+    const originalTitle = document.title; 
+    document.title = printFileName; 
+    window.print(); 
+    document.title = originalTitle; 
+  };
   const saveFile = () => { const blob = new Blob([JSON.stringify(tree, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); const safeCaseNo = (tree.caseNo || '사건번호없음').replace(/[^a-zA-Z0-9가-힣_-]/g, ''); const safeName = (tree.name || '피상속인없음').replace(/[^a-zA-Z0-9가-힣_-]/g, ''); a.href = url; a.download = `${safeCaseNo}_${safeName}_상속지분계산_${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(url); };
   const loadFile = (e) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (ev) => { try { const data = JSON.parse(ev.target.result); const nameMap = new Map(); const syncPersonIdRec = (n) => { let pId = n.personId; if (n.name && n.name.trim() !== '') { if (nameMap.has(n.name)) pId = nameMap.get(n.name); else { if (!pId) pId = `p_${Math.random().toString(36).substr(2,9)}`; nameMap.set(n.name, pId); } } else if (!pId) pId = `p_${Math.random().toString(36).substr(2,9)}`; let exclusionOption = n.exclusionOption; if (n.isExcluded && exclusionOption === 'no_heir' && n.isDeceased) exclusionOption = 'renounce'; return { ...n, personId: pId, exclusionOption, heirs: (n.heirs || []).map(syncPersonIdRec) }; }; if (data.id === 'root' || (Array.isArray(data.heirs) && data.name !== undefined)) { setTree(syncPersonIdRec(data)); setActiveTab('calc'); } else if (data.people && Array.isArray(data.people)) { alert('이 파일은 이전 버전의 그래프 형식입니다. 일부 데이터가 누락될 수 있습니다.'); const root = data.people.find(p => p.isRoot || p.id === 'root'); if (root) { setTree({ id: 'root', name: root.name || '', gender: root.gender || 'male', deathDate: root.deathDate || '', caseNo: data.caseNo || '', isHoju: root.isHoju !== false, shareN: data.shareN || 1, shareD: data.shareD || 1, heirs: [] }); setActiveTab('input'); } } else alert('인식할 수 없는 파일 형식입니다.'); } catch (err) { alert('파일을 읽는 중 오류가 발생했습니다: ' + err.message); } }; reader.readAsText(file); e.target.value = ''; };
   const performReset = (saveFirst) => {
@@ -831,8 +846,19 @@ function App() {
   const handleExcelExport = () => { const rows = [['사건번호', tree.caseNo || ''], ['피상속인', tree.name || ''], ['사망일자', tree.deathDate || ''], [''], ['상속인', '관계', '지분(분자)', '지분(분모)', '통분 지분(분자)', '통분 지분(분모)']]; finalShares.direct.forEach(f => rows.push([f.name, getRelStr(f.relation, tree.deathDate) || f.relation, f.n, f.d, f.un, f.ud])); (finalShares.subGroups || []).forEach(g => { rows.push(['', `※ 공동상속인 중 [${g.ancestor?.name || ''}]은(는) ${formatKorDate(g.ancestor?.deathDate)} 사망하였으므로 상속인`, '', '', '', '']); g.shares.forEach(f => rows.push([f.name, getRelStr(f.relation, tree.deathDate) || f.relation, f.n, f.d, f.un, f.ud])); }); const csv = '\uFEFF' + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n'); const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `상속지분_${(tree.name || '피상속인없음').replace(/[^a-zA-Z0-9가-힣_-]/g, '')}_${new Date().toISOString().slice(0,10)}.csv`; a.click(); URL.revokeObjectURL(url); };
 
   return (
-    <div className="w-full min-h-screen relative flex flex-col items-start pb-24 transition-colors duration-200 bg-[#f7f7f5] dark:bg-neutral-900 min-w-[1280px] print:min-w-0 print:w-full print:max-w-full">
-      {showNavigator && (
+    <>
+      <PrintReport 
+        tree={tree} 
+        activeTab={activeTab} 
+        activeDeceasedTab={activeDeceasedTab} 
+        finalShares={finalShares} 
+        calcSteps={calcSteps} 
+        amountCalculations={amountCalculations} 
+        propertyValue={propertyValue} 
+      />
+      
+      <div className="w-full min-h-screen relative flex flex-col items-start pb-24 transition-colors duration-200 bg-[#f7f7f5] dark:bg-neutral-900 min-w-[1280px] print:hidden">
+        {showNavigator && (
         <div ref={stickerRef} className={`fixed top-28 right-8 z-[9999] no-print ${isStickerDragging ? 'cursor-grabbing' : 'cursor-grab'}`} style={{ transform: `translate3d(${stickerPos.current.x}px, ${stickerPos.current.y}px, 0)`, transition: 'none', willChange: 'transform', touchAction: 'none' }} onMouseDown={handleStickerMouseDown}>
           <div className={`relative w-[340px] ${isNavigatorRolledUp ? 'p-3' : 'p-5'} bg-white dark:bg-neutral-800 shadow-[0_12px_40px_rgb(0,0,0,0.15)] border border-[#e9e9e7] dark:border-neutral-700 rounded-xl select-none transition-all duration-200 ${isStickerDragging ? 'scale-[1.02]' : ''}`}>
             <div className="flex items-center justify-between mb-1">
@@ -1361,6 +1387,7 @@ function App() {
         );
       })()}
     </div>
+    </>
   );
 }
 
