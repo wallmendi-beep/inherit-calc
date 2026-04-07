@@ -922,10 +922,34 @@ function App() {
                   const parentHeirs = activeTabObj.parentNode?.heirs || [];
                   const existingNames = new Set(nodeHeirs.map(h => h.name).filter(n => n.trim() !== ''));
                   let baseAdd = [];
-                  if (['wife', 'husband'].includes(currentNode.relation)) { const children = parentHeirs.filter(s => s.relation === 'son' || s.relation === 'daughter'); baseAdd = children.filter(c => c.name.trim() === '' || !existingNames.has(c.name)); }
-                  else { const siblings = parentHeirs.filter(s => s.id !== currentNode.id && (s.relation === 'son' || s.relation === 'daughter')); baseAdd = siblings.filter(s => s.name.trim() === '' || !existingNames.has(s.name)).map(item => ({ ...item, relation: 'sibling' })); }
+                  
+                  if (['wife', 'husband', 'spouse'].includes(currentNode.relation)) { 
+                    const children = parentHeirs.filter(s => ['son', 'daughter'].includes(s.relation)); 
+                    baseAdd = children.filter(c => c.name.trim() === '' || !existingNames.has(c.name)); 
+                  } else { 
+                    // 부모(피상속인의 배우자)와 형제자매를 모두 가져옴
+                    const parents = parentHeirs.filter(s => ['wife', 'husband', 'spouse'].includes(s.relation));
+                    const siblings = parentHeirs.filter(s => s.id !== currentNode.id && ['son', 'daughter'].includes(s.relation)); 
+                    baseAdd = [
+                      ...parents.map(item => ({ ...item, relation: 'parent' })),
+                      ...siblings.map(item => ({ ...item, relation: 'sibling' }))
+                    ].filter(s => s.name.trim() === '' || !existingNames.has(s.name)); 
+                  }
+                  
                   if (baseAdd.length === 0) { alert('불러올 상속인이 없습니다.'); return; }
-                  setTree(prev => { const syncHeirs = (n) => { if (n.id === currentNode.id || (currentNode.personId && n.personId === currentNode.personId)) { const finalAdd = baseAdd.map(item => { const assignNewIds = (node) => ({ ...node, id: `n_${Math.random().toString(36).substr(2,9)}`, heirs: node.heirs?.map(assignNewIds) || [] }); return assignNewIds(item); }); return { ...n, isExcluded: false, heirs: [...(n.heirs || []), ...finalAdd] }; } return { ...n, heirs: n.heirs?.map(syncHeirs) || [] }; }; return syncHeirs(prev); });
+                  setTree(prev => { 
+                    const syncHeirs = (n) => { 
+                      if (n.id === currentNode.id || (currentNode.personId && n.personId === currentNode.personId)) { 
+                        const finalAdd = baseAdd.map(item => { 
+                          const assignNewIds = (node) => ({ ...node, id: `n_${Math.random().toString(36).substr(2,9)}`, heirs: node.heirs?.map(assignNewIds) || [] }); 
+                          return assignNewIds(item); 
+                        }); 
+                        return { ...n, isExcluded: false, heirs: [...(n.heirs || []), ...finalAdd] }; 
+                      } 
+                      return { ...n, heirs: n.heirs?.map(syncHeirs) || [] }; 
+                    }; 
+                    return syncHeirs(prev); 
+                  });
                 };
                 return (
                   <div className="space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-400 flex flex-col flex-1">
