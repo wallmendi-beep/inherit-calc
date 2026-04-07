@@ -1276,24 +1276,25 @@ function App() {
 
   // 🧭 스마트 가이드 엔진 호출 (분석 로직 외부 분리)
   const guideInfo = useSmartGuide(tree, finalShares, activeTab, warnings);
+  
+  // 💡 [v3.0] 가이드 정보 구조 분해 할당
+  const { 
+    showGlobalWarning, showAutoCalcNotice, globalMismatchReasons, 
+    autoCalculatedNames, noSurvivors 
+  } = guideInfo || {};
 
-  // 💡 [다중 배우자 감지 센서]
+  // 💡 [배우자 중복 감지 센서]
   const multipleSpouseGuides = useMemo(() => {
     const guides = [];
     const checkSpouses = (node) => {
-      // 스위치가 켜져 있는(상속권이 있는) 배우자들만 수집
-      const activeSpouses = (node.heirs || []).filter(h => 
-        ['wife', 'husband', 'spouse'].includes(h.relation) && !h.isExcluded
-      );
-
-      // 배우자가 2명 이상이면 가이드 생성!
-      if (activeSpouses.length > 1) {
-        const spouseNames = activeSpouses.map(s => s.name || '(이름없음)').join(', ');
+      const spouses = (node.heirs || []).filter(h => ['wife', 'husband', 'spouse'].includes(h.relation) && !h.isExcluded);
+      if (spouses.length > 1) {
         guides.push({
-          id: node.id, // 부모 탭으로 바로가기
-          uniqueKey: `multi-spouse-${node.id}`,
-          type: 'mandatory', // 필수 경고
-          text: `[${node.name || '피상속인'}]의 배우자가 2명 이상(${spouseNames}) 활성화되어 있습니다. 전혼/이혼 여부를 확인하여 한 분의 스위치를 꺼주세요.`
+          id: `tab:${node.personId}`, // 🎯 픽스 1: 부모 탭이 아닌 문제를 해결할 '내 탭'으로 0.1초 만에 직행!
+          uniqueKey: `multi-spouse-${node.personId}`, 
+          targetTabId: node.personId, 
+          type: 'mandatory',
+          text: `[${node.name || '이름없음'}]님의 배우자가 2명 이상입니다. 유효한 배우자 1명을 제외하고 나머지는 스위치를 조작해 제외 처리해 주세요.`
         });
       }
       if (node.heirs) node.heirs.forEach(checkSpouses);
@@ -1302,99 +1303,99 @@ function App() {
     return guides;
   }, [tree]);
 
-  // 💡 [호주 상속인 미지정 감지 센서] 
+  // 💡 [호주 누락 감지 센서]
   const hojuMissingGuides = useMemo(() => {
     const guides = [];
-
-    // 1. 피상속인(root) 사망일이 1991년 이전이고, 호주제가 살아있던 때인지 확인
-    const lawEra = getLawEra(tree.deathDate);
-    const isHojuEra = lawEra !== '1991'; 
-
-    if (isHojuEra) {
-      // 2. 현재 트리 전체에서 isHoju: true인 사람이 한 명이라도 있는지 체크
-      let hasHoju = false;
-      const scanHoju = (node) => {
-        if (node.isHoju === true) hasHoju = true;
-        if (!hasHoju && node.heirs) node.heirs.forEach(scanHoju);
-      };
-      scanHoju(tree);
-
-      // 3. 호주 상속 시대인데 호주가 없다면? 경고 발동!
-      if (!hasHoju) {
-        guides.push({
-          id: 'root', // 피상속인 탭으로 바로가기
-          uniqueKey: `missing-hoju-root`,
-          type: 'mandatory', // 빨간색 필수 조치 아이콘
-          text: `[${getLawEra(tree.deathDate)}년 법률 적용] 호주 상속인(장남 등)이 지정되지 않았습니다. 지분 5할 가산을 위해 호주 승계인을 선택해 주세요.`
-        });
+    const checkHoju = (node) => {
+      if (node.isDeceased && node.heirs && node.heirs.length > 0) {
+        // 🚨 픽스 2: 피상속인이 여성(딸, 처 등)인 경우 가이드가 호주 지정을 강요하지 않습니다!
+        const isFemale = ['wife', 'daughter', 'mother', 'sister', '처', '배우자'].includes(node.relation) || node.gender === 'female';
+        
+        // 남성이거나, 예외적으로 본인이 직접 호주 지위를 가지고 있었던 경우에만 호주 누락을 검사합니다.
+        if (!isFemale || node.isHoju) {
+          const hasHoju = node.heirs.some(h => h.isHoju && !h.isExcluded);
+          const needsHoju = getLawEra(node.deathDate) !== '1991';
+          if (needsHoju && !hasHoju) {
+            guides.push({
+              id: `tab:${node.personId}`, // 🎯 픽스 1: '내 탭'으로 다이렉트 점프
+              uniqueKey: `missing-hoju-${node.personId}`,
+              targetTabId: node.personId, 
+              type: 'mandatory',
+              text: `[${node.name || '이름없음'}]님의 상속인 중 호주상속인이 없습니다. 호주 스위치를 켜주세요.`
+            });
+          }
+        }
       }
-    }
+      if (node.heirs) node.heirs.forEach(checkHoju);
+    };
+    checkHoju(tree);
     return guides;
   }, [tree]);
 
   // 💡 [논리 불일치 감지 센서: 날짜 데이터 vs UI 스위치 상태]
   const logicalMismatchGuides = useMemo(() => {
     const guides = [];
-    
-    const checkMismatch = (node, parentDeathDate) => {
+    const checkMismatch = (node, parentDeathDate, parentPersonId) => {
       const effectiveDate = parentDeathDate || tree.deathDate;
 
-      // 🚨 불일치 1: 출가녀 (혼인일자가 기준일보다 빠른데 스위치가 '동일'인 경우)
       if (node.relation === 'daughter' && node.marriageDate && effectiveDate) {
         const isMarriedBeforeDeath = isBefore(node.marriageDate, effectiveDate);
         if (isMarriedBeforeDeath && node.isSameRegister !== false) {
           guides.push({
-            id: node.id, // 클릭 시 해당 탭으로 바로가기
-            uniqueKey: `mismatch-married-${node.id}`,
-            type: 'mandatory', // 필수 조치 경고
+            id: node.id,
+            uniqueKey: `mismatch-married-${node.personId}`,
+            targetTabId: parentPersonId, // 🎯 내 스위치를 끄는 거니까 나를 포함하고 있는 '부모 탭'으로 이동!
+            type: 'mandatory',
             text: `[${node.name || '이름없음'}]님의 혼인일자(${node.marriageDate})가 상속개시일(${effectiveDate})보다 빠르지만, 스위치가 [동일]로 되어 있습니다. 확인 후 [출가]로 변경해 주세요.`
           });
         }
       }
 
-      // 🚨 불일치 2: 대습상속 (사망일자가 기준일보다 빠른데 대습상속 스위치가 안 켜져 있는 경우)
       const isSpouse = ['wife', 'husband', 'spouse'].includes(node.relation);
       if (node.deathDate && effectiveDate && isBefore(node.deathDate, effectiveDate) && !isSpouse) {
         if (!node.isExcluded) {
           guides.push({
             id: node.id,
-            uniqueKey: `mismatch-predeceased-${node.id}`,
+            uniqueKey: `mismatch-predeceased-${node.personId}`,
+            targetTabId: parentPersonId, // 🎯 마찬가지로 부모 탭으로 이동!
             type: 'mandatory',
             text: `[${node.name || '이름없음'}]님의 사망일자(${node.deathDate})가 상속개시일(${effectiveDate})보다 빠릅니다. 대습상속 처리를 위해 스위치를 조작하여 [상속권 없음/대습상속]으로 변경해 주세요.`
           });
         }
       }
 
-      // 하위 자녀들도 계속 스캔 (기준일은 재상속 여부에 따라 갱신)
       if (node.heirs) {
         node.heirs.forEach(h => {
            let nextEffectiveDate = effectiveDate;
            if (node.deathDate && !isBefore(node.deathDate, effectiveDate)) {
               nextEffectiveDate = node.deathDate;
            }
-           checkMismatch(h, nextEffectiveDate);
+           checkMismatch(h, nextEffectiveDate, node.personId); 
         });
       }
     };
     
-    if (tree.heirs) tree.heirs.forEach(h => checkMismatch(h, tree.deathDate));
-    
+    if (tree.heirs) tree.heirs.forEach(h => checkMismatch(h, tree.deathDate, tree.personId));
     return guides;
   }, [tree]);
 
-  // 기존 가이드와 다중 배우자 경고를 하나로 합침
-  const { 
-    showGlobalWarning, showAutoCalcNotice, globalMismatchReasons, 
-    autoCalculatedNames, noSurvivors 
-  } = guideInfo;
-
-  const smartGuides = [
+  // 🚨 [핵심 픽스: 분신(Clone) 중복 경고 완벽 제거]
+  const rawSmartGuides = [
     ...(guideInfo.smartGuides || []), 
     ...multipleSpouseGuides,
     ...hojuMissingGuides,
     ...logicalMismatchGuides
   ];
-  const hasActionItems = guideInfo.hasActionItems || multipleSpouseGuides.length > 0 || hojuMissingGuides.length > 0 || logicalMismatchGuides.length > 0;  // ------------------------------------------------------------------
+
+  const uniqueGuidesMap = new Map();
+  rawSmartGuides.forEach(g => {
+    const key = g.uniqueKey || g.text; // 자체 고유키(personId 기반)가 있으면 그걸 쓰고, 없으면 텍스트 내용으로 거름
+    if (!uniqueGuidesMap.has(key)) {
+      uniqueGuidesMap.set(key, g);
+    }
+  });
+  const smartGuides = Array.from(uniqueGuidesMap.values());
+  const hasActionItems = (guideInfo?.hasActionItems) || smartGuides.length > 0;  // ------------------------------------------------------------------
   // 💡 사용자가 [X]를 눌러 숨긴 권고 가이드를 기억하는 메모리
   const [hiddenGuideKeys, setHiddenGuideKeys] = useState(new Set());
   const dismissGuide = (key) => setHiddenGuideKeys(prev => new Set(prev).add(key));
@@ -1798,13 +1799,28 @@ function App() {
                     </div>
                   )}
 
-                  {/* 🚨 하드 엔진 경고 (내비게이션 지원) */}
                   {activeTab === 'input' && warnings.map((w, i) => (
                     <div 
                       key={`w-${i}`} 
                       onClick={() => {
-                        if (w.id) {
-                          handleNavigate(w.id); // 💡 클릭 시 수정을 위해 해당 부모 탭으로 즉시 이동
+                        // 💡 1순위: 가이드가 '이 문제를 해결할 최적의 탭(targetTabId)'을 지정했다면 무조건 그곳으로 직행!
+                        if (w.targetTabId && deceasedTabs.some(t => t.id === w.targetTabId)) {
+                          setActiveDeceasedTab(w.targetTabId);
+                        } 
+                        // 2순위: 지정된 목적지가 없다면, 기존 방식대로 해당 노드가 위치한 부모 탭을 역추적해서 이동
+                        else if (w.id) {
+                          const findParentTab = (n, currentTabId) => {
+                            if (n.id === w.id) return currentTabId;
+                            if (n.heirs) {
+                              for (let h of n.heirs) {
+                                const found = findParentTab(h, (n.isDeceased && n.heirs.length > 0) ? n.id : currentTabId);
+                                if (found) return found;
+                              }
+                            }
+                            return null;
+                          };
+                          const tabId = findParentTab(tree, 'root');
+                          if (tabId) setActiveDeceasedTab(tabId);
                         }
                       }}
                       className={`pointer-events-auto flex items-start gap-2 p-2.5 bg-red-50/50 dark:bg-red-900/10 rounded-lg border border-red-100 dark:border-red-800/30 mt-2 transition-all ${w.id ? 'cursor-pointer hover:bg-red-100/60 dark:hover:bg-red-900/20' : ''}`}
@@ -1821,7 +1837,27 @@ function App() {
                     <button 
                       key={`m-${i}`} 
                       onMouseDown={(e) => e.stopPropagation()}
-                      onClick={() => handleNavigate(g.id)}
+                      onClick={() => {
+                        // 💡 1순위: 가이드가 '이 문제를 해결할 최적의 탭(targetTabId)'을 지정했다면 무조건 그곳으로 직행!
+                        if (g.targetTabId && deceasedTabs.some(t => t.id === g.targetTabId)) {
+                          setActiveDeceasedTab(g.targetTabId);
+                        } 
+                        // 2순위: 지정된 목적지가 없다면, 기존 방식대로 해당 노드가 위치한 부모 탭을 역추적해서 이동
+                        else if (g.id) {
+                          const findParentTab = (n, currentTabId) => {
+                            if (n.id === g.id) return currentTabId;
+                            if (n.heirs) {
+                              for (let h of n.heirs) {
+                                const found = findParentTab(h, (n.isDeceased && n.heirs.length > 0) ? n.id : currentTabId);
+                                if (found) return found;
+                              }
+                            }
+                            return null;
+                          };
+                          const tabId = findParentTab(tree, 'root');
+                          if (tabId) setActiveDeceasedTab(tabId);
+                        }
+                      }}
                       className="w-full mt-2 text-left flex items-start gap-2 bg-blue-50/60 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200/60 dark:border-blue-800/30 hover:bg-blue-100/80 transition-all group pointer-events-auto shadow-sm"
                     >
                       <span className="mt-0.5 text-blue-600 group-hover:scale-125 transition-transform">👉</span>
@@ -1847,7 +1883,24 @@ function App() {
                         >
                           <button 
                             onMouseDown={(e) => e.stopPropagation()}
-                            onClick={() => handleNavigate(g.id)}
+                            onClick={() => {
+                              if (g.targetTabId && deceasedTabs.some(t => t.id === g.targetTabId)) {
+                                setActiveDeceasedTab(g.targetTabId);
+                              } else if (g.id) {
+                                const findParentTab = (n, currentTabId) => {
+                                  if (n.id === g.id) return currentTabId;
+                                  if (n.heirs) {
+                                    for (let h of n.heirs) {
+                                      const found = findParentTab(h, (n.isDeceased && n.heirs.length > 0) ? n.id : currentTabId);
+                                      if (found) return found;
+                                    }
+                                  }
+                                  return null;
+                                };
+                                const tabId = findParentTab(tree, 'root');
+                                if (tabId) setActiveDeceasedTab(tabId);
+                              }
+                            }}
                             className="w-full text-left flex items-start gap-2 bg-[#fbfbfb] dark:bg-neutral-800/40 p-2.5 rounded-lg border border-[#e9e9e7] dark:border-neutral-700 hover:bg-[#f2f2f0] transition-all"
                           >
                             <span className="mt-0.5 text-[#a3a3a3] group-hover:text-amber-500 transition-colors">💡</span>
