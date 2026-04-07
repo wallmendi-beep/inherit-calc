@@ -856,27 +856,106 @@ function App() {
         </div>
       </main>
       {showScrollTop && <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] bg-white/60 dark:bg-neutral-800/60 backdrop-blur-md border border-white/20 dark:border-neutral-700/30 text-[#2383e2] dark:text-blue-400 px-5 py-2.5 rounded-full shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center gap-2 text-[13px] font-bold no-print"><span className="text-[16px]">↑</span> 맨 위로</button>}
-      {isAiModalOpen && (() => {
-        const targetTab = deceasedTabs.find(t => t.id === aiTargetId); const targetName = aiTargetId === 'root' ? '전체 가계도' : `[${targetTab?.name || '상속인'}] 하위`;
-        return (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-              <div className="px-6 py-4 border-b border-gray-200 dark:border-neutral-700 flex justify-between items-center bg-indigo-50 dark:bg-indigo-900/30"><h2 className="text-lg font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-2"><span>✨</span> {targetName} AI 자동 입력기 <span className="text-sm font-medium opacity-70 ml-1">(제적등본 / 가계도)</span></h2><button onClick={() => setIsAiModalOpen(false)} className="text-gray-400 hover:text-gray-600"><IconX className="w-6 h-6" /></button></div>
-              <div className="p-6 overflow-y-auto flex-1">
-                <div className="mb-6 p-4 bg-gray-50 dark:bg-neutral-700/50 rounded-lg border border-gray-200 dark:border-neutral-600"><h3 className="font-bold text-gray-800 dark:text-gray-200 mb-2">1단계: 명령어 복사하기</h3><p className="text-sm text-gray-600 dark:text-gray-400 mb-3 leading-relaxed">아래 버튼을 눌러 명령어를 복사한 후, <b>뤼튼, ChatGPT, 클로드, 제미나이</b> 앱에 문서 사진과 함께 붙여넣으세요.<br/><span className="text-indigo-600 dark:text-indigo-400 font-medium">※ 공문서(제적등본, 가족관계증명서)는 물론, 신청인이 직접 손으로 그린 가계도 등 사문서 사진도 완벽하게 인식합니다!</span></p>
-                  {(() => {
-                    const aiPromptText = `첨부한 문서(제적등본, 가족관계증명서, 가계도 메모 등) 사진을 보고, 아래 JSON 양식에 맞춰 가족 관계를 추출해줘.\n\n[규칙]\n1. 중심 인물(망인)을 기준으로 남자는 "son", 여자는 "daughter", 배우자는 "wife" 또는 "husband"로 작성해.\n2. 사망자는 isDeceased를 true로 하고, deathDate를 "YYYY-MM-DD" 형태로 넣어.\n3. 🚨 [중요] 제적등본에 전처, 후처 등 배우자가 여러 명 기재되어 있다면 임의로 판단/삭제하지 말고 문서에 있는 대로 일단 전부 다 입력해!\n4. 문서에 출가일(혼인일)이 있으면 marriageDate에, 재혼일이 있으면 remarriageDate에 "YYYY-MM-DD" 형태로 기재해.\n5. 자녀들은 반드시 해당 부모의 heirs 배열 안에 정확히 넣어.\n6. 응답은 무조건 JSON 코드 블록으로만 출력해. 다른 설명은 절대 하지마.\n\n[출력 예시]\n{\n  "name": "홍길동", "isDeceased": true, "deathDate": "1980-01-01",\n  "heirs": [\n    { "name": "이갑순", "relation": "wife", "isDeceased": true, "deathDate": "1975-01-01" },\n    { "name": "박을녀", "relation": "wife", "remarriageDate": "1985-05-05" },\n    { "name": "홍바다", "relation": "daughter", "marriageDate": "1995-10-20" }\n  ]\n}`;
-                    return (<div className="flex flex-col gap-2"><div className="flex items-center gap-2"><button type="button" onClick={() => navigator.clipboard.writeText(aiPromptText).then(() => alert('✅ 명령어가 복사되었습니다!'))} className="flex-1 py-2.5 bg-white dark:bg-neutral-800 border-2 border-indigo-500 text-indigo-600 dark:text-indigo-400 rounded-md font-bold hover:bg-indigo-50 transition-colors shadow-sm">📋 명령어 복사하기</button><button type="button" onClick={() => setShowQrCode(!showQrCode)} className="flex-1 py-2.5 border-2 border-blue-500 bg-white dark:bg-neutral-800 text-blue-600 dark:text-blue-400 rounded-md font-bold hover:bg-blue-50 shadow-sm">{showQrCode ? '🙈 QR 숨기기' : '📱 스마트폰 QR 전송'}</button></div>{showQrCode && <div className="mt-4 flex flex-col items-center justify-center p-6 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-lg shadow-inner"><div className="p-3 bg-white rounded-xl shadow-sm"><QRCodeSVG value={aiPromptText} size={220} level="L" includeMargin={true} /></div><p className="mt-4 text-sm text-gray-600 dark:text-gray-300 font-medium text-center">스마트폰 카메라로 스캔하세요.<br/><span className="text-blue-500 font-bold">인터넷 없이도</span> 프롬프트가 복사됩니다!</p></div>}</div>);
-                  })()}
+        {isAiModalOpen && (() => {
+          const targetTab = deceasedTabs.find(t => t.id === aiTargetId); 
+          const targetName = aiTargetId === 'root' ? '전체 가계도' : `[${targetTab?.name || '상속인'}] 하위`;
+          return (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+              <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                <div className="px-6 py-4 border-b border-gray-200 dark:border-neutral-700 flex justify-between items-center bg-indigo-50 dark:bg-indigo-900/30">
+                  <h2 className="text-lg font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-2">
+                    <span>✨</span> {targetName} AI 자동 입력기 <span className="text-sm font-medium opacity-70 ml-1">(제적등본 / 가계도)</span>
+                  </h2>
+                  <button onClick={() => setIsAiModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                    <IconX className="w-6 h-6" />
+                  </button>
                 </div>
-                <div><h3 className="font-bold text-gray-800 dark:text-gray-200 mb-2">2단계: 결과 데이터 붙여넣기</h3><textarea value={aiInputText} onChange={(e) => setAiInputText(e.target.value)} placeholder="AI가 만들어준 코드를 붙여넣으세요." className="w-full h-48 p-3 border border-gray-300 dark:border-neutral-600 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-mono bg-white dark:bg-neutral-900 text-gray-800 dark:text-gray-200" /></div>
+                <div className="p-6 overflow-y-auto flex-1">
+                  <div className="mb-6 p-4 bg-gray-50 dark:bg-neutral-700/50 rounded-lg border border-gray-200 dark:border-neutral-600">
+                    <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-2">1단계: 명령어 복사하기</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 leading-relaxed">
+                      아래 버튼을 눌러 명령어를 복사한 후, <b>뤼튼, ChatGPT, 클로드, 제미나이</b> 앱에 문서 사진과 함께 붙여넣으세요.<br/>
+                      <span className="text-indigo-600 dark:text-indigo-400 font-medium">※ 공문서(제적등본, 가족관계증명서)는 물론, 신청인이 직접 손으로 그린 가계도 등 사문서 사진도 완벽하게 인식합니다!</span>
+                    </p>
+                    {(() => {
+                      const aiPromptText = `첨부한 문서(제적등본, 가족관계증명서, 가계도 메모 등) 사진을 보고, 아래 JSON 양식에 맞춰 가족 관계를 추출해줘.\n\n[규칙]\n1. 중심 인물(망인)을 기준으로 남자는 "son", 여자는 "daughter", 배우자는 "wife" 또는 "husband"로 작성해.\n2. 사망자는 isDeceased를 true로 하고, deathDate를 "YYYY-MM-DD" 형태로 넣어.\n3. 🚨 [중요] 제적등본에 전처, 후처 등 배우자가 여러 명 기재되어 있다면 임의로 판단/삭제하지 말고 문서에 있는 대로 일단 전부 다 입력해!\n4. 문서에 출가일(혼인일)이 있으면 marriageDate에, 재혼일이 있으면 remarriageDate에 "YYYY-MM-DD" 형태로 기재해.\n5. 자녀들은 반드시 해당 부모의 heirs 배열 안에 정확히 넣어.\n6. 응답은 무조건 JSON 코드 블록으로만 출력해. 다른 설명은 절대 하지마.\n\n[출력 예시]\n{\n  "name": "홍길동", "isDeceased": true, "deathDate": "1980-01-01",\n  "heirs": [\n    { "name": "이갑순", "relation": "wife", "isDeceased": true, "deathDate": "1975-01-01" },\n    { "name": "박을녀", "relation": "wife", "remarriageDate": "1985-05-05" },\n    { "name": "홍바다", "relation": "daughter", "marriageDate": "1995-10-20" }\n  ]\n}`;
+                      return (
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2">
+                            <button type="button" onClick={() => navigator.clipboard.writeText(aiPromptText).then(() => alert('✅ 명령어가 복사되었습니다!'))} className="flex-1 py-2.5 bg-white dark:bg-neutral-800 border-2 border-indigo-500 text-indigo-600 dark:text-indigo-400 rounded-md font-bold hover:bg-indigo-50 transition-colors shadow-sm">📋 명령어 복사하기</button>
+                            <button type="button" onClick={() => setShowQrCode(!showQrCode)} className="flex-1 py-2.5 border-2 border-blue-500 bg-white dark:bg-neutral-800 text-blue-600 dark:text-blue-400 rounded-md font-bold hover:bg-blue-50 shadow-sm">{showQrCode ? '🙈 QR 숨기기' : '📱 스마트폰 QR 전송'}</button>
+                          </div>
+                          {showQrCode && (
+                            <div className="mt-4 flex flex-col items-center justify-center p-6 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-lg shadow-inner">
+                              <div className="p-3 bg-white rounded-xl shadow-sm"><QRCodeSVG value={aiPromptText} size={220} level="L" includeMargin={true} /></div>
+                              <p className="mt-4 text-sm text-gray-600 dark:text-gray-300 font-medium text-center">스마트폰 카메라로 스캔하세요.<br/><span className="text-blue-500 font-bold">인터넷 없이도</span> 프롬프트가 복사됩니다!</p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  <div><h3 className="font-bold text-gray-800 dark:text-gray-200 mb-2">2단계: 결과 데이터 붙여넣기</h3><textarea value={aiInputText} onChange={(e) => setAiInputText(e.target.value)} placeholder="AI가 만들어준 코드를 붙여넣으세요." className="w-full h-48 p-3 border border-gray-300 dark:border-neutral-600 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-mono bg-white dark:bg-neutral-900 text-gray-800 dark:text-gray-200" /></div>
+                </div>
+                <div className="p-4 border-t border-gray-200 dark:border-neutral-700 flex justify-end gap-2 bg-gray-50 dark:bg-neutral-800/50">
+                  <button onClick={() => setIsAiModalOpen(false)} className="px-4 py-2 text-gray-600 font-medium hover:bg-gray-200 rounded-md transition-colors">취소</button>
+                  <button 
+                    onClick={() => {
+                      try {
+                        const cleanJson = aiInputText.replace(/```json/g, '').replace(/```/g, '').trim();
+                        const parsedTree = JSON.parse(cleanJson);
+                        const processAiData = (node) => {
+                          if (Array.isArray(node)) { node.forEach(processAiData); return; }
+                          if (!node.id) node.id = `ai_${Math.random().toString(36).substr(2, 9)}`;
+                          if (node.heirs && node.heirs.length > 0) { node.isExcluded = true; node.exclusionOption = 'predeceased'; }
+                          if (node.heirs) node.heirs.forEach(processAiData);
+                        };
+                        processAiData(parsedTree);
+                        if (aiTargetId === 'root') setTree({ ...parsedTree, id: 'root' });
+                        else {
+                          const targetRawIds = [];
+                          const findRawIds = (n) => { if (n.id === aiTargetId || n.personId === aiTargetId) targetRawIds.push(n.id); if (n.heirs) n.heirs.forEach(findRawIds); };
+                          findRawIds(tree);
+                          setTree(prev => {
+                            const injectHeirs = (n) => {
+                              if (targetRawIds.includes(n.id)) {
+                                const generateNewHeirs = (heirsArray) => (heirsArray || []).map(h => ({ ...h, id: `ai_${Math.random().toString(36).substr(2, 9)}`, heirs: generateNewHeirs(h.heirs || []) }));
+                                const sourceHeirs = Array.isArray(parsedTree) ? parsedTree : (parsedTree.heirs || []);
+                                const newHeirs = generateNewHeirs(sourceHeirs);
+                                const nodeUpdates = {};
+                                if (!Array.isArray(parsedTree)) { if (parsedTree.deathDate) nodeUpdates.deathDate = parsedTree.deathDate; if (parsedTree.marriageDate) nodeUpdates.marriageDate = parsedTree.marriageDate; if (parsedTree.remarriageDate) nodeUpdates.remarriageDate = parsedTree.remarriageDate; if (parsedTree.isDeceased !== undefined) nodeUpdates.isDeceased = parsedTree.isDeceased; }
+                                if (newHeirs.length > 0) { nodeUpdates.isExcluded = true; nodeUpdates.exclusionOption = 'predeceased'; }
+                                return { ...n, ...nodeUpdates, heirs: [...(n.heirs || []), ...newHeirs] };
+                              }
+                              return { ...n, heirs: n.heirs?.map(injectHeirs) || [] };
+                            };
+                            return injectHeirs(prev);
+                          });
+                        }
+                        setIsAiModalOpen(false); setAiInputText(""); alert(`✨ 성공적으로 자동 입력되었습니다!`);
+                      } catch (error) { alert("🚨 데이터 형식이 잘못되었습니다."); }
+                    }}
+                    className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md font-bold shadow-md transition-colors"
+                  >
+                    🚀 상속인 자동 입력
+                  </button>
+                </div>
               </div>
-              <div className="p-4 border-t border-gray-200 dark:border-neutral-700 flex justify-end gap-2 bg-gray-50 dark:bg-neutral-800/50"><button onClick={() => setIsAiModalOpen(false)} className="px-4 py-2 text-gray-600 font-medium hover:bg-gray-200 rounded-md transition-colors">취소</button><button onClick={() => { try { const cleanJson = aiInputText.replace(/```json/g, '').replace(/```/g, '').trim(); const parsedTree = JSON.parse(cleanJson); const processAiData = (node) => { if (Array.isArray(node)) { node.forEach(processAiData); return; } if (!node.id) node.id = `ai_${Math.random().toString(36).substr(2, 9)}`; if (node.heirs && node.heirs.length > 0) { node.isExcluded = true; node.exclusionOption = 'predeceased'; } if (node.heirs) node.heirs.forEach(processAiData); }; processAiData(parsedTree); if (aiTargetId === 'root') setTree({ ...parsedTree, id: 'root' }); else { const targetRawIds = []; const findRawIds = (n) => { if (n.id === aiTargetId || n.personId === aiTargetId) targetRawIds.push(n.id); if (n.heirs) n.heirs.forEach(findRawIds); }; findRawIds(tree); setTree(prev => { const injectHeirs = (n) => { if (targetRawIds.includes(n.id)) { const generateNewHeirs = (heirsArray) => (heirsArray || []).map(h => ({ ...h, id: `ai_${Math.random().toString(36).substr(2, 9)}`, heirs: generateNewHeirs(h.heirs || []) })); const sourceHeirs = Array.isArray(parsedTree) ? parsedTree : (parsedTree.heirs || []); const newHeirs = generateNewHeirs(sourceHeirs); const nodeUpdates = {}; if (!Array.isArray(parsedTree)) { if (parsedTree.deathDate) nodeUpdates.deathDate = parsedTree.deathDate; if (parsedTree.marriageDate) nodeUpdates.marriageDate = parsedTree.marriageDate; if (parsedTree.remarriageDate) nodeUpdates.remarriageDate = parsedTree.remarriageDate; if (parsedTree.isDeceased !== undefined) nodeUpdates.isDeceased = parsedTree.isDeceased; } if (newHeirs.length > 0) { nodeUpdates.isExcluded = true; nodeUpdates.exclusionOption = 'predeceased'; } return { ...n, ...nodeUpdates, heirs: [...(n.heirs || []), ...newHeirs] }; } return { ...n, heirs: n.heirs?.map(injectHeirs) || [] }; }; return injectHeirs(prev); }); } setIsAiModalOpen(false); setAiInputText(""); alert(`✨ 성공적으로 자동 입력되었습니다!`); } catch (error) { alert("🚨 데이터 형식이 잘못되었습니다."); } }} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md font-bold shadow-md transition-colors">🚀 상속인 자동 입력</button></div>
+            </div>
+          );
+        })()}
+      {isResetModalOpen && (
+        <div className="fixed inset-0 bg-black/40 z-[9999] flex items-center justify-center no-print text-[#37352f]">
+          <div className="bg-white p-8 rounded-lg shadow-xl max-w-sm w-full mx-4 animate-in fade-in zoom-in duration-200 border border-[#e9e9e7]">
+            <h2 className="text-xl font-bold mb-2">새 작업 시작</h2>
+            <p className="text-[14px] text-[#787774] mb-6">현재 작성 중인 모든 데이터가 삭제됩니다.<br/>어떻게 처리할까요?</p>
+            <div className="flex flex-col gap-2">
+              <button onClick={() => performReset(true)} className="w-full py-2.5 bg-[#2383e2] hover:bg-[#0073ea] text-white font-medium rounded transition-colors text-[14px]">백업 저장 후 초기화</button>
+              <button onClick={() => performReset(false)} className="w-full py-2.5 bg-[#ffe2dd] hover:bg-[#ffc1b8] text-[#d44c47] font-medium rounded transition-colors text-[14px]">저장 없이 그냥 초기화</button>
+              <button onClick={() => setIsResetModalOpen(false)} className="w-full py-2.5 mt-2 bg-white border border-[#d4d4d4] hover:bg-[#efefed] text-[#37352f] font-medium rounded transition-colors text-[14px]">취소</button>
             </div>
           </div>
-        )()}
-      {isResetModalOpen && (
-        <div className="fixed inset-0 bg-black/40 z-[9999] flex items-center justify-center no-print text-[#37352f]"><div className="bg-white p-8 rounded-lg shadow-xl max-w-sm w-full mx-4 animate-in fade-in zoom-in duration-200 border border-[#e9e9e7]"><h2 className="text-xl font-bold mb-2">새 작업 시작</h2><p className="text-[14px] text-[#787774] mb-6">현재 작성 중인 모든 데이터가 삭제됩니다.<br/>어떻게 처리할까요?</p><div className="flex flex-col gap-2"><button onClick={() => performReset(true)} className="w-full py-2.5 bg-[#2383e2] hover:bg-[#0073ea] text-white font-medium rounded transition-colors text-[14px]">백업 저장 후 초기화</button><button onClick={() => performReset(false)} className="w-full py-2.5 bg-[#ffe2dd] hover:bg-[#ffc1b8] text-[#d44c47] font-medium rounded transition-colors text-[14px]">저장 없이 그냥 초기화</button><button onClick={() => setIsResetModalOpen(false)} className="w-full py-2.5 mt-2 bg-white border border-[#d4d4d4] hover:bg-[#efefed] text-[#37352f] font-medium rounded transition-colors text-[14px]">취소</button></div></div></div>
+        </div>
       )}
       {syncRequest && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center no-print text-[#37352f]"><div className="bg-white p-8 rounded-lg shadow-xl max-w-sm w-full mx-4 animate-in fade-in zoom-in duration-200 border border-[#e9e9e7]"><h2 className="text-xl font-bold mb-2">동일 인물 정보 동기화</h2><p className="text-[14px] text-[#787774] mb-6"><span className="font-bold text-[#0b6e99]">{syncRequest.name}</span>님의 정보를 변경하셨습니다.<br/>가계도 내의 다른 <span className="font-bold text-[#0b6e99]">{syncRequest.name}</span>님의 동일 정보도 같이 수정할까요?</p><div className="flex flex-col gap-2"><button onClick={() => handleSyncConfirm(true)} className="w-full py-2.5 bg-[#2383e2] hover:bg-[#0073ea] text-white font-medium rounded transition-colors text-[14px]">예, 모두 동기화합니다</button><button onClick={() => handleSyncConfirm(false)} className="w-full py-2.5 bg-white border border-[#d4d4d4] hover:bg-[#efefed] text-[#37352f] font-medium rounded transition-colors text-[14px]">아니요, 현재 인물만 수정합니다</button></div></div></div>
