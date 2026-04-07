@@ -1838,24 +1838,13 @@ function App() {
                       key={`m-${i}`} 
                       onMouseDown={(e) => e.stopPropagation()}
                       onClick={() => {
-                        // 💡 1순위: 가이드가 '이 문제를 해결할 최적의 탭(targetTabId)'을 지정했다면 무조건 그곳으로 직행!
-                        if (g.targetTabId && deceasedTabs.some(t => t.id === g.targetTabId)) {
-                          setActiveDeceasedTab(g.targetTabId);
-                        } 
-                        // 2순위: 지정된 목적지가 없다면, 기존 방식대로 해당 노드가 위치한 부모 탭을 역추적해서 이동
-                        else if (g.id) {
-                          const findParentTab = (n, currentTabId) => {
-                            if (n.id === g.id) return currentTabId;
-                            if (n.heirs) {
-                              for (let h of n.heirs) {
-                                const found = findParentTab(h, (n.isDeceased && n.heirs.length > 0) ? n.id : currentTabId);
-                                if (found) return found;
-                              }
-                            }
-                            return null;
-                          };
-                          const tabId = findParentTab(tree, 'root');
-                          if (tabId) setActiveDeceasedTab(tabId);
+                        // 💡 엔진이 계산해준 목적지(targetTabId)가 있다면 무조건 거기로 직행합니다!
+                        if (g.targetTabId) {
+                          if (g.targetTabId === tree.personId) {
+                            setActiveDeceasedTab('root'); // 김혁조 등 최상위 피상속인인 경우
+                          } else {
+                            setActiveDeceasedTab(g.targetTabId); // 그 외 모든 탭
+                          }
                         }
                       }}
                       className="w-full mt-2 text-left flex items-start gap-2 bg-blue-50/60 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200/60 dark:border-blue-800/30 hover:bg-blue-100/80 transition-all group pointer-events-auto shadow-sm"
@@ -1884,21 +1873,13 @@ function App() {
                           <button 
                             onMouseDown={(e) => e.stopPropagation()}
                             onClick={() => {
-                              if (g.targetTabId && deceasedTabs.some(t => t.id === g.targetTabId)) {
-                                setActiveDeceasedTab(g.targetTabId);
-                              } else if (g.id) {
-                                const findParentTab = (n, currentTabId) => {
-                                  if (n.id === g.id) return currentTabId;
-                                  if (n.heirs) {
-                                    for (let h of n.heirs) {
-                                      const found = findParentTab(h, (n.isDeceased && n.heirs.length > 0) ? n.id : currentTabId);
-                                      if (found) return found;
-                                    }
-                                  }
-                                  return null;
-                                };
-                                const tabId = findParentTab(tree, 'root');
-                                if (tabId) setActiveDeceasedTab(tabId);
+                              // 💡 엔진이 계산해준 목적지(targetTabId)가 있다면 무조건 거기로 직행합니다!
+                              if (g.targetTabId) {
+                                if (g.targetTabId === tree.personId) {
+                                  setActiveDeceasedTab('root');
+                                } else {
+                                  setActiveDeceasedTab(g.targetTabId);
+                                }
                               }
                             }}
                             className="w-full text-left flex items-start gap-2 bg-[#fbfbfb] dark:bg-neutral-800/40 p-2.5 rounded-lg border border-[#e9e9e7] dark:border-neutral-700 hover:bg-[#f2f2f0] transition-all"
