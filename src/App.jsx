@@ -927,8 +927,13 @@ function App() {
                     const children = parentHeirs.filter(s => ['son', 'daughter'].includes(s.relation)); 
                     baseAdd = children.filter(c => c.name.trim() === '' || !existingNames.has(c.name)); 
                   } else { 
-                    // 부모(피상속인의 배우자)와 형제자매를 모두 가져옴
-                    const parents = parentHeirs.filter(s => ['wife', 'husband', 'spouse'].includes(s.relation));
+                    // 부모(피상속인의 배우자)와 형제자매를 모두 가져오되, 선사망한 부모는 대습상속권이 없으므로 제외함
+                    const parents = parentHeirs.filter(s => {
+                      if (!['wife', 'husband', 'spouse'].includes(s.relation)) return false;
+                      // 💡 한국 민법상 직계존속은 대습상속 대상이 아님. 자녀(현재 노드)보다 먼저 사망했다면 상속권 완전 소멸.
+                      if (s.isDeceased && s.deathDate && currentNode.deathDate && isBefore(s.deathDate, currentNode.deathDate)) return false;
+                      return true;
+                    });
                     const siblings = parentHeirs.filter(s => s.id !== currentNode.id && ['son', 'daughter'].includes(s.relation)); 
                     baseAdd = [
                       ...parents.map(item => ({ ...item, relation: 'parent' })),
