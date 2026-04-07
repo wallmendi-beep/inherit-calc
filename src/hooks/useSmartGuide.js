@@ -36,7 +36,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
           else if (node.exclusionOption === 'lost') reasonText = '상속권 상실선고';
 
           uniqueGuidesMap.set(`excl-${node.personId}`, {
-            id: node.id,
+            targetTabId: node.personId,
             uniqueKey: `excl-${node.personId}`,
             type: 'recommended',
             text: `[${node.name}] ${reasonText} 처리가 적용되었습니다. 다른 피상속인의 탭에서도 별도로 스위치를 꺼주셔야 합니다.`,
@@ -82,7 +82,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
 
               if (canAutoCalc) {
                 uniqueGuidesMap.set(`autocalc-${node.personId}`, { 
-                  id: `tab:${node.personId}`, 
+                  targetTabId: node.personId, 
                   uniqueKey: `autocalc-${node.personId}`,
                   type: 'recommended', 
                   text: `[${node.name}] 하위 상속인이 없어 ${autoTarget}에게 자동 분배했습니다. 직접 입력하시려면 클릭해 주세요.`, 
@@ -92,7 +92,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
               } else {
                 if (isSpouseType) {
                   uniqueGuidesMap.set(`missing-${node.personId}`, { 
-                    id: `tab:${node.personId}`, 
+                    targetTabId: node.personId, 
                     uniqueKey: `missing-${node.personId}`,
                     type: 'mandatory', 
                     text: `[${node.name}] 사망(${node.deathDate || '일자 미상'})에 따른 상속인 정보가 없습니다. 자녀가 없다면 고인의 본가/친정 식구를 입력해 주세요.`, 
@@ -101,7 +101,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
                   });
                 } else {
                   uniqueGuidesMap.set(`missing-${node.personId}`, { 
-                    id: `tab:${node.personId}`, 
+                    targetTabId: node.personId, 
                     uniqueKey: `missing-${node.personId}`,
                     type: 'mandatory', 
                     text: `[${node.name}] 사망(${node.deathDate || '일자 미상'})에 따른 재상속인 정보가 없습니다. 대를 이을 사람이 없다면 스위치를 꺼주세요.`, 
@@ -114,7 +114,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
           } else {
             if (!isSpouseType && (!node.heirs || node.heirs.length === 0)) {
               uniqueGuidesMap.set(`no-daeseup-${node.personId}`, { 
-                id: `tab:${node.personId}`, 
+                targetTabId: node.personId, 
                 uniqueKey: `no-daeseup-${node.personId}`,
                 type: 'recommended', 
                 text: `[${node.name}] 대습상속인이 없어 상속에서 자동 제외되었습니다. 자녀가 있다면 추가해 주세요.`, 
@@ -129,7 +129,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
               
               if (!hasSiblingHoju && isGrandsonHoju && !node.isHoju) {
                 uniqueGuidesMap.set(`hoju-tip-${node.personId}`, {
-                  id: `tab:${node.personId}`,
+                  targetTabId: node.personId,
                   uniqueKey: `hoju-tip-${node.personId}`,
                   type: 'recommended',
                   text: `[팁] 장남과 장손이 연이어 호주를 승계한다면 두 사람 모두 호주 스위치를 켜주세요.`,
@@ -142,13 +142,13 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
         }
         
         if ((law === '1960' || law === '1979') && node.relation === 'daughter' && !node.marriageDate && !node.restoreDate) {
-          uniqueGuidesMap.set(`daughter-tip-${node.personId}`, { id: node.id, uniqueKey: `daughter-tip-${node.personId}`, type: 'recommended', text: `[${node.name}] 혼인/복적 연혁(톱니바퀴)을 세부 입력하시면 AI가 지분을 자동 계산합니다.`, level, relation: node.relation });
+          uniqueGuidesMap.set(`daughter-tip-${node.personId}`, { targetTabId: node.personId, uniqueKey: `daughter-tip-${node.personId}`, type: 'recommended', text: `[${node.name}] 혼인 및 친가복적 일자를 세부 입력하시면 추가 가감산 지분이 정확하게 계산됩니다.`, level, relation: node.relation });
         }
 
         if (isSpouseType && node.remarriageDate && parentDate) {
           if (isBefore(node.remarriageDate, parentDate)) {
             uniqueGuidesMap.set(`remarried-excl-${node.personId}`, { 
-              id: node.id, uniqueKey: `remarried-excl-${node.personId}`, type: 'mandatory', 
+              targetTabId: node.personId, uniqueKey: `remarried-excl-${node.personId}`, type: 'mandatory', 
               text: `[${node.name}] 피상속인 사망(${parentDate}) 이전에 재혼(${node.remarriageDate})하여 대습상속권이 소멸했습니다. 스위치를 꺼주세요.`, 
               level, relation: node.relation 
             });
@@ -157,7 +157,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
 
         if (node.remarriageDate) {
           uniqueGuidesMap.set(`remarried-tip-${node.personId}`, { 
-            id: node.id, uniqueKey: `remarried-tip-${node.personId}`, type: 'recommended', 
+            targetTabId: node.personId, uniqueKey: `remarried-tip-${node.personId}`, type: 'recommended', 
             text: `[${node.name}] 재혼 연혁(${node.remarriageDate})이 있습니다. 하위에 계자녀(전 배우자의 자녀)가 포함되지 않도록 주의해 주세요.`, 
             level, relation: node.relation 
           });
