@@ -170,8 +170,12 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
     checkIndependentExclusionGuide(tree, null, 0);
     checkGuideNode(tree, tree.deathDate, 0);
 
-    // 상속인 전멸 체크
-    if (!tree.heirs || tree.heirs.length === 0 || tree.heirs.every(h => h.isExcluded && (!h.heirs || h.heirs.length === 0))) {
+    // 상속인 전멸 체크 (전체 트리 재귀: 유효 상속인이 단 한 명도 없는 경우)
+    const hasAnySurvivor = (node) => {
+      if (node !== tree && !node.isExcluded) return true;
+      return (node.heirs || []).some(hasAnySurvivor);
+    };
+    if (!tree.heirs || tree.heirs.length === 0 || !hasAnySurvivor(tree)) {
       noSurvivors = true;
     }
 

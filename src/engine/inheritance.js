@@ -106,7 +106,7 @@ export const calculateInheritance = (tree, propertyValue) => {
         const activeHeirs = (node.heirs || []).filter(h => !h.isExcluded);
         if (activeHeirs.length === 0) {
           //  여기도 완벽하게 객체 형태로 묶어서 보냅니다!
-          warnings.push({ id: node.id, text: `선사망자 [${node.name}]의 대습상속인이 누락되었습니다. 상속인이 없다면 스위치를 꺼주세요.` });
+          warnings.push({ id: node.id, text: `[${node.name}] 사망(${node.deathDate})에 따른 하위 상속인 정보가 없습니다. 무자녀인 경우 고인의 부모/형제를 입력해 주세요.` });
         }
       }
     }
