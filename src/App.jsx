@@ -17,10 +17,10 @@ import { SortableContext, verticalListSortingStrategy, sortableKeyboardCoordinat
 import { QRCodeSVG } from 'qrcode.react'; // 💡 v3.0 오프라인 QR 생성기
 
 // ============================================================================
-// 🚀 [v3.0 코어 엔진] 옵시디언 아키텍처 (State Normalization)
+// 🚀 [v3.0 코어 엔진] 맥락 기반 저장 및 파생(Derived) 조립기
 // ============================================================================
 
-// 1️⃣ 마이그레이션 엔진: 기존의 중첩된 폴더(Tree)를 평면화된 볼트(Vault)로 변환
+// 1️⃣ 저장(마이그레이션) 엔진: 상태값은 버리고 오직 절대 '팩트(Fact)'만 중앙 창고에 보관
 export const migrateToVault = (oldTree) => {
   const vault = {
     meta: {
@@ -30,130 +30,120 @@ export const migrateToVault = (oldTree) => {
       targetShareD: oldTree.shareD || 1,
     },
     persons: {},
-    relationships: {} // parentId: [ { targetId, relation, isExcluded ... } ]
+    relationships: {}
   };
 
   const traverse = (node, parentId = null) => {
     if (!node) return;
-
-    // 1. 고유 ID (DNA) 확보
     const pId = node.personId || node.id || `p_${Math.random().toString(36).substr(2,9)}`;
-    if (node.id === 'root') vault.meta.rootPersonId = pId; // root ID 보정
+    if (node.id === 'root') vault.meta.rootPersonId = pId;
 
-    // 2. 단일 진실 공급원(Persons) 등록 및 정보 병합
+    // 💡 팩트 저장: 신상 정보는 변하지 않는 진실이므로 그대로 보관
     if (!vault.persons[pId]) {
       vault.persons[pId] = {
-        id: pId, // personId와 동일
-        name: node.name || '',
-        isDeceased: !!node.isDeceased,
-        deathDate: node.deathDate || '',
-        marriageDate: node.marriageDate || '',
-        remarriageDate: node.remarriageDate || '',
-        gender: node.gender || ''
+        id: pId, name: node.name || '', isDeceased: !!node.isDeceased,
+        deathDate: node.deathDate || '', marriageDate: node.marriageDate || '',
+        remarriageDate: node.remarriageDate || '', gender: node.gender || ''
       };
     } else {
-      // 다른 탭의 분신(Clone)에 더 많은 정보가 있다면 끌어와서 병합
       const p = vault.persons[pId];
       if (!p.deathDate && node.deathDate) p.deathDate = node.deathDate;
       if (!p.marriageDate && node.marriageDate) p.marriageDate = node.marriageDate;
       if (!p.name && node.name) p.name = node.name;
     }
 
-    // 3. 관계(Links) 맺어주기
+    // 💡 법적 결단 저장: 포기, 결격, 호주 등 인간이 의도적으로 조작한 스위치만 보존
     if (parentId) {
       if (!vault.relationships[parentId]) vault.relationships[parentId] = [];
+      const isManualExclusion = node.exclusionOption === 'renounce' || node.exclusionOption === 'disqualified';
 
-      // 이미 연결된 링크인지 확인 (중복 방지)
       const existingLink = vault.relationships[parentId].find(link => link.targetId === pId);
       if (!existingLink) {
         vault.relationships[parentId].push({
-          targetId: pId,
-          relation: node.relation || 'son',
-          isExcluded: !!node.isExcluded,
-          exclusionOption: node.exclusionOption || '',
-          isHoju: !!node.isHoju,
-          isSameRegister: node.isSameRegister !== false // 기본값 true
+          targetId: pId, relation: node.relation || 'son',
+          isExcluded: isManualExclusion ? true : !!node.isExcluded, 
+          exclusionOption: isManualExclusion ? node.exclusionOption : '',
+          isHoju: !!node.isHoju, isSameRegister: node.isSameRegister !== false
         });
-      } else {
-         // 만약 어느 한쪽 탭에서 스위치가 꺼져있다면, 꺼진 상태(true)를 정본으로 인정
-         if (node.isExcluded) {
-           existingLink.isExcluded = true;
-           existingLink.exclusionOption = node.exclusionOption || existingLink.exclusionOption;
-         }
       }
     }
-
-    // 4. 자식들 순회 (배 속의 아이들을 모두 꺼내서 링크로 변환)
-    if (node.heirs && Array.isArray(node.heirs)) {
-      node.heirs.forEach(child => traverse(child, pId));
-    }
+    if (node.heirs) node.heirs.forEach(child => traverse(child, pId));
   };
-
   traverse(oldTree);
   return vault;
 };
 
 
-// 2️⃣ 렌더링 조립기: 옵시디언 볼트(Vault)를 다시 UI용 폴더(Tree)로 조립해서 던져줌
+// 2️⃣ 불러오기(조립) 엔진: 보관된 팩트를 꺼내어 현재 타임라인(맥락)에 맞게 스위치를 자동 해석!
 export const buildTreeFromVault = (vault) => {
   if (!vault || !vault.meta) return null;
   const rootId = vault.meta.rootPersonId;
   const rootPerson = vault.persons[rootId];
   if (!rootPerson) return null;
 
-  // 무한 루프 방지용 Set (혹시 모를 순환 참조 방어)
-  const buildNode = (personId, visited = new Set()) => {
-    if (visited.has(personId)) return null; 
+  const buildNode = (personId, parentDeathDate = null, visited = new Set()) => {
+    if (visited.has(personId)) return null;
     const newVisited = new Set(visited).add(personId);
-
     const person = vault.persons[personId];
     if (!person) return null;
 
-    // 기본 신상 정보 세팅
-    const node = {
-      id: personId, // UI 컴포넌트 호환을 위해 id에도 personId 주입
-      personId: personId,
-      name: person.name,
-      isDeceased: person.isDeceased,
-      deathDate: person.deathDate,
-      marriageDate: person.marriageDate,
-      remarriageDate: person.remarriageDate,
-      gender: person.gender,
-      heirs: []
-    };
-
-    // 피상속인(Root)일 경우 메타 데이터 추가
+    const node = { ...person, personId: personId, heirs: [] };
     if (personId === rootId) {
-      node.caseNo = vault.meta.caseNo;
-      node.shareN = vault.meta.targetShareN;
-      node.shareD = vault.meta.targetShareD;
-      node.id = 'root'; // UI 호환용 강제 고정
+      node.caseNo = vault.meta.caseNo; node.shareN = vault.meta.targetShareN;
+      node.shareD = vault.meta.targetShareD; node.id = 'root';
     }
 
-    // 내 자식 명단(Links)을 보고 한 명씩 불러와서 조립
+    const effectiveDate = parentDeathDate || node.deathDate; // 타임라인 추적
     const links = vault.relationships[personId] || [];
+
     links.forEach(link => {
-      const childNode = buildNode(link.targetId, newVisited);
+      // 내 자식의 사망일이 나(부모)보다 늦으면 자식 사망일 기준, 아니면 내 사망일 기준 유지
+      const childPerson = vault.persons[link.targetId];
+      const nextEffectiveDate = (childPerson?.deathDate && !isBefore(childPerson.deathDate, effectiveDate)) 
+                                ? childPerson.deathDate : effectiveDate;
+
+      const childNode = buildNode(link.targetId, nextEffectiveDate, newVisited);
       if (childNode) {
-        // 링크에 적혀있던 관계/스위치(Edge 데이터)를 자식 노드 껍데기에 입혀줌
-        childNode.id = `n_${personId}_${link.targetId}`; // 화면 충돌 방지용 가상 ID
+        childNode.id = `n_${personId}_${link.targetId}`;
         childNode.relation = link.relation;
+        childNode.isHoju = link.isHoju;
+
+        // 💡 [실시간 맥락 해석기] 스위치 자동 세팅 로직
+        const isPreDeceased = childNode.deathDate && effectiveDate && isBefore(childNode.deathDate, effectiveDate);
+        const hasHeirs = childNode.heirs && childNode.heirs.length > 0;
+        const isSpouseType = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(childNode.relation);
+        const isDaughter = ['daughter', '딸'].includes(childNode.relation);
+
+        // 기본적으로 파일에 저장된 수동 결단(포기 등)을 가져옴
         childNode.isExcluded = link.isExcluded;
         childNode.exclusionOption = link.exclusionOption;
-        childNode.isHoju = link.isHoju;
-        childNode.isSameRegister = link.isSameRegister;
+
+        // 🚨 규칙 1. 선사망했는데 자식이 있다? -> 무조건 파이프라인 ON (대습상속 진행)
+        if (isPreDeceased && hasHeirs && !isSpouseType) {
+          childNode.isExcluded = false; // 강제 켜짐
+          childNode.exclusionOption = '';
+        }
+        // 🚨 규칙 2. 선사망했는데 자식이 없다? -> 무조건 파이프라인 OFF (상속권 없음)
+        else if (isPreDeceased && !hasHeirs && !isSpouseType) {
+          childNode.isExcluded = true; // 강제 꺼짐
+          childNode.exclusionOption = 'predeceased';
+        }
+
+        // 🚨 규칙 3. 딸인데 아빠 사망 전에 결혼했다? -> 무조건 동일 스위치 강제 OFF (출가)
+        if (isDaughter && childNode.marriageDate && effectiveDate && isBefore(childNode.marriageDate, effectiveDate)) {
+          childNode.isSameRegister = false; // 자동 출가 처리
+        } else {
+          childNode.isSameRegister = link.isSameRegister;
+        }
 
         node.heirs.push(childNode);
       }
     });
-
     return node;
   };
-
-  return buildNode(rootId);
+  return buildNode(rootId, rootPerson.deathDate);
 };
 // ============================================================================
-
 const getWarningState = (n, rootDeathDate, level = 1) => {
   if (!n) return { isDirect: false, hasDescendant: false };
   
@@ -2449,10 +2439,7 @@ function App() {
               <span className="w-3.5 h-0.5 bg-current rounded-full transition-all" />
             </button>
             <div className="flex items-center gap-2 whitespace-nowrap shrink-0 overflow-visible">
-              <div className="flex items-center text-[#37352f] dark:text-neutral-100 font-bold text-[18px] tracking-tight whitespace-nowrap shrink-0">
-                <IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-neutral-400 shrink-0" />
-                상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v2.0.8</span>
-              </div>
+              <div className="flex items-center text-[#37352f] dark:text-neutral-100 font-bold text-[18px] tracking-tight whitespace-nowrap shrink-0"><IconCalculator className="w-5 h-5 mr-1.5 text-[#787774] dark:text-neutral-400 shrink-0" />상속지분 계산기 PRO <span className="ml-1.5 text-[11px] font-medium bg-[#e9e9e7] dark:bg-neutral-700 px-1.5 py-0.5 rounded text-[#787774] dark:text-neutral-400 shrink-0">v3.0.0</span></div>
               <span className="designer-sign text-[#a3a3a3] dark:text-neutral-500 text-[14px] ml-8 whitespace-nowrap shrink-0">Designed by J.H. Lee</span>
             </div>
           </div>
