@@ -14,6 +14,7 @@ import { getInitialTree, getEmptyTree } from './utils/initialData';
 import { useSmartGuide } from './hooks/useSmartGuide';
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import { QRCodeSVG } from 'qrcode.react'; // 💡 v3.0 오프라인 QR 생성기
 
 // ============================================================================
 // 🚀 [v3.0 코어 엔진] 옵시디언 아키텍처 (State Normalization)
@@ -334,6 +335,7 @@ function App() {
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [aiInputText, setAiInputText] = useState("");
   const [aiTargetId, setAiTargetId] = useState('root'); // 💡 AI가 데이터를 꽂아넣을 타겟 위치 기억!
+  const [showQrCode, setShowQrCode] = useState(false); // 💡 QR 코드 표시 여부
 
   // 💡 1단: 요약표 상속인 검색용 State 선언 (최상단 배치!)
   const [searchQuery, setSearchQuery] = useState('');
@@ -3552,9 +3554,10 @@ function App() {
                       아래 버튼을 눌러 명령어를 복사한 후, <b>뤼튼, ChatGPT, 클로드, 제미나이</b> 앱에 문서 사진과 함께 붙여넣으세요.<br/>
                       <span className="text-indigo-600 dark:text-indigo-400 font-medium">※ 공문서(제적등본, 가족관계증명서)는 물론, 신청인이 직접 손으로 그린 가계도 등 사문서 사진도 완벽하게 인식합니다!</span>
                     </p>
-                    <button 
-                      onClick={() => {
-                        const prompt = `첨부한 문서(제적등본, 가족관계증명서, 가계도 메모 등) 사진을 보고, 아래 JSON 양식에 맞춰 가족 관계를 추출해줘.
+                    
+                    {/* 💡 v3.0 프롬프트 복사 및 QR 전송 영역 */}
+                    {(() => {
+                      const aiPromptText = `첨부한 문서(제적등본, 가족관계증명서, 가계도 메모 등) 사진을 보고, 아래 JSON 양식에 맞춰 가족 관계를 추출해줘.
 
 [규칙]
 1. 중심 인물(망인)을 기준으로 남자는 "son", 여자는 "daughter", 배우자는 "wife" 또는 "husband"로 작성해.
@@ -3573,13 +3576,49 @@ function App() {
     { "name": "홍바다", "relation": "daughter", "marriageDate": "1995-10-20" }
   ]
 }`;
-                        navigator.clipboard.writeText(prompt);
-                        alert("✅ 명령어가 복사되었습니다! 쓰시는 AI 앱에 사진과 함께 붙여넣으세요.");
-                      }}
-                      className="w-full py-2.5 bg-white dark:bg-neutral-800 border-2 border-indigo-500 text-indigo-600 dark:text-indigo-400 rounded-md font-bold hover:bg-indigo-50 transition-colors shadow-sm"
-                    >
-                      📋 AI 전용 명령어 복사하기
-                    </button>
+                      return (
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(aiPromptText).then(() => alert('✅ 명령어가 복사되었습니다! 쓰시는 AI 앱에 사진과 함께 붙여넣으세요.'));
+                              }}
+                              className="flex-1 py-2.5 bg-white dark:bg-neutral-800 border-2 border-indigo-500 text-indigo-600 dark:text-indigo-400 rounded-md font-bold hover:bg-indigo-50 transition-colors shadow-sm"
+                            >
+                              📋 명령어 복사하기
+                            </button>
+                            
+                            {/* 📱 QR 코드 토글 버튼 */}
+                            <button
+                              type="button"
+                              onClick={() => setShowQrCode(!showQrCode)}
+                              className="flex-1 py-2.5 border-2 border-blue-500 bg-white dark:bg-neutral-800 text-blue-600 dark:text-blue-400 rounded-md font-bold hover:bg-blue-50 transition-colors shadow-sm"
+                            >
+                              {showQrCode ? '🙈 QR 숨기기' : '📱 스마트폰 QR 전송'}
+                            </button>
+                          </div>
+
+                          {/* 💡 오프라인 QR 코드 렌더링 영역 */}
+                          {showQrCode && (
+                            <div className="mt-4 flex flex-col items-center justify-center p-6 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-lg shadow-inner">
+                              <div className="p-3 bg-white rounded-xl shadow-sm">
+                                <QRCodeSVG 
+                                  value={aiPromptText} 
+                                  size={220} 
+                                  level="L" 
+                                  includeMargin={true} 
+                                />
+                              </div>
+                              <p className="mt-4 text-sm text-gray-600 dark:text-gray-300 font-medium text-center leading-relaxed">
+                                스마트폰 기본 카메라로 스캔하세요.<br/>
+                                <span className="text-blue-500 font-bold">인터넷 연결 없이도</span> 프롬프트가 복사됩니다!
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* 2단계: 붙여넣기 영역 */}
