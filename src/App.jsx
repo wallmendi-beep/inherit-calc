@@ -1324,18 +1324,27 @@ function App() {
                       try {
                         const cleanJson = aiInputText.replace(/```json/g, '').replace(/```/g, '').trim();
                         const parsedTree = JSON.parse(cleanJson);
+                        
+                        // 1. 전체 가계도를 순회하며 ID를 부여하는 로직
                         const processAiData = (node) => {
                           if (Array.isArray(node)) { node.forEach(processAiData); return; }
                           if (!node.id) node.id = `ai_${Math.random().toString(36).substr(2, 9)}`;
-                          // 🚨 [오류 해결] 자녀가 있다고 무조건 상속권 없음(선사망)으로 강제 처리하던 코드 삭제
+                          
+                          // 🚨 [오류 해결] 자녀가 있다고 부모를 무조건 강제 배제(선사망)하던 악성 코드 삭제됨!
+                          
                           if (node.heirs) node.heirs.forEach(processAiData);
                         };
                         processAiData(parsedTree);
+
+                        // 2. 전체 덮어쓰기 모드 (피상속인 탭에서 실행 시)
                         if (aiTargetId === 'root') setTree({ ...parsedTree, id: 'root' });
+                        
+                        // 3. 부분 추가 모드 (특정 상속인 탭에서 실행 시)
                         else {
                           const targetRawIds = [];
                           const findRawIds = (n) => { if (n.id === aiTargetId || n.personId === aiTargetId) targetRawIds.push(n.id); if (n.heirs) n.heirs.forEach(findRawIds); };
                           findRawIds(tree);
+                          
                           setTree(prev => {
                             const injectHeirs = (n) => {
                               if (targetRawIds.includes(n.id)) {
@@ -1343,8 +1352,16 @@ function App() {
                                 const sourceHeirs = Array.isArray(parsedTree) ? parsedTree : (parsedTree.heirs || []);
                                 const newHeirs = generateNewHeirs(sourceHeirs);
                                 const nodeUpdates = {};
-                                if (!Array.isArray(parsedTree)) { if (parsedTree.deathDate) nodeUpdates.deathDate = parsedTree.deathDate; if (parsedTree.marriageDate) nodeUpdates.marriageDate = parsedTree.marriageDate; if (parsedTree.remarriageDate) nodeUpdates.remarriageDate = parsedTree.remarriageDate; if (parsedTree.isDeceased !== undefined) nodeUpdates.isDeceased = parsedTree.isDeceased; }
-                                // 🚨 [오류 해결] 하위 상속인 추가 시 무조건 상속권 없음으로 강제 처리하던 코드 삭제
+                                
+                                if (!Array.isArray(parsedTree)) { 
+                                  if (parsedTree.deathDate) nodeUpdates.deathDate = parsedTree.deathDate; 
+                                  if (parsedTree.marriageDate) nodeUpdates.marriageDate = parsedTree.marriageDate; 
+                                  if (parsedTree.remarriageDate) nodeUpdates.remarriageDate = parsedTree.remarriageDate; 
+                                  if (parsedTree.isDeceased !== undefined) nodeUpdates.isDeceased = parsedTree.isDeceased; 
+                                }
+                                
+                                // 🚨 [오류 해결] 하위 상속인 추가 시 부모를 강제 배제하던 악성 코드 삭제됨!
+                                
                                 return { ...n, ...nodeUpdates, heirs: [...(n.heirs || []), ...newHeirs] };
                               }
                               return { ...n, heirs: n.heirs?.map(injectHeirs) || [] };
