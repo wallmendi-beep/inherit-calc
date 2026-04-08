@@ -694,7 +694,7 @@ function App() {
       // 출가녀 스위치 오류
       if (node.relation === 'daughter' && node.marriageDate && effectiveDate) {
         if (getLawEra(effectiveDate) !== '1991' && isBefore(node.marriageDate, effectiveDate) && node.isSameRegister !== false) {
-          guides.push({ id: node.id, uniqueKey: `mismatch-married-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름없음'}] 혼인(${node.marriageDate})이 상속개시일(${effectiveDate}) 이전입니다. 구법 적용 대상이므로 [출가] 스위치를 켜주세요.` });
+          guides.push({ id: node.id, uniqueKey: `mismatch-married-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름없음'}] 혼인일(${node.marriageDate})이 상속개시일(${effectiveDate}) 이전입니다. 구법 적용 대상이므로 [출가] 스위치를 켜주세요.` });
         }
       }
 
@@ -1034,7 +1034,22 @@ function App() {
                     <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-2">1단계: 명령어 복사하기</h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 leading-relaxed">명령어를 복사한 후 AI 앱에 문서 사진과 함께 붙여넣으세요.</p>
                     {(() => {
-                      const aiPromptText = `첨부한 문서를 보고 아래 JSON 구조로 가족 관계를 추출해줘. [규칙] 1. 남:son, 여:daughter, 배우자:wife/husband 2. 1991년 이후 사례에서 자녀 성별 모르면 son 3. 사망 isDeceased:true, deathDate:YYYY-MM-DD 4. 모호한 정보는 추측하지 말고 질문 먼저 할 것. [양식] {"name":"망인","isDeceased":true,"heirs":[{"name":"자녀1","relation":"son"}]}`;
+                      const aiPromptText = `첨부한 문서(제적등본, 가족관계증명서, 가계도 메모 등) 사진을 보고, 아래 [출력 양식]의 JSON 구조에 맞춰 가족 관계를 추출해줘. 
+
+🚨 [중요: personId 부여 규칙]
+1. 모든 상속인에게 "ai_랜덤문자열" 형태의 고유한 'personId'를 부여해.
+2. 동일인 병합: 문맥상 완벽히 같은 사람인 경우(예: A의 배우자이자 B의 자녀), 모든 위치에서 '반드시 똑같은 personId'를 사용해.
+3. 동명이인 분리: 이름만 같고 가계도상 위치가 다른 사람인 경우, '반드시 서로 다른 personId'를 부여해. (중복 ID 부여 시 시스템 에러 발생!)
+4. 정보 부족 시: 동일인인지 모호하면 안전하게 '서로 다른 personId'를 부여해서 별개 인물로 처리해.
+
+🚨 [행동 지침: 투스텝(Two-Step) 처리]
+문서를 분석할 때, 글씨가 흐릿하거나 관계/성별/날짜가 명확하지 않은 부분이 있다면 **절대 임의로 추측해서 JSON을 먼저 만들지 마.** 대신, [질문 양식]처럼 사용자에게 명확하게 질문을 먼저 던져서 확인받아. 사용자가 답변을 주면, 그때 최종 JSON 코드를 출력해. 
+
+[질문 양식 예시] 1) 이영수 사망일: YYYY-MM-DD... 
+
+[가족 관계 추출 규칙] 1. 중심 인물(망인)을 기준으로 남자는 "son", 여자는 "daughter", 배우자는 "wife" 또는 "husband"로 작성해... 
+
+[출력 양식 예시] { "personId": "ai_root_123", "name": "김철수", "isDeceased": true, "deathDate": "1980-01-01", "heirs": [{ "personId": "ai_child_456", "name": "김영희", "relation": "daughter", "isDeceased": false }] }`;
                       return (<button type="button" onClick={() => navigator.clipboard.writeText(aiPromptText).then(() => alert('✅ 복사되었습니다!'))} className="w-full py-2.5 bg-white dark:bg-neutral-800 border-2 border-indigo-500 text-indigo-600 dark:text-indigo-400 rounded-md font-bold hover:bg-indigo-50 transition-colors shadow-sm">📋 명령어 복사하기</button>);
                     })()}
                   </div>
