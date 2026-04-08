@@ -1330,7 +1330,17 @@ function App() {
                       { "name": "박영자", "relation": "wife", "remarriageDate": "1985-05-05" },
                       { "name": "김바다", "relation": "daughter", "marriageDate": "1995-10-20" }
                       ]
-                      }`;                      return (
+                      }`;
+                      const qrPromptText = `제적등본 등 사진을 보고 아래 JSON으로 추출해.
+[규칙]
+1. 남:son, 여:daughter, 배우자:wife/husband
+2. 1991년 이후 사망자 자녀 성별 모르면 무조건 son
+3. 사망 isDeceased:true, deathDate:"YYYY-MM-DD"
+4. 전처/후처 등 모든 배우자 입력. 혼인/재혼일 기재
+5. 🚨 모호한 글씨나 성별/날짜는 임의추측 금지! 반드시 사용자에게 번호 매겨서 질문 먼저 할 것!
+[양식]
+{"name":"망인","isDeceased":true,"heirs":[{"name":"배우자","relation":"wife"}]}`;
+                      return (
                         <div className="flex flex-col gap-2">
                           <div className="flex items-center gap-2">
                             <button type="button" onClick={() => navigator.clipboard.writeText(aiPromptText).then(() => alert('✅ 명령어가 복사되었습니다!'))} className="flex-1 py-2.5 bg-white dark:bg-neutral-800 border-2 border-indigo-500 text-indigo-600 dark:text-indigo-400 rounded-md font-bold hover:bg-indigo-50 transition-colors shadow-sm">📋 명령어 복사하기</button>
@@ -1338,7 +1348,7 @@ function App() {
                           </div>
                           {showQrCode && (
                             <div className="mt-4 flex flex-col items-center justify-center p-6 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-lg shadow-inner">
-                              <div className="p-3 bg-white rounded-xl shadow-sm"><QRCodeSVG value={aiPromptText} size={220} level="L" includeMargin={true} /></div>
+                              <div className="p-3 bg-white rounded-xl shadow-sm"><QRCodeSVG value={qrPromptText} size={220} level="L" includeMargin={true} /></div>
                               <p className="mt-4 text-sm text-gray-600 dark:text-gray-300 font-medium text-center">스마트폰 카메라로 스캔하세요.<br/><span className="text-blue-500 font-bold">인터넷 없이도</span> 프롬프트가 복사됩니다!</p>
                             </div>
                           )}
