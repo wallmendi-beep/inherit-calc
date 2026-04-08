@@ -39,7 +39,23 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
     };
 
     const checkGuideNode = (node, parentDate, level = 0) => {
+      const parentNode = findParentNodeInHook(tree, node.id);
+      const parentTabId = parentNode ? parentNode.personId : 'root';
+
       const effectiveDate = node.deathDate || tree.deathDate;
+
+      // 🚨 [구법 데이터 공백 방지] 1990년 이전 사망건의 '딸'인데 혼인 정보가 전혀 없는 경우 확인 요청
+      if (getLawEra(effectiveDate) !== '1991' && node.relation === 'daughter') {
+          if (!node.marriageDate && node.isSameRegister !== false) {
+              uniqueGuidesMap.set(`verify-marriage-${node.personId}`, {
+                  id: node.id, uniqueKey: `verify-marriage-${node.personId}`, type: 'recommended',
+                  targetTabId: parentTabId,
+                  text: `[${node.name || '이름미상'}] 구법(1990년 이전) 적용 대상입니다. 출가(기혼) 여부에 따라 지분이 크게 달라지므로, 기혼인 경우 [혼인일자]를 입력하거나 [상속권 스위치] 옆의 [동일가적(출가)] 설정을 확인해 주세요.`,
+                  level, relation: node.relation
+              });
+          }
+      }
+
       if (getLawEra(effectiveDate) !== '1991' && node.isHoju && node.isDeceased) {
           const hasHojuChild = node.heirs && node.heirs.some(h => h.isHoju);
           if (!hasHojuChild && node.heirs && node.heirs.length > 0) {

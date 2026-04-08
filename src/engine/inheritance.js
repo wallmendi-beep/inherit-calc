@@ -53,11 +53,13 @@ export const calculateInheritance = (tree, propertyValue) => {
       const isDivorcedAuto = h.divorceDate && contextDate && !isBefore(contextDate, h.divorceDate);
       const isRemarriedAuto = h.remarriageDate && contextDate && !isBefore(contextDate, h.remarriageDate);
 
-      // 1. 제외 사유 판별 (결격 또는 상실선고)
+      // 1. 대습/재상속 유발 사유 판별 (선사망, 결격, 상실선고)
+      const isPredeceasedOption = h.isExcluded && h.exclusionOption === 'predeceased';
       const isDisqualified = h.isExcluded && (h.exclusionOption === 'lost' || h.exclusionOption === 'disqualified');
       
-      // 2. 단순 상속포기/수동제외 등은 지분 거부로 보아 즉시 제외 (형제들에게 재분배됨)
-      if (h.isExcluded && !isDisqualified) return true;
+      // 2. 진짜 상속포기(renounce)나 알 수 없는 수동제외만 즉시 컷오프!
+      // 선사망(predeceased)이거나 결격/상실(disqualified)인 경우는 하위 가계로 지분을 내려줘야 하므로 패스시킵니다.
+      if (h.isExcluded && !isDisqualified && !isPredeceasedOption) return true;
       
       //  AI 엔진 컷오프: 이혼이나 재혼 날짜가 사망일보다 빠르면 가차없이 명단에서 삭제!
       if (isDivorcedAuto || isRemarriedAuto) return true; 
