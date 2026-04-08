@@ -687,26 +687,19 @@ function App() {
   const { showGlobalWarning, showAutoCalcNotice, globalMismatchReasons, autoCalculatedNames, noSurvivors } = guideInfo || {};
 
   const multipleSpouseGuides = useMemo(() => {
-    const guides = []; const checkSpouses = (node) => { const spouses = (node.heirs || []).filter(h => ['wife', 'husband', 'spouse'].includes(h.relation) && !h.isExcluded); if (spouses.length > 1) { guides.push({ id: node.id, uniqueKey: `multi-spouse-${node.personId}`, targetTabId: node.personId, type: 'mandatory', text: `[${node.name || '이름없음'}] 유효한 배우자가 2명 이상입니다. 1명만 남기고 나머지는 제외 처리해 주세요.` }); } if (node.heirs) node.heirs.forEach(checkSpouses); };
+    const guides = []; const checkSpouses = (node) => { const spouses = (node.heirs || []).filter(h => ['wife', 'husband', 'spouse'].includes(h.relation) && !h.isExcluded); if (spouses.length > 1) { guides.push({ id: node.id, uniqueKey: `multi-spouse-${node.personId}`, targetTabId: node.personId, type: 'mandatory', text: `[${node.name || '이름없음'}] 유효 배우자가 중복 입력되었습니다. 실제 상속받을 1명 외에는 제외 처리해 주세요.` }); } if (node.heirs) node.heirs.forEach(checkSpouses); };
     checkSpouses(tree); return guides;
   }, [tree]);
 
-  // 💡 [호주 누락 감지 센서]
   const hojuMissingGuides = useMemo(() => {
     const guides = [];
     const checkHoju = (node) => {
       if (node.isDeceased && node.heirs && node.heirs.length > 0) {
         const hasHoju = node.heirs.some(h => h.isHoju && !h.isExcluded);
-        
-        // 🌟 핵심 수정: 1990년 이전 사망자 중 '본인(root)'이거나 '아들(son)'인 경우에만 호주를 요구함! (딸/배우자는 무시)
         const needsHoju = getLawEra(node.deathDate) !== '1991' && (node.id === 'root' || ['son', '아들'].includes(node.relation));
-        
         if (needsHoju && !hasHoju) {
           guides.push({
-            id: node.id,
-            uniqueKey: `missing-hoju-${node.personId}`,
-            targetTabId: node.personId,
-            type: 'mandatory',
+            id: node.id, uniqueKey: `missing-hoju-${node.personId}`, targetTabId: node.personId, type: 'mandatory',
             text: `[${node.name || '이름없음'}] 구법(${node.deathDate || '날짜 미상'} 사망) 적용 대상입니다. 하위 상속인 중 호주상속인을 지정해 주세요.`
           });
         }
@@ -717,44 +710,44 @@ function App() {
     return guides;
   }, [tree]);
 
+  // 💡 [논리적 모순 및 필수 조치 감지 센서]
   const logicalMismatchGuides = useMemo(() => {
     const guides = [];
 
-    // 🛑 기본정보 누락 체크 (피상속인 성명 / 사망일자)
     if (!tree.name || !tree.name.trim()) {
       guides.push({ id: 'root', uniqueKey: 'missing-root-name', targetTabId: 'root', type: 'mandatory', text: '피상속인의 성명 및 사망일자를 먼저 입력해 주세요.' });
     } else if (!tree.deathDate) {
-      guides.push({ id: 'root', uniqueKey: 'missing-root-death', targetTabId: 'root', type: 'mandatory', text: `[${tree.name}]님의 사망일자를 입력해 주세요. (사망일자 기준으로 적용 법령이 결정됩니다)` });
+      guides.push({ id: 'root', uniqueKey: 'missing-root-death', targetTabId: 'root', type: 'mandatory', text: `[${tree.name || '이름없음'}]님의 사망일자를 입력해 주세요. (사망일자 기준으로 적용 법령이 결정됩니다)` });
     }
 
     const checkMismatch = (node, parentDeathDate, parentPersonId) => {
       const effectiveDate = parentDeathDate || tree.deathDate;
       const isSpouse = ['wife', 'husband', 'spouse'].includes(node.relation);
 
-      // 출가녀 스위치 오류
+      // 1. 출가녀 스위치 (부모 탭으로 이동)
       if (node.relation === 'daughter' && node.marriageDate && effectiveDate) {
         if (isBefore(node.marriageDate, effectiveDate) && node.isSameRegister !== false) {
           guides.push({ id: node.id, uniqueKey: `mismatch-married-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름없음'}] 혼인일(${node.marriageDate})이 상속개시일(${effectiveDate}) 이전입니다. [출가] 스위치를 켜주세요.` });
         }
       }
 
-      // 선사망 스위치 오류
+      // 2. 선사망 스위치 (부모 탭으로 이동)
       if (node.deathDate && effectiveDate && isBefore(node.deathDate, effectiveDate) && !isSpouse) {
-        if (!node.isExcluded) {
+        if (!node.isExcluded || node.exclusionOption !== 'predeceased') {
           guides.push({ id: node.id, uniqueKey: `mismatch-predeceased-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름없음'}] 본인 사망(${node.deathDate})이 부모 사망(${effectiveDate})보다 먼저 발생했습니다. [상속권 없음] 스위치를 켜주세요.` });
         }
       }
 
-      // 대습 개시 전 재혼 (선사망자의 배우자가 피상속인 사망 전에 재혼한 경우)
-      if (!isSpouse && node.deathDate && effectiveDate && isBefore(node.deathDate, effectiveDate)) {
-        (node.heirs || []).forEach(subH => {
-          const subIsSpouse = ['wife', 'husband', 'spouse'].includes(subH.relation);
-          if (subIsSpouse && subH.remarriageDate && isBefore(subH.remarriageDate, effectiveDate)) {
-            if (!subH.isExcluded || subH.exclusionOption !== 'remarried') {
-              guides.push({ id: subH.id, uniqueKey: `mismatch-remarried-${subH.personId}`, targetTabId: node.personId, type: 'mandatory', text: `[${subH.name || '이름없음'}] 피상속인 사망(${effectiveDate}) 전 재혼(${subH.remarriageDate})하여 대습상속권이 소멸했습니다. 스위치를 꺼주세요.` });
-            }
-          }
-        });
+      // 3. 대습 개시 전 재혼 (배우자 본인) - 🚨 부모 탭(parentPersonId)으로 확실히 꽂아줌!
+      if (isSpouse && node.remarriageDate && effectiveDate && isBefore(node.remarriageDate, effectiveDate)) {
+        if (!node.isExcluded || node.exclusionOption !== 'remarried') {
+          guides.push({ id: node.id, uniqueKey: `mismatch-remarried-self-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름없음'}] 피상속인 사망(${effectiveDate}) 전 재혼(${node.remarriageDate})하여 대습상속권이 소멸했습니다. 스위치를 꺼주세요.` });
+        }
+      }
+
+      // 4. 날짜 모순 (부모 탭으로 이동)
+      if (node.marriageDate && node.deathDate && isBefore(node.deathDate, node.marriageDate)) {
+        guides.push({ id: node.id, uniqueKey: `date-mismatch-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름없음'}] 혼인일(${node.marriageDate})이 본인 사망일(${node.deathDate}) 이후로 설정되어 있습니다. 날짜를 확인하고 수정해 주세요.` });
       }
 
       if (node.heirs) {
@@ -765,7 +758,8 @@ function App() {
         });
       }
     };
-    if (tree.heirs) tree.heirs.forEach(h => checkMismatch(h, tree.deathDate, tree.personId));
+    
+    if (tree.heirs) tree.heirs.forEach(h => checkMismatch(h, tree.deathDate, tree.personId || 'root'));
     return guides;
   }, [tree]);
 
