@@ -630,7 +630,9 @@ function App() {
       const clone = { ...n }; const refDate = clone.id === 'root' ? clone.deathDate : parentDate;
       if (clone.id !== 'root' && !clone.isExcluded) {
         const isPre = clone.deathDate && refDate && isBefore(clone.deathDate, refDate); const isDeadWithoutHeirs = clone.isDeceased && (!clone.heirs || clone.heirs.length === 0);
-        if (isPre && isDeadWithoutHeirs) { clone.isExcluded = true; clone.exclusionOption = 'renounce'; }
+        // 🚨 선사망 무자녀는 상속포기가 아니라 당연 제외(선사망) 처리
+        // 🚨 선사망 무자녀는 상속포기가 아니라 당연 제외(선사망) 처리
+        if (isPre && isDeadWithoutHeirs) { clone.isExcluded = true; clone.exclusionOption = 'predeceased'; }
         else if (!isPre && isDeadWithoutHeirs && parentNode) {
           const isSpouseType = ['wife', 'husband', 'spouse'].includes(clone.relation);
           if (!isSpouseType) {
@@ -696,11 +698,13 @@ function App() {
     const checkHoju = (node) => {
       if (node.isDeceased && node.heirs && node.heirs.length > 0) {
         const hasHoju = node.heirs.some(h => h.isHoju && !h.isExcluded);
-        const needsHoju = getLawEra(node.deathDate) !== '1991' && (node.id === 'root' || ['son', '아들'].includes(node.relation));
+        // 🚨 본인의 사망일(없으면 상위 피상속인 사망일)을 기준으로 1991년 이전인지 체크
+        const effectiveDate = node.deathDate || tree.deathDate; 
+        const needsHoju = getLawEra(effectiveDate) !== '1991' && (node.id === 'root' || ['son', '아들'].includes(node.relation));
         if (needsHoju && !hasHoju) {
           guides.push({
             id: node.id, uniqueKey: `missing-hoju-${node.personId}`, targetTabId: node.personId, type: 'mandatory',
-            text: `[${node.name || '이름없음'}] 구법(${node.deathDate || '날짜 미상'} 사망) 적용 대상입니다. 하위 상속인 중 호주상속인을 지정해 주세요.`
+            text: `[${node.name || '이름없음'}] 구법(${effectiveDate} 사망) 적용 대상입니다. 하위 상속인 중 호주상속인을 지정해 주세요.`
           });
         }
       }
@@ -999,7 +1003,22 @@ function App() {
                               {activeTabObj?.parentNode ? <button type="button" onClick={() => setActiveDeceasedTab(activeTabObj.parentNode.id === 'root' ? 'root' : activeTabObj.parentNode.personId)} className="flex items-center gap-2 group transition-all"><div className="w-7 h-7 rounded-full border border-[#e9e9e7] dark:border-neutral-700 bg-white dark:bg-neutral-800 flex items-center justify-center text-[#787774] group-hover:text-[#2383e2] group-hover:border-[#2383e2] shadow-sm"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg></div><div className="flex flex-col items-start text-left"><span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 leading-none mb-1 uppercase tracking-tight">상위 단계</span><div className="flex items-baseline gap-1"><span className="text-[16px] font-black text-neutral-400 dark:text-neutral-500 whitespace-nowrap">{activeTabObj.parentNode.id === 'root' ? (tree.name || '피상속인') : activeTabObj.parentNode.name}</span><span className="text-[13px] font-bold text-neutral-400 dark:text-neutral-500 whitespace-nowrap">의 {getRelStr(currentNode.relation, tree.deathDate)}</span></div></div></button> : <div className="flex items-center px-2"><span className="text-[12px] font-bold text-[#787774] dark:text-neutral-400 tracking-tight">최초 상속 단계</span></div>}
                             </div>
                             <div className="w-px h-8 bg-[#e9e9e7] dark:bg-neutral-700 shrink-0"></div>
-                            <div className="flex flex-col justify-center min-w-[80px] max-w-[140px]"><span className="text-[10px] font-bold text-[#2383e2] dark:text-blue-400 uppercase mb-0.5">{activeDeceasedTab === 'root' ? '피상속인' : '상속인'}</span><div className="flex items-center overflow-hidden"><span className="text-[16px] font-black text-neutral-800 dark:text-neutral-100 truncate">{getBriefingInfo.name}</span></div></div>
+                            <div className="flex flex-col justify-center min-w-[120px] max-w-[200px]">
+                              <div className="mb-1 text-[11px] font-black tracking-wider">
+                                {currentNode.id === 'root' ? (
+                                  <span className="text-gray-400 dark:text-neutral-500 bg-gray-100 dark:bg-neutral-800 px-2 py-[2px] rounded-sm uppercase">피상속인</span>
+                                ) : (currentNode.isDeceased && currentNode.deathDate && tree.deathDate) ? (
+                                  isBefore(currentNode.deathDate, tree.deathDate)
+                                    ? <span className="text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 px-2 py-[2px] rounded border border-blue-200 dark:border-blue-800/50 shadow-sm">대습상속 (피대습인)</span>
+                                    : <span className="text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/30 px-2 py-[2px] rounded border border-purple-200 dark:border-purple-800/50 shadow-sm">재상속 (피상속인)</span>
+                                ) : (
+                                  <span className="text-gray-400 dark:text-neutral-500 bg-gray-100 dark:bg-neutral-800 px-2 py-[2px] rounded-sm uppercase">상속인</span>
+                                )}
+                              </div>
+                              <div className="flex items-center overflow-hidden">
+                                <span className="text-[16px] font-black text-neutral-800 dark:text-neutral-100 truncate">{getBriefingInfo.name}</span>
+                              </div>
+                            </div>
                             <div className="w-px h-8 bg-[#e9e9e7] dark:bg-neutral-700 shrink-0"></div>
                             <div className="flex flex-col justify-center items-center shrink-0"><span className="text-[12px] font-bold text-[#c93f3a] dark:text-red-400 mb-1 leading-none">{currentNode?.deathDate ? `${formatKorDate(currentNode.deathDate)} 사망` : (tree.deathDate ? `${formatKorDate(tree.deathDate)} 사망` : '사망일자 미상')}</span><div className="w-[120px] bg-[#fefce8] dark:bg-yellow-900/30 text-[#854d0e] dark:text-yellow-500 border border-[#fef08a] dark:border-yellow-700/50 py-0.5 rounded flex items-center justify-center gap-1 shadow-sm"><span className="text-[9px]">⚖️</span><span className="text-[10px] font-black tracking-tighter whitespace-nowrap">{getLawEra(currentNode?.deathDate || tree.deathDate)}년 민법</span></div></div>
                             <div className="w-px h-8 bg-[#e9e9e7] dark:bg-neutral-700 shrink-0"></div>
