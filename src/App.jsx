@@ -84,8 +84,6 @@ export const buildTreeFromVault = (vault) => {
 
   const buildNode = (personId, parentDeathDate = null, visited = new Set()) => {
     if (visited.has(personId)) return null;
-    // 분신(클론) 구조상 같은 personId가 다른 브랜치에 독립적으로 존재할 수 있으므로
-    // 브랜치마다 Set을 독립 복사해야 한다 (공유 시 형제 브랜치의 방문이 차단됨)
     const newVisited = new Set(visited);
     newVisited.add(personId);
     const person = vault.persons[personId];
@@ -345,39 +343,16 @@ function App() {
   const undoTree = () => { setVaultState(prev => prev.currentIndex > 0 ? { ...prev, currentIndex: prev.currentIndex - 1 } : prev); };
   const redoTree = () => { setVaultState(prev => prev.currentIndex < prev.history.length - 1 ? { ...prev, currentIndex: prev.currentIndex + 1 } : prev); };
 
-  // ⌨️ [v3.0] 키보드 네비게이션 및 단축키 핸들러 복구
   const handleKeyDown = (e) => {
     const navKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter'];
     if (!navKeys.includes(e.key)) return;
     if (isResetModalOpen) return;
-
-    // input, select, button 요소들만 추출 (인쇄 제외)
     const all = Array.from(document.querySelectorAll('input:not([type="hidden"]), select, button:not(.no-print)'));
     const i = all.indexOf(e.target);
     if (i === -1) return;
-
-    if (e.key === 'Tab') {
-      if (e.shiftKey) {
-        e.preventDefault(); if (i > 0) all[i-1].focus();
-      } else {
-        e.preventDefault(); if (i < all.length - 1) all[i+1].focus();
-      }
-      return;
-    }
-
-    if (e.key === 'ArrowDown' || e.key === 'Enter') { 
-      e.preventDefault(); if (i < all.length - 1) all[i+1].focus(); 
-    } else if (e.key === 'ArrowUp') { 
-      e.preventDefault(); if (i > 0) all[i-1].focus(); 
-    } 
-    else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-      const row = e.target.closest('.group\\/row, .nav-row, .grid');
-      if (!row) return;
-      const rowEls = Array.from(row.querySelectorAll('input:not([type="hidden"]), select, button:not(.no-print)'));
-      const ri = rowEls.indexOf(e.target);
-      if (e.key === 'ArrowLeft' && ri > 0) { e.preventDefault(); rowEls[ri-1].focus(); }
-      else if (e.key === 'ArrowRight' && ri < rowEls.length-1) { e.preventDefault(); rowEls[ri+1].focus(); }
-    }
+    if (e.key === 'Tab') { if (e.shiftKey) { e.preventDefault(); if (i > 0) all[i-1].focus(); } else { e.preventDefault(); if (i < all.length - 1) all[i+1].focus(); } return; }
+    if (e.key === 'ArrowDown' || e.key === 'Enter') { e.preventDefault(); if (i < all.length - 1) all[i+1].focus(); } else if (e.key === 'ArrowUp') { e.preventDefault(); if (i > 0) all[i-1].focus(); } 
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { const row = e.target.closest('.group\\/row, .nav-row, .grid'); if (!row) return; const rowEls = Array.from(row.querySelectorAll('input:not([type="hidden"]), select, button:not(.no-print)')); const ri = rowEls.indexOf(e.target); if (e.key === 'ArrowLeft' && ri > 0) { e.preventDefault(); rowEls[ri-1].focus(); } else if (e.key === 'ArrowRight' && ri < rowEls.length-1) { e.preventDefault(); rowEls[ri+1].focus(); } }
   };
 
   const [treeToggleSignal, setTreeToggleSignal] = useState(0); 
@@ -636,10 +611,7 @@ function App() {
           if (!isSpouseType) {
             const pHeirs = parentNode.heirs || []; const aliveAscendants = pHeirs.filter(h => ['wife', 'husband', 'spouse'].includes(h.relation) && (!h.isDeceased || (h.deathDate && isBefore(clone.deathDate, h.deathDate))) && !h.isExcluded);
             if (aliveAscendants.length > 0) clone.heirs = aliveAscendants.map(asc => ({ ...asc, id: `auto_${asc.id}`, relation: 'parent', heirs: [] }));
-            
-            // 🚨 바로 아랫줄! node.id 라고 오타가 나 있던 것을 clone.id 로 수정했습니다.
             else { const siblings = pHeirs.filter(h => h.id !== clone.id && ['son', 'daughter'].includes(h.relation) && !h.isExcluded); if (siblings.length > 0) clone.heirs = siblings.map(sib => ({ ...sib, id: `auto_${sib.id}`, relation: 'sibling', heirs: [] })); }
-            
           } else { const stepChildren = parentNode.heirs.filter(h => h.id !== clone.id && ['son', 'daughter'].includes(h.relation) && !h.isExcluded); if (stepChildren.length > 0) clone.heirs = stepChildren.map(child => ({ ...child, id: `auto_${child.id}`, relation: child.relation, heirs: [] })); }
         }
       }
@@ -714,52 +686,20 @@ function App() {
   // 💡 [논리적 모순 및 필수 조치 감지 센서]
   const logicalMismatchGuides = useMemo(() => {
     const guides = [];
-
-    if (!tree.name || !tree.name.trim()) {
-      guides.push({ id: 'root', uniqueKey: 'missing-root-name', targetTabId: 'root', type: 'mandatory', text: '피상속인의 성명 및 사망일자를 먼저 입력해 주세요.' });
-    } else if (!tree.deathDate) {
-      guides.push({ id: 'root', uniqueKey: 'missing-root-death', targetTabId: 'root', type: 'mandatory', text: `[${tree.name || '이름없음'}]님의 사망일자를 입력해 주세요. (사망일자 기준으로 적용 법령이 결정됩니다)` });
-    }
-
+    if (!tree.name || !tree.name.trim()) { guides.push({ id: 'root', uniqueKey: 'missing-root-name', targetTabId: 'root', type: 'mandatory', text: '피상속인의 성명 및 사망일자를 먼저 입력해 주세요.' }); } else if (!tree.deathDate) { guides.push({ id: 'root', uniqueKey: 'missing-root-death', targetTabId: 'root', type: 'mandatory', text: `[${tree.name || '이름없음'}]님의 사망일자를 입력해 주세요. (사망일자 기준으로 적용 법령이 결정됩니다)` }); }
     const checkMismatch = (node, parentDeathDate, parentPersonId) => {
       const effectiveDate = parentDeathDate || tree.deathDate;
       const isSpouse = ['wife', 'husband', 'spouse'].includes(node.relation);
-
-      // 1. 출가녀 스위치 오류 (🚨 1991년 신민법 이후는 출가 여부가 지분에 영향이 없으므로 구법에서만 경고)
       if (node.relation === 'daughter' && node.marriageDate && effectiveDate) {
         if (getLawEra(effectiveDate) !== '1991' && isBefore(node.marriageDate, effectiveDate) && node.isSameRegister !== false) {
-          guides.push({ id: node.id, uniqueKey: `mismatch-married-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름없음'}] 혼인(${node.marriageDate})이 상속개시일(${effectiveDate}) 이전입니다. 구법 적용 대상이므로 [출가] 스위치를 켜주세요.` });
+          guides.push({ id: node.id, uniqueKey: `mismatch-married-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름없음'}] 혼인일(${node.marriageDate})이 상속개시일(${effectiveDate}) 이전입니다. 구법 적용 대상이므로 [출가] 스위치를 켜주세요.` });
         }
       }
-
-      // 2. 선사망 스위치 (부모 탭으로 이동)
-      if (node.deathDate && effectiveDate && isBefore(node.deathDate, effectiveDate) && !isSpouse) {
-        if (!node.isExcluded || node.exclusionOption !== 'predeceased') {
-          guides.push({ id: node.id, uniqueKey: `mismatch-predeceased-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름없음'}] 본인 사망(${node.deathDate})이 부모 사망(${effectiveDate})보다 먼저 발생했습니다. [상속권 없음] 스위치를 켜주세요.` });
-        }
-      }
-
-      // 3. 대습 개시 전 재혼 (배우자 본인) - 🚨 부모 탭(parentPersonId)으로 확실히 꽂아줌!
-      if (isSpouse && node.remarriageDate && effectiveDate && isBefore(node.remarriageDate, effectiveDate)) {
-        if (!node.isExcluded || node.exclusionOption !== 'remarried') {
-          guides.push({ id: node.id, uniqueKey: `mismatch-remarried-self-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름없음'}] 피상속인 사망(${effectiveDate}) 전 재혼(${node.remarriageDate})하여 대습상속권이 소멸했습니다. 스위치를 꺼주세요.` });
-        }
-      }
-
-      // 4. 날짜 모순 (부모 탭으로 이동)
-      if (node.marriageDate && node.deathDate && isBefore(node.deathDate, node.marriageDate)) {
-        guides.push({ id: node.id, uniqueKey: `date-mismatch-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름없음'}] 혼인일(${node.marriageDate})이 본인 사망일(${node.deathDate}) 이후로 설정되어 있습니다. 날짜를 확인하고 수정해 주세요.` });
-      }
-
-      if (node.heirs) {
-        node.heirs.forEach(h => {
-          let nextEffectiveDate = effectiveDate;
-          if (node.deathDate && !isBefore(node.deathDate, effectiveDate)) nextEffectiveDate = node.deathDate;
-          checkMismatch(h, nextEffectiveDate, node.personId);
-        });
-      }
+      if (node.deathDate && effectiveDate && isBefore(node.deathDate, effectiveDate) && !isSpouse) { if (!node.isExcluded || node.exclusionOption !== 'predeceased') { guides.push({ id: node.id, uniqueKey: `mismatch-predeceased-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름없음'}] 본인 사망(${node.deathDate})이 부모 사망(${effectiveDate})보다 먼저 발생했습니다. [상속권 없음] 스위치를 켜주세요.` }); } }
+      if (isSpouse && node.remarriageDate && effectiveDate && isBefore(node.remarriageDate, effectiveDate)) { if (!node.isExcluded || node.exclusionOption !== 'remarried') { guides.push({ id: node.id, uniqueKey: `mismatch-remarried-self-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름없음'}] 피상속인 사망(${effectiveDate}) 전 재혼(${node.remarriageDate})하여 대습상속권이 소멸했습니다. 스위치를 꺼주세요.` }); } }
+      if (node.marriageDate && node.deathDate && isBefore(node.deathDate, node.marriageDate)) { guides.push({ id: node.id, uniqueKey: `date-mismatch-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름없음'}] 혼인일(${node.marriageDate})이 본인 사망일(${node.deathDate}) 이후로 설정되어 있습니다. 날짜를 확인하고 수정해 주세요.` }); }
+      if (node.heirs) { node.heirs.forEach(h => { let nextEffectiveDate = effectiveDate; if (node.deathDate && !isBefore(node.deathDate, effectiveDate)) nextEffectiveDate = node.deathDate; checkMismatch(h, nextEffectiveDate, node.personId); }); }
     };
-    
     if (tree.heirs) tree.heirs.forEach(h => checkMismatch(h, tree.deathDate, tree.personId || 'root'));
     return guides;
   }, [tree]);
@@ -796,83 +736,68 @@ function App() {
   useEffect(() => { const tabIds = deceasedTabs.map(t => t.id); if (!tabIds.includes(activeDeceasedTab)) { const fallback = (activeTab === 'input' && deceasedTabs.length > 0) ? deceasedTabs[0].id : 'root'; setActiveDeceasedTab(fallback); } }, [deceasedTabs, activeTab]);
 
   const activeTabObj = useMemo(() => deceasedTabs.find(t => t.id === activeDeceasedTab) || null, [deceasedTabs, activeDeceasedTab]);
-  const handleDragEnd = (event) => { const { active, over } = event; if (over && active.id !== over.id) {
-    setTree(prev => { const newTree = JSON.parse(JSON.stringify(prev)); const reorderList = (list) => { if (!list) return false; const activeIdx = list.findIndex(item => item.id === active.id); const overIdx = list.findIndex(item => item.id === over.id); if (activeIdx !== -1 && overIdx !== -1) { const [movedItem] = list.splice(activeIdx, 1); list.splice(overIdx, 0, movedItem); return true; } for (let item of list) { if (item.heirs && item.heirs.length > 0 && reorderList(item.heirs)) return true; } return false; }; reorderList(newTree.heirs); return newTree; });
-  } };
+  const handleDragEnd = (event) => { const { active, over } = event; if (over && active.id !== over.id) { setTree(prev => { const newTree = JSON.parse(JSON.stringify(prev)); const reorderList = (list) => { if (!list) return false; const activeIdx = list.findIndex(item => item.id === active.id); const overIdx = list.findIndex(item => item.id === over.id); if (activeIdx !== -1 && overIdx !== -1) { const [movedItem] = list.splice(activeIdx, 1); list.splice(overIdx, 0, movedItem); return true; } for (let item of list) { if (item.heirs && item.heirs.length > 0 && reorderList(item.heirs)) return true; } return false; }; reorderList(newTree.heirs); return newTree; }); } };
 
-  const handlePrint = () => { 
-    if (activeTab === 'input') { alert('보고서 탭(산출내역, 지분요약, 상속금액) 중 하나를 선택한 후 인쇄해주세요.'); return; } 
-    const tabNames = { input: '가계도', calc: '상속지분_산출내역', summary: '법정상속분_요약표', amount: '구체적상속분_결과' }; 
-    const currentTabName = tabNames[activeTab] || '보고서'; 
-    const safeCaseNo = (tree.caseNo || '사건번호없음').replace(/[^a-zA-Z0-9가-힣_-]/g, ''); 
-    const safeName = (tree.name || '피상속인없음').replace(/[^a-zA-Z0-9가-힣_-]/g, ''); 
-    const printFileName = `${safeCaseNo}_${safeName}_${currentTabName}_${new Date().toISOString().slice(0, 10)}`; 
-    const originalTitle = document.title; 
-    document.title = printFileName; 
-    window.print(); 
-    document.title = originalTitle; 
-  };
-  const saveFile = () => { 
-    const cleanForExport = (node, parentDate) => {
-      const cleanNode = { ...node };
-      const refDate = cleanNode.id === 'root' ? cleanNode.deathDate : parentDate;
-      const isPre = cleanNode.deathDate && refDate && isBefore(cleanNode.deathDate, refDate);
-      if (isPre && cleanNode.isExcluded && cleanNode.exclusionOption === 'renounce') {
-          cleanNode.exclusionOption = 'predeceased';
-      }
-      if (cleanNode.heirs) cleanNode.heirs = cleanNode.heirs.map(h => cleanForExport(h, cleanNode.deathDate || refDate));
-      return cleanNode;
+  const handlePrint = () => { if (activeTab === 'input') { alert('보고서 탭(산출내역, 지분요약, 상속금액) 중 하나를 선택한 후 인쇄해주세요.'); return; } const tabNames = { input: '가계도', calc: '상속지분_산출내역', summary: '법정상속분_요약표', amount: '구체적상속분_결과' }; const currentTabName = tabNames[activeTab] || '보고서'; const safeCaseNo = (tree.caseNo || '사건번호없음').replace(/[^a-zA-Z0-9가-힣_-]/g, ''); const safeName = (tree.name || '피상속인없음').replace(/[^a-zA-Z0-9가-힣_-]/g, ''); const printFileName = `${safeCaseNo}_${safeName}_${currentTabName}_${new Date().toISOString().slice(0, 10)}`; const originalTitle = document.title; document.title = printFileName; window.print(); document.title = originalTitle; };
+  const saveFile = () => { const cleanForExport = (node, parentDate) => { const cleanNode = { ...node }; const refDate = cleanNode.id === 'root' ? cleanNode.deathDate : parentDate; const isPre = cleanNode.deathDate && refDate && isBefore(cleanNode.deathDate, refDate); if (isPre && cleanNode.isExcluded && cleanNode.exclusionOption === 'renounce') { cleanNode.exclusionOption = 'predeceased'; } if (cleanNode.heirs) cleanNode.heirs = cleanNode.heirs.map(h => cleanForExport(h, cleanNode.deathDate || refDate)); return cleanNode; }; const pureTree = cleanForExport(tree, tree.deathDate); const blob = new Blob([JSON.stringify(pureTree, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); const safeCaseNo = (tree.caseNo || '사건번호없음').replace(/[^a-zA-Z0-9가-힣-]/g, ''); const safeName = (tree.name || '피상속인없음').replace(/[^a-zA-Z0-9가-힣-]/g, ''); a.href = url; a.download = `${safeCaseNo}_${safeName}_상속지분계산_${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(url); };
+  
+  const loadFile = (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        const nameMap = new Map();
+        
+        // 💡 [v3.0 Data Scrubbing & Sanitization] 불러오기 시 정밀 교정 함수
+        const sanitizeNode = (n, parentDeathDate = null) => {
+          let pId = n.personId;
+          if (n.name && n.name.trim() !== '') {
+            if (nameMap.has(n.name)) pId = nameMap.get(n.name);
+            else { if (!pId) pId = `p_${Math.random().toString(36).substr(2,9)}`; nameMap.set(n.name, pId); }
+          } else if (!pId) pId = `p_${Math.random().toString(36).substr(2,9)}`;
+
+          const refDate = n.id === 'root' ? n.deathDate : parentDeathDate;
+          const nodeDeath = n.deathDate;
+          const isExcluded = !!n.isExcluded;
+          let exclusionOption = n.exclusionOption;
+          const isPredeceased = nodeDeath && refDate && isBefore(nodeDeath, refDate);
+
+          if (isExcluded && ['renounce', 'no_heir'].includes(exclusionOption) && isPredeceased) {
+              exclusionOption = 'predeceased';
+          }
+
+          // 🚨 [v3.0 Data Scrubbing] 신법(1991~)에서 배우자가 아닌 자(자녀 등)의 혼인/재혼일자는 무의미하므로 증발시킴
+          const era = getLawEra(refDate);
+          const isSpouseType = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(n.relation);
+          if (era === '1991' && !isSpouseType && n.id !== 'root') {
+              n.marriageDate = '';
+              n.remarriageDate = '';
+          }
+
+          return { ...n, personId: pId, exclusionOption, heirs: (n.heirs || []).map(h => sanitizeNode(h, n.deathDate || refDate)) };
+        };
+
+        if (data.id === 'root' || (Array.isArray(data.heirs) && data.name !== undefined)) {
+          setTree(sanitizeNode(data, data.deathDate));
+          setActiveTab('calc');
+        } else if (data.people && Array.isArray(data.people)) {
+          const root = data.people.find(p => p.isRoot || p.id === 'root');
+          if (root) { setTree({ id: 'root', name: root.name || '', gender: root.gender || 'male', deathDate: root.deathDate || '', caseNo: data.caseNo || '', isHoju: root.isHoju !== false, shareN: data.shareN || 1, shareD: data.shareD || 1, heirs: [] }); setActiveTab('input'); }
+        } else alert('인식할 수 없는 파일 형식입니다.');
+      } catch (err) { alert('파일 로드 중 오류: ' + err.message); }
     };
-    const pureTree = cleanForExport(tree, tree.deathDate);
-    const blob = new Blob([JSON.stringify(pureTree, null, 2)], { type: 'application/json' }); 
-    const url = URL.createObjectURL(blob); 
-    const a = document.createElement('a'); 
-    const safeCaseNo = (tree.caseNo || '사건번호없음').replace(/[^a-zA-Z0-9가-힣-]/g, ''); 
-    const safeName = (tree.name || '피상속인없음').replace(/[^a-zA-Z0-9가-힣-]/g, ''); 
-    a.href = url; 
-    a.download = `${safeCaseNo}_${safeName}_상속지분계산_${new Date().toISOString().slice(0,10)}.json`; 
-    a.click(); 
-    URL.revokeObjectURL(url); 
-  };
-  const loadFile = (e) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (ev) => { try { const data = JSON.parse(ev.target.result); const nameMap = new Map(); const syncPersonIdRec = (n) => { let pId = n.personId; if (n.name && n.name.trim() !== '') { if (nameMap.has(n.name)) pId = nameMap.get(n.name); else { if (!pId) pId = `p_${Math.random().toString(36).substr(2,9)}`; nameMap.set(n.name, pId); } } else if (!pId) pId = `p_${Math.random().toString(36).substr(2,9)}`; let exclusionOption = n.exclusionOption; if (n.isExcluded && exclusionOption === 'no_heir' && n.isDeceased) exclusionOption = 'renounce'; return { ...n, personId: pId, exclusionOption, heirs: (n.heirs || []).map(syncPersonIdRec) }; }; if (data.id === 'root' || (Array.isArray(data.heirs) && data.name !== undefined)) { setTree(syncPersonIdRec(data)); setActiveTab('calc'); } else if (data.people && Array.isArray(data.people)) { alert('이 파일은 이전 버전의 그래프 형식입니다. 일부 데이터가 누락될 수 있습니다.'); const root = data.people.find(p => p.isRoot || p.id === 'root'); if (root) { setTree({ id: 'root', name: root.name || '', gender: root.gender || 'male', deathDate: root.deathDate || '', caseNo: data.caseNo || '', isHoju: root.isHoju !== false, shareN: data.shareN || 1, shareD: data.shareD || 1, heirs: [] }); setActiveTab('input'); } } else alert('인식할 수 없는 파일 형식입니다.'); } catch (err) { alert('파일을 읽는 중 오류가 발생했습니다: ' + err.message); } }; reader.readAsText(file); e.target.value = ''; };
-  const performReset = (saveFirst) => {
-    if (saveFirst) saveFile();
-    setVaultState({ history: [migrateToVault(getInitialTree())], currentIndex: 0 });
-    setActiveTab('input');
-    setActiveDeceasedTab('root');
-    setIsResetModalOpen(false);
+    reader.readAsText(file); e.target.value = '';
   };
 
-  useEffect(() => {
-    const handleScroll = () => setShowScrollTop(window.scrollY > 200);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  useEffect(() => {
-    const handleGlobalKeyDown = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undoTree(); }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redoTree(); }
-      if (e.key === 'Escape' && !isAiModalOpen) { e.preventDefault(); setIsResetModalOpen(true); }
-    };
-    window.addEventListener('keydown', handleGlobalKeyDown);
-    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [isAiModalOpen]);
-
+  const performReset = (saveFirst) => { if (saveFirst) saveFile(); setVaultState({ history: [migrateToVault(getInitialTree())], currentIndex: 0 }); setActiveTab('input'); setActiveDeceasedTab('root'); setIsResetModalOpen(false); };
+  useEffect(() => { const handleScroll = () => setShowScrollTop(window.scrollY > 200); window.addEventListener('scroll', handleScroll); return () => window.removeEventListener('scroll', handleScroll); }, []);
+  useEffect(() => { const handleGlobalKeyDown = (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undoTree(); } if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redoTree(); } if (e.key === 'Escape' && !isAiModalOpen) { e.preventDefault(); setIsResetModalOpen(true); } }; window.addEventListener('keydown', handleGlobalKeyDown); return () => window.removeEventListener('keydown', handleGlobalKeyDown); }, [isAiModalOpen]);
   const handleExcelExport = () => { const rows = [['사건번호', tree.caseNo || ''], ['피상속인', tree.name || ''], ['사망일자', tree.deathDate || ''], [''], ['상속인', '관계', '지분(분자)', '지분(분모)', '통분 지분(분자)', '통분 지분(분모)']]; finalShares.direct.forEach(f => rows.push([f.name, getRelStr(f.relation, tree.deathDate) || f.relation, f.n, f.d, f.un, f.ud])); (finalShares.subGroups || []).forEach(g => { rows.push(['', `※ 공동상속인 중 [${g.ancestor?.name || ''}]은(는) ${formatKorDate(g.ancestor?.deathDate)} 사망하였으므로 상속인`, '', '', '', '']); g.shares.forEach(f => rows.push([f.name, getRelStr(f.relation, tree.deathDate) || f.relation, f.n, f.d, f.un, f.ud])); }); const csv = '\uFEFF' + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n'); const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `상속지분_${(tree.name || '피상속인없음').replace(/[^a-zA-Z0-9가-힣_-]/g, '')}_${new Date().toISOString().slice(0,10)}.csv`; a.click(); URL.revokeObjectURL(url); };
 
   return (
     <>
-      <PrintReport 
-        tree={tree} 
-        activeTab={activeTab} 
-        activeDeceasedTab={activeDeceasedTab} 
-        finalShares={finalShares} 
-        calcSteps={calcSteps} 
-        amountCalculations={amountCalculations} 
-        propertyValue={propertyValue} 
-      />
-      
+      <PrintReport tree={tree} activeTab={activeTab} activeDeceasedTab={activeDeceasedTab} finalShares={finalShares} calcSteps={calcSteps} amountCalculations={amountCalculations} propertyValue={propertyValue} />
       <div className="w-full min-h-screen relative flex flex-col items-start pb-24 transition-colors duration-200 bg-[#f7f7f5] dark:bg-neutral-900 min-w-[1280px] print:hidden">
         {showNavigator && (
         <div ref={stickerRef} className={`fixed top-28 right-8 z-[9999] no-print ${isStickerDragging ? 'cursor-grabbing' : 'cursor-grab'}`} style={{ transform: `translate3d(${stickerPos.current.x}px, ${stickerPos.current.y}px, 0)`, transition: 'none', willChange: 'transform', touchAction: 'none' }} onMouseDown={handleStickerMouseDown}>
@@ -897,7 +822,7 @@ function App() {
             </div>
           </div>
         </div>
-      )}
+        )}
       <div className="bg-white dark:bg-neutral-800 border-b border-[#e9e9e7] dark:border-neutral-700 h-[54px] sticky top-0 z-50 no-print w-full flex justify-start transition-all duration-300 shadow-sm overflow-hidden">
         <div className="w-[1080px] min-w-[1080px] shrink-0 px-6 flex items-center justify-between h-full flex-nowrap">
           <div className="flex items-center gap-3 flex-nowrap shrink-0">
@@ -964,37 +889,10 @@ function App() {
                   const parentHeirs = activeTabObj.parentNode?.heirs || [];
                   const existingNames = new Set(nodeHeirs.map(h => h.name).filter(n => n.trim() !== ''));
                   let baseAdd = [];
-                  
-                  if (['wife', 'husband', 'spouse'].includes(currentNode.relation)) { 
-                    const children = parentHeirs.filter(s => ['son', 'daughter'].includes(s.relation)); 
-                    baseAdd = children.filter(c => c.name.trim() === '' || !existingNames.has(c.name)); 
-                  } else { 
-                    const parents = parentHeirs.filter(s => {
-                      if (!['wife', 'husband', 'spouse'].includes(s.relation)) return false;
-                      if (s.isDeceased && s.deathDate && currentNode.deathDate && isBefore(s.deathDate, currentNode.deathDate)) return false;
-                      return true;
-                    });
-                    const siblings = parentHeirs.filter(s => s.id !== currentNode.id && ['son', 'daughter'].includes(s.relation)); 
-                    baseAdd = [
-                      ...parents.map(item => ({ ...item, relation: 'parent' })),
-                      ...siblings.map(item => ({ ...item, relation: 'sibling' }))
-                    ].filter(s => s.name.trim() === '' || !existingNames.has(s.name)); 
-                  }
-                  
+                  if (['wife', 'husband', 'spouse'].includes(currentNode.relation)) { const children = parentHeirs.filter(s => ['son', 'daughter'].includes(s.relation)); baseAdd = children.filter(c => c.name.trim() === '' || !existingNames.has(c.name)); } 
+                  else { const parents = parentHeirs.filter(s => { if (!['wife', 'husband', 'spouse'].includes(s.relation)) return false; if (s.isDeceased && s.deathDate && currentNode.deathDate && isBefore(s.deathDate, currentNode.deathDate)) return false; return true; }); const siblings = parentHeirs.filter(s => s.id !== currentNode.id && ['son', 'daughter'].includes(s.relation)); baseAdd = [...parents.map(item => ({ ...item, relation: 'parent' })), ...siblings.map(item => ({ ...item, relation: 'sibling' }))].filter(s => s.name.trim() === '' || !existingNames.has(s.name)); }
                   if (baseAdd.length === 0) { alert('불러올 상속인이 없습니다.'); return; }
-                  setTree(prev => { 
-                    const syncHeirs = (n) => { 
-                      if (n.id === currentNode.id || (currentNode.personId && n.personId === currentNode.personId)) { 
-                        const finalAdd = baseAdd.map(item => { 
-                          const assignNewIds = (node) => ({ ...node, id: `n_${Math.random().toString(36).substr(2,9)}`, heirs: node.heirs?.map(assignNewIds) || [] }); 
-                          return assignNewIds(item); 
-                        }); 
-                        return { ...n, isExcluded: false, heirs: [...(n.heirs || []), ...finalAdd] }; 
-                      } 
-                      return { ...n, heirs: n.heirs?.map(syncHeirs) || [] }; 
-                    }; 
-                    return syncHeirs(prev); 
-                  });
+                  setTree(prev => { const syncHeirs = (n) => { if (n.id === currentNode.id || (currentNode.personId && n.personId === currentNode.personId)) { const finalAdd = baseAdd.map(item => { const assignNewIds = (node) => ({ ...node, id: `n_${Math.random().toString(36).substr(2,9)}`, heirs: node.heirs?.map(assignNewIds) || [] }); return assignNewIds(item); }); return { ...n, isExcluded: false, heirs: [...(n.heirs || []), ...finalAdd] }; } return { ...n, heirs: n.heirs?.map(syncHeirs) || [] }; }; return syncHeirs(prev); });
                 };
                 return (
                   <div className="space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-400 flex flex-col flex-1">
@@ -1016,22 +914,7 @@ function App() {
                               {activeTabObj?.parentNode ? <button type="button" onClick={() => setActiveDeceasedTab(activeTabObj.parentNode.id === 'root' ? 'root' : activeTabObj.parentNode.personId)} className="flex items-center gap-2 group transition-all"><div className="w-7 h-7 rounded-full border border-[#e9e9e7] dark:border-neutral-700 bg-white dark:bg-neutral-800 flex items-center justify-center text-[#787774] group-hover:text-[#2383e2] group-hover:border-[#2383e2] shadow-sm"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg></div><div className="flex flex-col items-start text-left"><span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 leading-none mb-1 uppercase tracking-tight">상위 단계</span><div className="flex items-baseline gap-1"><span className="text-[16px] font-black text-neutral-400 dark:text-neutral-500 whitespace-nowrap">{activeTabObj.parentNode.id === 'root' ? (tree.name || '피상속인') : activeTabObj.parentNode.name}</span><span className="text-[13px] font-bold text-neutral-400 dark:text-neutral-500 whitespace-nowrap">의 {getRelStr(currentNode.relation, tree.deathDate)}</span></div></div></button> : <div className="flex items-center px-2"><span className="text-[12px] font-bold text-[#787774] dark:text-neutral-400 tracking-tight">최초 상속 단계</span></div>}
                             </div>
                             <div className="w-px h-8 bg-[#e9e9e7] dark:bg-neutral-700 shrink-0"></div>
-                            <div className="flex flex-col justify-center min-w-[120px] max-w-[200px]">
-                              <div className="mb-1 text-[11px] font-black tracking-wider">
-                                {currentNode.id === 'root' ? (
-                                  <span className="text-gray-400 dark:text-neutral-500 bg-gray-100 dark:bg-neutral-800 px-2 py-[2px] rounded-sm uppercase">피상속인</span>
-                                ) : (currentNode.isDeceased && currentNode.deathDate && tree.deathDate) ? (
-                                  isBefore(currentNode.deathDate, tree.deathDate)
-                                    ? <span className="text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 px-2 py-[2px] rounded border border-blue-200 dark:border-blue-800/50 shadow-sm">피대습상속인</span>
-                                    : <span className="text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/30 px-2 py-[2px] rounded border border-purple-200 dark:border-purple-800/50 shadow-sm">피재상속인</span>
-                                ) : (
-                                  <span className="text-gray-400 dark:text-neutral-500 bg-gray-100 dark:bg-neutral-800 px-2 py-[2px] rounded-sm uppercase">상속인</span>
-                                )}
-                              </div>
-                              <div className="flex items-center overflow-hidden">
-                                <span className="text-[16px] font-black text-neutral-800 dark:text-neutral-100 truncate">{getBriefingInfo.name}</span>
-                              </div>
-                            </div>
+                            <div className="flex flex-col justify-center min-w-[80px] max-w-[140px]"><span className="text-[10px] font-bold text-[#1e56a0] dark:text-blue-400 uppercase mb-0.5">{activeDeceasedTab === 'root' ? '피상속인' : (currentNode.deathDate && tree.deathDate && isBefore(currentNode.deathDate, tree.deathDate) ? '피대습상속인' : '피상속인')}</span><div className="flex items-center overflow-hidden"><span className="text-[16px] font-black text-neutral-800 dark:text-neutral-100 truncate">{getBriefingInfo.name}</span></div></div>
                             <div className="w-px h-8 bg-[#e9e9e7] dark:bg-neutral-700 shrink-0"></div>
                             <div className="flex flex-col justify-center items-center shrink-0"><span className="text-[12px] font-bold text-[#c93f3a] dark:text-red-400 mb-1 leading-none">{currentNode?.deathDate ? `${formatKorDate(currentNode.deathDate)} 사망` : (tree.deathDate ? `${formatKorDate(tree.deathDate)} 사망` : '사망일자 미상')}</span><div className="w-[120px] bg-[#fefce8] dark:bg-yellow-900/30 text-[#854d0e] dark:text-yellow-500 border border-[#fef08a] dark:border-yellow-700/50 py-0.5 rounded flex items-center justify-center gap-1 shadow-sm"><span className="text-[9px]">⚖️</span><span className="text-[10px] font-black tracking-tighter whitespace-nowrap">{getLawEra(currentNode?.deathDate || tree.deathDate)}년 민법</span></div></div>
                             <div className="w-px h-8 bg-[#e9e9e7] dark:bg-neutral-700 shrink-0"></div>
@@ -1060,84 +943,15 @@ function App() {
               {activeTab === 'calc' && <section className="w-full text-[#37352f] dark:text-neutral-200"><div className="mb-4 text-[13px] text-[#787774] dark:text-neutral-500">※ 피상속인부터 시작하여 각 대습/재상속 발생 시점마다 지분이 산출된 계산 흐름표입니다.</div><div className="space-y-6 print-mt-4">{calcSteps.map((s, i) => (<div key={'p-s'+i}><div className="mb-2 text-[13px] text-[#504f4c] dark:text-neutral-300">[STEP {i+1}] <span className="font-medium text-[#37352f] dark:text-neutral-100">망 {s.dec.name}</span> ({formatKorDate(s.dec.deathDate)} 사망) ─ 분배 지분: {s.inN}/{s.inD}{s.mergeSources && s.mergeSources.length > 1 && (<span className="text-[#787774]">{` (= ${s.mergeSources.map(src => `${src.from} ${src.d}분의 ${src.n}`).join(' + ')})`}</span>)}</div><table className="w-full border-collapse text-[13px]"><thead className="bg-[#fcfcfb] dark:bg-neutral-800/40"><tr><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2 font-medium text-center w-[15%] text-[#787774]">성명</th><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2 font-medium text-center w-[12%] text-[#787774]">관계</th><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2 font-medium text-center w-[25%] text-[#787774]">계산식</th><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2 font-medium text-center w-[18%] text-[#787774]">계산된 지분</th><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2 font-medium text-left w-[30%] pl-4 text-[#787774]">비고</th></tr></thead><tbody>{s.dists.map((d, di) => { const memo = []; if (d.ex) memo.push(`상속권 없음(${d.ex})`); if (d.h.isDeceased && !(d.ex && (d.ex.includes('사망')||d.ex.includes('선사망')))) memo.push('망인'); if (d.mod) memo.push(...d.mod.split(',').map(m => m.trim())); return (<tr key={di} className="hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20"><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2 text-center font-medium">{d.h.name}</td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2 text-center text-[#787774]">{getRelStr(d.h.relation, s.dec.deathDate) || '상속인'}</td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2 text-center text-[#787774]">{s.inN}/{s.inD} × {d.sn}/{d.sd}</td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2 text-center font-medium">{d.n}/{d.d}</td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2 text-left pl-4 text-[#787774]">{memo.join(', ')}</td></tr>); })}</tbody></table></div>))}</div></section>}
               {activeTab === 'result' && (() => {
                 const heirMap = new Map();
-                calcSteps.forEach(s => {
-                  s.dists.forEach(d => {
-                    if (d.n > 0) {
-                      const key = d.h.personId;
-                      if (!heirMap.has(key)) heirMap.set(key, { name: d.h.name, relation: d.h.relation, sources: [], isDeceased: d.h.isDeceased });
-                      heirMap.get(key).sources.push({
-                        decName: s.dec.name,
-                        decDeathDate: s.dec.deathDate,
-                        relation: d.h.relation,
-                        lawEra: s.lawEra,
-                        mod: d.mod || '',
-                        n: d.n, d: d.d
-                      });
-                    }
-                  });
-                });
+                calcSteps.forEach(s => { s.dists.forEach(d => { if (d.n > 0) { const key = d.h.personId; if (!heirMap.has(key)) heirMap.set(key, { name: d.h.name, relation: d.h.relation, sources: [], isDeceased: d.h.isDeceased }); heirMap.get(key).sources.push({ decName: s.dec.name, decDeathDate: s.dec.deathDate, relation: d.h.relation, lawEra: s.lawEra, mod: d.mod || '', n: d.n, d: d.d }); } }); });
                 const results = Array.from(heirMap.values()).filter(r => !r.isDeceased);
-                const lawLabel = (era) => {
-                  if (era === '1960') return '제정민법';
-                  if (era === '1979') return '79년 개정민법';
-                  if (era === '1991') return '현행민법';
-                  return era + '년 민법';
-                };
+                const lawLabel = (era) => { if (era === '1960') return '제정민법'; if (era === '1979') return '79년 개정민법'; if (era === '1991') return '현행민법'; return era + '년 민법'; };
                 return (
                   <section className="w-full text-[#37352f] dark:text-neutral-200">
                     <div className="mb-4 text-[13px] text-[#787774] dark:text-neutral-500">※ 최종 생존 상속인 기준으로 승계받은 지분들을 합산한 검증표입니다. 동일인이 여러 경로로 상속받는 경우 각 경로별 관계·적용법률을 표시합니다.</div>
-                    <table className="w-full border-collapse text-[13px]">
-                      <thead className="bg-[#fcfcfb] dark:bg-neutral-800/40">
-                        <tr>
-                          <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[18%] text-[#787774]">최종 상속인</th>
-                          <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[52%] text-[#787774]">지분 취득 내역 (경로별)</th>
-                          <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[15%] text-[#787774]">최종 합계</th>
-                          <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[15%] text-[#787774]">통분 지분</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {results.length > 0 ? results.map((r, i) => {
-                          const total = r.sources.reduce((acc, s) => {
-                            const [nn, nd] = math.add(acc.n, acc.d, s.n, s.d);
-                            return { n: nn, d: nd };
-                          }, { n: 0, d: 1 });
-                          let commonD = 1;
-                          results.forEach(res => {
-                            const t = res.sources.reduce((acc, s) => { const [nn, nd] = math.add(acc.n, acc.d, s.n, s.d); return { n: nn, d: nd }; }, { n: 0, d: 1 });
-                            if (t.n > 0) commonD = math.lcm(commonD, t.d);
-                          });
-                          const unifiedN = total.n * (commonD / total.d);
-                          const isMultiSource = r.sources.length > 1;
-                          return (
-                            <tr key={i} className="hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20 align-top">
-                              <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">
-                                {r.name}
-                                <span className="text-[#787774] font-normal ml-1">[{getRelStr(r.relation, tree.deathDate)}]</span>
-                                {isMultiSource && <span className="block text-[10px] text-blue-500 font-bold mt-0.5">복수 경로</span>}
-                              </td>
-                              <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left">
-                                {r.sources.map((src, si) => (
-                                  <div key={si} className={`flex items-baseline gap-1 ${si > 0 ? 'mt-1.5 pt-1.5 border-t border-dashed border-[#e9e9e7] dark:border-neutral-700' : ''}`}>
-                                    <span className="font-medium text-[#37352f] dark:text-neutral-200 shrink-0">{src.n}/{src.d}</span>
-                                    <span className="text-[#787774] dark:text-neutral-500 text-[12px]">
-                                      ← 망 {src.decName}의 <span className="font-medium text-[#504f4c] dark:text-neutral-300">{getRelStr(src.relation, src.decDeathDate) || '상속인'}</span>으로서
-                                      <span className="ml-1 text-[11px] px-1 py-0.5 rounded bg-[#f4f4f3] dark:bg-neutral-700 text-[#787774] dark:text-neutral-400">{lawLabel(src.lawEra)}</span>
-                                      {src.mod && <span className="ml-1 text-[11px] text-[#b45309]">({src.mod})</span>}
-                                    </span>
-                                  </div>
-                                ))}
-                                {isMultiSource && (
-                                  <div className="mt-1.5 pt-1.5 border-t border-[#e9e9e7] dark:border-neutral-700 text-[12px] text-[#504f4c] dark:text-neutral-400 font-medium">
-                                    = {r.sources.map(s => `${s.n}/${s.d}`).join(' + ')} = <span className="text-[#37352f] dark:text-neutral-200 font-bold">{total.n}/{total.d}</span>
-                                  </div>
-                                )}
-                              </td>
-                              <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">{total.n} / {total.d}</td>
-                              <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">{unifiedN} / {commonD}</td>
-                            </tr>
-                          );
-                        }) : <tr><td colSpan="4" className="border border-[#e9e9e7] dark:border-neutral-700 p-8 text-center text-[#b45309] font-bold bg-amber-50">최종 생존 상속인이 없습니다.</td></tr>}
-                      </tbody>
+                    <table className="w-full border-collapse text-[13px]"><thead className="bg-[#fcfcfb] dark:bg-neutral-800/40"><tr><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[18%] text-[#787774]">최종 상속인</th><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[52%] text-[#787774]">지분 취득 내역 (경로별)</th><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[15%] text-[#787774]">최종 합계</th><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[15%] text-[#787774]">통분 지분</th></tr></thead>
+                      <tbody>{results.length > 0 ? results.map((r, i) => { const total = r.sources.reduce((acc, s) => { const [nn, nd] = math.add(acc.n, acc.d, s.n, s.d); return { n: nn, d: nd }; }, { n: 0, d: 1 }); let commonD = 1; results.forEach(res => { const t = res.sources.reduce((acc, s) => { const [nn, nd] = math.add(acc.n, acc.d, s.n, s.d); return { n: nn, d: nd }; }, { n: 0, d: 1 }); if (t.n > 0) commonD = math.lcm(commonD, t.d); }); const unifiedN = total.n * (commonD / total.d); const isMultiSource = r.sources.length > 1; return (
+                        <tr key={i} className="hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20 align-top"><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">{r.name}<span className="text-[#787774] font-normal ml-1">[{getRelStr(r.relation, tree.deathDate)}]</span>{isMultiSource && <span className="block text-[10px] text-blue-500 font-bold mt-0.5">복수 경로</span>}</td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left">{r.sources.map((src, si) => (<div key={si} className={`flex items-baseline gap-1 ${si > 0 ? 'mt-1.5 pt-1.5 border-t border-dashed border-[#e9e9e7] dark:border-neutral-700' : ''}`}><span className="font-medium text-[#37352f] dark:text-neutral-200 shrink-0">{src.n}/{src.d}</span><span className="text-[#787774] dark:text-neutral-500 text-[12px]">← 망 {src.decName}의 <span className="font-medium text-[#504f4c] dark:text-neutral-300">{getRelStr(src.relation, src.decDeathDate) || '상속인'}</span>으로서<span className="ml-1 text-[11px] px-1 py-0.5 rounded bg-[#f4f4f3] dark:bg-neutral-700 text-[#787774] dark:text-neutral-400">{lawLabel(src.lawEra)}</span>{src.mod && <span className="ml-1 text-[11px] text-[#b45309]">({src.mod})</span>}</span></div>))}{isMultiSource && (<div className="mt-1.5 pt-1.5 border-t border-[#e9e9e7] dark:border-neutral-700 text-[12px] text-[#504f4c] dark:text-neutral-400 font-medium">= {r.sources.map(s => `${s.n}/${s.d}`).join(' + ')} = <span className="text-[#37352f] dark:text-neutral-200 font-bold">{total.n}/{total.d}</span></div>)}</td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">{total.n} / {total.d}</td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">{unifiedN} / {commonD}</td></tr>); }) : <tr><td colSpan="4" className="border border-[#e9e9e7] dark:border-neutral-700 p-8 text-center text-[#b45309] font-bold bg-amber-50">최종 생존 상속인 없습니다.</td></tr>}</tbody>
                     </table>
                   </section>
                 );
@@ -1145,135 +959,32 @@ function App() {
               {activeTab === 'summary' && (() => {
                 const shareByPersonId = new Map(); (finalShares.direct || []).forEach(s => shareByPersonId.set(s.personId, s)); (finalShares.subGroups || []).forEach(g => g.shares.forEach(s => shareByPersonId.set(s.personId, s)));  
                 const printedPersonIds = new Set();
-                const buildGroups = (node, parentDeathDate) => {
-                  const directShares = []; const subGroups = []; const seenInThisGroup = new Set();
-                  (node.heirs || []).forEach(h => { if (seenInThisGroup.has(h.personId)) return; seenInThisGroup.add(h.personId); if (!h.isDeceased) { const s = shareByPersonId.get(h.personId); if (s && s.n > 0 && !printedPersonIds.has(h.personId)) { directShares.push(s); printedPersonIds.add(h.personId); } } else { const type = (h.deathDate && isBefore(h.deathDate, parentDeathDate)) ? '대습상속' : '재상속'; const child = buildGroups(h, h.deathDate || parentDeathDate); if (child.directShares.length > 0 || child.subGroups.length > 0) subGroups.push({ ancestor: h, type, ...child }); } });
-                  return { directShares, subGroups };
-                };
-                const topDirect = []; const topGroups = []; const topSeen = new Set();
-                (tree.heirs || []).forEach(h => { if (topSeen.has(h.personId)) return; topSeen.add(h.personId); if (!h.isDeceased) { const s = shareByPersonId.get(h.personId); if (s && s.n > 0 && !printedPersonIds.has(h.personId)) { topDirect.push(s); printedPersonIds.add(h.personId); } } else { const type = (h.deathDate && isBefore(h.deathDate, tree.deathDate)) ? '대습상속' : '재상속'; const child = buildGroups(h, h.deathDate || tree.deathDate); if (child.directShares.length > 0 || child.subGroups.length > 0) topGroups.push({ ancestor: h, type, ...child }); } });
+                const buildGroups = (node, parentDeathDate) => { const directShares = []; const subGroups = []; const seenInThisGroup = new Set(); (node.heirs || []).forEach(h => { if (seenInThisGroup.has(h.personId)) return; seenInThisGroup.add(h.personId); if (!h.isDeceased) { const s = shareByPersonId.get(h.personId); if (s && s.n > 0 && !printedPersonIds.has(h.personId)) { directShares.push(s); printedPersonIds.add(h.personId); } } else { const type = (h.deathDate && isBefore(h.deathDate, parentDeathDate)) ? '대습상속' : '재상속'; const child = buildGroups(h, h.deathDate || parentDeathDate); if (child.directShares.length > 0 || child.subGroups.length > 0) subGroups.push({ ancestor: h, type, ...child }); } }); return { directShares, subGroups }; };
+                const topDirect = []; const topGroups = []; const topSeen = new Set(); (tree.heirs || []).forEach(h => { if (topSeen.has(h.personId)) return; topSeen.add(h.personId); if (!h.isDeceased) { const s = shareByPersonId.get(h.personId); if (s && s.n > 0 && !printedPersonIds.has(h.personId)) { topDirect.push(s); printedPersonIds.add(h.personId); } } else { const type = (h.deathDate && isBefore(h.deathDate, tree.deathDate)) ? '대습상속' : '재상속'; const child = buildGroups(h, h.deathDate || tree.deathDate); if (child.directShares.length > 0 || child.subGroups.length > 0) topGroups.push({ ancestor: h, type, ...child }); } });
                 const [totalSumN, totalSumD] = (() => { let tn = 0, td = 1; const addShare = (s) => { if (s && s.n > 0) { const [nn, nd] = math.add(tn, td, s.n, s.d); tn = nn; td = nd; } }; topDirect.forEach(addShare); const traverseGroup = (g) => { g.directShares.forEach(addShare); g.subGroups.forEach(traverseGroup); }; topGroups.forEach(traverseGroup); return math.simplify(tn, td); })();
-                const isMatch = !showGlobalWarning; const mismatchReasons = globalMismatchReasons;
-                const renderShareRow = (f, depth, groupAncestorId = null) => { const pl = `${12 + (depth > 0 ? 16 : 0)}px`; const rowId = groupAncestorId ? `summary-row-${f.personId}-${groupAncestorId}` : `summary-row-${f.personId}`; const isCurrentMatch = matchIds[currentMatchIdx] === rowId; return (<tr key={'sr-'+f.id} id={rowId} className={`transition-colors duration-300 ${isCurrentMatch ? 'bg-yellow-100 dark:bg-yellow-900/50 border-l-4 border-l-yellow-500' : 'hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20'}`}><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left font-medium" style={{paddingLeft: pl}}>{f.name} <span className="text-[#787774] font-normal ml-1">[{getRelStr(f.relation, tree.deathDate)}]</span></td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center text-[#504f4c]">{f.n} / {f.d}</td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">{f.un} / {f.ud}</td></tr>); };
+                const renderShareRow = (f, depth, groupAncestorId = null) => { const pl = `${12 + (depth > 0 ? 16 : 0)}px`; const rowId = groupAncestorId ? `summary-row-${f.personId}-${groupAncestorId}` : `summary-row-${f.personId}`; const isCurrentMatch = matchIds[currentMatchIdx] === rowId; return (<tr key={'sr-'+f.id} id={rowId} className={`transition-colors duration-300 ${isCurrentMatch ? 'bg-yellow-100 dark:bg-yellow-900/50 border-l-4 border-l-yellow-500' : 'hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20'}`}><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left font-medium" style={{paddingLeft: pl}}>{f.name}<span className="text-[#787774] font-normal ml-1">[{getRelStr(f.relation, tree.deathDate)}]</span></td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center text-[#504f4c]">{f.n} / {f.d}</td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">{f.un} / {f.ud}</td></tr>); };
                 const renderGroup = (group, depth) => (<React.Fragment key={'grp-'+group.ancestor.id}><tr className="bg-[#fcfcfb] dark:bg-neutral-800/40"><td colSpan={3} className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left text-[#504f4c] dark:text-neutral-400 pl-4">※ {formatKorDate(group.ancestor.deathDate)} 공동상속인 중 [{group.ancestor.name}]은(는) 사망하였으므로 그 {group.type === '대습상속' ? '대습상속인' : '상속인'}</td></tr>{group.directShares.map(f => renderShareRow(f, depth + 1, group.ancestor.id))}{group.subGroups.map(sg => renderGroup(sg, depth + 1))}</React.Fragment>);
                 return (
                   <div className="w-full text-[#37352f] dark:text-neutral-200">
                     <div className="mb-4 flex items-center justify-between no-print"><div className="flex items-center gap-6"><h2 className="text-lg font-black text-[#37352f] dark:text-neutral-200 flex items-center gap-2"><IconList className="w-5 h-5 text-[#787774]"/> 지분 요약표</h2><div className="flex items-center gap-2 bg-white dark:bg-neutral-800 border border-[#e5e5e5] dark:border-neutral-700 rounded-full px-3 py-1.5 shadow-sm focus-within:ring-2 focus-within:ring-blue-100"><svg className="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg><input type="text" placeholder="이름 검색" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="bg-transparent border-none outline-none text-[13px] w-16 focus:w-28 transition-all" />{matchIds.length > 0 && <span className="text-[11px] text-neutral-500 font-medium ml-1">{currentMatchIdx + 1}/{matchIds.length}</span>}</div></div></div>
                     <table className="w-full border-collapse text-[13px]"><thead className="bg-[#fcfcfb] dark:bg-neutral-800/40"><tr><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[40%] text-[#787774]">상속인 성명</th><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[30%] text-[#787774]">최종 지분 (통분 전)</th><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[30%] text-[#787774]">최종 지분 (통분 후)</th></tr></thead><tbody>{topDirect.map(f => renderShareRow(f, 0))}{topGroups.map(g => renderGroup(g, 0))}</tbody><tfoot className="bg-[#fcfcfb] dark:bg-neutral-800/40"><tr><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-right font-medium text-[#787774]">합계 검증</td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">{totalSumN} / {totalSumD}</td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left text-[12.5px]">{(() => { const sumVal = totalSumD ? totalSumN / totalSumD : 0; const targetVal = simpleTargetD ? simpleTargetN / simpleTargetD : 1; if (totalSumN === 0) return <span className="text-[#b45309] font-bold">⚠️ 생존 상속인 없음</span>; if (sumVal === targetVal) return <span className="text-[#504f4c]">✅ 법정상속인 지분과 일치</span>; return <span className="text-red-500 font-bold">❌ 지분 합계 불일치</span>; })()}</td></tr></tfoot></table>
-                    {!isMatch && mismatchReasons.length > 0 && <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 rounded-lg"><div className="flex items-center gap-2 mb-2"><span className="text-red-600 font-bold text-[14px]">⚠️ 상속 지분 배분 안내</span></div><ul className="list-disc pl-5 text-[#c93f3a] space-y-1.5 text-[13px] font-medium">{mismatchReasons.map((r, idx) => (<li key={idx}>{r.text || r}</li>))}</ul></div>}
                   </div>
                 );
               })()}
               {activeTab === 'amount' && (() => {
-                const resultMap = new Map();
-                (amountCalculations?.results || []).forEach(r => resultMap.set(r.personId, r));
-                const orderedRows = [];
-                const printedAmtIds = new Set();
-                const pushAmtRow = (share) => {
-                  if (!share || printedAmtIds.has(share.personId)) return;
-                  const res = resultMap.get(share.personId);
-                  if (!res) return;
-                  printedAmtIds.add(share.personId);
-                  orderedRows.push({ type: 'row', res });
-                };
-                (finalShares.direct || []).forEach(pushAmtRow);
-                (finalShares.subGroups || []).forEach(group => {
-                  if (group.shares.some(s => resultMap.has(s.personId))) {
-                    const isSubst = group.ancestor.deathDate && isBefore(group.ancestor.deathDate, tree.deathDate);
-                    orderedRows.push({ type: 'header', ancestor: group.ancestor, label: isSubst ? '대습상속인' : '재상속인' });
-                    group.shares.forEach(pushAmtRow);
-                  }
-                });
-                const renderAmtInput = (personId, state, setter, colorClass, ringClass) => (
-                  <input
-                    type="text"
-                    placeholder="0"
-                    value={state[personId] || ''}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/[^0-9]/g, '');
-                      setter(prev => ({ ...prev, [personId]: val ? Number(val).toLocaleString() : '' }));
-                    }}
-                    className={`w-full px-2.5 py-1.5 border border-neutral-200 dark:border-neutral-600 rounded text-right text-[13px] font-mono bg-white dark:bg-neutral-900 ${colorClass} ${ringClass} outline-none focus:ring-1 transition-all`}
-                  />
-                );
+                const resultMap = new Map(); (amountCalculations?.results || []).forEach(r => resultMap.set(r.personId, r));
+                const orderedRows = []; const printedAmtIds = new Set(); const pushAmtRow = (share) => { if (!share || printedAmtIds.has(share.personId)) return; const res = resultMap.get(share.personId); if (!res) return; printedAmtIds.add(share.personId); orderedRows.push({ type: 'row', res }); };
+                (finalShares.direct || []).forEach(pushAmtRow); (finalShares.subGroups || []).forEach(group => { if (group.shares.some(s => resultMap.has(s.personId))) { const isSubst = group.ancestor.deathDate && isBefore(group.ancestor.deathDate, tree.deathDate); orderedRows.push({ type: 'header', ancestor: group.ancestor, label: isSubst ? '대습상속인' : '재상속인' }); group.shares.forEach(pushAmtRow); } });
+                const renderAmtInput = (personId, state, setter, colorClass, ringClass) => (<input type="text" placeholder="0" value={state[personId] || ''} onChange={(e) => { const val = e.target.value.replace(/[^0-9]/g, ''); setter(prev => ({ ...prev, [personId]: val ? Number(val).toLocaleString() : '' })); }} className={`w-full px-2.5 py-1.5 border border-neutral-200 dark:border-neutral-600 rounded text-right text-[13px] font-mono bg-white dark:bg-neutral-900 ${colorClass} ${ringClass} outline-none focus:ring-1 transition-all`} />);
                 return (
                   <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                    <div className="flex items-center gap-4 p-4 bg-[#f8f9fa] dark:bg-neutral-900/40 rounded-xl border border-[#e9e9e7] dark:border-neutral-700">
-                      <span className="text-[13px] font-bold text-[#787774] dark:text-neutral-400 whitespace-nowrap shrink-0">상속재산가액</span>
-                      <div className="flex items-center gap-2 flex-1">
-                        <input
-                          type="text"
-                          placeholder="예: 1,000,000,000"
-                          value={propertyValue}
-                          onChange={(e) => { const val = e.target.value.replace(/[^0-9]/g, ''); setPropertyValue(val ? Number(val).toLocaleString() : ''); }}
-                          className="flex-1 max-w-xs px-3 py-2 text-[14px] border border-[#e9e9e7] dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-blue-400 text-right font-mono outline-none"
-                        />
-                        <span className="text-[13px] text-neutral-500 font-medium">원</span>
-                        {amountCalculations && <span className="text-[12px] text-[#787774] dark:text-neutral-400 ml-2">간주상속재산: <span className="font-bold text-[#37352f] dark:text-neutral-200 font-mono">{amountCalculations.deemedEstate.toLocaleString()}</span>원</span>}
-                      </div>
-                    </div>
-                    {orderedRows.length === 0
-                      ? <div className="py-16 text-center text-[#787774] dark:text-neutral-500 text-[14px]">법정 상속분 요약표에 상속인이 없습니다.</div>
-                      : (
-                        <div className="rounded-xl border border-[#e9e9e7] dark:border-neutral-700 overflow-hidden shadow-sm">
-                          <table className="w-full text-[13px] border-collapse">
-                            <thead className="bg-[#f8f9fa] dark:bg-neutral-900/50 text-[#787774] dark:text-neutral-400 font-bold border-b border-[#e9e9e7] dark:border-neutral-700">
-                              <tr>
-                                <th className="px-4 py-3 text-center w-[22%]">상속인</th>
-                                <th className="px-4 py-3 text-center w-[14%]">법정지분</th>
-                                <th className="px-4 py-3 text-center w-[18%]">특별수익 <span className="text-red-400">(-)</span></th>
-                                <th className="px-4 py-3 text-center w-[18%]">기여분 <span className="text-green-500">(+)</span></th>
-                                <th className="px-4 py-3 text-right w-[28%] text-[#1e56a0] dark:text-blue-400">구체적 상속분 산출액</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-[#f1f1ef] dark:divide-neutral-700/50">
-                              {orderedRows.map((item, idx) => {
-                                if (item.type === 'header') {
-                                  return (
-                                    <tr key={`hdr-${idx}`} className="bg-[#fcfcfb] dark:bg-neutral-800/40">
-                                      <td colSpan="5" className="px-4 py-2 text-left text-[#504f4c] dark:text-neutral-400 text-[12px]">
-                                        ※ [{item.ancestor.name}] {formatKorDate(item.ancestor.deathDate)} 사망 → {item.label}
-                                      </td>
-                                    </tr>
-                                  );
-                                }
-                                const { res } = item;
-                                return (
-                                  <tr key={res.personId} className="hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/30 transition-colors">
-                                    <td className="px-4 py-2.5 text-center font-bold text-neutral-800 dark:text-neutral-200">{res.name}</td>
-                                    <td className="px-4 py-2.5 text-center font-mono text-[#504f4c] dark:text-neutral-400">{res.un} / {res.ud}</td>
-                                    <td className="px-3 py-2">
-                                      {renderAmtInput(res.personId, specialBenefits, setSpecialBenefits, 'text-red-600 dark:text-red-400', 'focus:ring-red-400')}
-                                    </td>
-                                    <td className="px-3 py-2">
-                                      {renderAmtInput(res.personId, contributions, setContributions, 'text-green-600 dark:text-green-400', 'focus:ring-green-400')}
-                                    </td>
-                                    <td className="px-4 py-2.5 text-right font-mono font-bold text-[15px] text-neutral-900 dark:text-neutral-100">
-                                      {res.finalAmount.toLocaleString()} <span className="text-[12px] font-normal text-neutral-400">원</span>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                            <tfoot className="bg-[#f8f9fa] dark:bg-neutral-900/50 border-t-2 border-[#d4d4d4] dark:border-neutral-600">
-                              <tr>
-                                <td colSpan="4" className="px-4 py-3 text-right text-[13px] font-bold text-[#787774] dark:text-neutral-400">합계:</td>
-                                <td className="px-4 py-3 text-right font-mono font-bold text-[16px] text-[#1e56a0] dark:text-blue-400">
-                                  {amountCalculations?.totalDistributed.toLocaleString() ?? '—'} <span className="text-[12px] font-normal text-neutral-400">원</span>
-                                </td>
-                              </tr>
-                            </tfoot>
-                          </table>
-                        </div>
-                      )
-                    }
-                    {amountCalculations?.remainder > 0 && (
-                      <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-lg text-amber-800 dark:text-amber-400">
-                        <span className="text-[18px] shrink-0 mt-0.5">ℹ️</span>
-                        <div>
-                          <h4 className="font-bold text-[13px] mb-1">[단수 처리 안내] 미분배 잔여금 {amountCalculations.remainder.toLocaleString()}원 발생</h4>
-                          <p className="text-[12.5px] opacity-90 leading-relaxed">소수점 버림 계산으로 인한 잔여금입니다. 협의서 작성 시 상속인 1명(주로 연장자)의 산출액에 가산하여 총액({amountCalculations.estateVal.toLocaleString()}원)을 맞춰주세요.</p>
-                        </div>
+                    <div className="flex items-center gap-4 p-4 bg-[#f8f9fa] dark:bg-neutral-900/40 rounded-xl border border-[#e9e9e7] dark:border-neutral-700"><span className="text-[13px] font-bold text-[#787774] dark:text-neutral-400 whitespace-nowrap shrink-0">상속재산가액</span><div className="flex items-center gap-2 flex-1"><input type="text" placeholder="예: 1,000,000,000" value={propertyValue} onChange={(e) => { const val = e.target.value.replace(/[^0-9]/g, ''); setPropertyValue(val ? Number(val).toLocaleString() : ''); }} className="flex-1 max-w-xs px-3 py-2 text-[14px] border border-[#e9e9e7] dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-blue-400 text-right font-mono outline-none" /><span className="text-[13px] text-neutral-500 font-medium">원</span>{amountCalculations && <span className="text-[12px] text-[#787774] dark:text-neutral-400 ml-2">간주상속재산: <span className="font-bold text-[#37352f] dark:text-neutral-200 font-mono">{amountCalculations.deemedEstate.toLocaleString()}</span>원</span>}</div></div>
+                    {orderedRows.length === 0 ? <div className="py-16 text-center text-[#787774] dark:text-neutral-500 text-[14px]">상속인이 없습니다.</div> : (
+                      <div className="rounded-xl border border-[#e9e9e7] dark:border-neutral-700 overflow-hidden shadow-sm">
+                        <table className="w-full text-[13px] border-collapse"><thead className="bg-[#f8f9fa] dark:bg-neutral-900/50 text-[#787774] dark:text-neutral-400 font-bold border-b border-[#e9e9e7] dark:border-neutral-700"><tr><th className="px-4 py-3 text-center w-[22%]">상속인</th><th className="px-4 py-3 text-center w-[14%]">법정지분</th><th className="px-4 py-3 text-center w-[18%]">특별수익 <span className="text-red-400">(-)</span></th><th className="px-4 py-3 text-center w-[18%]">기여분 <span className="text-green-500">(+)</span></th><th className="px-4 py-3 text-right w-[28%] text-[#1e56a0] dark:text-blue-400">구체적 상속분 산출액</th></tr></thead>
+                          <tbody className="divide-y divide-[#f1f1ef] dark:divide-neutral-700/50">{orderedRows.map((item, idx) => { if (item.type === 'header') return (<tr key={`hdr-${idx}`} className="bg-[#fcfcfb] dark:bg-neutral-800/40"><td colSpan="5" className="px-4 py-2 text-left text-[#504f4c] dark:text-neutral-400 text-[12px]">※ [{item.ancestor.name}] {formatKorDate(item.ancestor.deathDate)} 사망 → {item.label}</td></tr>); const { res } = item; return (<tr key={res.personId} className="hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/30 transition-colors"><td className="px-4 py-2.5 text-center font-bold text-neutral-800 dark:text-neutral-200">{res.name}</td><td className="px-4 py-2.5 text-center font-mono text-[#504f4c] dark:text-neutral-400">{res.un} / {res.ud}</td><td className="px-3 py-2">{renderAmtInput(res.personId, specialBenefits, setSpecialBenefits, 'text-red-600 dark:text-red-400', 'focus:ring-red-400')}</td><td className="px-3 py-2">{renderAmtInput(res.personId, contributions, setContributions, 'text-green-600 dark:text-green-400', 'focus:ring-green-400')}</td><td className="px-4 py-2.5 text-right font-mono font-bold text-[15px] text-neutral-900 dark:text-neutral-100">{res.finalAmount.toLocaleString()} <span className="text-[12px] font-normal text-neutral-400">원</span></td></tr>); })}</tbody>
+                          <tfoot className="bg-[#f8f9fa] dark:bg-neutral-900/50 border-t-2 border-[#d4d4d4] dark:border-neutral-600"><tr><td colSpan="4" className="px-4 py-3 text-right text-[13px] font-bold text-[#787774] dark:text-neutral-400">합계:</td><td className="px-4 py-3 text-right font-mono font-bold text-[16px] text-[#1e56a0] dark:text-blue-400">{amountCalculations?.totalDistributed.toLocaleString() ?? '—'} <span className="text-[12px] font-normal text-neutral-400">원</span></td></tr></tfoot>
+                        </table>
                       </div>
                     )}
                   </div>
@@ -1290,38 +1001,14 @@ function App() {
           return (
             <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
               <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-                <div className="px-6 py-4 border-b border-gray-200 dark:border-neutral-700 flex justify-between items-center bg-indigo-50 dark:bg-indigo-900/30">
-                  <h2 className="text-lg font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-2">
-                    <span>✨</span> {targetName} AI 자동 입력기 <span className="text-sm font-medium opacity-70 ml-1">(제적등본 / 가계도)</span>
-                  </h2>
-                  <button onClick={() => setIsAiModalOpen(false)} className="text-gray-400 hover:text-gray-600">
-                    <IconX className="w-6 h-6" />
-                  </button>
-                </div>
+                <div className="px-6 py-4 border-b border-gray-200 dark:border-neutral-700 flex justify-between items-center bg-indigo-50 dark:bg-indigo-900/30"><h2 className="text-lg font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-2"><span>✨</span> {targetName} AI 자동 입력기</h2><button onClick={() => setIsAiModalOpen(false)} className="text-gray-400 hover:text-gray-600"><IconX className="w-6 h-6" /></button></div>
                 <div className="p-6 overflow-y-auto flex-1">
                   <div className="mb-6 p-4 bg-gray-50 dark:bg-neutral-700/50 rounded-lg border border-gray-200 dark:border-neutral-600">
                     <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-2">1단계: 명령어 복사하기</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 leading-relaxed">
-                      아래 버튼을 눌러 명령어를 복사한 후, <b>뤼튼, ChatGPT, 클로드, 제미나이</b> 앱에 문서 사진과 함께 붙여넣으세요.<br/>
-                      <span className="text-indigo-600 dark:text-indigo-400 font-medium">※ 공문서(제적등본, 가족관계증명서)는 물론, 신청인이 직접 손으로 그린 가계도 등 사문서 사진도 완벽하게 인식합니다!</span>
-                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 leading-relaxed">명령어를 복사한 후 AI 앱에 문서 사진과 함께 붙여넣으세요.</p>
                     {(() => {
-                      const aiPromptText = `첨부한 문서(제적등본, 가족관계증명서, 가계도 메모 등) 사진을 보고, 아래 [출력 양식]의 JSON 구조에 맞춰 가족 관계를 추출해줘. 🚨 [행동 지침: 투스텝(Two-Step) 처리] 문서를 분석할 때, 글씨가 흐릿하거나 관계/성별/날짜가 명확하지 않은 부분이 있다면 **절대 임의로 추측해서 JSON을 먼저 만들지 마.** 대신, 아래 [질문 양식]처럼 사용자에게 명확하게 질문을 먼저 던져서 확인받아. 사용자가 답변을 주면, 그때 최종 JSON 코드를 출력해. [질문 양식 예시] 1) 이영수 사망일: YYYY-MM-DD... [가족 관계 추출 규칙] 1. 중심 인물(망인)을 기준으로 남자는 "son", 여자는 "daughter", 배우자는 "wife" 또는 "husband"로 작성해... [출력 양식 예시] { "name": "김철수", "isDeceased": true, "deathDate": "1980-01-01", "heirs": [...] }`;
-                      const qrPromptText = `제적등본 등 사진을 보고 아래 JSON으로 추출해. [규칙] 1. 남:son, 여:daughter, 배우자:wife/husband 2. 1991년 이후 사망자 자녀 성별 모르면 무조건 son 3. 사망 isDeceased:true, deathDate:"YYYY-MM-DD" 4. 전처/후처 등 모든 배우자 입력. 혼인/재혼일 기재 5. 🚨 모호한 글씨나 성별/날짜는 임의추측 금지! 반드시 사용자에게 질문 먼저 할 것! [양식] {"name":"망인","isDeceased":true,"heirs":[{"name":"배우자","relation":"wife"}]}`;
-                      return (
-                        <div className="flex flex-col gap-2">
-                          <div className="flex items-center gap-2">
-                            <button type="button" onClick={() => navigator.clipboard.writeText(aiPromptText).then(() => alert('✅ 명령어가 복사되었습니다!'))} className="flex-1 py-2.5 bg-white dark:bg-neutral-800 border-2 border-indigo-500 text-indigo-600 dark:text-indigo-400 rounded-md font-bold hover:bg-indigo-50 transition-colors shadow-sm">📋 명령어 복사하기</button>
-                            <button type="button" onClick={() => setShowQrCode(!showQrCode)} className="flex-1 py-2.5 border-2 border-blue-500 bg-white dark:bg-neutral-800 text-blue-600 dark:text-blue-400 rounded-md font-bold hover:bg-blue-50 shadow-sm">{showQrCode ? '🙈 QR 숨기기' : '📱 스마트폰 QR 전송'}</button>
-                          </div>
-                          {showQrCode && (
-                            <div className="mt-4 flex flex-col items-center justify-center p-6 bg-white dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-lg shadow-inner">
-                              <div className="p-3 bg-white rounded-xl shadow-sm"><QRCodeSVG value={qrPromptText} size={220} level="L" includeMargin={true} /></div>
-                              <p className="mt-4 text-sm text-gray-600 dark:text-gray-300 font-medium text-center">스마트폰 카메라로 스캔하세요.<br/><span className="text-blue-500 font-bold">인터넷 없이도</span> 프롬프트가 복사됩니다!</p>
-                            </div>
-                          )}
-                        </div>
-                      );
+                      const aiPromptText = `첨부한 문서를 보고 아래 JSON 구조로 가족 관계를 추출해줘. [규칙] 1. 남:son, 여:daughter, 배우자:wife/husband 2. 1991년 이후 사례에서 자녀 성별 모르면 son 3. 사망 isDeceased:true, deathDate:YYYY-MM-DD 4. 모호한 정보는 추측하지 말고 질문 먼저 할 것. [양식] {"name":"망인","isDeceased":true,"heirs":[{"name":"자녀1","relation":"son"}]}`;
+                      return (<button type="button" onClick={() => navigator.clipboard.writeText(aiPromptText).then(() => alert('✅ 복사되었습니다!'))} className="w-full py-2.5 bg-white dark:bg-neutral-800 border-2 border-indigo-500 text-indigo-600 dark:text-indigo-400 rounded-md font-bold hover:bg-indigo-50 transition-colors shadow-sm">📋 명령어 복사하기</button>);
                     })()}
                   </div>
                   <div><h3 className="font-bold text-gray-800 dark:text-gray-200 mb-2">2단계: 결과 데이터 붙여넣기</h3><textarea value={aiInputText} onChange={(e) => setAiInputText(e.target.value)} placeholder="AI가 만들어준 코드를 붙여넣으세요." className="w-full h-48 p-3 border border-gray-300 dark:border-neutral-600 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-mono bg-white dark:bg-neutral-900 text-gray-800 dark:text-gray-200" /></div>
@@ -1333,28 +1020,37 @@ function App() {
                       try {
                         const cleanJson = aiInputText.replace(/```json/g, '').replace(/```/g, '').trim();
                         const parsedTree = JSON.parse(cleanJson);
+                        const effectiveDate = parsedTree.deathDate || tree.deathDate;
+                        const era = getLawEra(effectiveDate);
+
                         const processAiData = (node) => {
                           if (Array.isArray(node)) { node.forEach(processAiData); return; }
                           if (!node.id) node.id = `ai_${Math.random().toString(36).substr(2, 9)}`;
+                          
+                          // 🚨 [v3.0 Data Scrubbing] AI 입력 시에도 신법 비배우자 날짜 정제
+                          const isSpouseType = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(node.relation);
+                          if (era === '1991' && !isSpouseType && node.id !== 'root') {
+                              node.marriageDate = '';
+                              node.remarriageDate = '';
+                          }
                           if (node.heirs) node.heirs.forEach(processAiData);
                         };
                         processAiData(parsedTree);
                         if (aiTargetId === 'root') setTree({ ...parsedTree, id: 'root' });
                         else {
-                          const targetRawIds = [];
-                          const findRawIds = (n) => { if (n.id === aiTargetId || n.personId === aiTargetId) targetRawIds.push(n.id); if (n.heirs) n.heirs.forEach(findRawIds); };
-                          findRawIds(tree);
+                          const targetRawIds = []; const findRawIds = (n) => { if (n.id === aiTargetId || n.personId === aiTargetId) targetRawIds.push(n.id); if (n.heirs) n.heirs.forEach(findRawIds); }; findRawIds(tree);
                           setTree(prev => {
                             const injectHeirs = (n) => {
                               if (targetRawIds.includes(n.id)) {
-                                const generateNewHeirs = (heirsArray) => (heirsArray || []).map(h => ({ ...h, id: `ai_${Math.random().toString(36).substr(2, 9)}`, heirs: generateNewHeirs(h.heirs || []) }));
+                                const generateNewHeirs = (heirsArray) => (heirsArray || []).map(h => {
+                                  const isSpouse = ['wife', 'husband', 'spouse'].includes(h.relation);
+                                  if (era === '1991' && !isSpouse) { h.marriageDate = ''; h.remarriageDate = ''; }
+                                  return { ...h, id: `ai_${Math.random().toString(36).substr(2, 9)}`, heirs: generateNewHeirs(h.heirs || []) };
+                                });
                                 const sourceHeirs = Array.isArray(parsedTree) ? parsedTree : (parsedTree.heirs || []);
                                 const newHeirs = generateNewHeirs(sourceHeirs);
                                 const nodeUpdates = {};
-                                if (!Array.isArray(parsedTree)) { 
-                                  if (parsedTree.deathDate) nodeUpdates.deathDate = parsedTree.deathDate; 
-                                  if (parsedTree.isDeceased !== undefined) nodeUpdates.isDeceased = parsedTree.isDeceased; 
-                                }
+                                if (!Array.isArray(parsedTree)) { if (parsedTree.deathDate) nodeUpdates.deathDate = parsedTree.deathDate; if (parsedTree.isDeceased !== undefined) nodeUpdates.isDeceased = parsedTree.isDeceased; }
                                 return { ...n, ...nodeUpdates, heirs: [...(n.heirs || []), ...newHeirs] };
                               }
                               return { ...n, heirs: n.heirs?.map(injectHeirs) || [] };
@@ -1362,13 +1058,11 @@ function App() {
                             return injectHeirs(prev);
                           });
                         }
-                        setIsAiModalOpen(false); setAiInputText(""); alert(`✨ 성공적으로 자동 입력되었습니다!`);
-                      } catch (error) { alert("🚨 데이터 형식이 잘못되었습니다."); }
+                        setIsAiModalOpen(false); setAiInputText(""); alert(`✨ 자동 입력 완료!`);
+                      } catch (error) { alert("🚨 형식 오류!"); }
                     }}
                     className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md font-bold shadow-md transition-colors"
-                  >
-                    🚀 상속인 자동 입력
-                  </button>
+                  >🚀 상속인 자동 입력</button>
                 </div>
               </div>
             </div>
@@ -1376,26 +1070,16 @@ function App() {
         })()}
       {isResetModalOpen && (
         <div className="fixed inset-0 bg-black/40 z-[9999] flex items-center justify-center no-print text-[#37352f]">
-          <div className="bg-white p-8 rounded-lg shadow-xl max-w-sm w-full mx-4 animate-in fade-in zoom-in duration-200 border border-[#e9e9e7]">
+          <div className="bg-white p-8 rounded-lg shadow-xl max-w-sm w-full mx-4 border border-[#e9e9e7]">
             <h2 className="text-xl font-bold mb-2">새 작업 시작</h2>
-            <p className="text-[14px] text-[#787774] mb-6">현재 작성 중인 모든 데이터가 삭제됩니다.<br/>어떻게 처리할까요?</p>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 mt-6">
               <button onClick={() => performReset(true)} className="w-full py-2.5 bg-[#2383e2] hover:bg-[#0073ea] text-white font-medium rounded transition-colors text-[14px]">백업 저장 후 초기화</button>
-              <button onClick={() => performReset(false)} className="w-full py-2.5 bg-[#ffe2dd] hover:bg-[#ffc1b8] text-[#d44c47] font-medium rounded transition-colors text-[14px]">저장 없이 그냥 초기화</button>
-              <button onClick={() => setIsResetModalOpen(false)} className="w-full py-2.5 mt-2 bg-white border border-[#d4d4d4] hover:bg-[#efefed] text-[#37352f] font-medium rounded transition-colors text-[14px]">취소</button>
+              <button onClick={() => performReset(false)} className="w-full py-2.5 bg-[#ffe2dd] hover:bg-[#ffc1b8] text-[#d44c47] font-medium rounded transition-colors text-[14px]">그냥 초기화</button>
+              <button onClick={() => setIsResetModalOpen(false)} className="w-full py-2.5 mt-2 bg-white border border-[#d4d4d4] text-[#37352f] font-medium rounded transition-colors text-[14px]">취소</button>
             </div>
           </div>
         </div>
       )}
-      {syncRequest && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center no-print text-[#37352f]"><div className="bg-white p-8 rounded-lg shadow-xl max-w-sm w-full mx-4 animate-in fade-in zoom-in duration-200 border border-[#e9e9e7]"><h2 className="text-xl font-bold mb-2">동일 인물 정보 동기화</h2><p className="text-[14px] text-[#787774] mb-6"><span className="font-bold text-[#0b6e99]">{syncRequest.name}</span>님의 정보를 변경하셨습니다.<br/>가계도 내의 다른 <span className="font-bold text-[#0b6e99]">{syncRequest.name}</span>님의 동일 정보도 같이 수정할까요?</p><div className="flex flex-col gap-2"><button onClick={() => handleSyncConfirm(true)} className="w-full py-2.5 bg-[#2383e2] hover:bg-[#0073ea] text-white font-medium rounded transition-colors text-[14px]">예, 모두 동기화합니다</button><button onClick={() => handleSyncConfirm(false)} className="w-full py-2.5 bg-white border border-[#d4d4d4] hover:bg-[#efefed] text-[#37352f] font-medium rounded transition-colors text-[14px]">아니요, 현재 인물만 수정합니다</button></div></div></div>
-      )}
-      {duplicateRequest && (() => {
-        const handleToggleConfirm = (isDifferent) => { duplicateRequest.onConfirm(!isDifferent); };
-        return (
-          <div className="fixed inset-0 bg-black/40 z-[10000] flex items-center justify-center no-print text-[#37352f] backdrop-blur-[2px]"><div className="bg-white p-10 rounded-[24px] shadow-2xl max-w-sm w-full mx-4 animate-in fade-in zoom-in duration-300 border border-[#e9e9e7] text-center"><div className="mb-6 flex justify-center"><div className="w-20 h-20 bg-[#f0f9ff] dark:bg-blue-900/10 rounded-full flex items-center justify-center border border-[#bae6fd]"><IconUserGroup className="w-10 h-10 text-[#2383e2]" /></div></div><h2 className="text-[20px] font-black mb-3">동일인 여부 확인</h2><p className="text-[15px] leading-relaxed mb-8 text-[#504f4c]"><span className="font-bold text-[#2383e2]">'{duplicateRequest.name}'</span>님이 두 번 입력되었습니다.<br/>이 두 분은 <span className="font-black text-rose-500">서로 다른 인물(동명이인)</span>인가요?</p><div className="relative w-full h-[52px] bg-[#f1f1ef] dark:bg-neutral-800 rounded-full p-1.5 flex items-center mb-8 border border-[#e9e9e7]"><div className="absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-white dark:bg-neutral-700 rounded-full shadow-md transition-all duration-300 ease-out" id="toggle-slider" style={{ left: '6px' }} /><button onClick={(e) => { const slider = e.currentTarget.parentElement.querySelector('#toggle-slider'); slider.style.transform = 'translateX(0%)'; setTimeout(() => handleToggleConfirm(true), 300); }} className="relative flex-1 text-center text-[15px] font-black z-10 text-[#2383e2] transition-colors">예 (동명이인)</button><button onClick={(e) => { const slider = e.currentTarget.parentElement.querySelector('#toggle-slider'); slider.style.transform = 'translateX(100%)'; setTimeout(() => handleToggleConfirm(false), 300); }} className="relative flex-1 text-center text-[15px] font-black z-10 text-[#787774] transition-colors">아니오 (동일인)</button></div><button onClick={duplicateRequest.onCancel} className="text-[13px] font-bold text-[#a1a1aa] hover:text-[#787774] underline underline-offset-4 transition-colors p-2">취소 후 직접 수정하기</button></div></div>
-        );
-      })()}
     </div>
     </>
   );
