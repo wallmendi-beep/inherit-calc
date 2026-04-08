@@ -24,7 +24,8 @@ export const calculateInheritance = (tree, propertyValue) => {
   //  parentPersonId를 추가하여 현재 어떤 탭(부모)을 처리 중인지 추적합니다.
   const traverse = (node, inN, inD, inheritedDate, visitedIds = [], parentDecName = '피상속인', parentPersonId = 'root') => {
     if (visitedIds.includes(node.id)) {
-      warnings.push(`순차상속 순환 참조가 발생하여 ${node.name || '상속인'}의 지분 전이가 중단되었습니다.`);
+      // 🚨 UI가 클릭 이벤트를 처리할 수 있도록 문자열 대신 객체(id 포함) 형태로 경고 전송
+      warnings.push({ id: node.id, text: `순차상속 순환 참조가 발생하여 [${node.name || '상속인'}]의 지분 전이가 중단되었습니다.` });
       return;
     }
     const currentVisited = [...visitedIds, node.id];
