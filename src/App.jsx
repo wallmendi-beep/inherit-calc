@@ -659,7 +659,7 @@ function App() {
   const { showGlobalWarning, showAutoCalcNotice, globalMismatchReasons, autoCalculatedNames, noSurvivors } = guideInfo || {};
 
   const multipleSpouseGuides = useMemo(() => {
-    const guides = []; const checkSpouses = (node) => { const spouses = (node.heirs || []).filter(h => ['wife', 'husband', 'spouse'].includes(h.relation) && !h.isExcluded); if (spouses.length > 1) { guides.push({ id: node.id, uniqueKey: `multi-spouse-${node.personId}`, targetTabId: node.personId, type: 'mandatory', text: `[${node.name || '이름없음'}] 유효 배우자가 중복 입력되었습니다. 실제 상속받을 1명 외에는 제외 처리해 주세요.` }); } if (node.heirs) node.heirs.forEach(checkSpouses); };
+    const guides = []; const checkSpouses = (node) => { const spouses = (node.heirs || []).filter(h => ['wife', 'husband', 'spouse'].includes(h.relation) && !h.isExcluded); if ( spouses.length > 1) { guides.push({ id: node.id, uniqueKey: `multi-spouse-${node.personId}`, targetTabId: node.personId, type: 'mandatory', text: `[${node.name || '이름없음'}] 유효 배우자가 중복 입력되었습니다. 실제 상속받을 1명 외에는 제외 처리해 주세요.` }); } if (node.heirs) node.heirs.forEach(checkSpouses); };
     checkSpouses(tree); return guides;
   }, [tree]);
 
@@ -815,6 +815,45 @@ function App() {
     }; 
     reader.readAsText(file); 
     e.target.value = ''; 
+  };
+
+  const handlePrintPrompt = () => {
+    const promptText = `
+[상속 가계도 JSON 추출 프롬프트]
+당신은 한국 상속법에 기반한 가계도 분석 및 JSON 데이터 구조화 전문가입니다.
+제공된 문서(또는 이미지)를 분석하여, 아래 규칙과 양식에 맞춰 완벽한 계층 구조의 JSON을 생성해 주세요.
+
+[추출 규칙]
+1. 관계: 남(son), 여(daughter), 배우자(wife/husband). (1991년 이후 자녀 성별 모르면 son)
+2. 날짜: YYYY-MM-DD. (모르면 빈칸)
+3. 사망/제외: isDeceased(true/false), isExcluded(true/false), exclusionOption(renounce/predeceased/lost/disqualified)
+4. 구법 변수: 1990년 이전 사망 여성의 혼인일자(marriageDate) 및 출가여부(isSameRegister) 최대한 파악. 호주상속 시 isHoju: true.
+5. 다세대 중첩: 대습/재상속 시 heirs 배열 내부에 하위 가계도를 완벽히 중첩(Nesting)할 것.
+6. 고유 식별자(personId) 부여 규칙 [핵심]:
+   - 각 인물마다 "ai_랜덤문자열" 형태로 부여.
+   - 문맥상 완벽히 동일한 인물(중복 등장)은 반드시 '똑같은 personId' 부여.
+   - 이름만 같은 동명이인(남남)은 반드시 '서로 다른 personId' 부여.
+
+[JSON 스키마 양식]
+{
+  "id": "root", 
+  "name": "망인 이름", "isDeceased": true, "deathDate": "YYYY-MM-DD",
+  "marriageDate": "", "remarriageDate": "", "gender": "",
+  "personId": "root", "relation": "", "isHoju": false,
+  "isExcluded": false, "exclusionOption": "", "isSameRegister": true,
+  "heirs": [ { /* 하위 상속인 객체 재귀적 반복 */ } ]
+}`;
+
+    const printWindow = window.open('', '', 'height=600,width=800');
+    printWindow.document.write('<html><head><title>AI 프롬프트 인쇄</title>');
+    printWindow.document.write('<style>body { font-family: sans-serif; line-height: 1.6; padding: 20px; white-space: pre-wrap; }</style>');
+    printWindow.document.write('</head><body>');
+    printWindow.document.write(promptText);
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+    printWindow.close();
   };
 
   const performReset = (saveFirst) => { if (saveFirst) saveFile(); setVaultState({ history: [migrateToVault(getInitialTree())], currentIndex: 0 }); setActiveTab('input'); setActiveDeceasedTab('root'); setIsResetModalOpen(false); };
@@ -1075,7 +1114,26 @@ function App() {
     }
   ]
 }`;
-                      return (<button type="button" onClick={() => navigator.clipboard.writeText(aiPromptText).then(() => alert('✅ 복사되었습니다!'))} className="w-full py-2.5 bg-white dark:bg-neutral-800 border-2 border-indigo-500 text-indigo-600 dark:text-indigo-400 rounded-md font-bold hover:bg-indigo-50 transition-colors shadow-sm">📋 명령어 복사하기</button>);
+                      return (
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => {
+                              navigator.clipboard.writeText(aiPromptText).then(() => alert('✅ 복사되었습니다!'));
+                            }}
+                            className="flex-1 py-2.5 bg-white dark:bg-neutral-800 border-2 border-indigo-500 text-indigo-600 dark:text-indigo-400 rounded-md font-bold hover:bg-indigo-50 transition-colors shadow-sm flex items-center justify-center gap-2"
+                          >
+                            <IconFileText size={18} />
+                            📋 명령어 복사하기
+                          </button>
+                          <button 
+                            onClick={handlePrintPrompt}
+                            className="w-[46px] h-[46px] flex items-center justify-center border-2 border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 rounded-md hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors shadow-sm"
+                            title="프롬프트 인쇄"
+                          >
+                            <IconPrinter size={20} />
+                          </button>
+                        </div>
+                      );
                     })()}
                   </div>
                   <div><h3 className="font-bold text-gray-800 dark:text-gray-200 mb-2">2단계: 결과 데이터 붙여넣기</h3><textarea value={aiInputText} onChange={(e) => setAiInputText(e.target.value)} placeholder="AI가 만들어준 코드를 붙여넣으세요." className="w-full h-48 p-3 border border-gray-300 dark:border-neutral-600 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-mono bg-white dark:bg-neutral-900 text-gray-800 dark:text-gray-200" /></div>
