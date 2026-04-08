@@ -506,7 +506,7 @@ function App() {
     { id: 'tree', label: '가계도', icon: <IconNetwork className="w-4 h-4"/>, style: { activeBorder: 'border-[#37352f]', activeText: 'text-[#37352f] dark:text-neutral-100', inactiveBg: 'bg-transparent', inactiveBorder: 'border-transparent', inactiveText: 'text-[#9b9a97]' } },
     { id: 'calc', label: '계산표', icon: <IconTable className="w-4 h-4"/>, style: { activeBorder: 'border-[#37352f]', activeText: 'text-[#37352f] dark:text-neutral-100', inactiveBg: 'bg-transparent', inactiveBorder: 'border-transparent', inactiveText: 'text-[#9b9a97]' } },
     { id: 'result', label: '계산결과', icon: <IconCalculator className="w-4 h-4"/>, style: { activeBorder: 'border-[#37352f]', activeText: 'text-[#37352f] dark:text-neutral-100', inactiveBg: 'bg-transparent', inactiveBorder: 'border-transparent', inactiveText: 'text-[#9b9a97]' } },
-    { id: 'summary', label: '법정 상속분 요약', icon: <IconList className="w-4 h-4"/>,
+    { id: 'summary', label: '법정 상속분 요약표', icon: <IconList className="w-4 h-4"/>,
       style: { activeBorder: 'border-[#37352f]', activeText: 'text-[#37352f] dark:text-neutral-100', inactiveBg: 'bg-transparent', inactiveBorder: 'border-transparent', inactiveText: 'text-[#9b9a97]' }
     },
     { id: 'amount', label: '구체적 상속분 계산', icon: <IconCalculator className="w-4 h-4 text-green-600"/>,
@@ -690,11 +690,14 @@ function App() {
     const checkMismatch = (node, parentDeathDate, parentPersonId) => {
       const effectiveDate = parentDeathDate || tree.deathDate;
       const isSpouse = ['wife', 'husband', 'spouse'].includes(node.relation);
+      
+      // 출가녀 스위치 오류
       if (node.relation === 'daughter' && node.marriageDate && effectiveDate) {
         if (getLawEra(effectiveDate) !== '1991' && isBefore(node.marriageDate, effectiveDate) && node.isSameRegister !== false) {
-          guides.push({ id: node.id, uniqueKey: `mismatch-married-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름없음'}] 혼인일(${node.marriageDate})이 상속개시일(${effectiveDate}) 이전입니다. 구법 적용 대상이므로 [출가] 스위치를 켜주세요.` });
+          guides.push({ id: node.id, uniqueKey: `mismatch-married-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름없음'}] 혼인(${node.marriageDate})이 상속개시일(${effectiveDate}) 이전입니다. 구법 적용 대상이므로 [출가] 스위치를 켜주세요.` });
         }
       }
+
       if (node.deathDate && effectiveDate && isBefore(node.deathDate, effectiveDate) && !isSpouse) { if (!node.isExcluded || node.exclusionOption !== 'predeceased') { guides.push({ id: node.id, uniqueKey: `mismatch-predeceased-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름없음'}] 본인 사망(${node.deathDate})이 부모 사망(${effectiveDate})보다 먼저 발생했습니다. [상속권 없음] 스위치를 켜주세요.` }); } }
       if (isSpouse && node.remarriageDate && effectiveDate && isBefore(node.remarriageDate, effectiveDate)) { if (!node.isExcluded || node.exclusionOption !== 'remarried') { guides.push({ id: node.id, uniqueKey: `mismatch-remarried-self-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름없음'}] 피상속인 사망(${effectiveDate}) 전 재혼(${node.remarriageDate})하여 대습상속권이 소멸했습니다. 스위치를 꺼주세요.` }); } }
       if (node.marriageDate && node.deathDate && isBefore(node.deathDate, node.marriageDate)) { guides.push({ id: node.id, uniqueKey: `date-mismatch-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름없음'}] 혼인일(${node.marriageDate})이 본인 사망일(${node.deathDate}) 이후로 설정되어 있습니다. 날짜를 확인하고 수정해 주세요.` }); }
@@ -739,35 +742,60 @@ function App() {
   const handleDragEnd = (event) => { const { active, over } = event; if (over && active.id !== over.id) { setTree(prev => { const newTree = JSON.parse(JSON.stringify(prev)); const reorderList = (list) => { if (!list) return false; const activeIdx = list.findIndex(item => item.id === active.id); const overIdx = list.findIndex(item => item.id === over.id); if (activeIdx !== -1 && overIdx !== -1) { const [movedItem] = list.splice(activeIdx, 1); list.splice(overIdx, 0, movedItem); return true; } for (let item of list) { if (item.heirs && item.heirs.length > 0 && reorderList(item.heirs)) return true; } return false; }; reorderList(newTree.heirs); return newTree; }); } };
 
   const handlePrint = () => { if (activeTab === 'input') { alert('보고서 탭(산출내역, 지분요약, 상속금액) 중 하나를 선택한 후 인쇄해주세요.'); return; } const tabNames = { input: '가계도', calc: '상속지분_산출내역', summary: '법정상속분_요약표', amount: '구체적상속분_결과' }; const currentTabName = tabNames[activeTab] || '보고서'; const safeCaseNo = (tree.caseNo || '사건번호없음').replace(/[^a-zA-Z0-9가-힣_-]/g, ''); const safeName = (tree.name || '피상속인없음').replace(/[^a-zA-Z0-9가-힣_-]/g, ''); const printFileName = `${safeCaseNo}_${safeName}_${currentTabName}_${new Date().toISOString().slice(0, 10)}`; const originalTitle = document.title; document.title = printFileName; window.print(); document.title = originalTitle; };
-  const saveFile = () => { const cleanForExport = (node, parentDate) => { const cleanNode = { ...node }; const refDate = cleanNode.id === 'root' ? cleanNode.deathDate : parentDate; const isPre = cleanNode.deathDate && refDate && isBefore(cleanNode.deathDate, refDate); if (isPre && cleanNode.isExcluded && cleanNode.exclusionOption === 'renounce') { cleanNode.exclusionOption = 'predeceased'; } if (cleanNode.heirs) cleanNode.heirs = cleanNode.heirs.map(h => cleanForExport(h, cleanNode.deathDate || refDate)); return cleanNode; }; const pureTree = cleanForExport(tree, tree.deathDate); const blob = new Blob([JSON.stringify(pureTree, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); const safeCaseNo = (tree.caseNo || '사건번호없음').replace(/[^a-zA-Z0-9가-힣-]/g, ''); const safeName = (tree.name || '피상속인없음').replace(/[^a-zA-Z0-9가-힣-]/g, ''); a.href = url; a.download = `${safeCaseNo}_${safeName}_상속지분계산_${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(url); };
   
-  const loadFile = (e) => {
-    const file = e.target.files[0]; if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        const data = JSON.parse(ev.target.result);
-        const nameMap = new Map();
-        
-        // 💡 [v3.0 Data Scrubbing & Sanitization] 불러오기 시 정밀 교정 함수
-        const sanitizeNode = (n, parentDeathDate = null) => {
+  const saveFile = () => { 
+    const cleanForExport = (node, parentDate) => {
+      const cleanNode = { ...node };
+      const refDate = cleanNode.id === 'root' ? cleanNode.deathDate : parentDate;
+      const isPre = cleanNode.deathDate && refDate && isBefore(cleanNode.deathDate, refDate);
+      if (isPre && cleanNode.isExcluded && cleanNode.exclusionOption === 'renounce') {
+          cleanNode.exclusionOption = 'predeceased';
+      }
+      if (cleanNode.heirs) cleanNode.heirs = cleanNode.heirs.map(h => cleanForExport(h, cleanNode.deathDate || refDate));
+      return cleanNode;
+    };
+    const pureTree = cleanForExport(tree, tree.deathDate);
+    const blob = new Blob([JSON.stringify(pureTree, null, 2)], { type: 'application/json' }); 
+    const url = URL.createObjectURL(blob); 
+    const a = document.createElement('a'); 
+    const safeCaseNo = (tree.caseNo || '사건번호없음').replace(/[^a-zA-Z0-9가-힣-]/g, ''); 
+    const safeName = (tree.name || '피상속인없음').replace(/[^a-zA-Z0-9가-힣-]/g, ''); 
+    a.href = url; 
+    a.download = `${safeCaseNo}_${safeName}_상속지분계산_${new Date().toISOString().slice(0,10)}.json`; 
+    a.click(); 
+    URL.revokeObjectURL(url); 
+  };
+  
+  const loadFile = (e) => { 
+    const file = e.target.files[0]; 
+    if (!file) return; 
+    const reader = new FileReader(); 
+    reader.onload = (ev) => { 
+      try { 
+        const data = JSON.parse(ev.target.result); 
+        const nameMap = new Map(); 
+        const rootDeathDate = data.id === 'root' ? data.deathDate : (data.people?.find(p=>p.isRoot)?.deathDate || '');
+
+        const sanitizeNode = (n, parentDate) => {
           let pId = n.personId;
           if (n.name && n.name.trim() !== '') {
             if (nameMap.has(n.name)) pId = nameMap.get(n.name);
             else { if (!pId) pId = `p_${Math.random().toString(36).substr(2,9)}`; nameMap.set(n.name, pId); }
           } else if (!pId) pId = `p_${Math.random().toString(36).substr(2,9)}`;
 
-          const refDate = n.id === 'root' ? n.deathDate : parentDeathDate;
-          const nodeDeath = n.deathDate;
-          const isExcluded = !!n.isExcluded;
           let exclusionOption = n.exclusionOption;
+          let isExcluded = n.isExcluded;
+
+          const nodeDeath = n.deathDate;
+          const refDate = rootDeathDate || parentDate;
           const isPredeceased = nodeDeath && refDate && isBefore(nodeDeath, refDate);
 
+          // 1. 선사망자 '상속포기(renounce)' 찌꺼기 치유
           if (isExcluded && ['renounce', 'no_heir'].includes(exclusionOption) && isPredeceased) {
               exclusionOption = 'predeceased';
           }
 
-          // 🚨 [v3.0 Data Scrubbing] 신법(1991~)에서 배우자가 아닌 자(자녀 등)의 혼인/재혼일자는 무의미하므로 증발시킴
+          // 2. 신법(1991~) 적용 시 직계비속의 무의미한 혼인/재혼일자 증발
           const era = getLawEra(refDate);
           const isSpouseType = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(n.relation);
           if (era === '1991' && !isSpouseType && n.id !== 'root') {
@@ -775,19 +803,21 @@ function App() {
               n.remarriageDate = '';
           }
 
-          return { ...n, personId: pId, exclusionOption, heirs: (n.heirs || []).map(h => sanitizeNode(h, n.deathDate || refDate)) };
+          return { ...n, personId: pId, isExcluded, exclusionOption, heirs: (n.heirs || []).map(child => sanitizeNode(child, nodeDeath || refDate)) };
         };
 
-        if (data.id === 'root' || (Array.isArray(data.heirs) && data.name !== undefined)) {
-          setTree(sanitizeNode(data, data.deathDate));
-          setActiveTab('calc');
-        } else if (data.people && Array.isArray(data.people)) {
+        if (data.id === 'root' || (Array.isArray(data.heirs) && data.name !== undefined)) { 
+          setTree(sanitizeNode(data, data.deathDate)); 
+          setActiveTab('calc'); 
+        } else if (data.people && Array.isArray(data.people)) { 
+          alert('이전 버전 형식입니다. 일부 데이터가 누락될 수 있습니다.');
           const root = data.people.find(p => p.isRoot || p.id === 'root');
           if (root) { setTree({ id: 'root', name: root.name || '', gender: root.gender || 'male', deathDate: root.deathDate || '', caseNo: data.caseNo || '', isHoju: root.isHoju !== false, shareN: data.shareN || 1, shareD: data.shareD || 1, heirs: [] }); setActiveTab('input'); }
-        } else alert('인식할 수 없는 파일 형식입니다.');
-      } catch (err) { alert('파일 로드 중 오류: ' + err.message); }
-    };
-    reader.readAsText(file); e.target.value = '';
+        } else alert('인식할 수 없는 파일 형식입니다.'); 
+      } catch (err) { alert('파일을 읽는 중 오류가 발생했습니다: ' + err.message); } 
+    }; 
+    reader.readAsText(file); 
+    e.target.value = ''; 
   };
 
   const performReset = (saveFirst) => { if (saveFirst) saveFile(); setVaultState({ history: [migrateToVault(getInitialTree())], currentIndex: 0 }); setActiveTab('input'); setActiveDeceasedTab('root'); setIsResetModalOpen(false); };
@@ -1026,8 +1056,8 @@ function App() {
                         const processAiData = (node) => {
                           if (Array.isArray(node)) { node.forEach(processAiData); return; }
                           if (!node.id) node.id = `ai_${Math.random().toString(36).substr(2, 9)}`;
-                          
-                          // 🚨 [v3.0 Data Scrubbing] AI 입력 시에도 신법 비배우자 날짜 정제
+                          const effectiveDate = parsedTree.deathDate || tree.deathDate;
+                          const era = getLawEra(effectiveDate);
                           const isSpouseType = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(node.relation);
                           if (era === '1991' && !isSpouseType && node.id !== 'root') {
                               node.marriageDate = '';

@@ -22,7 +22,6 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
     };
 
     const checkIndependentExclusionGuide = (node, level = 0) => {
-      // 피상속인보다 명백히 먼저 사망한 사람의 '상속포기/결격'은 과거 파일의 버그 데이터이므로 경고를 띄우지 않음
       const isPredeceased = node.deathDate && tree.deathDate && isBefore(node.deathDate, tree.deathDate);
       
       if (node.id !== 'root' && node.isExcluded && ['renounce', 'disqualified'].includes(node.exclusionOption) && !isPredeceased) {
@@ -40,36 +39,6 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
     };
 
     const checkGuideNode = (node, parentDate, level = 0) => {
-      const parentNode = findParentNodeInHook(tree, node.id);
-      const parentTabId = parentNode ? parentNode.personId : 'root';
-
-      if (node.id !== 'root') {
-        const isSpouse = ['wife', 'husband', 'spouse'].includes(node.relation);
-
-        // 🚨 무자녀 사망자 가이드 분리 (대습상속 vs 재상속)
-        if (node.isDeceased && (!node.heirs || node.heirs.length === 0) && !isSpouse) {
-            const isPredeceased = node.deathDate && parentDate && isBefore(node.deathDate, parentDate);
-            
-            if (isPredeceased) {
-                // 대습상속 (선사망)
-                uniqueGuidesMap.set(`no-heir-excl-${node.personId}`, {
-                   id: node.id, uniqueKey: `no-heir-excl-${node.personId}`, type: 'recommended',
-                   targetTabId: parentTabId,
-                   text: `[${node.name}] 하위 대습상속인이 없어 상속에서 제외되었습니다. 생존 자녀가 있다면 추가해 주세요.`,
-                   level, relation: node.relation
-                });
-            } else {
-                // 재상속 (후사망)
-                uniqueGuidesMap.set(`re-inherit-tip-${node.personId}`, {
-                   id: node.id, uniqueKey: `re-inherit-tip-${node.personId}`, type: 'recommended',
-                   targetTabId: node.personId, 
-                   text: `[${node.name}] 하위 상속인 부재로 본인의 지분이 배우자/직계존속/형제자매 등에게 승계(재상속)됩니다. 상세 분배 내역은 계산표를 확인하세요.`,
-                   level, relation: node.relation
-                });
-            }
-        }
-      }
-
       const effectiveDate = node.deathDate || tree.deathDate;
       if (getLawEra(effectiveDate) !== '1991' && node.isHoju && node.isDeceased) {
           const hasHojuChild = node.heirs && node.heirs.some(h => h.isHoju);
