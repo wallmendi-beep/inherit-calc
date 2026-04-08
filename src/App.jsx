@@ -1295,8 +1295,42 @@ function App() {
                       <span className="text-indigo-600 dark:text-indigo-400 font-medium">※ 공문서(제적등본, 가족관계증명서)는 물론, 신청인이 직접 손으로 그린 가계도 등 사문서 사진도 완벽하게 인식합니다!</span>
                     </p>
                     {(() => {
-                      const aiPromptText = `첨부한 문서(제적등본, 가족관계증명서, 가계도 메모 등) 사진을 보고, 아래 JSON 양식에 맞춰 가족 관계를 추출해줘.\n\n[규칙]\n1. 중심 인물(망인)을 기준으로 남자는 "son", 여자는 "daughter", 배우자는 "wife" 또는 "husband"로 작성해.\n2. 🚨 [중요] 피상속인 사망일이 1991년 1월 1일 이후인데 문서상 자녀의 성별이 불분명한 경우(예: '자녀'로만 표기), 사용자에게 절대 질문하지 말고 일괄적으로 관계를 "son"으로 임의 지정해서 처리해.\n3. 사망자는 isDeceased를 true로 하고, deathDate를 "YYYY-MM-DD" 형태로 넣어.\n4. 🚨 [중요] 제적등본에 전처, 후처 등 배우자가 여러 명 기재되어 있다면 임의로 판단/삭제하지 말고 문서에 있는 대로 일단 전부 다 입력해!\n5. 문서에 출가일(혼인일)이 있으면 marriageDate에, 재혼일이 있으면 remarriageDate에 "YYYY-MM-DD" 형태로 기재해.\n6. 자녀들은 반드시 해당 부모의 heirs 배열 안에 정확히 넣어.\n7. 응답은 무조건 JSON 코드 블록으로만 출력해. 다른 설명은 절대 하지마.\n\n[출력 예시]\n{\n  "name": "홍길동", "isDeceased": true, "deathDate": "1980-01-01",\n  "heirs": [\n    { "name": "이갑순", "relation": "wife", "isDeceased": true, "deathDate": "1975-01-01" },\n    { "name": "박을녀", "relation": "wife", "remarriageDate": "1985-05-05" },\n    { "name": "홍바다", "relation": "daughter", "marriageDate": "1995-10-20" }\n  ]\n}`;
-                      return (
+                      const aiPromptText = `첨부한 문서(제적등본, 가족관계증명서, 가계도 메모 등) 사진을 보고, 아래 [출력 양식]의 JSON 구조에 맞춰 가족 관계를 추출해줘.
+
+                      🚨 [행동 지침: 투스텝(Two-Step) 처리]
+                      문서를 분석할 때, 글씨가 흐릿하거나 관계/성별/날짜가 명확하지 않은 부분이 있다면 **절대 임의로 추측해서 JSON을 먼저 만들지 마.** 대신, 아래 [질문 양식]처럼 사용자에게 명확하게 질문을 먼저 던져서 확인받아. 사용자가 답변을 주면, 그때 최종 JSON 코드를 출력해.
+
+                      [질문 양식 예시 (모호한 부분이 있을 때만 이렇게 출력)]
+                      완벽한 데이터 입력을 위해 아래 내용의 확인이 필요합니다.
+
+                      1) 이영수 사망일: YYYY-MM-DD (사진상 1972-11-22인지 23인지 불명확함)
+                      2) 박민호 가지 구조: 맞다 / 아니다 (수정내용 기재)
+                      3) 정하나, 정두리, 정세찌: 각각 남/여 기재
+                      4) 강우진: 남/여 기재
+                      5) 최은지 재혼 상대: 정확한 이름 (사진상 판독 어려움)
+
+                      가능하면 위 번호 형식에 맞춰 답변을 부탁드립니다. 답변을 주시면 즉시 JSON 코드를 생성하겠습니다.
+
+                      ---
+
+                      [가족 관계 추출 규칙]
+                      1. 중심 인물(망인)을 기준으로 남자는 "son", 여자는 "daughter", 배우자는 "wife" 또는 "husband"로 작성해.
+                      2. 🚨 [중요/예외] 피상속인 사망일이 1991년 1월 1일 이후인데 문서상 자녀의 성별이 불분명한 경우(예: '자녀'로만 표기), 이 경우는 사용자에게 질문하지 말고 일괄적으로 관계를 "son"으로 임의 지정해서 처리해.
+                      3. 사망자는 isDeceased를 true로 하고, deathDate를 "YYYY-MM-DD" 형태로 넣어.
+                      4. 🚨 [중요] 제적등본에 전처, 후처 등 배우자가 여러 명 기재되어 있다면 임의로 판단/삭제하지 말고 문서에 있는 대로 일단 전부 다 입력해!
+                      5. 문서에 출가일(혼인일)이 있으면 marriageDate에, 재혼일이 있으면 remarriageDate에 "YYYY-MM-DD" 형태로 기재해.
+                      6. 자녀들은 반드시 해당 부모의 heirs 배열 안에 정확히 넣어.
+                      7. (모든 질문이 해결되었거나 모호한 점이 없을 때) 응답은 무조건 JSON 코드 블록으로만 출력해. 다른 부연 설명은 하지 마.
+
+                      [출력 양식 예시]
+                      {
+                      "name": "김철수", "isDeceased": true, "deathDate": "1980-01-01",
+                      "heirs": [
+                      { "name": "이영희", "relation": "wife", "isDeceased": true, "deathDate": "1975-01-01" },
+                      { "name": "박영자", "relation": "wife", "remarriageDate": "1985-05-05" },
+                      { "name": "김바다", "relation": "daughter", "marriageDate": "1995-10-20" }
+                      ]
+                      }`;                      return (
                         <div className="flex flex-col gap-2">
                           <div className="flex items-center gap-2">
                             <button type="button" onClick={() => navigator.clipboard.writeText(aiPromptText).then(() => alert('✅ 명령어가 복사되었습니다!'))} className="flex-1 py-2.5 bg-white dark:bg-neutral-800 border-2 border-indigo-500 text-indigo-600 dark:text-indigo-400 rounded-md font-bold hover:bg-indigo-50 transition-colors shadow-sm">📋 명령어 복사하기</button>
