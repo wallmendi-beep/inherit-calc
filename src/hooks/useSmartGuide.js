@@ -22,7 +22,10 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
     };
 
     const checkIndependentExclusionGuide = (node, level = 0) => {
-      if (node.id !== 'root' && node.isExcluded && ['renounce', 'disqualified'].includes(node.exclusionOption)) {
+      // 피상속인보다 명백히 먼저 사망한 사람의 '상속포기/결격'은 과거 파일의 버그 데이터이므로 경고를 띄우지 않음
+      const isPredeceased = node.deathDate && tree.deathDate && isBefore(node.deathDate, tree.deathDate);
+      
+      if (node.id !== 'root' && node.isExcluded && ['renounce', 'disqualified'].includes(node.exclusionOption) && !isPredeceased) {
         const parentNode = findParentNodeInHook(tree, node.id);
         const parentTabId = parentNode ? parentNode.personId : 'root';
         const optionText = node.exclusionOption === 'renounce' ? '상속포기' : '상속결격';
@@ -43,17 +46,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
       if (node.id !== 'root') {
         const isSpouse = ['wife', 'husband', 'spouse'].includes(node.relation);
 
-        // 🚨 1. 계자녀 혼입 주의 (윤성혜 오류 해결: targetTabId를 부모 탭으로 변경)
-        if (node.remarriageDate) {
-          uniqueGuidesMap.set(`remarried-tip-${node.personId}`, {
-            id: node.id, uniqueKey: `remarried-tip-${node.personId}`, type: 'recommended',
-            targetTabId: parentTabId, 
-            text: `[${node.name}] 재혼(${node.remarriageDate}) 연혁이 있습니다. 하위 입력 시 전 배우자의 자녀(계자녀)가 섞이지 않도록 주의해 주세요.`,
-            level, relation: node.relation
-          });
-        }
-
-        // 🚨 2. 무자녀 사망자 가이드 분리 (대습상속 vs 재상속)
+        // 🚨 무자녀 사망자 가이드 분리 (대습상속 vs 재상속)
         if (node.isDeceased && (!node.heirs || node.heirs.length === 0) && !isSpouse) {
             const isPredeceased = node.deathDate && parentDate && isBefore(node.deathDate, parentDate);
             
@@ -66,7 +59,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
                    level, relation: node.relation
                 });
             } else {
-                // 재상속 (후사망 - 정문자, 김진수 등)
+                // 재상속 (후사망)
                 uniqueGuidesMap.set(`re-inherit-tip-${node.personId}`, {
                    id: node.id, uniqueKey: `re-inherit-tip-${node.personId}`, type: 'recommended',
                    targetTabId: node.personId, 
@@ -77,7 +70,6 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
         }
       }
 
-      // 3. 연쇄 호주 승계
       const effectiveDate = node.deathDate || tree.deathDate;
       if (getLawEra(effectiveDate) !== '1991' && node.isHoju && node.isDeceased) {
           const hasHojuChild = node.heirs && node.heirs.some(h => h.isHoju);
@@ -85,30 +77,26 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
               uniqueGuidesMap.set(`chained-hoju-${node.personId}`, {
                   id: node.id, uniqueKey: `chained-hoju-${node.personId}`, type: 'recommended',
                   targetTabId: node.personId,
-                  text: `[대습 팁] 장남 및 장손이 연쇄적으로 호주를 승계한다면, 두 사람 모두 [호주상속] 켬 상태를 유지해 주시길 권장합니다.`,
+                  text: `[대습 팁] 장남/장손 연쇄 호주 승계 시, 두 사람 모두 [호주상속] 켬 상태 유지를 권장합니다.`,
                   level, relation: node.relation
               });
           }
       }
 
       if (node.heirs) {
-        // 재상속일 경우 기준 사망일(parentDate)을 본인 사망일로 업데이트하여 하위로 전달
         const nextParentDate = (node.deathDate && parentDate && isBefore(parentDate, node.deathDate)) ? node.deathDate : parentDate;
         node.heirs.forEach(h => checkGuideNode(h, nextParentDate, level + 1));
       }
     };
 
     checkIndependentExclusionGuide(tree, 0);
-    if (tree.heirs) {
-       tree.heirs.forEach(h => checkGuideNode(h, tree.deathDate, 0));
-    }
+    if (tree.heirs) { tree.heirs.forEach(h => checkGuideNode(h, tree.deathDate, 0)); }
 
     if (!tree.heirs || tree.heirs.length === 0 || tree.heirs.every(h => h.isExcluded && (!h.heirs || h.heirs.length === 0))) {
       noSurvivors = true;
     }
 
     const smartGuides = Array.from(uniqueGuidesMap.values());
-
     return {
       showGlobalWarning: false, showAutoCalcNotice: false, globalMismatchReasons: [], autoCalculatedNames: [],
       smartGuides, noSurvivors, hasActionItems: smartGuides.some(g => g.type === 'mandatory')

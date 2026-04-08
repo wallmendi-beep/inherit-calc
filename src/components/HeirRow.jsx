@@ -316,9 +316,9 @@ const HeirRow = ({ node, finalShares, level, handleUpdate, handleNameBlur, remov
 
       {/* 6. 재상속/대습상속 버튼 (규정 복구: W 112px, ML 20px) */}
       <div className="w-[112px] ml-[20px] shrink-0 flex flex-col items-center justify-center gap-1">
-        {/* 💡 지분 표시는 버튼 위나 아래에 콤팩트하게 배치 (전체 너비 유지) */}
+        {/* 💡 지분 표시는 버튼 위나 아래에 콤팩트하게 배치 (전체 너비 유지) - 왼쪽으로 10px 이동 */}
         {!node.isExcluded && !node.isDeceased && (
-          <div className="flex items-center gap-0.5 text-[11px] font-black leading-none mb-0.5">
+          <div className="flex items-center gap-0.5 text-[11px] font-black leading-none mb-0.5 ml-[-10px]">
             <span className={isAutoCalculated ? 'text-blue-600 dark:text-blue-400' : 'text-neutral-400'}>{displayN}</span>
             <span className="text-neutral-300 dark:text-neutral-600">/</span>
             <span className={isAutoCalculated ? 'text-blue-600 dark:text-blue-400' : 'text-neutral-400'}>{displayD}</span>
