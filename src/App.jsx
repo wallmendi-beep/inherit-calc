@@ -773,15 +773,12 @@ function App() {
     reader.onload = (ev) => { 
       try { 
         const data = JSON.parse(ev.target.result); 
-        const nameMap = new Map(); 
+        // 🚨 nameMap 변수 삭제 (이름 기반 강제 병합 금지)
         const rootDeathDate = data.id === 'root' ? data.deathDate : (data.people?.find(p=>p.isRoot)?.deathDate || '');
 
         const sanitizeNode = (n, parentDate) => {
-          let pId = n.personId;
-          if (n.name && n.name.trim() !== '') {
-            if (nameMap.has(n.name)) pId = nameMap.get(n.name);
-            else { if (!pId) pId = `p_${Math.random().toString(36).substr(2,9)}`; nameMap.set(n.name, pId); }
-          } else if (!pId) pId = `p_${Math.random().toString(36).substr(2,9)}`;
+          // 🚨 AI가 부여한 personId를 100% 존중. 없으면 임의 생성.
+          let pId = n.personId || `p_${Math.random().toString(36).substr(2,9)}`;
 
           let exclusionOption = n.exclusionOption;
           let isExcluded = n.isExcluded;
