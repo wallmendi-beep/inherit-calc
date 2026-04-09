@@ -732,8 +732,8 @@ function App() {
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
             <div className="flex items-center gap-1.5 bg-[#f7f7f5] dark:bg-neutral-700 px-2.5 py-1 rounded border border-[#e9e9e7] dark:border-neutral-600 mr-2 transition-colors"><div className="min-w-[120px] flex items-center gap-1 overflow-hidden"><span className="text-[11px] font-bold text-[#787774] dark:text-neutral-400 whitespace-nowrap">사건:</span><span className="text-[11px] font-bold text-[#37352f] dark:text-neutral-200 truncate">{tree.caseNo || '미입력'}</span></div><div className="w-px h-2.5 bg-[#d4d4d4] dark:bg-neutral-600 mx-0.5"></div><div className="min-w-[140px] flex items-center gap-1 overflow-hidden"><span className="text-[11px] font-bold text-[#787774] dark:text-neutral-400 whitespace-nowrap">피상속인:</span><span className="text-[13px] font-black text-[#0b6e99] dark:text-blue-400 truncate">{tree.name || '미입력'}</span></div></div>
-            <button onClick={() => { setAiTargetId('root'); setIsAiModalOpen(true); }} title="가계도 전체 AI 자동입력" className="flex items-center justify-center w-8 h-8 shrink-0 bg-white dark:bg-neutral-800 border border-[#e9e9e7] dark:border-neutral-700 hover:bg-[#f7f7f5] dark:hover:bg-neutral-700/50 rounded-lg transition-all shadow-sm group">
-              <IconSparkles size={16} className="text-neutral-400 group-hover:text-[#2383e2] transition-colors" />
+            <button onClick={() => { setAiTargetId('root'); setIsAiModalOpen(true); }} title="가계도 전체 AI 자동입력" className="flex items-center justify-center w-8 h-8 shrink-0 bg-white dark:bg-neutral-800 border border-[#e9e9e7] dark:border-neutral-700 hover:bg-[#f7f7f5] dark:hover:bg-neutral-700/50 rounded-lg transition-all shadow-sm active:scale-95 group">
+              <span className="text-[16px] leading-none opacity-100 drop-shadow-sm mt-0.5">✨</span>
             </button>
             <button onClick={() => setShowNavigator(true)} className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all shadow-sm border shrink-0 mx-[10px] active:scale-95 ${hasActionItems ? 'bg-indigo-50 text-indigo-600 border-indigo-100 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-400 dark:border-indigo-800/50 dark:hover:bg-indigo-900/40' : 'bg-white text-[#787774] border-[#e9e9e7] hover:bg-[#f7f7f5] hover:text-[#37352f] dark:bg-neutral-800 dark:border-neutral-700 dark:hover:bg-neutral-700'}`} title={hasActionItems ? "새로운 스마트 가이드가 있습니다!" : "스마트 가이드 열기"}><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={hasActionItems ? 2.5 : 2}><circle cx="12" cy="12" r="10" /><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" /></svg></button>
             <button onClick={undoTree} disabled={vaultState.currentIndex <= 0} className="disabled:opacity-40 disabled:cursor-not-allowed text-[#787774] hover:text-[#37352f] hover:bg-[#efefed] px-2 py-1 rounded border border-transparent hover:border-[#d4d4d4] text-[12px] font-bold transition-colors flex items-center gap-1"><IconUndo className="w-3.5 h-3.5" /> 이전</button>
@@ -901,47 +901,6 @@ function App() {
         {isAiModalOpen && (() => {
           const targetTab = deceasedTabs.find(t => t.id === aiTargetId); 
           const targetName = aiTargetId === 'root' ? '전체 가계도' : `[${targetTab?.name || '상속인'}] 하위`;
-          const aiPromptText = `당신은 한국 상속법에 기반한 가계도 분석 및 JSON 데이터 구조화 전문가입니다.
-제공된 문서(또는 이미지)를 분석하여, 아래의 [엄격한 추출 규칙]과 [JSON 스키마 양식]에 맞춰 완벽한 계층 구조의 JSON을 생성해 주세요.
-
-[추출 규칙]
-1. 관계(relation) 지정: 남자는 "son", 여자는 "daughter", 배우자는 "wife" 또는 "husband". (1991년 이후 사망건에서 자녀 성별을 모르면 "son"으로 통일)
-2. 날짜 형식: YYYY-MM-DD. (명확하지 않으면 "" 빈 문자열 처리)
-3. 사망 및 제외 처리:
-   - 사망자: isDeceased: true, deathDate 기입.
-   - 상속포기/선사망/결격: isExcluded: true 설정 후, exclusionOption에 사유 기입 ("renounce", "predeceased", "lost", "disqualified" 중 택일).
-4. 구법(1990년 이전 사망) 변수 확인:
-   - 여성(daughter)의 경우 족보 문맥을 파악하여 혼인일자(marriageDate)나 출가 여부(isSameRegister: false)를 최대한 파악하여 기록할 것.
-   - 호주 상속인이 명시된 경우 isHoju: true 로 표시.
-5. 다세대 중첩 (재귀적 구조):
-   - 자녀가 사망하여 대습상속이나 재상속이 일어나는 경우, 해당 자녀 객체의 "heirs" 배열 안에 그 배우자와 하위 자녀들을 계속해서 중첩(Nesting)하여 완벽한 트리 구조를 만들 것.
-6. 고유 식별자(personId) 부여 규칙 [매우 중요]:
-   - 각 인물마다 "ai_랜덤문자열" 형태의 고유 personId를 부여할 것.
-   - 문맥상 완벽히 동일한 인물(여러 가계에 걸쳐 중복 등장하는 자)은 반드시 '똑같은 personId'를 부여할 것.
-   - 이름만 같은 동명이인(남남)일 경우 반드시 '서로 다른 personId'를 부여하여 분리할 것.
-7. 모호한 정보는 절대 임의로 추측하지 말고, JSON 출력 후 하단에 질문으로 남길 것.
-
-[JSON 스키마 양식 (모든 노드는 빠짐없이 이 속성들을 포함해야 함)]
-{
-  "id": "root", // 최상위 피상속인은 root, 하위 상속인들은 임의의 고유 ID (예: n_ai_123)
-  "name": "망인 이름",
-  "isDeceased": true,
-  "deathDate": "YYYY-MM-DD",
-  "marriageDate": "",
-  "remarriageDate": "",
-  "gender": "",
-  "personId": "root", // 최상위 피상속인은 root, 하위는 ai_랜덤값
-  "relation": "", // 피상속인은 빈 문자열, 하위는 son/daughter/wife 등
-  "isHoju": false,
-  "isExcluded": false,
-  "exclusionOption": "",
-  "isSameRegister": true,
-  "heirs": [
-    {
-      // 위와 완벽히 동일한 구조의 객체가 하위 상속인으로서 재귀적으로 들어감
-    }
-  ]
-}`;
 
           const handleAiIngest = (input) => {
             if (!input.trim() || !input.includes('{')) return;
@@ -994,7 +953,7 @@ function App() {
               <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] border border-[#e9e9e7] dark:border-neutral-700">
                 <div className="px-6 py-4 border-b border-[#e9e9e7] dark:border-neutral-700 flex justify-between items-center transition-colors">
                   <h2 className="text-[16px] font-bold text-[#37352f] dark:text-neutral-100 flex items-center gap-2">
-                    <IconSparkles size={18} className="text-[#2383e2]" />
+                    <span className="text-[18px] opacity-100 drop-shadow-sm mt-0.5">✨</span>
                     {targetName} AI 상속인 자동 입력
                   </h2>
                   <button onClick={() => setIsAiModalOpen(false)} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors">
