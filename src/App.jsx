@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   IconPrinter, IconNetwork, IconList, IconTable, IconCalculator,
-  IconReset, IconFolderOpen, IconSave,
+  IconReset, IconFolderOpen, IconSave, IconUserPlus,
   IconFileText, IconX, IconChevronRight,
   IconSun, IconMoon, IconUndo, IconRedo, IconUserGroup, IconTrash2, IconSparkles
 } from './components/Icons';
@@ -243,6 +243,39 @@ function App() {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         element.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2', 'bg-blue-50/50');
         setTimeout(() => element.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2', 'bg-blue-50/50'), 2000);
+      }
+    }, 150);
+  };
+
+  const handleGuideClick = (g) => {
+    if (g.targetTabId) {
+      setActiveDeceasedTab(g.targetTabId === tree.personId ? 'root' : g.targetTabId);
+    } else if (g.id) {
+      const findParentTab = (n, currentTabId) => {
+        if (n.id === g.id) return currentTabId;
+        if (n.heirs) {
+          for (let h of n.heirs) {
+            const found = findParentTab(h, (n.isDeceased && n.heirs.length > 0) ? n.id : currentTabId);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+      const tabId = findParentTab(tree, 'root');
+      if (tabId) setActiveDeceasedTab(tabId);
+    }
+
+    // 🚨 엉뚱한 스크롤 방지 및 안전한 화면 이동 로직
+    setTimeout(() => {
+      const el = document.getElementById(`node-${g.id}`);
+      if (el) {
+        // 부모 탭으로 워프하여 해당 카드가 화면에 존재하는 경우 -> 해당 카드로 스크롤 및 하이라이트 효과
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('ring-4', 'ring-red-500', 'ring-opacity-50', 'transition-all');
+        setTimeout(() => el.classList.remove('ring-4', 'ring-red-500', 'ring-opacity-50'), 2000);
+      } else {
+        // 본인 탭으로 워프하여 자신의 카드가 없는 경우 (또는 요소를 찾지 못한 경우) -> 화면 맨 위로 부드럽게 스크롤
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     }, 150);
   };
@@ -502,58 +535,7 @@ function App() {
   const guideInfo = useSmartGuide(tree, finalShares, activeTab, warnings);
   const { showGlobalWarning, showAutoCalcNotice, globalMismatchReasons, autoCalculatedNames, noSurvivors } = guideInfo || {};
 
-  const multipleSpouseGuides = useMemo(() => {
-    const guides = []; const checkSpouses = (node) => { const spouses = (node.heirs || []).filter(h => ['wife', 'husband', 'spouse'].includes(h.relation) && !h.isExcluded); if ( spouses.length > 1) { guides.push({ id: node.id, uniqueKey: `multi-spouse-${node.personId}`, targetTabId: node.personId, type: 'mandatory', text: `[${node.name || '이름없음'}] 유효 배우자가 중복 입력되었습니다. 실제 상속받을 1명 외에는 제외 처리해 주세요.` }); } if (node.heirs) node.heirs.forEach(checkSpouses); };
-    checkSpouses(tree); return guides;
-  }, [tree]);
-
-  const hojuMissingGuides = useMemo(() => {
-    const guides = [];
-    const checkHoju = (node) => {
-      if (node.isDeceased && node.heirs && node.heirs.length > 0) {
-        const hasHoju = node.heirs.some(h => h.isHoju && !h.isExcluded);
-        const effectiveDate = node.deathDate || tree.deathDate; 
-        const needsHoju = getLawEra(effectiveDate) !== '1991' && (node.id === 'root' || ['son', '아들'].includes(node.relation));
-        if (needsHoju && !hasHoju) {
-          guides.push({
-            id: node.id, uniqueKey: `missing-hoju-${node.personId}`, targetTabId: node.personId, type: 'mandatory',
-            text: `[${node.name || '이름없음'}] 구법(${effectiveDate} 사망) 적용 대상입니다. 하위 상속인 중 호주상속인을 지정해 주세요.`
-          });
-        }
-      }
-      if (node.heirs) node.heirs.forEach(checkHoju);
-    };
-    checkHoju(tree);
-    return guides;
-  }, [tree]);
-
-  // 💡 [논리적 모순 및 필수 조치 감지 센서]
-  const logicalMismatchGuides = useMemo(() => {
-    const guides = [];
-    if (!tree.name || !tree.name.trim()) { guides.push({ id: 'root', uniqueKey: 'missing-root-name', targetTabId: 'root', type: 'mandatory', text: '피상속인의 성명 및 사망일자를 먼저 입력해 주세요.' }); } else if (!tree.deathDate) { guides.push({ id: 'root', uniqueKey: 'missing-root-death', targetTabId: 'root', type: 'mandatory', text: `[${tree.name || '이름없음'}]님의 사망일자를 입력해 주세요. (사망일자 기준으로 적용 법령이 결정됩니다)` }); }
-    const checkMismatch = (node, parentDeathDate, parentPersonId) => {
-      const effectiveDate = parentDeathDate || tree.deathDate;
-      const isSpouse = ['wife', 'husband', 'spouse'].includes(node.relation);
-      
-      // 출가녀 스위치 오류
-      if (node.relation === 'daughter' && node.marriageDate && effectiveDate) {
-        if (getLawEra(effectiveDate) !== '1991' && isBefore(node.marriageDate, effectiveDate) && node.isSameRegister !== false) {
-          guides.push({ id: node.id, uniqueKey: `mismatch-married-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름없음'}] 혼인일(${node.marriageDate})이 상속개시일(${effectiveDate}) 이전입니다. 구법 적용 대상이므로 [출가] 스위치를 켜주세요.` });
-        }
-      }
-
-      if (node.deathDate && effectiveDate && isBefore(node.deathDate, effectiveDate) && !isSpouse) { if (!node.isExcluded || node.exclusionOption !== 'predeceased') { guides.push({ id: node.id, uniqueKey: `mismatch-predeceased-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름없음'}] 본인 사망(${node.deathDate})이 부모 사망(${effectiveDate})보다 먼저 발생했습니다. [상속권 없음] 스위치를 켜주세요.` }); } }
-      if (isSpouse && node.remarriageDate && effectiveDate && isBefore(node.remarriageDate, effectiveDate)) { if (!node.isExcluded || node.exclusionOption !== 'remarried') { guides.push({ id: node.id, uniqueKey: `mismatch-remarried-self-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름없음'}] 피상속인 사망(${effectiveDate}) 전 재혼(${node.remarriageDate})하여 대습상속권이 소멸했습니다. 스위치를 꺼주세요.` }); } }
-      if (node.marriageDate && node.deathDate && isBefore(node.deathDate, node.marriageDate)) { guides.push({ id: node.id, uniqueKey: `date-mismatch-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름없음'}] 혼인일(${node.marriageDate})이 본인 사망일(${node.deathDate}) 이후로 설정되어 있습니다. 날짜를 확인하고 수정해 주세요.` }); }
-      if (node.heirs) { node.heirs.forEach(h => { let nextEffectiveDate = effectiveDate; if (node.deathDate && !isBefore(node.deathDate, effectiveDate)) nextEffectiveDate = node.deathDate; checkMismatch(h, nextEffectiveDate, node.personId); }); }
-    };
-    if (tree.heirs) tree.heirs.forEach(h => checkMismatch(h, tree.deathDate, tree.personId || 'root'));
-    return guides;
-  }, [tree]);
-
-  const rawSmartGuides = [ ...(guideInfo.smartGuides || []), ...multipleSpouseGuides, ...hojuMissingGuides, ...logicalMismatchGuides ];
-  const uniqueGuidesMap = new Map(); rawSmartGuides.forEach(g => { const key = g.uniqueKey || g.text; if (!uniqueGuidesMap.has(key)) uniqueGuidesMap.set(key, g); });
-  const smartGuides = Array.from(uniqueGuidesMap.values());
+  const smartGuides = guideInfo.smartGuides || [];
   const hasActionItems = (guideInfo?.hasActionItems) || smartGuides.length > 0;
 
   const [hiddenGuideKeys, setHiddenGuideKeys] = useState(new Set());
@@ -731,10 +713,9 @@ function App() {
                 <div className="text-[13px] font-bold text-[#504f4c] dark:text-neutral-300 pointer-events-none animate-in fade-in slide-in-from-top-1 duration-200">
                   {noSurvivors && <div className="flex flex-col items-center justify-center py-6 text-center gap-2 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/50 rounded-lg mt-2 mb-4"><span className="text-[#b45309] dark:text-amber-500 font-black text-[14px]">[생존 상속인 없음]</span><span className="text-[#787774] dark:text-neutral-400 text-[11.5px] font-medium leading-relaxed px-4">모든 상속인이 사망/제외 상태입니다.<br/>차순위 상속인을 추가해 주세요.</span></div>}
                   {!hasActionItems && !noSurvivors && <div className="flex flex-col items-center justify-center py-6 text-center gap-2 bg-[#fcfcfb] dark:bg-neutral-800/50 rounded-lg border border-[#e9e9e7] dark:border-neutral-700/50 mt-2"><span className="text-[#37352f] dark:text-neutral-300 font-black text-[13px]">[검증 완료]</span><span className="text-[#787774] dark:text-neutral-500 text-[11.5px] font-medium leading-snug">현재 단계에서 추가로 확인하실 항목이 없습니다.</span></div>}
-                  {activeTab === 'input' && warnings.map((w, i) => (<div key={`w-${i}`} onClick={() => { if (w.targetTabId && deceasedTabs.some(t => t.id === w.targetTabId)) setActiveDeceasedTab(w.targetTabId); else if (w.id) { const findParentTab = (n, currentTabId) => { if (n.id === w.id) return currentTabId; if (n.heirs) { for (let h of n.heirs) { const found = findParentTab(h, (n.isDeceased && n.heirs.length > 0) ? n.id : currentTabId); if (found) return found; } } return null; }; const tabId = findParentTab(tree, 'root'); if (tabId) setActiveDeceasedTab(tabId); } }} className={`pointer-events-auto flex items-start gap-2 p-2.5 bg-red-50/50 dark:bg-red-900/10 rounded-lg border border-red-100 dark:border-red-800/30 mt-2 transition-all ${w.id ? 'cursor-pointer hover:bg-red-100/60 dark:hover:bg-red-900/20' : ''}`} title={w.id ? "클릭 시 수정을 위해 해당 탭으로 이동합니다" : ""}><span className="mt-0.5">🚨</span><span className={`flex-1 leading-snug text-red-700 dark:text-red-400 font-bold text-[13px] ${w.id ? 'hover:underline decoration-red-400 underline-offset-4' : ''}`}>{w.text || w}</span></div>))}
-                  {activeTab === 'input' && smartGuides.filter(g => g.type === 'mandatory').map((g, i) => (<button key={`m-${i}`} onMouseDown={(e) => e.stopPropagation()} onClick={() => { if (g.targetTabId) setActiveDeceasedTab(g.targetTabId === tree.personId ? 'root' : g.targetTabId); else if (g.id) { const findParentTab = (n, currentTabId) => { if (n.id === g.id) return currentTabId; if (n.heirs) { for (let h of n.heirs) { const found = findParentTab(h, (n.isDeceased && n.heirs.length > 0) ? n.id : currentTabId); if (found) return found; } } return null; }; const tabId = findParentTab(tree, 'root'); if (tabId) setActiveDeceasedTab(tabId); } }} className="w-full mt-2 text-left flex items-start gap-2 bg-blue-50/60 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200/60 dark:border-blue-800/30 hover:bg-blue-100/80 transition-all group pointer-events-auto shadow-sm"><span className="mt-0.5 text-blue-600 group-hover:scale-125 transition-transform">👉</span><span className="flex-1 leading-snug text-[#37352f] dark:text-neutral-200 font-bold">{g.text}</span></button>))}
+                  {activeTab === 'input' && smartGuides.filter(g => g.type === 'mandatory').map((g, i) => (<button key={`m-${i}`} onMouseDown={(e) => e.stopPropagation()} onClick={() => handleGuideClick(g)} className="w-full mt-2 text-left flex items-start gap-2 bg-blue-50/60 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200/60 dark:border-blue-800/30 hover:bg-blue-100/80 transition-all group pointer-events-auto shadow-sm"><span className="mt-0.5 text-blue-600 group-hover:scale-125 transition-transform">👉</span><span className="flex-1 leading-snug text-[#37352f] dark:text-neutral-200 font-bold">{g.text}</span></button>))}
                   {activeTab === 'input' && smartGuides.filter(g => g.type === 'mandatory').length > 0 && smartGuides.filter(g => g.type === 'recommended' && !hiddenGuideKeys.has(g.uniqueKey)).length > 0 && <div className="w-full border-t border-dashed border-[#d4d4d4] dark:border-neutral-600 my-4"></div>}
-                  {activeTab === 'input' && smartGuides.filter(g => g.type === 'recommended' && !hiddenGuideKeys.has(g.uniqueKey)).length > 0 && (<><div className={`mt-2 mb-1.5 ${smartGuides.filter(m => m.type === 'mandatory').length === 0 ? 'mt-3' : ''}`}><span className="text-[11px] font-bold text-[#a3a3a3] dark:text-neutral-500 tracking-tight px-1">[다음은 권고사항입니다]</span></div>{smartGuides.filter(g => g.type === 'recommended' && !hiddenGuideKeys.has(g.uniqueKey)).map((g, i) => (<div key={`r-${i}`} className="relative group pointer-events-auto mb-1.5"><button onMouseDown={(e) => e.stopPropagation()} onClick={() => { if (g.targetTabId) setActiveDeceasedTab(g.targetTabId === tree.personId ? 'root' : g.targetTabId); else if (g.id) { const findParentTab = (n, currentTabId) => { if (n.id === g.id) return currentTabId; if (n.heirs) { for (let h of n.heirs) { const found = findParentTab(h, (n.isDeceased && n.heirs.length > 0) ? n.id : currentTabId); if (found) return found; } } return null; }; const tabId = findParentTab(tree, 'root'); if (tabId) setActiveDeceasedTab(tabId); } }} className="w-full text-left flex items-start gap-2 bg-[#fbfbfb] dark:bg-neutral-800/40 p-2.5 rounded-lg border border-[#e9e9e7] dark:border-neutral-700 hover:bg-[#f2f2f0] transition-all"><span className="mt-0.5 text-[#a3a3a3] group-hover:text-amber-500 transition-colors">💡</span><span className="flex-1 leading-snug text-[#787774] dark:text-neutral-400 font-medium text-[12.5px] pr-6">{g.text}</span></button><button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); dismissGuide(g.uniqueKey); }} className="absolute top-2.5 right-2 p-1 text-neutral-300 hover:text-neutral-600 dark:hover:text-neutral-300 rounded-full transition-all opacity-0 group-hover:opacity-100" title="이 권고 무시하기 (사이드바에서도 지워집니다)"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button></div>))}</>)}
+                  {activeTab === 'input' && smartGuides.filter(g => g.type === 'recommended' && !hiddenGuideKeys.has(g.uniqueKey)).length > 0 && (<><div className={`mt-2 mb-1.5 ${smartGuides.filter(m => m.type === 'mandatory').length === 0 ? 'mt-3' : ''}`}><span className="text-[11px] font-bold text-[#a3a3a3] dark:text-neutral-500 tracking-tight px-1">[다음은 권고사항입니다]</span></div>{smartGuides.filter(g => g.type === 'recommended' && !hiddenGuideKeys.has(g.uniqueKey)).map((g, i) => (<div key={`r-${i}`} className="relative group pointer-events-auto mb-1.5"><button onMouseDown={(e) => e.stopPropagation()} onClick={() => handleGuideClick(g)} className="w-full text-left flex items-start gap-2 bg-[#fbfbfb] dark:bg-neutral-800/40 p-2.5 rounded-lg border border-[#e9e9e7] dark:border-neutral-700 hover:bg-[#f2f2f0] transition-all"><span className="mt-0.5 text-[#a3a3a3] group-hover:text-amber-500 transition-colors">💡</span><span className="flex-1 leading-snug text-[#787774] dark:text-neutral-400 font-medium text-[12.5px] pr-6">{g.text}</span></button><button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); dismissGuide(g.uniqueKey); }} className="absolute top-2.5 right-2 p-1 text-neutral-300 hover:text-neutral-600 dark:hover:text-neutral-300 rounded-full transition-all opacity-0 group-hover:opacity-100" title="이 권고 무시하기 (사이드바에서도 지워집니다)"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button></div>))}</>)}
                   {showGlobalWarning && <div className="mt-3 space-y-3"><div className="text-[#e53e3e] dark:text-red-400 font-black text-[14px]">전체 지분 합계가 일치하지 않습니다.</div>{globalMismatchReasons.length > 0 ? <div className="space-y-1.5 animate-in fade-in zoom-in duration-300">{globalMismatchReasons.map((r, idx) => (<button key={idx} onMouseDown={(e) => e.stopPropagation()} onClick={() => r.id ? handleNavigate(r.id) : null} className="w-full text-left flex items-start gap-2 bg-red-50 dark:bg-red-900/10 p-2.5 rounded-lg border border-red-200 dark:border-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/40 transition-all group pointer-events-auto shadow-sm"><span className="mt-0.5 text-red-600 dark:text-red-400 group-hover:scale-125 transition-transform">🚨</span><span className="flex-1 leading-snug text-[#c93f3a] dark:text-red-400 font-bold text-[12.5px]">{r.text || r}</span></button>))}</div> : <div className="p-3 bg-[#f9f9f8] dark:bg-neutral-900 border border-[#e9e9e7] dark:border-neutral-700 rounded-md"><span className="text-[12.5px] text-[#787774] dark:text-neutral-400 font-bold">지분 일부가 상속권 없음 처리되어 전체 합계가 미달합니다.</span></div>}</div>}
                   {showAutoCalcNotice && <div className="mt-3 p-3 bg-[#f9f9f8] dark:bg-neutral-900 border border-[#e9e9e7] dark:border-neutral-700 rounded-md"><span className="text-[#37352f] dark:text-neutral-100 font-black block mb-2 border-b border-[#e9e9e7] dark:border-neutral-700 pb-1.5 text-[13px]">자동분배 내역:</span><div className="space-y-1.5">{autoCalculatedNames.map((a, idx) => (<div key={idx} className="text-[12.5px] flex items-center justify-between"><span className="font-bold text-[#504f4c] dark:text-neutral-300">{a.name}</span><span className="text-[#787774] dark:text-neutral-500 flex items-center gap-1.5"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>{a.target}</span></div>))}</div></div>}
                 </div>

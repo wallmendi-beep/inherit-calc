@@ -25,12 +25,10 @@ export const useSmartGuide = (tree, finalShares, activeTab) => {
       const isPredeceased = node.deathDate && tree.deathDate && isBefore(node.deathDate, tree.deathDate);
       
       if (node.id !== 'root' && node.isExcluded && ['renounce', 'disqualified'].includes(node.exclusionOption) && !isPredeceased) {
-        const parentNode = findParentNodeInHook(tree, node.id);
-        const parentTabId = parentNode ? parentNode.personId : 'root';
         const optionText = node.exclusionOption === 'renounce' ? '상속포기' : '상속결격';
         uniqueGuidesMap.set(`indep-excl-${node.personId}`, {
           id: node.id, uniqueKey: `indep-excl-${node.personId}`, type: 'recommended',
-          targetTabId: parentTabId,
+          // 🚨 제자리 부메랑 워프 제거: targetTabId 속성을 삭제하여 단순 알림판 역할만 수행
           text: `[${node.name}] ${optionText}가 적용되었습니다. 타 피상속인 탭에서도 별도로 제외 처리해 주세요.`,
           level, relation: node.relation
         });
@@ -44,27 +42,50 @@ export const useSmartGuide = (tree, finalShares, activeTab) => {
 
       const effectiveDate = node.deathDate || tree.deathDate;
 
-      // 🚨 [구법 데이터 공백 방지] 1990년 이전 사망건의 '딸'인데 혼인 정보가 전혀 없는 경우 확인 요청
-      if (getLawEra(effectiveDate) !== '1991' && node.relation === 'daughter') {
-          if (!node.marriageDate && node.isSameRegister !== false) {
-              uniqueGuidesMap.set(`verify-marriage-${node.personId}`, {
-                  id: node.id, uniqueKey: `verify-marriage-${node.personId}`, type: 'recommended',
-                  targetTabId: parentTabId,
-                  text: `[${node.name || '이름미상'}] 구법(1990년 이전) 적용 대상입니다. 출가(기혼) 여부에 따라 지분이 크게 달라지므로, 기혼인 경우 [혼인일자]를 입력하거나 [상속권 스위치] 옆의 [동일가적(출가)] 설정을 확인해 주세요.`,
-                  level, relation: node.relation
+      // 🚨 살아있는 사람은 본인의 하위 탭이 생성되지 않으므로 하위 가계도 검사를 생략함
+      if (node.isDeceased || node.id === 'root') {
+          // 1. 배우자 중복 검사
+          const spouses = (node.heirs || []).filter(h => ['wife', 'husband', 'spouse'].includes(h.relation) && !h.isExcluded);
+          if (spouses.length > 1) {
+              uniqueGuidesMap.set(`multi-spouse-${node.personId}`, {
+                  id: node.id, uniqueKey: `multi-spouse-${node.personId}`, targetTabId: node.personId, type: 'mandatory',
+                  text: `[${node.name || '이름없음'}] 유효 배우자가 중복 입력되었습니다. 실제 상속받을 1명 외에는 제외 처리해 주세요.`
               });
           }
-      }
 
-      if (getLawEra(effectiveDate) !== '1991' && node.isHoju && node.isDeceased) {
-          const hasHojuChild = node.heirs && node.heirs.some(h => h.isHoju);
-          if (!hasHojuChild && node.heirs && node.heirs.length > 0) {
-              uniqueGuidesMap.set(`chained-hoju-${node.personId}`, {
-                  id: node.id, uniqueKey: `chained-hoju-${node.personId}`, type: 'recommended',
-                  targetTabId: node.personId,
-                  text: `[대습 팁] 장남/장손 연쇄 호주 승계 시, 두 사람 모두 [호주상속] 켬 상태 유지를 권장합니다.`,
-                  level, relation: node.relation
+          // 2. 구법 호주 지정 검사
+          const hasHoju = (node.heirs || []).some(h => h.isHoju && !h.isExcluded);
+          const needsHoju = getLawEra(effectiveDate) !== '1991' && (node.id === 'root' || ['son', '아들'].includes(node.relation));
+          if (needsHoju && !hasHoju && node.heirs && node.heirs.length > 0) {
+              uniqueGuidesMap.set(`missing-hoju-${node.personId}`, {
+                  id: node.id, uniqueKey: `missing-hoju-${node.personId}`, targetTabId: node.personId, type: 'mandatory',
+                  text: `[${node.name || '이름없음'}] 구법(${effectiveDate} 사망) 적용 대상입니다. 하위 상속인 중 호주상속인을 지정해 주세요.`
               });
+          }
+
+          // 3. 연쇄 호주 승계 팁 (장남/장손)
+          if (getLawEra(effectiveDate) !== '1991' && node.isHoju && node.isDeceased) {
+              const hasHojuChild = node.heirs && node.heirs.some(h => h.isHoju);
+              if (!hasHojuChild && node.heirs && node.heirs.length > 0) {
+                  uniqueGuidesMap.set(`chained-hoju-${node.personId}`, {
+                      id: node.id, uniqueKey: `chained-hoju-${node.personId}`, type: 'recommended',
+                      targetTabId: node.personId,
+                      text: `[대습 팁] 장남/장손 연쇄 호주 승계 시, 두 사람 모두 [호주상속] 켬 상태 유지를 권장합니다.`,
+                      level, relation: node.relation
+                  });
+              }
+          }
+
+          // 4. [구법 데이터 공백 방지] 1990년 이전 사망건의 '딸'인데 혼인 정보가 전혀 없는 경우 확인 요청
+          if (getLawEra(effectiveDate) !== '1991' && node.relation === 'daughter') {
+              if (!node.marriageDate && node.isSameRegister !== false) {
+                  uniqueGuidesMap.set(`verify-marriage-${node.personId}`, {
+                      id: node.id, uniqueKey: `verify-marriage-${node.personId}`, type: 'recommended',
+                      targetTabId: parentTabId,
+                      text: `[${node.name || '이름미상'}] 구법(1990년 이전) 적용 대상입니다. 출가(기혼) 여부에 따라 지분이 크게 달라지므로, 기혼인 경우 [혼인일자]를 입력하거나 [상속권 스위치] 옆의 [동일가적(출가)] 설정을 확인해 주세요.`,
+                      level, relation: node.relation
+                  });
+              }
           }
       }
 
