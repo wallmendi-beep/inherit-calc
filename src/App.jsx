@@ -858,36 +858,6 @@ function App() {
     reader.onload = (ev) => { 
       try { 
         const data = JSON.parse(ev.target.result); 
-        // 🚨 nameMap 변수 삭제 (이름 기반 강제 병합 금지)
-        const rootDeathDate = data.id === 'root' ? data.deathDate : (data.people?.find(p=>p.isRoot)?.deathDate || '');
-
-        const sanitizeNode = (n, parentDate) => {
-          // 🚨 AI가 부여한 personId를 100% 존중. 없으면 임의 생성.
-          let pId = n.personId || `p_${Math.random().toString(36).substr(2,9)}`;
-
-          let exclusionOption = n.exclusionOption;
-          let isExcluded = n.isExcluded;
-
-          const nodeDeath = n.deathDate;
-          const refDate = rootDeathDate || parentDate;
-          const isPredeceased = nodeDeath && refDate && isBefore(nodeDeath, refDate);
-
-          // 1. 선사망자 '상속포기(renounce)' 찌꺼기 치유
-          if (isExcluded && ['renounce', 'no_heir'].includes(exclusionOption) && isPredeceased) {
-              exclusionOption = 'predeceased';
-          }
-
-          // 2. 신법(1991~) 적용 시 직계비속의 무의미한 혼인/재혼일자 증발
-          const era = getLawEra(refDate);
-          const isSpouseType = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(n.relation);
-          if (era === '1991' && !isSpouseType && n.id !== 'root') {
-              n.marriageDate = '';
-              n.remarriageDate = '';
-          }
-
-          return { ...n, personId: pId, isExcluded, exclusionOption, heirs: (n.heirs || []).map(child => sanitizeNode(child, nodeDeath || refDate)) };
-        };
-
         if (data.id === 'root' || (Array.isArray(data.heirs) && data.name !== undefined)) { 
           setTree(normalizeImportedTree(data)); 
           setActiveTab('calc'); 
