@@ -3,7 +3,7 @@ import {
   IconCalculator, IconUserPlus, IconSave, IconFolderOpen,
   IconPrinter, IconNetwork, IconTable, IconList,
   IconReset, IconFileText, IconXCircle, IconX, IconChevronRight,
-  IconSun, IconMoon, IconUndo, IconRedo, IconUserGroup, IconTrash2
+  IconSun, IconMoon, IconUndo, IconRedo, IconUserGroup, IconTrash2, IconSparkles
 } from './components/Icons';
 import { DateInput } from './components/DateInput';
 import HeirRow from './components/HeirRow';
@@ -12,6 +12,7 @@ import PrintReport from './components/PrintReport';
 import { math, getLawEra, getRelStr, formatKorDate, formatMoney, isBefore } from './engine/utils';
 import { calculateInheritance } from './engine/inheritance';
 import { getInitialTree, getEmptyTree } from './utils/initialData';
+import { AI_PROMPT } from './utils/aiPrompt';
 import { useSmartGuide } from './hooks/useSmartGuide';
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
@@ -34,8 +35,12 @@ export const migrateToVault = (oldTree) => {
     relationships: {}
   };
 
-  const traverse = (node, parentId = null) => {
+  const traverse = (node, parentId = null, visited = new Set()) => {
     if (!node) return;
+    const nodeId = node.id || `n_${Math.random().toString(36).substr(2,9)}`;
+    if (visited.has(nodeId)) return;
+    visited.add(nodeId);
+
     const pId = node.personId || node.id || `p_${Math.random().toString(36).substr(2,9)}`;
     if (node.id === 'root') vault.meta.rootPersonId = pId;
 
@@ -313,11 +318,15 @@ function App() {
   const deceasedTabs = useMemo(() => {
     const tabMap = new Map();
     const registeredPersonIds = new Set();
+    const visitedNodes = new Set(); // 🚨 노드 자체의 순환 참조 방지용
     tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속인', node: tree, parentName: null, level: 0, branchRootId: null });
     const queue = [];
     if (tree.heirs) tree.heirs.forEach(h => queue.push({ node: h, parentNode: tree, level: 1, branchRootId: h.personId }));
     while (queue.length > 0) {
       const { node, parentNode, level, branchRootId } = queue.shift();
+      if (!node || visitedNodes.has(node.id)) continue;
+      visitedNodes.add(node.id);
+
       const isTarget = node.isDeceased || (node.isExcluded && (node.exclusionOption === 'lost' || node.exclusionOption === 'disqualified'));
       const isSpouseOfRoot = parentNode.id === 'root' && (node.relation === 'wife' || node.relation === 'husband' || node.relation === 'spouse');
       const isDisqualifiedSpouse = isSpouseOfRoot && node.deathDate && tree.deathDate && isBefore(node.deathDate, tree.deathDate);
@@ -368,14 +377,16 @@ function App() {
       setIsFolderFocused(true);
       return;
     }
-    const findTabIdForNode = (currentNode, currentTabId) => {
+    const findTabIdForNode = (currentNode, currentTabId, visited = new Set()) => {
+      if (!currentNode || visited.has(currentNode.id)) return null;
+      visited.add(currentNode.id);
       if (currentNode.id === nodeId || currentNode.personId === nodeId) return currentTabId;
       if (currentNode.heirs) {
         for (const h of currentNode.heirs) {
           if (h.id === nodeId || h.personId === nodeId) return currentTabId;
           const isTabOwner = h.isDeceased || (h.isExcluded && ['lost', 'disqualified'].includes(h.exclusionOption));
           const nextTabId = isTabOwner ? h.personId : currentTabId;
-          const found = findTabIdForNode(h, nextTabId);
+          const found = findTabIdForNode(h, nextTabId, visited);
           if (found) return found;
         }
       }
@@ -399,16 +410,19 @@ function App() {
   const [isMainQuickActive, setIsMainQuickActive] = useState(false); 
   const [duplicateRequest, setDuplicateRequest] = useState(null); 
 
-  const findDuplicates = (node, name, excludeId, results = []) => {
-    if (!name || name.trim() === '') return results;
+  const findDuplicates = (node, name, excludeId, results = [], visited = new Set()) => {
+    if (!name || name.trim() === '' || !node || visited.has(node.id)) return results;
+    visited.add(node.id);
     if (node.id !== excludeId && node.name === name.trim()) results.push(node);
-    if (node.heirs) node.heirs.forEach(h => findDuplicates(h, name, excludeId, results));
+    if (node.heirs) node.heirs.forEach(h => findDuplicates(h, name, excludeId, results, visited));
     return results;
   };
 
-  const findParentNode = (root, targetId) => {
+  const findParentNode = (root, targetId, visited = new Set()) => {
+    if (!root || visited.has(root.id)) return null;
+    visited.add(root.id);
     if (root.heirs && root.heirs.some(h => h.id === targetId)) return root;
-    if (root.heirs) { for (const h of root.heirs) { const p = findParentNode(h, targetId); if (p) return p; } }
+    if (root.heirs) { for (const h of root.heirs) { const p = findParentNode(h, targetId, visited); if (p) return p; } }
     return null;
   };
 
@@ -432,13 +446,15 @@ function App() {
         usedNames.add(finalName);
         newHeirsBase.push({ baseId: `h_${Date.now()}_${idx}`, personId: `p_${Date.now()}_${idx}`, name: finalName, relation: isSpouse ? (isParentFemale ? 'husband' : 'wife') : 'son', isDeceased: false, isSameRegister: true, heirs: [] });
       });
-      const syncAllClones = (node) => {
+      const syncAllClones = (node, visited = new Set()) => {
+        if (!node || visited.has(node.id)) return;
+        visited.add(node.id);
         if (node.id === parentId || node.personId === targetPersonId) {
           if (!node.isDeceased) node.isDeceased = true;
           node.isExcluded = false; node.exclusionOption = ''; node.heirs = node.heirs || [];
           newHeirsBase.forEach(baseHeir => { node.heirs.push({ ...baseHeir, id: `${baseHeir.baseId}_${Math.random().toString(36).substr(2,4)}` }); });
         }
-        if (node.heirs) node.heirs.forEach(syncAllClones);
+        if (node.heirs) node.heirs.forEach(h => syncAllClones(h, visited));
       };
       syncAllClones(newTree);
       return newTree;
@@ -555,7 +571,9 @@ function App() {
     const hasPersonalUpdate = Object.keys(updates).some(k => personalFields.includes(k));
     const isExclusionUpdate = updates.isExcluded !== undefined;
     const isDeadWithoutHeirs = targetNode?.isDeceased && (!targetNode?.heirs || targetNode?.heirs.length === 0);
-    const updateNode = (n) => {
+    const updateNode = (n, visited = new Set()) => {
+      if (!n || visited.has(n.id)) return n;
+      visited.add(n.id);
       if (n.id === id) return { ...n, personId: targetPersonId || n.personId, ...updates };
       else if (targetPersonId && n.personId === targetPersonId) {
          const filteredUpdates = {};
@@ -563,7 +581,7 @@ function App() {
          if (isExclusionUpdate && isDeadWithoutHeirs && (!n.heirs || n.heirs.length === 0)) { filteredUpdates.isExcluded = updates.isExcluded; if (updates.exclusionOption !== undefined) filteredUpdates.exclusionOption = updates.exclusionOption; }
          if (Object.keys(filteredUpdates).length > 0) return { ...n, ...filteredUpdates };
       }
-      return { ...n, heirs: n.heirs?.map(updateNode) || [] };
+      return { ...n, heirs: n.heirs?.map(h => updateNode(h, visited)) || [] };
     };
     setTree(prev => updateNode(prev));
   };
@@ -601,21 +619,42 @@ function App() {
   const [simpleTargetN, simpleTargetD] = math.simplify(tree.shareN || 1, tree.shareD || 1);
 
   const { finalShares, calcSteps, warnings } = useMemo(() => {
-    const preprocessTree = (n, parentDate, parentNode) => {
-      const clone = { ...n }; const refDate = clone.id === 'root' ? clone.deathDate : parentDate;
+    const preprocessTree = (n, parentDate, parentNode, visited = new Set()) => {
+      const pId = n.personId || n.id;
+      if (visited.has(pId)) return { ...n, heirs: [], _cycle: true };
+      
+      const clone = { ...n }; 
+      const refDate = clone.id === 'root' ? clone.deathDate : parentDate;
+      const newVisited = new Set(visited);
+      newVisited.add(pId);
+
       if (clone.id !== 'root' && !clone.isExcluded) {
-        const isPre = clone.deathDate && refDate && isBefore(clone.deathDate, refDate); const isDeadWithoutHeirs = clone.isDeceased && (!clone.heirs || clone.heirs.length === 0);
-        if (isPre && isDeadWithoutHeirs) { clone.isExcluded = true; clone.exclusionOption = 'predeceased'; }
-        else if (!isPre && isDeadWithoutHeirs && parentNode) {
+        const isPre = clone.deathDate && refDate && isBefore(clone.deathDate, refDate); 
+        const isDeadWithoutHeirs = clone.isDeceased && (!clone.heirs || clone.heirs.length === 0);
+        
+        if (isPre && isDeadWithoutHeirs) { 
+          clone.isExcluded = true; 
+          clone.exclusionOption = 'predeceased'; 
+        } else if (!isPre && isDeadWithoutHeirs && parentNode) {
           const isSpouseType = ['wife', 'husband', 'spouse'].includes(clone.relation);
           if (!isSpouseType) {
-            const pHeirs = parentNode.heirs || []; const aliveAscendants = pHeirs.filter(h => ['wife', 'husband', 'spouse'].includes(h.relation) && (!h.isDeceased || (h.deathDate && isBefore(clone.deathDate, h.deathDate))) && !h.isExcluded);
-            if (aliveAscendants.length > 0) clone.heirs = aliveAscendants.map(asc => ({ ...asc, id: `auto_${asc.id}`, relation: 'parent', heirs: [] }));
-            else { const siblings = pHeirs.filter(h => h.id !== clone.id && ['son', 'daughter'].includes(h.relation) && !h.isExcluded); if (siblings.length > 0) clone.heirs = siblings.map(sib => ({ ...sib, id: `auto_${sib.id}`, relation: 'sibling', heirs: [] })); }
-          } else { const stepChildren = parentNode.heirs.filter(h => h.id !== clone.id && ['son', 'daughter'].includes(h.relation) && !h.isExcluded); if (stepChildren.length > 0) clone.heirs = stepChildren.map(child => ({ ...child, id: `auto_${child.id}`, relation: child.relation, heirs: [] })); }
+            const pHeirs = parentNode.heirs || []; 
+            const aliveAscendants = pHeirs.filter(h => ['wife', 'husband', 'spouse'].includes(h.relation) && (!h.isDeceased || (h.deathDate && isBefore(clone.deathDate, h.deathDate))) && !h.isExcluded);
+            if (aliveAscendants.length > 0) {
+              clone.heirs = aliveAscendants.map(asc => ({ ...asc, id: `auto_${asc.id}`, relation: 'parent', heirs: [] }));
+            } else { 
+              const siblings = pHeirs.filter(h => h.id !== clone.id && ['son', 'daughter'].includes(h.relation) && !h.isExcluded); 
+              if (siblings.length > 0) clone.heirs = siblings.map(sib => ({ ...sib, id: `auto_${sib.id}`, relation: 'sibling', heirs: [] })); 
+            }
+          } else { 
+            const stepChildren = parentNode.heirs.filter(h => h.id !== clone.id && ['son', 'daughter'].includes(h.relation) && !h.isExcluded); 
+            if (stepChildren.length > 0) clone.heirs = stepChildren.map(child => ({ ...child, id: `auto_${child.id}`, relation: child.relation, heirs: [] })); 
+          }
         }
       }
-      if (clone.heirs) clone.heirs = clone.heirs.map(h => preprocessTree(h, clone.deathDate || refDate, clone));
+      if (clone.heirs) {
+        clone.heirs = clone.heirs.map(h => preprocessTree(h, clone.deathDate || refDate, clone, newVisited));
+      }
       return clone;
     };
     const calcTree = preprocessTree(tree, tree.deathDate, null); const result = calculateInheritance(calcTree, propertyValue);
@@ -1064,135 +1103,134 @@ function App() {
         {isAiModalOpen && (() => {
           const targetTab = deceasedTabs.find(t => t.id === aiTargetId); 
           const targetName = aiTargetId === 'root' ? '전체 가계도' : `[${targetTab?.name || '상속인'}] 하위`;
+
+          const handleAiIngest = (input) => {
+            if (!input.trim() || !input.includes('{')) return;
+            try {
+              const cleanJson = input.replace(/```json/g, '').replace(/```/g, '').trim();
+              const parsedTree = JSON.parse(cleanJson);
+              const effectiveDate = parsedTree.deathDate || tree.deathDate;
+              const era = getLawEra(effectiveDate);
+
+              const processAiData = (node) => {
+                if (Array.isArray(node)) { node.forEach(processAiData); return; }
+                if (!node.id) node.id = `ai_${Math.random().toString(36).substr(2, 9)}`;
+                const nodeEffDate = node.deathDate || (parsedTree.deathDate || tree.deathDate);
+                const nodeEra = getLawEra(nodeEffDate);
+                const isSpouseType = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(node.relation);
+                if (nodeEra === '1991' && !isSpouseType && node.id !== 'root') { node.marriageDate = ''; node.remarriageDate = ''; }
+                if (node.heirs) node.heirs.forEach(processAiData);
+              };
+              processAiData(parsedTree);
+
+              if (aiTargetId === 'root') setTree({ ...parsedTree, id: 'root' });
+              else {
+                const targetRawIds = [];
+                const findRawIds = (n) => { if (n.id === aiTargetId || n.personId === aiTargetId) targetRawIds.push(n.id); if (n.heirs) n.heirs.forEach(findRawIds); };
+                findRawIds(tree);
+                setTree(prev => {
+                  const injectHeirs = (n) => {
+                    if (targetRawIds.includes(n.id)) {
+                      const generateNewHeirs = (heirsArray) => (heirsArray || []).map(h => {
+                        const isSpouse = ['wife', 'husband', 'spouse'].includes(h.relation);
+                        if (era === '1991' && !isSpouse) { h.marriageDate = ''; h.remarriageDate = ''; }
+                        return { ...h, id: `ai_${Math.random().toString(36).substr(2, 9)}`, heirs: generateNewHeirs(h.heirs || []) };
+                      });
+                      const sourceHeirs = Array.isArray(parsedTree) ? parsedTree : (parsedTree.heirs || []);
+                      return { ...n, heirs: [...(n.heirs || []), ...generateNewHeirs(sourceHeirs)] };
+                    }
+                    return { ...n, heirs: n.heirs?.map(injectHeirs) || [] };
+                  };
+                  return injectHeirs(prev);
+                });
+              }
+              setIsAiModalOpen(false); setAiInputText(""); alert(`✨ AI 상속인 자동 입력을 완료했습니다!`);
+            } catch {
+              // Auto-parse silent fail, button remains for manual
+            }
+          };
+
           return (
-            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-              <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-                <div className="px-6 py-4 border-b border-gray-200 dark:border-neutral-700 flex justify-between items-center bg-indigo-50 dark:bg-indigo-900/30"><h2 className="text-lg font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-2"><span>✨</span> {targetName} AI 자동 입력기</h2><button onClick={() => setIsAiModalOpen(false)} className="text-gray-400 hover:text-gray-600"><IconX className="w-6 h-6" /></button></div>
-                <div className="p-6 overflow-y-auto flex-1">
-                  <div className="mb-6 p-4 bg-gray-50 dark:bg-neutral-700/50 rounded-lg border border-gray-200 dark:border-neutral-600">
-                    <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-2">1단계: 명령어 복사하기</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 leading-relaxed">명령어를 복사한 후 AI 앱에 문서 사진과 함께 붙여넣으세요.</p>
-                    {(() => {
-                      const aiPromptText = `당신은 한국 상속법에 기반한 가계도 분석 및 JSON 데이터 구조화 전문가입니다.
-제공된 문서(또는 이미지)를 분석하여, 아래의 [엄격한 추출 규칙]과 [JSON 스키마 양식]에 맞춰 완벽한 계층 구조의 JSON을 생성해 주세요.
+            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+              <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] border border-[#e9e9e7] dark:border-neutral-700">
+                <div className="px-6 py-4 border-b border-[#e9e9e7] dark:border-neutral-700 flex justify-between items-center transition-colors">
+                  <h2 className="text-[16px] font-bold text-[#37352f] dark:text-neutral-100 flex items-center gap-2">
+                    <span className="text-[18px]">✨</span>
+                    {targetName} AI 상속인 자동 입력
+                  </h2>
+                  <button onClick={() => setIsAiModalOpen(false)} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors">
+                    <IconX size={20} />
+                  </button>
+                </div>
 
-[추출 규칙]
-1. 관계(relation) 지정: 남자는 "son", 여자는 "daughter", 배우자는 "wife" 또는 "husband". (1991년 이후 사망건에서 자녀 성별을 모르면 "son"으로 통일)
-2. 날짜 형식: YYYY-MM-DD. (명확하지 않으면 "" 빈 문자열 처리)
-3. 사망 및 제외 처리:
-   - 사망자: isDeceased: true, deathDate 기입.
-   - 상속포기/선사망/결격: isExcluded: true 설정 후, exclusionOption에 사유 기입 ("renounce", "predeceased", "lost", "disqualified" 중 택일).
-4. 구법(1990년 이전 사망) 변수 확인:
-   - 여성(daughter)의 경우 족보 문맥을 파악하여 혼인일자(marriageDate)나 출가 여부(isSameRegister: false)를 최대한 파악하여 기록할 것.
-   - 호주 상속인이 명시된 경우 isHoju: true 로 표시.
-5. 다세대 중첩 (재귀적 구조):
-   - 자녀가 사망하여 대습상속이나 재상속이 일어나는 경우, 해당 자녀 객체의 "heirs" 배열 안에 그 배우자와 하위 자녀들을 계속해서 중첩(Nesting)하여 완벽한 트리 구조를 만들 것.
-6. 고유 식별자(personId) 부여 규칙 [매우 중요]:
-   - 각 인물마다 "ai_랜덤문자열" 형태의 고유 personId를 부여할 것.
-   - 문맥상 완벽히 동일한 인물(여러 가계에 걸쳐 중복 등장하는 자)은 반드시 '똑같은 personId'를 부여할 것.
-   - 이름만 같은 동명이인(남남)일 경우 반드시 '서로 다른 personId'를 부여하여 분리할 것.
-7. 모호한 정보는 절대 임의로 추측하지 말고, JSON 출력 후 하단에 질문으로 남길 것.
-
-[JSON 스키마 양식 (모든 노드는 빠짐없이 이 속성들을 포함해야 함)]
-{
-  "id": "root", // 최상위 피상속인은 root, 하위 상속인들은 임의의 고유 ID (예: n_ai_123)
-  "name": "망인 이름",
-  "isDeceased": true,
-  "deathDate": "YYYY-MM-DD",
-  "marriageDate": "",
-  "remarriageDate": "",
-  "gender": "",
-  "personId": "root", // 최상위 피상속인은 root, 하위는 ai_랜덤값
-  "relation": "", // 피상속인은 빈 문자열, 하위는 son/daughter/wife 등
-  "isHoju": false,
-  "isExcluded": false,
-  "exclusionOption": "",
-  "isSameRegister": true,
-  "heirs": [
-    {
-      // 위와 완벽히 동일한 구조의 객체가 하위 상속인으로서 재귀적으로 들어감
-    }
-  ]
-}`;
-                      return (
+                <div className="p-6 overflow-y-auto flex-1 space-y-6">
+                  {/* Step 1: Callout style */}
+                  <div className="bg-[#f7f7f5] dark:bg-neutral-900/50 border border-[#e9e9e7] dark:border-neutral-700 rounded-lg p-5">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 text-neutral-500"><IconFileText size={20} /></div>
+                      <div className="flex-1">
+                        <h3 className="text-[14px] font-bold text-[#37352f] dark:text-neutral-200 mb-1">1단계: 가이드라인 복사</h3>
+                        <p className="text-[13px] text-[#787774] dark:text-neutral-400 mb-5 leading-relaxed">
+                          아래 버튼을 클릭하여 명령어를 복사한 후, ChatGPT 등 AI 서비스에 문서 사진(가족관계증명서 등)과 함께 전송하세요.
+                        </p>
                         <div className="flex items-center gap-2">
                           <button 
-                            onClick={() => {
-                              navigator.clipboard.writeText(aiPromptText).then(() => alert('✅ 복사되었습니다!'));
-                            }}
-                            className="flex-1 py-2.5 bg-white dark:bg-neutral-800 border-2 border-indigo-500 text-indigo-600 dark:text-indigo-400 rounded-md font-bold hover:bg-indigo-50 transition-colors shadow-sm flex items-center justify-center gap-2"
+                            onClick={() => { navigator.clipboard.writeText(AI_PROMPT).then(() => alert('✅ 명령어가 클립보드에 복사되었습니다!')); }}
+                            className="flex-1 py-2.5 bg-white dark:bg-neutral-800 border border-[#e9e9e7] dark:border-neutral-700 text-[#37352f] dark:text-neutral-200 rounded-md font-bold hover:bg-[#efefed] dark:hover:bg-neutral-700 transition-all shadow-sm flex items-center justify-center gap-2 text-[13px]"
                           >
-                            <IconFileText size={18} />
-                            📋 명령어 복사하기
+                            📋 AI 명령어 복사하기
                           </button>
                           <button 
                             onClick={handlePrintPrompt}
-                            className="w-[46px] h-[46px] flex items-center justify-center border-2 border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 rounded-md hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors shadow-sm"
-                            title="프롬프트 인쇄"
+                            className="w-10 h-10 flex items-center justify-center border border-[#e9e9e7] dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-500 hover:bg-[#efefed] dark:hover:bg-neutral-700 rounded-md transition-all shadow-sm"
+                            title="가이드라인 인쇄"
                           >
-                            <IconPrinter size={20} />
+                            <IconPrinter size={18} />
                           </button>
                         </div>
-                      );
-                    })()}
+                      </div>
+                    </div>
                   </div>
-                  <div><h3 className="font-bold text-gray-800 dark:text-gray-200 mb-2">2단계: 결과 데이터 붙여넣기</h3><textarea value={aiInputText} onChange={(e) => setAiInputText(e.target.value)} placeholder="AI가 만들어준 코드를 붙여넣으세요." className="w-full h-48 p-3 border border-gray-300 dark:border-neutral-600 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-mono bg-white dark:bg-neutral-900 text-gray-800 dark:text-gray-200" /></div>
-                </div>
-                <div className="p-4 border-t border-gray-200 dark:border-neutral-700 flex justify-end gap-2 bg-gray-50 dark:bg-neutral-800/50">
-                  <button onClick={() => setIsAiModalOpen(false)} className="px-4 py-2 text-gray-600 font-medium hover:bg-gray-200 rounded-md transition-colors">취소</button>
-                  <button 
-                    onClick={() => {
-                      try {
-                        const cleanJson = aiInputText.replace(/```json/g, '').replace(/```/g, '').trim();
-                        const parsedTree = JSON.parse(cleanJson);
-                        const effectiveDate = parsedTree.deathDate || tree.deathDate;
-                        const era = getLawEra(effectiveDate);
 
-                        const processAiData = (node) => {
-                          if (Array.isArray(node)) { node.forEach(processAiData); return; }
-                          if (!node.id) node.id = `ai_${Math.random().toString(36).substr(2, 9)}`;
-                          const effectiveDate = parsedTree.deathDate || tree.deathDate;
-                          const era = getLawEra(effectiveDate);
-                          const isSpouseType = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(node.relation);
-                          if (era === '1991' && !isSpouseType && node.id !== 'root') {
-                              node.marriageDate = '';
-                              node.remarriageDate = '';
-                          }
-                          if (node.heirs) node.heirs.forEach(processAiData);
-                        };
-                        processAiData(parsedTree);
-                        if (aiTargetId === 'root') setTree({ ...parsedTree, id: 'root' });
-                        else {
-                          const targetRawIds = []; const findRawIds = (n) => { if (n.id === aiTargetId || n.personId === aiTargetId) targetRawIds.push(n.id); if (n.heirs) n.heirs.forEach(findRawIds); }; findRawIds(tree);
-                          setTree(prev => {
-                            const injectHeirs = (n) => {
-                              if (targetRawIds.includes(n.id)) {
-                                const generateNewHeirs = (heirsArray) => (heirsArray || []).map(h => {
-                                  const isSpouse = ['wife', 'husband', 'spouse'].includes(h.relation);
-                                  if (era === '1991' && !isSpouse) { h.marriageDate = ''; h.remarriageDate = ''; }
-                                  return { ...h, id: `ai_${Math.random().toString(36).substr(2, 9)}`, heirs: generateNewHeirs(h.heirs || []) };
-                                });
-                                const sourceHeirs = Array.isArray(parsedTree) ? parsedTree : (parsedTree.heirs || []);
-                                const newHeirs = generateNewHeirs(sourceHeirs);
-                                const nodeUpdates = {};
-                                if (!Array.isArray(parsedTree)) { if (parsedTree.deathDate) nodeUpdates.deathDate = parsedTree.deathDate; if (parsedTree.isDeceased !== undefined) nodeUpdates.isDeceased = parsedTree.isDeceased; }
-                                return { ...n, ...nodeUpdates, heirs: [...(n.heirs || []), ...newHeirs] };
-                              }
-                              return { ...n, heirs: n.heirs?.map(injectHeirs) || [] };
-                            };
-                            return injectHeirs(prev);
-                          });
-                        }
-                        setIsAiModalOpen(false); setAiInputText(""); alert(`✨ 자동 입력 완료!`);
-                      } catch (error) { alert("🚨 형식 오류!"); }
-                    }}
-                    className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md font-bold shadow-md transition-colors"
-                  >🚀 상속인 자동 입력</button>
+                  {/* Step 2: Input area */}
+                  <div className="space-y-3">
+                    <h3 className="text-[14px] font-bold text-[#37352f] dark:text-neutral-200 flex items-center gap-2">
+                       <span className="flex items-center justify-center w-5 h-5 bg-[#2383e2] text-white rounded-full text-[10px] font-black">2</span>
+                       결과 데이터 입력
+                    </h3>
+                    <textarea 
+                      value={aiInputText} 
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setAiInputText(val);
+                        if (val.length > 50) handleAiIngest(val);
+                      }} 
+                      placeholder="AI가 생성한 JSON 코드를 여기에 붙여넣으세요. (자동으로 인식됩니다)" 
+                      className="w-full h-44 p-4 border border-[#e9e9e7] dark:border-neutral-700 rounded-xl focus:ring-2 focus:ring-[#2383e2]/20 focus:border-[#2383e2] outline-none text-[13px] font-mono bg-white dark:bg-neutral-900 text-[#37352f] dark:text-neutral-200 placeholder:text-neutral-400 transition-all resize-none shadow-inner" 
+                    />
+                    <div className="flex items-center gap-2 px-1">
+                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                      <p className="text-[11px] text-[#787774] dark:text-neutral-500 italic">
+                        붙여넣기 시 AI 구조를 자동으로 분석하여 입력을 시도합니다. 자동 실행되지 않으면 아래 버튼을 눌러주세요.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="px-6 py-4 border-t border-[#e9e9e7] dark:border-neutral-700 flex justify-end gap-2 bg-[#f7f7f5]/50 dark:bg-neutral-900/30 transition-colors">
+                  <button onClick={() => setIsAiModalOpen(false)} className="px-4 py-2 text-[#787774] dark:text-neutral-400 font-bold hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded-md transition-all text-[13px]">닫기</button>
+                  <button 
+                    onClick={() => handleAiIngest(aiInputText)}
+                    className="px-5 py-2 bg-[#37352f] dark:bg-neutral-100 hover:bg-[#201f1c] dark:hover:bg-white text-white dark:text-[#37352f] rounded-md font-bold shadow-md transition-all text-[13px] flex items-center gap-2"
+                  >
+                    직접 입력 실행
+                  </button>
                 </div>
               </div>
             </div>
           );
         })()}
+
       {isResetModalOpen && (
         <div className="fixed inset-0 bg-black/40 z-[9999] flex items-center justify-center no-print text-[#37352f]">
           <div className="bg-white p-8 rounded-lg shadow-xl max-w-sm w-full mx-4 border border-[#e9e9e7]">
