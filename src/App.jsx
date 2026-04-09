@@ -825,10 +825,10 @@ function App() {
     const blob = new Blob([JSON.stringify(pureTree, null, 2)], { type: 'application/json' }); 
     const url = URL.createObjectURL(blob); 
     const a = document.createElement('a'); 
-    const safeCaseNo = (tree.caseNo || '?ш굔踰덊샇?놁쓬').replace(/[^a-zA-Z0-9媛-??]/g, ''); 
-    const safeName = (tree.name || '?쇱긽?띿씤?놁쓬').replace(/[^a-zA-Z0-9媛-??]/g, ''); 
+    const safeCaseNo = (tree.caseNo || 'case').replace(/[^a-zA-Z0-9_-]/g, ''); 
+    const safeName = (tree.name || 'decedent').replace(/[^a-zA-Z0-9_-]/g, ''); 
     a.href = url; 
-    a.download = `${safeCaseNo}_${safeName}_?곸냽吏遺꾧퀎??${new Date().toISOString().slice(0,10)}.json`; 
+    a.download = `${safeCaseNo}_${safeName}_상속지분계산_${new Date().toISOString().slice(0,10)}.json`; 
     a.click(); 
     URL.revokeObjectURL(url); 
   };
@@ -1070,52 +1070,404 @@ function App() {
                   </div>
                 );
               })()}
-              {activeTab === 'tree' && <div className="py-2 flex flex-col h-full animate-in fade-in duration-300"><div className="mb-5 p-4 bg-[#f8f8f7] dark:bg-neutral-800/50 border border-[#e5e5e5] dark:border-neutral-700 rounded-lg text-[#787774] dark:text-neutral-300 text-[14px] font-semibold flex justify-between items-center no-print shadow-none"><div className="flex items-center gap-2"><IconNetwork className="w-5 h-5 shrink-0 opacity-50" /><span>?대쫫???대┃?섏뿬 ?섏쐞 愿怨꾨룄瑜??묎굅???쇱튌 ???덉뒿?덈떎.</span></div><button onClick={() => { const next = Math.abs(treeToggleSignal) + 1; setTreeToggleSignal(isAllExpanded ? -next : next); setIsAllExpanded(!isAllExpanded); }} className="px-4 py-1.5 bg-white dark:bg-neutral-800 border border-[#d4d4d4] dark:border-neutral-600 hover:bg-[#efefed] dark:hover:bg-neutral-700 text-[#37352f] dark:text-neutral-200 rounded transition-colors text-[13px] font-bold shadow-sm whitespace-nowrap">{isAllExpanded ? '紐⑤몢 ?묎린' : '紐⑤몢 ?쇱튂湲?}</button></div><div className="bg-white dark:bg-neutral-900/50 p-8 rounded-xl border border-[#e9e9e7] dark:border-neutral-700 shadow-sm overflow-hidden"><TreeReportNode node={tree} level={0} treeToggleSignal={treeToggleSignal} /></div></div>}
-              {(activeTab === 'calc' || activeTab === 'result' || activeTab === 'summary' || activeTab === 'amount') && <div className="w-full mb-6 pb-3 border-b border-[#e9e9e7] dark:border-neutral-700 text-[13px] text-[#504f4c] dark:text-neutral-400 flex flex-wrap gap-8 no-print"><span>?ш굔踰덊샇: <span className="text-[#37352f] dark:text-neutral-200 font-medium">{tree.caseNo || '誘몄엯??}</span></span><span>?쇱긽?띿씤: <span className="text-[#37352f] dark:text-neutral-200 font-medium">{tree.name || '誘몄엯??}</span></span><span>?щ쭩?쇱옄: <span className="text-[#37352f] dark:text-neutral-200 font-medium">{tree.deathDate || '誘몄엯??}</span></span><span>?곸슜踰뺣졊: <span className="text-[#37352f] dark:text-neutral-200 font-medium">{getLawEra(tree.deathDate)}??誘쇰쾿</span></span></div>}
-              {activeTab === 'calc' && <section className="w-full text-[#37352f] dark:text-neutral-200"><div className="mb-4 text-[13px] text-[#787774] dark:text-neutral-500">???쇱긽?띿씤遺???쒖옉?섏뿬 媛?????ъ긽??諛쒖깮 ?쒖젏留덈떎 吏遺꾩씠 ?곗텧??怨꾩궛 ?먮쫫?쒖엯?덈떎.</div><div className="space-y-6 print-mt-4">{calcSteps.map((s, i) => (<div key={'p-s'+i}><div className="mb-2 text-[13px] text-[#504f4c] dark:text-neutral-300">[STEP {i+1}] <span className="font-medium text-[#37352f] dark:text-neutral-100">留?{s.dec.name}</span> ({formatKorDate(s.dec.deathDate)} ?щ쭩) ? 遺꾨같 吏遺? {s.inN}/{s.inD}{s.mergeSources && s.mergeSources.length > 1 && (<span className="text-[#787774]">{` (= ${s.mergeSources.map(src => `${src.from} ${src.d}遺꾩쓽 ${src.n}`).join(' + ')})`}</span>)}</div><table className="w-full border-collapse text-[13px]"><thead className="bg-[#fcfcfb] dark:bg-neutral-800/40"><tr><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2 font-medium text-center w-[15%] text-[#787774]">?깅챸</th><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2 font-medium text-center w-[12%] text-[#787774]">愿怨?/th><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2 font-medium text-center w-[25%] text-[#787774]">怨꾩궛??/th><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2 font-medium text-center w-[18%] text-[#787774]">怨꾩궛??吏遺?/th><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2 font-medium text-left w-[30%] pl-4 text-[#787774]">鍮꾧퀬</th></tr></thead><tbody>{s.dists.map((d, di) => { const memo = []; if (d.ex) memo.push(`?곸냽沅??놁쓬(${d.ex})`); if (d.h.isDeceased && !(d.ex && (d.ex.includes('?щ쭩')||d.ex.includes('?좎궗留?)))) memo.push('留앹씤'); if (d.mod) memo.push(...d.mod.split(',').map(m => m.trim())); return (<tr key={di} className="hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20"><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2 text-center font-medium">{d.h.name}</td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2 text-center text-[#787774]">{getRelStr(d.h.relation, s.dec.deathDate) || '?곸냽??}</td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2 text-center text-[#787774]">{s.inN}/{s.inD} 횞 {d.sn}/{d.sd}</td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2 text-center font-medium">{d.n}/{d.d}</td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2 text-left pl-4 text-[#787774]">{memo.join(', ')}</td></tr>); })}</tbody></table></div>))}</div></section>}
+              {activeTab === 'tree' && <div className="py-2 flex flex-col h-full animate-in fade-in duration-300"><div className="mb-5 p-4 bg-[#f8f8f7] dark:bg-neutral-800/50 border border-[#e5e5e5] dark:border-neutral-700 rounded-lg text-[#787774] dark:text-neutral-300 text-[14px] font-semibold flex justify-between items-center no-print shadow-none"><div className="flex items-center gap-2"><IconNetwork className="w-5 h-5 shrink-0 opacity-50" /><span>이름을 클릭하면 하위 관계도를 펼치거나 접을 수 있습니다.</span></div><button onClick={() => { const next = Math.abs(treeToggleSignal) + 1; setTreeToggleSignal(isAllExpanded ? -next : next); setIsAllExpanded(!isAllExpanded); }} className="px-4 py-1.5 bg-white dark:bg-neutral-800 border border-[#d4d4d4] dark:border-neutral-600 hover:bg-[#efefed] dark:hover:bg-neutral-700 text-[#37352f] dark:text-neutral-200 rounded transition-colors text-[13px] font-bold shadow-sm whitespace-nowrap">{isAllExpanded ? '모두 접기' : '모두 펼치기'}</button></div><div className="bg-white dark:bg-neutral-900/50 p-8 rounded-xl border border-[#e9e9e7] dark:border-neutral-700 shadow-sm overflow-hidden"><TreeReportNode node={tree} level={0} treeToggleSignal={treeToggleSignal} /></div></div>}
+              {(activeTab === 'calc' || activeTab === 'result' || activeTab === 'summary' || activeTab === 'amount') && <div className="w-full mb-6 pb-3 border-b border-[#e9e9e7] dark:border-neutral-700 text-[13px] text-[#504f4c] dark:text-neutral-400 flex flex-wrap gap-8 no-print"><span>사건번호: <span className="text-[#37352f] dark:text-neutral-200 font-medium">{tree.caseNo || '미입력'}</span></span><span>피상속인: <span className="text-[#37352f] dark:text-neutral-200 font-medium">{tree.name || '미입력'}</span></span><span>사망일자: <span className="text-[#37352f] dark:text-neutral-200 font-medium">{tree.deathDate || '미입력'}</span></span><span>적용 법령: <span className="text-[#37352f] dark:text-neutral-200 font-medium">{getLawEra(tree.deathDate)}년 기준</span></span></div>}
+              {activeTab === 'calc' && (
+                <section className="w-full text-[#37352f] dark:text-neutral-200">
+                  <div className="mb-4 text-[13px] text-[#787774] dark:text-neutral-500">
+                    피상속인부터 시작해 각 상속 단계에서 지분이 어떻게 분배되는지 보여주는 계산표입니다.
+                  </div>
+                  <div className="space-y-6 print-mt-4">
+                    {calcSteps.map((s, i) => (
+                      <div key={'p-s' + i}>
+                        <div className="mb-2 text-[13px] text-[#504f4c] dark:text-neutral-300">
+                          [STEP {i + 1}] <span className="font-medium text-[#37352f] dark:text-neutral-100">망 {s.dec.name}</span> ({formatKorDate(s.dec.deathDate)} 사망) 의 분배 지분 {s.inN}/{s.inD}
+                          {s.mergeSources && s.mergeSources.length > 1 && (
+                            <span className="text-[#787774]">
+                              {` (= ${s.mergeSources.map(src => `${src.from} ${src.d}분의 ${src.n}`).join(' + ')})`}
+                            </span>
+                          )}
+                        </div>
+                        <table className="w-full border-collapse text-[13px]">
+                          <thead className="bg-[#fcfcfb] dark:bg-neutral-800/40">
+                            <tr>
+                              <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2 font-medium text-center w-[15%] text-[#787774]">이름</th>
+                              <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2 font-medium text-center w-[12%] text-[#787774]">관계</th>
+                              <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2 font-medium text-center w-[25%] text-[#787774]">계산식</th>
+                              <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2 font-medium text-center w-[18%] text-[#787774]">계산 결과</th>
+                              <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2 font-medium text-left w-[30%] pl-4 text-[#787774]">비고</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {s.dists.map((d, di) => {
+                              const memo = [];
+                              if (d.ex) memo.push(`상속권 없음(${d.ex})`);
+                              if (d.h.isDeceased && !(d.ex && (d.ex.includes('사망') || d.ex.includes('선사망')))) memo.push('망인');
+                              if (d.mod) memo.push(...d.mod.split(',').map(m => m.trim()));
+                              return (
+                                <tr key={di} className="hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20">
+                                  <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2 text-center font-medium">{d.h.name}</td>
+                                  <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2 text-center text-[#787774]">{getRelStr(d.h.relation, s.dec.deathDate) || '상속인'}</td>
+                                  <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2 text-center text-[#787774]">{s.inN}/{s.inD} × {d.sn}/{d.sd}</td>
+                                  <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2 text-center font-medium">{d.n}/{d.d}</td>
+                                  <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2 text-left pl-4 text-[#787774]">{memo.join(', ')}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
               {activeTab === 'result' && (() => {
                 const heirMap = new Map();
-                calcSteps.forEach(s => { s.dists.forEach(d => { if (d.n > 0) { const key = d.h.personId; if (!heirMap.has(key)) heirMap.set(key, { name: d.h.name, relation: d.h.relation, sources: [], isDeceased: d.h.isDeceased }); heirMap.get(key).sources.push({ decName: s.dec.name, decDeathDate: s.dec.deathDate, relation: d.h.relation, lawEra: s.lawEra, mod: d.mod || '', n: d.n, d: d.d }); } }); });
+                calcSteps.forEach(s => {
+                  s.dists.forEach(d => {
+                    if (d.n > 0) {
+                      const key = d.h.personId;
+                      if (!heirMap.has(key)) heirMap.set(key, { name: d.h.name, relation: d.h.relation, sources: [], isDeceased: d.h.isDeceased });
+                      heirMap.get(key).sources.push({ decName: s.dec.name, decDeathDate: s.dec.deathDate, relation: d.h.relation, lawEra: s.lawEra, mod: d.mod || '', n: d.n, d: d.d });
+                    }
+                  });
+                });
                 const results = Array.from(heirMap.values()).filter(r => !r.isDeceased);
-                const lawLabel = (era) => { if (era === '1960') return '?쒖젙誘쇰쾿'; if (era === '1979') return '79??媛쒖젙誘쇰쾿'; if (era === '1991') return '?꾪뻾誘쇰쾿'; return era + '??誘쇰쾿'; };
+                const lawLabel = (era) => { if (era === '1960') return '구민법'; if (era === '1979') return '1979 개정'; if (era === '1991') return '현행법'; return `${era}년`; };
                 return (
                   <section className="w-full text-[#37352f] dark:text-neutral-200">
-                    <div className="mb-4 text-[13px] text-[#787774] dark:text-neutral-500">??理쒖쥌 ?앹〈 ?곸냽??湲곗??쇰줈 ?밴퀎諛쏆? 吏遺꾨뱾???⑹궛??寃利앺몴?낅땲?? ?숈씪?몄씠 ?щ윭 寃쎈줈濡??곸냽諛쏅뒗 寃쎌슦 媛?寃쎈줈蹂?愿怨꽷룹쟻?⑸쾿瑜좎쓣 ?쒖떆?⑸땲??</div>
-                    <table className="w-full border-collapse text-[13px]"><thead className="bg-[#fcfcfb] dark:bg-neutral-800/40"><tr><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[18%] text-[#787774]">理쒖쥌 ?곸냽??/th><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[52%] text-[#787774]">吏遺?痍⑤뱷 ?댁뿭 (寃쎈줈蹂?</th><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[15%] text-[#787774]">理쒖쥌 ?⑷퀎</th><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[15%] text-[#787774]">?듬텇 吏遺?/th></tr></thead>
-                      <tbody>{results.length > 0 ? results.map((r, i) => { const total = r.sources.reduce((acc, s) => { const [nn, nd] = math.add(acc.n, acc.d, s.n, s.d); return { n: nn, d: nd }; }, { n: 0, d: 1 }); let commonD = 1; results.forEach(res => { const t = res.sources.reduce((acc, s) => { const [nn, nd] = math.add(acc.n, acc.d, s.n, s.d); return { n: nn, d: nd }; }, { n: 0, d: 1 }); if (t.n > 0) commonD = math.lcm(commonD, t.d); }); const unifiedN = total.n * (commonD / total.d); const isMultiSource = r.sources.length > 1; return (
-                        <tr key={i} className="hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20 align-top"><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">{r.name}<span className="text-[#787774] font-normal ml-1">[{getRelStr(r.relation, tree.deathDate)}]</span>{isMultiSource && <span className="block text-[10px] text-blue-500 font-bold mt-0.5">蹂듭닔 寃쎈줈</span>}</td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left">{r.sources.map((src, si) => (<div key={si} className={`flex items-baseline gap-1 ${si > 0 ? 'mt-1.5 pt-1.5 border-t border-dashed border-[#e9e9e7] dark:border-neutral-700' : ''}`}><span className="font-medium text-[#37352f] dark:text-neutral-200 shrink-0">{src.n}/{src.d}</span><span className="text-[#787774] dark:text-neutral-500 text-[12px]">??留?{src.decName}??<span className="font-medium text-[#504f4c] dark:text-neutral-300">{getRelStr(src.relation, src.decDeathDate) || '?곸냽??}</span>?쇰줈??span className="ml-1 text-[11px] px-1 py-0.5 rounded bg-[#f4f4f3] dark:bg-neutral-700 text-[#787774] dark:text-neutral-400">{lawLabel(src.lawEra)}</span>{src.mod && <span className="ml-1 text-[11px] text-[#b45309]">({src.mod})</span>}</span></div>))}{isMultiSource && (<div className="mt-1.5 pt-1.5 border-t border-[#e9e9e7] dark:border-neutral-700 text-[12px] text-[#504f4c] dark:text-neutral-400 font-medium">= {r.sources.map(s => `${s.n}/${s.d}`).join(' + ')} = <span className="text-[#37352f] dark:text-neutral-200 font-bold">{total.n}/{total.d}</span></div>)}</td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">{total.n} / {total.d}</td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">{unifiedN} / {commonD}</td></tr>); }) : <tr><td colSpan="4" className="border border-[#e9e9e7] dark:border-neutral-700 p-8 text-center text-[#b45309] font-bold bg-amber-50">理쒖쥌 ?앹〈 ?곸냽???놁뒿?덈떎.</td></tr>}</tbody>
+                    <div className="mb-4 text-[13px] text-[#787774] dark:text-neutral-500">
+                      최종 생존 상속인이 어떤 경로로 지분을 취득했는지 한눈에 검토하는 표입니다.
+                    </div>
+                    <table className="w-full border-collapse text-[13px]">
+                      <thead className="bg-[#fcfcfb] dark:bg-neutral-800/40">
+                        <tr>
+                          <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[18%] text-[#787774]">최종 상속인</th>
+                          <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[52%] text-[#787774]">지분 취득 경로</th>
+                          <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[15%] text-[#787774]">최종 합계</th>
+                          <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[15%] text-[#787774]">통분 지분</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {results.length > 0 ? results.map((r, i) => {
+                          const total = r.sources.reduce((acc, s) => { const [nn, nd] = math.add(acc.n, acc.d, s.n, s.d); return { n: nn, d: nd }; }, { n: 0, d: 1 });
+                          let commonD = 1;
+                          results.forEach(res => {
+                            const t = res.sources.reduce((acc, s) => { const [nn, nd] = math.add(acc.n, acc.d, s.n, s.d); return { n: nn, d: nd }; }, { n: 0, d: 1 });
+                            if (t.n > 0) commonD = math.lcm(commonD, t.d);
+                          });
+                          const unifiedN = total.n * (commonD / total.d);
+                          const isMultiSource = r.sources.length > 1;
+                          return (
+                            <tr key={i} className="hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20 align-top">
+                              <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">
+                                {r.name}<span className="text-[#787774] font-normal ml-1">[{getRelStr(r.relation, tree.deathDate)}]</span>
+                                {isMultiSource && <span className="block text-[10px] text-blue-500 font-bold mt-0.5">복수 경로</span>}
+                              </td>
+                              <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left">
+                                {r.sources.map((src, si) => (
+                                  <div key={si} className={`flex items-baseline gap-1 ${si > 0 ? 'mt-1.5 pt-1.5 border-t border-dashed border-[#e9e9e7] dark:border-neutral-700' : ''}`}>
+                                    <span className="font-medium text-[#37352f] dark:text-neutral-200 shrink-0">{src.n}/{src.d}</span>
+                                    <span className="text-[#787774] dark:text-neutral-500 text-[12px]">망 {src.decName}의 {getRelStr(src.relation, src.decDeathDate) || '상속인'}으로 {lawLabel(src.lawEra)} 적용{src.mod ? ` (${src.mod})` : ''}</span>
+                                  </div>
+                                ))}
+                                {isMultiSource && <div className="mt-1.5 pt-1.5 border-t border-[#e9e9e7] dark:border-neutral-700 text-[12px] text-[#504f4c] dark:text-neutral-400 font-medium">= {r.sources.map(s => `${s.n}/${s.d}`).join(' + ')} = <span className="text-[#37352f] dark:text-neutral-200 font-bold">{total.n}/{total.d}</span></div>}
+                              </td>
+                              <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">{total.n} / {total.d}</td>
+                              <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">{unifiedN} / {commonD}</td>
+                            </tr>
+                          );
+                        }) : <tr><td colSpan="4" className="border border-[#e9e9e7] dark:border-neutral-700 p-8 text-center text-[#b45309] font-bold bg-amber-50">최종 생존 상속인이 없습니다.</td></tr>}
+                      </tbody>
                     </table>
                   </section>
                 );
               })()}
               {activeTab === 'summary' && (() => {
-                const shareByPersonId = new Map(); (finalShares.direct || []).forEach(s => shareByPersonId.set(s.personId, s)); (finalShares.subGroups || []).forEach(g => g.shares.forEach(s => shareByPersonId.set(s.personId, s)));  
+                const shareByPersonId = new Map();
+                (finalShares.direct || []).forEach((s) => shareByPersonId.set(s.personId, s));
+                (finalShares.subGroups || []).forEach((g) => g.shares.forEach((s) => shareByPersonId.set(s.personId, s)));
+
                 const printedPersonIds = new Set();
-                const buildGroups = (node, parentDeathDate) => { const directShares = []; const subGroups = []; const seenInThisGroup = new Set(); (node.heirs || []).forEach(h => { if (seenInThisGroup.has(h.personId)) return; seenInThisGroup.add(h.personId); if (!h.isDeceased) { const s = shareByPersonId.get(h.personId); if (s && s.n > 0 && !printedPersonIds.has(h.personId)) { directShares.push(s); printedPersonIds.add(h.personId); } } else { const type = (h.deathDate && isBefore(h.deathDate, parentDeathDate)) ? '??듭긽?? : '?ъ긽??; const child = buildGroups(h, h.deathDate || parentDeathDate); if (child.directShares.length > 0 || child.subGroups.length > 0) subGroups.push({ ancestor: h, type, ...child }); } }); return { directShares, subGroups }; };
-                const topDirect = []; const topGroups = []; const topSeen = new Set(); (tree.heirs || []).forEach(h => { if (topSeen.has(h.personId)) return; topSeen.add(h.personId); if (!h.isDeceased) { const s = shareByPersonId.get(h.personId); if (s && s.n > 0 && !printedPersonIds.has(h.personId)) { topDirect.push(s); printedPersonIds.add(h.personId); } } else { const type = (h.deathDate && isBefore(h.deathDate, tree.deathDate)) ? '??듭긽?? : '?ъ긽??; const child = buildGroups(h, h.deathDate || tree.deathDate); if (child.directShares.length > 0 || child.subGroups.length > 0) topGroups.push({ ancestor: h, type, ...child }); } });
-                const [totalSumN, totalSumD] = (() => { let tn = 0, td = 1; const addShare = (s) => { if (s && s.n > 0) { const [nn, nd] = math.add(tn, td, s.n, s.d); tn = nn; td = nd; } }; topDirect.forEach(addShare); const traverseGroup = (g) => { g.directShares.forEach(addShare); g.subGroups.forEach(traverseGroup); }; topGroups.forEach(traverseGroup); return math.simplify(tn, td); })();
-                const renderShareRow = (f, depth, groupAncestorId = null) => { const pl = `${12 + (depth > 0 ? 16 : 0)}px`; const rowId = groupAncestorId ? `summary-row-${f.personId}-${groupAncestorId}` : `summary-row-${f.personId}`; const isCurrentMatch = matchIds[currentMatchIdx] === rowId; return (<tr key={'sr-'+f.id} id={rowId} className={`transition-colors duration-300 ${isCurrentMatch ? 'bg-yellow-100 dark:bg-yellow-900/50 border-l-4 border-l-yellow-500' : 'hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20'}`}><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left font-medium" style={{paddingLeft: pl}}>{f.name}<span className="text-[#787774] font-normal ml-1">[{getRelStr(f.relation, tree.deathDate)}]</span></td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center text-[#504f4c]">{f.n} / {f.d}</td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">{f.un} / {f.ud}</td></tr>); };
-                const renderGroup = (group, depth) => (<React.Fragment key={'grp-'+group.ancestor.id}><tr className="bg-[#fcfcfb] dark:bg-neutral-800/40"><td colSpan={3} className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left text-[#504f4c] dark:text-neutral-400 pl-4">??{formatKorDate(group.ancestor.deathDate)} 怨듬룞?곸냽??以?[{group.ancestor.name}]?(?? ?щ쭩?섏??쇰?濡?洹?{group.type === '??듭긽?? ? '??듭긽?띿씤' : '?곸냽??}</td></tr>{group.directShares.map(f => renderShareRow(f, depth + 1, group.ancestor.id))}{group.subGroups.map(sg => renderGroup(sg, depth + 1))}</React.Fragment>);
+                const buildGroups = (node, parentDeathDate) => {
+                  const directShares = [];
+                  const subGroups = [];
+                  const seenInThisGroup = new Set();
+
+                  (node.heirs || []).forEach((h) => {
+                    if (seenInThisGroup.has(h.personId)) return;
+                    seenInThisGroup.add(h.personId);
+
+                    if (!h.isDeceased) {
+                      const s = shareByPersonId.get(h.personId);
+                      if (s && s.n > 0 && !printedPersonIds.has(h.personId)) {
+                        directShares.push(s);
+                        printedPersonIds.add(h.personId);
+                      }
+                      return;
+                    }
+
+                    const type = h.deathDate && isBefore(h.deathDate, parentDeathDate) ? '대습상속' : '사망상속';
+                    const child = buildGroups(h, h.deathDate || parentDeathDate);
+                    if (child.directShares.length > 0 || child.subGroups.length > 0) {
+                      subGroups.push({ ancestor: h, type, ...child });
+                    }
+                  });
+
+                  return { directShares, subGroups };
+                };
+
+                const topDirect = [];
+                const topGroups = [];
+                const topSeen = new Set();
+
+                (tree.heirs || []).forEach((h) => {
+                  if (topSeen.has(h.personId)) return;
+                  topSeen.add(h.personId);
+
+                  if (!h.isDeceased) {
+                    const s = shareByPersonId.get(h.personId);
+                    if (s && s.n > 0 && !printedPersonIds.has(h.personId)) {
+                      topDirect.push(s);
+                      printedPersonIds.add(h.personId);
+                    }
+                    return;
+                  }
+
+                  const type = h.deathDate && isBefore(h.deathDate, tree.deathDate) ? '대습상속' : '사망상속';
+                  const child = buildGroups(h, h.deathDate || tree.deathDate);
+                  if (child.directShares.length > 0 || child.subGroups.length > 0) {
+                    topGroups.push({ ancestor: h, type, ...child });
+                  }
+                });
+
+                const [totalSumN, totalSumD] = (() => {
+                  let tn = 0;
+                  let td = 1;
+                  const addShare = (s) => {
+                    if (s && s.n > 0) {
+                      const [nn, nd] = math.add(tn, td, s.n, s.d);
+                      tn = nn;
+                      td = nd;
+                    }
+                  };
+                  topDirect.forEach(addShare);
+                  const traverseGroup = (g) => {
+                    g.directShares.forEach(addShare);
+                    g.subGroups.forEach(traverseGroup);
+                  };
+                  topGroups.forEach(traverseGroup);
+                  return math.simplify(tn, td);
+                })();
+
+                const renderShareRow = (f, depth, groupAncestorId = null) => {
+                  const paddingLeft = `${12 + depth * 16}px`;
+                  const rowId = groupAncestorId ? `summary-row-${f.personId}-${groupAncestorId}` : `summary-row-${f.personId}`;
+                  const isCurrentMatch = matchIds[currentMatchIdx] === rowId;
+
+                  return (
+                    <tr
+                      key={`sr-${f.id}-${groupAncestorId || 'top'}`}
+                      id={rowId}
+                      className={`transition-colors duration-300 ${isCurrentMatch ? 'bg-yellow-100 dark:bg-yellow-900/50 border-l-4 border-l-yellow-500' : 'hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20'}`}
+                    >
+                      <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left font-medium" style={{ paddingLeft }}>
+                        {f.name}
+                        <span className="text-[#787774] font-normal ml-1">[{getRelStr(f.relation, tree.deathDate)}]</span>
+                      </td>
+                      <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center text-[#504f4c]">{f.n} / {f.d}</td>
+                      <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">{f.un} / {f.ud}</td>
+                    </tr>
+                  );
+                };
+
+                const renderGroup = (group, depth) => (
+                  <React.Fragment key={`grp-${group.ancestor.id}`}>
+                    <tr className="bg-[#fcfcfb] dark:bg-neutral-800/40">
+                      <td
+                        colSpan={3}
+                        className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left text-[#504f4c] dark:text-neutral-400"
+                        style={{ paddingLeft: `${12 + depth * 16}px` }}
+                      >
+                        [{group.ancestor.name}] {formatKorDate(group.ancestor.deathDate)} 사망으로 인한 {group.type} 그룹
+                      </td>
+                    </tr>
+                    {group.directShares.map((f) => renderShareRow(f, depth + 1, group.ancestor.id))}
+                    {group.subGroups.map((sg) => renderGroup(sg, depth + 1))}
+                  </React.Fragment>
+                );
+
                 return (
                   <div className="w-full text-[#37352f] dark:text-neutral-200">
-                    <div className="mb-4 flex items-center justify-between no-print"><div className="flex items-center gap-6"><h2 className="text-lg font-black text-[#37352f] dark:text-neutral-200 flex items-center gap-2"><IconList className="w-5 h-5 text-[#787774]"/> 吏遺??붿빟??/h2><div className="flex items-center gap-2 bg-white dark:bg-neutral-800 border border-[#e5e5e5] dark:border-neutral-700 rounded-full px-3 py-1.5 shadow-sm focus-within:ring-2 focus-within:ring-blue-100"><svg className="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg><input type="text" placeholder="?대쫫 寃?? value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="bg-transparent border-none outline-none text-[13px] w-16 focus:w-28 transition-all" />{matchIds.length > 0 && <span className="text-[11px] text-neutral-500 font-medium ml-1">{currentMatchIdx + 1}/{matchIds.length}</span>}</div></div></div>
-                    <table className="w-full border-collapse text-[13px]"><thead className="bg-[#fcfcfb] dark:bg-neutral-800/40"><tr><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[40%] text-[#787774]">?곸냽???깅챸</th><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[30%] text-[#787774]">理쒖쥌 吏遺?(?듬텇 ??</th><th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[30%] text-[#787774]">理쒖쥌 吏遺?(?듬텇 ??</th></tr></thead><tbody>{topDirect.map(f => renderShareRow(f, 0))}{topGroups.map(g => renderGroup(g, 0))}</tbody><tfoot className="bg-[#fcfcfb] dark:bg-neutral-800/40"><tr><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-right font-medium text-[#787774]">?⑷퀎 寃利?/td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">{totalSumN} / {totalSumD}</td><td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left text-[12.5px]">{(() => { const sumVal = totalSumD ? totalSumN / totalSumD : 0; const targetVal = simpleTargetD ? simpleTargetN / simpleTargetD : 1; if (totalSumN === 0) return <span className="text-[#b45309] font-bold">?좑툘 ?앹〈 ?곸냽???놁쓬</span>; if (sumVal === targetVal) return <span className="text-[#504f4c]">??踰뺤젙?곸냽??吏遺꾧낵 ?쇱튂</span>; return <span className="text-red-500 font-bold">??吏遺??⑷퀎 遺덉씪移?/span>; })()}</td></tr></tfoot></table>
+                    <div className="mb-4 flex items-center justify-between no-print">
+                      <div className="flex items-center gap-6">
+                        <h2 className="text-lg font-black text-[#37352f] dark:text-neutral-200 flex items-center gap-2">
+                          <IconList className="w-5 h-5 text-[#787774]" />
+                          지분 요약표
+                        </h2>
+                        <div className="flex items-center gap-2 bg-white dark:bg-neutral-800 border border-[#e5e5e5] dark:border-neutral-700 rounded-full px-3 py-1.5 shadow-sm focus-within:ring-2 focus-within:ring-blue-100">
+                          <svg className="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                          </svg>
+                          <input
+                            type="text"
+                            placeholder="이름 검색"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="bg-transparent border-none outline-none text-[13px] w-16 focus:w-28 transition-all"
+                          />
+                          {matchIds.length > 0 && (
+                            <span className="text-[11px] text-neutral-500 font-medium ml-1">
+                              {currentMatchIdx + 1}/{matchIds.length}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <table className="w-full border-collapse text-[13px]">
+                      <thead className="bg-[#fcfcfb] dark:bg-neutral-800/40">
+                        <tr>
+                          <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[40%] text-[#787774]">상속인 성명</th>
+                          <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[30%] text-[#787774]">최종 지분</th>
+                          <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[30%] text-[#787774]">통분 지분</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {topDirect.map((f) => renderShareRow(f, 0))}
+                        {topGroups.map((g) => renderGroup(g, 0))}
+                      </tbody>
+                      <tfoot className="bg-[#fcfcfb] dark:bg-neutral-800/40">
+                        <tr>
+                          <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-right font-medium text-[#787774]">합계 검증</td>
+                          <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">{totalSumN} / {totalSumD}</td>
+                          <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left text-[12.5px]">
+                            {(() => {
+                              const sumVal = totalSumD ? totalSumN / totalSumD : 0;
+                              const targetVal = simpleTargetD ? simpleTargetN / simpleTargetD : 1;
+                              if (totalSumN === 0) return <span className="text-[#b45309] font-bold">최종 생존 상속인이 없습니다.</span>;
+                              if (sumVal === targetVal) return <span className="text-[#504f4c]">법정상속분 합계와 일치합니다.</span>;
+                              return <span className="text-red-500 font-bold">지분 합계가 일치하지 않습니다.</span>;
+                            })()}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
                   </div>
                 );
               })()}
               {activeTab === 'amount' && (() => {
-                const resultMap = new Map(); (amountCalculations?.results || []).forEach(r => resultMap.set(r.personId, r));
-                const orderedRows = []; const printedAmtIds = new Set(); const pushAmtRow = (share) => { if (!share || printedAmtIds.has(share.personId)) return; const res = resultMap.get(share.personId); if (!res) return; printedAmtIds.add(share.personId); orderedRows.push({ type: 'row', res }); };
-                (finalShares.direct || []).forEach(pushAmtRow); (finalShares.subGroups || []).forEach(group => { if (group.shares.some(s => resultMap.has(s.personId))) { const isSubst = group.ancestor.deathDate && isBefore(group.ancestor.deathDate, tree.deathDate); orderedRows.push({ type: 'header', ancestor: group.ancestor, label: isSubst ? '??듭긽?띿씤' : '?ъ긽?띿씤' }); group.shares.forEach(pushAmtRow); } });
-                const renderAmtInput = (personId, state, setter, colorClass, ringClass) => (<input type="text" placeholder="0" value={state[personId] || ''} onChange={(e) => { const val = e.target.value.replace(/[^0-9]/g, ''); setter(prev => ({ ...prev, [personId]: val ? Number(val).toLocaleString() : '' })); }} className={`w-full px-2.5 py-1.5 border border-neutral-200 dark:border-neutral-600 rounded text-right text-[13px] font-mono bg-white dark:bg-neutral-900 ${colorClass} ${ringClass} outline-none focus:ring-1 transition-all`} />);
+                const resultMap = new Map();
+                (amountCalculations?.results || []).forEach((r) => resultMap.set(r.personId, r));
+
+                const orderedRows = [];
+                const printedAmtIds = new Set();
+                const pushAmtRow = (share) => {
+                  if (!share || printedAmtIds.has(share.personId)) return;
+                  const res = resultMap.get(share.personId);
+                  if (!res) return;
+                  printedAmtIds.add(share.personId);
+                  orderedRows.push({ type: 'row', res });
+                };
+
+                (finalShares.direct || []).forEach(pushAmtRow);
+                (finalShares.subGroups || []).forEach((group) => {
+                  if (group.shares.some((s) => resultMap.has(s.personId))) {
+                    const isSubst = group.ancestor.deathDate && isBefore(group.ancestor.deathDate, tree.deathDate);
+                    orderedRows.push({
+                      type: 'header',
+                      ancestor: group.ancestor,
+                      label: isSubst ? '대습상속인' : '사망상속인',
+                    });
+                    group.shares.forEach(pushAmtRow);
+                  }
+                });
+
+                const renderAmtInput = (personId, state, setter, colorClass, ringClass) => (
+                  <input
+                    type="text"
+                    placeholder="0"
+                    value={state[personId] || ''}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9]/g, '');
+                      setter((prev) => ({ ...prev, [personId]: val ? Number(val).toLocaleString() : '' }));
+                    }}
+                    className={`w-full px-2.5 py-1.5 border border-neutral-200 dark:border-neutral-600 rounded text-right text-[13px] font-mono bg-white dark:bg-neutral-900 ${colorClass} ${ringClass} outline-none focus:ring-1 transition-all`}
+                  />
+                );
+
                 return (
                   <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                    <div className="flex items-center gap-4 p-4 bg-[#f8f9fa] dark:bg-neutral-900/40 rounded-xl border border-[#e9e9e7] dark:border-neutral-700"><span className="text-[13px] font-bold text-[#787774] dark:text-neutral-400 whitespace-nowrap shrink-0">?곸냽?ъ궛媛??/span><div className="flex items-center gap-2 flex-1"><input type="text" placeholder="?? 1,000,000,000" value={propertyValue} onChange={(e) => { const val = e.target.value.replace(/[^0-9]/g, ''); setPropertyValue(val ? Number(val).toLocaleString() : ''); }} className="flex-1 max-w-xs px-3 py-2 text-[14px] border border-[#e9e9e7] dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-blue-400 text-right font-mono outline-none" /><span className="text-[13px] text-neutral-500 font-medium">??/span>{amountCalculations && <span className="text-[12px] text-[#787774] dark:text-neutral-400 ml-2">媛꾩＜?곸냽?ъ궛: <span className="font-bold text-[#37352f] dark:text-neutral-200 font-mono">{amountCalculations.deemedEstate.toLocaleString()}</span>??/span>}</div></div>
-                    {orderedRows.length === 0 ? <div className="py-16 text-center text-[#787774] dark:text-neutral-500 text-[14px]">?곸냽?몄씠 ?놁뒿?덈떎.</div> : (
+                    <div className="flex items-center gap-4 p-4 bg-[#f8f9fa] dark:bg-neutral-900/40 rounded-xl border border-[#e9e9e7] dark:border-neutral-700">
+                      <span className="text-[13px] font-bold text-[#787774] dark:text-neutral-400 whitespace-nowrap shrink-0">상속재산가액</span>
+                      <div className="flex items-center gap-2 flex-1">
+                        <input
+                          type="text"
+                          placeholder="예: 1,000,000,000"
+                          value={propertyValue}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            setPropertyValue(val ? Number(val).toLocaleString() : '');
+                          }}
+                          className="flex-1 max-w-xs px-3 py-2 text-[14px] border border-[#e9e9e7] dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-blue-400 text-right font-mono outline-none"
+                        />
+                        <span className="text-[13px] text-neutral-500 font-medium">원</span>
+                        {amountCalculations && (
+                          <span className="text-[12px] text-[#787774] dark:text-neutral-400 ml-2">
+                            간주상속재산: <span className="font-bold text-[#37352f] dark:text-neutral-200 font-mono">{amountCalculations.deemedEstate.toLocaleString()}</span> 원
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {orderedRows.length === 0 ? (
+                      <div className="py-16 text-center text-[#787774] dark:text-neutral-500 text-[14px]">상속인이 없습니다.</div>
+                    ) : (
                       <div className="rounded-xl border border-[#e9e9e7] dark:border-neutral-700 overflow-hidden shadow-sm">
-                        <table className="w-full text-[13px] border-collapse"><thead className="bg-[#f8f9fa] dark:bg-neutral-900/50 text-[#787774] dark:text-neutral-400 font-bold border-b border-[#e9e9e7] dark:border-neutral-700"><tr><th className="px-4 py-3 text-center w-[22%]">?곸냽??/th><th className="px-4 py-3 text-center w-[14%]">踰뺤젙吏遺?/th><th className="px-4 py-3 text-center w-[18%]">?밸퀎?섏씡 <span className="text-red-400">(-)</span></th><th className="px-4 py-3 text-center w-[18%]">湲곗뿬遺?<span className="text-green-500">(+)</span></th><th className="px-4 py-3 text-right w-[28%] text-[#1e56a0] dark:text-blue-400">援ъ껜???곸냽遺??곗텧??/th></tr></thead>
-                          <tbody className="divide-y divide-[#f1f1ef] dark:divide-neutral-700/50">{orderedRows.map((item, idx) => { if (item.type === 'header') return (<tr key={`hdr-${idx}`} className="bg-[#fcfcfb] dark:bg-neutral-800/40"><td colSpan="5" className="px-4 py-2 text-left text-[#504f4c] dark:text-neutral-400 text-[12px]">??[{item.ancestor.name}] {formatKorDate(item.ancestor.deathDate)} ?щ쭩 ??{item.label}</td></tr>); const { res } = item; return (<tr key={res.personId} className="hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/30 transition-colors"><td className="px-4 py-2.5 text-center font-bold text-neutral-800 dark:text-neutral-200">{res.name}</td><td className="px-4 py-2.5 text-center font-mono text-[#504f4c] dark:text-neutral-400">{res.un} / {res.ud}</td><td className="px-3 py-2">{renderAmtInput(res.personId, specialBenefits, setSpecialBenefits, 'text-red-600 dark:text-red-400', 'focus:ring-red-400')}</td><td className="px-3 py-2">{renderAmtInput(res.personId, contributions, setContributions, 'text-green-600 dark:text-green-400', 'focus:ring-green-400')}</td><td className="px-4 py-2.5 text-right font-mono font-bold text-[15px] text-neutral-900 dark:text-neutral-100">{res.finalAmount.toLocaleString()} <span className="text-[12px] font-normal text-neutral-400">??/span></td></tr>); })}</tbody>
-                          <tfoot className="bg-[#f8f9fa] dark:bg-neutral-900/50 border-t-2 border-[#d4d4d4] dark:border-neutral-600"><tr><td colSpan="4" className="px-4 py-3 text-right text-[13px] font-bold text-[#787774] dark:text-neutral-400">?⑷퀎:</td><td className="px-4 py-3 text-right font-mono font-bold text-[16px] text-[#1e56a0] dark:text-blue-400">{amountCalculations?.totalDistributed.toLocaleString() ?? '??} <span className="text-[12px] font-normal text-neutral-400">??/span></td></tr></tfoot>
+                        <table className="w-full text-[13px] border-collapse">
+                          <thead className="bg-[#f8f9fa] dark:bg-neutral-900/50 text-[#787774] dark:text-neutral-400 font-bold border-b border-[#e9e9e7] dark:border-neutral-700">
+                            <tr>
+                              <th className="px-4 py-3 text-center w-[22%]">상속인</th>
+                              <th className="px-4 py-3 text-center w-[14%]">법정지분</th>
+                              <th className="px-4 py-3 text-center w-[18%]">특별수익 <span className="text-red-400">(-)</span></th>
+                              <th className="px-4 py-3 text-center w-[18%]">기여분 <span className="text-green-500">(+)</span></th>
+                              <th className="px-4 py-3 text-right w-[28%] text-[#1e56a0] dark:text-blue-400">구체적 상속분 산정액</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[#f1f1ef] dark:divide-neutral-700/50">
+                            {orderedRows.map((item, idx) => {
+                              if (item.type === 'header') {
+                                return (
+                                  <tr key={`hdr-${idx}`} className="bg-[#fcfcfb] dark:bg-neutral-800/40">
+                                    <td colSpan="5" className="px-4 py-2 text-left text-[#504f4c] dark:text-neutral-400 text-[12px]">
+                                      [{item.ancestor.name}] {formatKorDate(item.ancestor.deathDate)} 사망에 따른 {item.label}
+                                    </td>
+                                  </tr>
+                                );
+                              }
+
+                              const { res } = item;
+                              return (
+                                <tr key={res.personId} className="hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/30 transition-colors">
+                                  <td className="px-4 py-2.5 text-center font-bold text-neutral-800 dark:text-neutral-200">{res.name}</td>
+                                  <td className="px-4 py-2.5 text-center font-mono text-[#504f4c] dark:text-neutral-400">{res.un} / {res.ud}</td>
+                                  <td className="px-3 py-2">{renderAmtInput(res.personId, specialBenefits, setSpecialBenefits, 'text-red-600 dark:text-red-400', 'focus:ring-red-400')}</td>
+                                  <td className="px-3 py-2">{renderAmtInput(res.personId, contributions, setContributions, 'text-green-600 dark:text-green-400', 'focus:ring-green-400')}</td>
+                                  <td className="px-4 py-2.5 text-right font-mono font-bold text-[15px] text-neutral-900 dark:text-neutral-100">
+                                    {res.finalAmount.toLocaleString()} <span className="text-[12px] font-normal text-neutral-400">원</span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                          <tfoot className="bg-[#f8f9fa] dark:bg-neutral-900/50 border-t-2 border-[#d4d4d4] dark:border-neutral-600">
+                            <tr>
+                              <td colSpan="4" className="px-4 py-3 text-right text-[13px] font-bold text-[#787774] dark:text-neutral-400">합계:</td>
+                              <td className="px-4 py-3 text-right font-mono font-bold text-[16px] text-[#1e56a0] dark:text-blue-400">
+                                {amountCalculations?.totalDistributed?.toLocaleString() ?? '0'} <span className="text-[12px] font-normal text-neutral-400">원</span>
+                              </td>
+                            </tr>
+                          </tfoot>
                         </table>
                       </div>
                     )}
@@ -1126,141 +1478,172 @@ function App() {
           </div>
         </div>
       </main>
-      {showScrollTop && <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] bg-white/60 dark:bg-neutral-800/60 backdrop-blur-md border border-white/20 dark:border-neutral-700/30 text-[#2383e2] dark:text-blue-400 px-5 py-2.5 rounded-full shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center gap-2 text-[13px] font-bold no-print"><span className="text-[16px]">??/span> 留??꾨줈</button>}
-        {isAiModalOpen && (() => {
-          const targetTab = deceasedTabs.find(t => t.id === aiTargetId); 
-          const targetName = aiTargetId === 'root' ? '?꾩껜 媛怨꾨룄' : `[${targetTab?.name || '?곸냽??}] ?섏쐞`;
+      {showScrollTop && (
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] bg-white/60 dark:bg-neutral-800/60 backdrop-blur-md border border-white/20 dark:border-neutral-700/30 text-[#2383e2] dark:text-blue-400 px-5 py-2.5 rounded-full shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center gap-2 text-[13px] font-bold no-print"
+        >
+          <span className="text-[16px]">↑</span>
+          맨 위로
+        </button>
+      )}
+      {isAiModalOpen && (() => {
+        const targetTab = deceasedTabs.find((t) => t.id === aiTargetId);
+        const targetName = aiTargetId === 'root' ? '전체 가계도' : `[${targetTab?.name || '상속인'}] 하위`;
 
-          const handleAiIngest = (input) => {
-            if (!input.trim() || !input.includes('{')) return;
+        const handleAiIngest = (input) => {
+          if (!input.trim() || !input.includes('{')) return;
+
           try {
-              const cleanJson = input.replace(/```json/g, '').replace(/```/g, '').trim();
-              const parsedTree = JSON.parse(cleanJson);
-              if (aiTargetId === 'root') {
-                setTree(normalizeImportedTree({ ...parsedTree, id: 'root' }));
-              }
-              else {
-                const targetRawIds = [];
-                const findRawIds = (n) => { if (n.id === aiTargetId || n.personId === aiTargetId) targetRawIds.push(n.id); if (n.heirs) n.heirs.forEach(findRawIds); };
-                findRawIds(tree);
-                setTree(prev => {
-                  const targetInheritedDate = getInheritedDateForNode(aiTargetId);
-                  const normalizedSource = normalizeImportedTree({
-                    id: 'root',
-                    name: parsedTree.name || '',
-                    deathDate: parsedTree.deathDate || targetInheritedDate || tree.deathDate,
-                    heirs: Array.isArray(parsedTree) ? parsedTree : (parsedTree.heirs || []),
-                  });
+            const cleanJson = input.replace(/```json/g, '').replace(/```/g, '').trim();
+            const parsedTree = JSON.parse(cleanJson);
 
-                  const injectHeirs = (n) => {
-                    if (targetRawIds.includes(n.id)) {
-                      const generateNewHeirs = (heirsArray) => (heirsArray || []).map((h) => ({
+            if (aiTargetId === 'root') {
+              setTree(normalizeImportedTree({ ...parsedTree, id: 'root' }));
+            } else {
+              const targetRawIds = [];
+              const findRawIds = (n) => {
+                if (n.id === aiTargetId || n.personId === aiTargetId) targetRawIds.push(n.id);
+                if (n.heirs) n.heirs.forEach(findRawIds);
+              };
+              findRawIds(tree);
+
+              setTree((prev) => {
+                const targetInheritedDate = getInheritedDateForNode(aiTargetId);
+                const normalizedSource = normalizeImportedTree({
+                  id: 'root',
+                  name: parsedTree.name || '',
+                  deathDate: parsedTree.deathDate || targetInheritedDate || tree.deathDate,
+                  heirs: Array.isArray(parsedTree) ? parsedTree : parsedTree.heirs || [],
+                });
+
+                const injectHeirs = (n) => {
+                  if (targetRawIds.includes(n.id)) {
+                    const generateNewHeirs = (heirsArray) =>
+                      (heirsArray || []).map((h) => ({
                         ...h,
                         id: `ai_${Math.random().toString(36).substr(2, 9)}`,
                         heirs: generateNewHeirs(h.heirs || []),
                       }));
-                      return { ...n, heirs: [...(n.heirs || []), ...generateNewHeirs(normalizedSource.heirs || [])] };
-                    }
-                    return { ...n, heirs: n.heirs?.map(injectHeirs) || [] };
-                  };
-                  return injectHeirs(prev);
-                });
-              }
-              setIsAiModalOpen(false); setAiInputText(""); alert(`??AI ?곸냽???먮룞 ?낅젰???꾨즺?덉뒿?덈떎!`);
-            } catch {
-              // Auto-parse silent fail, button remains for manual
+
+                    return {
+                      ...n,
+                      heirs: [...(n.heirs || []), ...generateNewHeirs(normalizedSource.heirs || [])],
+                    };
+                  }
+
+                  return { ...n, heirs: n.heirs?.map(injectHeirs) || [] };
+                };
+
+                return injectHeirs(prev);
+              });
             }
-          };
 
-          return (
-            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-              <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] border border-[#e9e9e7] dark:border-neutral-700">
-                <div className="px-6 py-4 border-b border-[#e9e9e7] dark:border-neutral-700 flex justify-between items-center transition-colors">
-                  <h2 className="text-[16px] font-bold text-[#37352f] dark:text-neutral-100 flex items-center gap-2">
-                    <span className="text-[18px]">??/span>
-                    {targetName} AI ?곸냽???먮룞 ?낅젰
-                  </h2>
-                  <button onClick={() => setIsAiModalOpen(false)} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors">
-                    <IconX size={20} />
-                  </button>
-                </div>
+            setIsAiModalOpen(false);
+            setAiInputText('');
+            alert('AI 상속인 자동 입력이 완료되었습니다.');
+          } catch {
+            // Auto-parse silent fail, button remains for manual submit.
+          }
+        };
 
-                <div className="p-6 overflow-y-auto flex-1 space-y-6">
-                  {/* Step 1: Callout style */}
-                  <div className="bg-[#f7f7f5] dark:bg-neutral-900/50 border border-[#e9e9e7] dark:border-neutral-700 rounded-lg p-5">
-                    <div className="flex items-start gap-3">
-                      <div className="mt-0.5 text-neutral-500"><IconFileText size={20} /></div>
-                      <div className="flex-1">
-                        <h3 className="text-[14px] font-bold text-[#37352f] dark:text-neutral-200 mb-1">1?④퀎: 媛?대뱶?쇱씤 蹂듭궗</h3>
-                        <p className="text-[13px] text-[#787774] dark:text-neutral-400 mb-5 leading-relaxed">
-                          ?꾨옒 踰꾪듉???대┃?섏뿬 紐낅졊?대? 蹂듭궗???? ChatGPT ??AI ?쒕퉬?ㅼ뿉 臾몄꽌 ?ъ쭊(媛議깃?怨꾩쬆紐낆꽌 ??怨??④퍡 ?꾩넚?섏꽭??
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <button 
-                            onClick={() => { navigator.clipboard.writeText(AI_PROMPT).then(() => alert('??紐낅졊?닿? ?대┰蹂대뱶??蹂듭궗?섏뿀?듬땲??')); }}
-                            className="flex-1 py-2.5 bg-white dark:bg-neutral-800 border border-[#e9e9e7] dark:border-neutral-700 text-[#37352f] dark:text-neutral-200 rounded-md font-bold hover:bg-[#efefed] dark:hover:bg-neutral-700 transition-all shadow-sm flex items-center justify-center gap-2 text-[13px]"
-                          >
-                            ?뱥 AI 紐낅졊??蹂듭궗?섍린
-                          </button>
-                          <button 
-                            onClick={handlePrintPrompt}
-                            className="w-10 h-10 flex items-center justify-center border border-[#e9e9e7] dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-500 hover:bg-[#efefed] dark:hover:bg-neutral-700 rounded-md transition-all shadow-sm"
-                            title="媛?대뱶?쇱씤 ?몄뇙"
-                          >
-                            <IconPrinter size={18} />
-                          </button>
-                        </div>
+        return (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] border border-[#e9e9e7] dark:border-neutral-700">
+              <div className="px-6 py-4 border-b border-[#e9e9e7] dark:border-neutral-700 flex justify-between items-center transition-colors">
+                <h2 className="text-[16px] font-bold text-[#37352f] dark:text-neutral-100 flex items-center gap-2">
+                  <span className="text-[18px]">AI</span>
+                  {targetName} AI 상속인 자동 입력
+                </h2>
+                <button onClick={() => setIsAiModalOpen(false)} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors">
+                  <IconX size={20} />
+                </button>
+              </div>
+
+              <div className="p-6 overflow-y-auto flex-1 space-y-6">
+                <div className="bg-[#f7f7f5] dark:bg-neutral-900/50 border border-[#e9e9e7] dark:border-neutral-700 rounded-lg p-5">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 text-neutral-500"><IconFileText size={20} /></div>
+                    <div className="flex-1">
+                      <h3 className="text-[14px] font-bold text-[#37352f] dark:text-neutral-200 mb-1">1단계: 가이드라인 복사</h3>
+                      <p className="text-[13px] text-[#787774] dark:text-neutral-400 mb-5 leading-relaxed">
+                        아래 버튼으로 안내문을 복사한 뒤 ChatGPT 등 AI 서비스에 붙여 넣고, 문서 사진이나 관계 정보와 함께 JSON 응답을 받아 여기에 붙여 넣어 주세요.
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(AI_PROMPT).then(() => alert('AI 안내문이 클립보드에 복사되었습니다.'));
+                          }}
+                          className="flex-1 py-2.5 bg-white dark:bg-neutral-800 border border-[#e9e9e7] dark:border-neutral-700 text-[#37352f] dark:text-neutral-200 rounded-md font-bold hover:bg-[#efefed] dark:hover:bg-neutral-700 transition-all shadow-sm flex items-center justify-center gap-2 text-[13px]"
+                        >
+                          AI 안내문 복사하기
+                        </button>
+                        <button
+                          onClick={handlePrintPrompt}
+                          className="w-10 h-10 flex items-center justify-center border border-[#e9e9e7] dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-500 hover:bg-[#efefed] dark:hover:bg-neutral-700 rounded-md transition-all shadow-sm"
+                          title="가이드라인 인쇄"
+                        >
+                          <IconPrinter size={18} />
+                        </button>
                       </div>
                     </div>
                   </div>
+                </div>
 
-                  {/* Step 2: Input area */}
-                  <div className="space-y-3">
-                    <h3 className="text-[14px] font-bold text-[#37352f] dark:text-neutral-200 flex items-center gap-2">
-                       <span className="flex items-center justify-center w-5 h-5 bg-[#2383e2] text-white rounded-full text-[10px] font-black">2</span>
-                       寃곌낵 ?곗씠???낅젰
-                    </h3>
-                    <textarea 
-                      value={aiInputText} 
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setAiInputText(val);
-                        if (val.length > 50) handleAiIngest(val);
-                      }} 
-                      placeholder="AI媛 ?앹꽦??JSON 肄붾뱶瑜??ш린??遺숈뿬?ｌ쑝?몄슂. (?먮룞?쇰줈 ?몄떇?⑸땲??" 
-                      className="w-full h-44 p-4 border border-[#e9e9e7] dark:border-neutral-700 rounded-xl focus:ring-2 focus:ring-[#2383e2]/20 focus:border-[#2383e2] outline-none text-[13px] font-mono bg-white dark:bg-neutral-900 text-[#37352f] dark:text-neutral-200 placeholder:text-neutral-400 transition-all resize-none shadow-inner" 
-                    />
-                    <div className="flex items-center gap-2 px-1">
-                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                      <p className="text-[11px] text-[#787774] dark:text-neutral-500 italic">
-                        遺숈뿬?ｊ린 ??AI 援ъ“瑜??먮룞?쇰줈 遺꾩꽍?섏뿬 ?낅젰???쒕룄?⑸땲?? ?먮룞 ?ㅽ뻾?섏? ?딆쑝硫??꾨옒 踰꾪듉???뚮윭二쇱꽭??
-                      </p>
-                    </div>
+                <div className="space-y-3">
+                  <h3 className="text-[14px] font-bold text-[#37352f] dark:text-neutral-200 flex items-center gap-2">
+                    <span className="flex items-center justify-center w-5 h-5 bg-[#2383e2] text-white rounded-full text-[10px] font-black">2</span>
+                    결과 데이터 입력
+                  </h3>
+                  <textarea
+                    value={aiInputText}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setAiInputText(val);
+                      if (val.length > 50) handleAiIngest(val);
+                    }}
+                    placeholder="AI가 생성한 JSON 코드를 여기에 붙여 넣으세요. 일정 길이 이상이면 자동으로 파싱을 시도합니다."
+                    className="w-full h-44 p-4 border border-[#e9e9e7] dark:border-neutral-700 rounded-xl focus:ring-2 focus:ring-[#2383e2]/20 focus:border-[#2383e2] outline-none text-[13px] font-mono bg-white dark:bg-neutral-900 text-[#37352f] dark:text-neutral-200 placeholder:text-neutral-400 transition-all resize-none shadow-inner"
+                  />
+                  <div className="flex items-center gap-2 px-1">
+                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                    <p className="text-[11px] text-[#787774] dark:text-neutral-500 italic">
+                      붙여 넣은 뒤 자동 인식이 되지 않으면 아래 실행 버튼으로 직접 입력을 진행할 수 있습니다.
+                    </p>
                   </div>
                 </div>
+              </div>
 
-                <div className="px-6 py-4 border-t border-[#e9e9e7] dark:border-neutral-700 flex justify-end gap-2 bg-[#f7f7f5]/50 dark:bg-neutral-900/30 transition-colors">
-                  <button onClick={() => setIsAiModalOpen(false)} className="px-4 py-2 text-[#787774] dark:text-neutral-400 font-bold hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded-md transition-all text-[13px]">?リ린</button>
-                  <button 
-                    onClick={() => handleAiIngest(aiInputText)}
-                    className="px-5 py-2 bg-[#37352f] dark:bg-neutral-100 hover:bg-[#201f1c] dark:hover:bg-white text-white dark:text-[#37352f] rounded-md font-bold shadow-md transition-all text-[13px] flex items-center gap-2"
-                  >
-                    吏곸젒 ?낅젰 ?ㅽ뻾
-                  </button>
-                </div>
+              <div className="px-6 py-4 border-t border-[#e9e9e7] dark:border-neutral-700 flex justify-end gap-2 bg-[#f7f7f5]/50 dark:bg-neutral-900/30 transition-colors">
+                <button onClick={() => setIsAiModalOpen(false)} className="px-4 py-2 text-[#787774] dark:text-neutral-400 font-bold hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded-md transition-all text-[13px]">
+                  닫기
+                </button>
+                <button
+                  onClick={() => handleAiIngest(aiInputText)}
+                  className="px-5 py-2 bg-[#37352f] dark:bg-neutral-100 hover:bg-[#201f1c] dark:hover:bg-white text-white dark:text-[#37352f] rounded-md font-bold shadow-md transition-all text-[13px] flex items-center gap-2"
+                >
+                  직접 입력 실행
+                </button>
               </div>
             </div>
-          );
-        })()}
+          </div>
+        );
+      })()}
 
       {isResetModalOpen && (
         <div className="fixed inset-0 bg-black/40 z-[9999] flex items-center justify-center no-print text-[#37352f]">
           <div className="bg-white p-8 rounded-lg shadow-xl max-w-sm w-full mx-4 border border-[#e9e9e7]">
-            <h2 className="text-xl font-bold mb-2">???묒뾽 ?쒖옉</h2>
+            <h2 className="text-xl font-bold mb-2">새 작업 시작</h2>
             <div className="flex flex-col gap-2 mt-6">
-              <button onClick={() => performReset(true)} className="w-full py-2.5 bg-[#2383e2] hover:bg-[#0073ea] text-white font-medium rounded transition-colors text-[14px]">諛깆뾽 ?????珥덇린??/button>
-              <button onClick={() => performReset(false)} className="w-full py-2.5 bg-[#ffe2dd] hover:bg-[#ffc1b8] text-[#d44c47] font-medium rounded transition-colors text-[14px]">洹몃깷 珥덇린??/button>
-              <button onClick={() => setIsResetModalOpen(false)} className="w-full py-2.5 mt-2 bg-white border border-[#d4d4d4] text-[#37352f] font-medium rounded transition-colors text-[14px]">痍⑥냼</button>
+              <button onClick={() => performReset(true)} className="w-full py-2.5 bg-[#2383e2] hover:bg-[#0073ea] text-white font-medium rounded transition-colors text-[14px]">
+                백업 저장 후 초기화
+              </button>
+              <button onClick={() => performReset(false)} className="w-full py-2.5 bg-[#ffe2dd] hover:bg-[#ffc1b8] text-[#d44c47] font-medium rounded transition-colors text-[14px]">
+                그냥 초기화
+              </button>
+              <button onClick={() => setIsResetModalOpen(false)} className="w-full py-2.5 mt-2 bg-white border border-[#d4d4d4] text-[#37352f] font-medium rounded transition-colors text-[14px]">
+                취소
+              </button>
             </div>
           </div>
         </div>
