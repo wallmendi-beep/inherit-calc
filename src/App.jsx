@@ -635,7 +635,7 @@ function App() {
         if (isPre && isDeadWithoutHeirs) { 
           clone.isExcluded = true; 
           clone.exclusionOption = 'predeceased'; 
-        } else if (!isPre && isDeadWithoutHeirs && parentNode) {
+        } else if (!isPre && isDeadWithoutHeirs && parentNode && !clone.id.startsWith('auto_')) {
           const isSpouseType = ['wife', 'husband', 'spouse'].includes(clone.relation);
           if (!isSpouseType) {
             const pHeirs = parentNode.heirs || []; 
