@@ -165,26 +165,26 @@ const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, r
           <input
             type="checkbox"
             checked={node.isDeceased || false}
-            onChange={(e) => handleUpdate(node.id, 'isDeceased', e.target.checked)}
+            onChange={(e) => handleUpdate({
+              type: 'updateDeathInfo',
+              nodeId: node.id,
+              isDeceased: e.target.checked,
+              deathDate: e.target.checked ? node.deathDate : '',
+              inheritedDate,
+            })}
             className="w-4 h-4 accent-neutral-500 cursor-pointer shrink-0 opacity-60"
           />
           {node.isDeceased ? (
             <DateInput
               value={node.deathDate}
               onKeyDown={onKeyDown}
-              onChange={(v) => {
-                handleUpdate(node.id, 'deathDate', v);
-                const isPre = v && inheritedDate && isBefore(v, inheritedDate);
-                if (isPre) {
-                  handleUpdate(node.id, 'isExcluded', true);
-                  if (['son', 'daughter', 'sibling'].includes(node.relation)) {
-                    handleUpdate(node.id, 'exclusionOption', 'renounce');
-                  }
-                } else if (v) {
-                  handleUpdate(node.id, 'isExcluded', false);
-                  handleUpdate(node.id, 'exclusionOption', '');
-                }
-              }}
+              onChange={(v) => handleUpdate({
+                type: 'updateDeathInfo',
+                nodeId: node.id,
+                deathDate: v,
+                isDeceased: !!v,
+                inheritedDate,
+              })}
               className={`flex-1 text-[13px] font-bold outline-none bg-transparent ${isPreDeceasedCondition && !isSpouseType ? 'text-[#787774] dark:text-neutral-400' : 'text-[#37352f] dark:text-neutral-100'}`}
               placeholder="사망일자"
             />
@@ -255,7 +255,7 @@ const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, r
               <div className="flex items-center gap-1.5 shrink-0">
                 {showHoju && (
                   <div className="flex items-center gap-1.5">
-                    <div onClick={() => handleUpdate(node.id, 'isHoju', !node.isHoju)} className="relative flex items-center w-[64px] h-[26px] bg-[#efefed] dark:bg-neutral-900 rounded-full border border-[#e5e5e5] dark:border-neutral-700 p-0.5 cursor-pointer select-none">
+                    <div onClick={() => handleUpdate({ type: 'setHojuStatus', nodeId: node.id, isHoju: !node.isHoju })} className="relative flex items-center w-[64px] h-[26px] bg-[#efefed] dark:bg-neutral-900 rounded-full border border-[#e5e5e5] dark:border-neutral-700 p-0.5 cursor-pointer select-none">
                       <div className={`absolute top-0.5 bottom-0.5 w-[calc(50%-1px)] bg-white dark:bg-neutral-700 rounded-full shadow-sm border border-[#e5e5e5] dark:border-neutral-600 transition-transform duration-300 ${node.isHoju ? 'translate-x-[calc(100%-1px)]' : 'translate-x-0'}`} />
                       <div className={`flex-1 text-center z-10 text-[11px] font-bold ${!node.isHoju ? 'text-[#37352f]' : 'text-[#a3a3a3]'}`}>일반</div>
                       <div className={`flex-1 text-center z-10 text-[11px] font-bold ${node.isHoju ? 'text-[#37352f]' : 'text-[#a3a3a3]'}`}>호주</div>
@@ -365,7 +365,7 @@ const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, r
                     <DateInput 
                       autoFocus
                       value={node.divorceDate || ''} 
-                      onChange={v => handleUpdate(node.id, 'divorceDate', v)} 
+                      onChange={v => handleUpdate({ type: 'updateHistoryInfo', nodeId: node.id, changes: { divorceDate: v } })} 
                       onKeyDown={e => {
                         if (e.key === ' ') { e.preventDefault(); setIsHistoryModalOpen(false); }
                         else if (e.key === 'Tab' || e.key === 'Enter' || e.key.includes('Arrow')) {
@@ -383,7 +383,7 @@ const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, r
                     <label className="text-[13px] font-bold text-[#504f4c]">재혼 일자</label>
                     <DateInput 
                       value={node.remarriageDate || ''} 
-                      onChange={v => handleUpdate(node.id, 'remarriageDate', v)} 
+                      onChange={v => handleUpdate({ type: 'updateHistoryInfo', nodeId: node.id, changes: { remarriageDate: v } })} 
                       onKeyDown={e => {
                         if (e.key === ' ') { e.preventDefault(); setIsHistoryModalOpen(false); }
                         else if (e.key === 'Tab' || e.key === 'Enter' || e.key.includes('Arrow')) {
@@ -412,7 +412,7 @@ const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, r
                     <DateInput 
                       autoFocus
                       value={node.marriageDate || ''} 
-                      onChange={v => handleUpdate(node.id, { marriageDate: v, isSameRegister: v ? false : true })} 
+                      onChange={v => handleUpdate({ type: 'updateHistoryInfo', nodeId: node.id, changes: { marriageDate: v } })} 
                       onKeyDown={e => {
                         if (e.key === ' ') { e.preventDefault(); setIsHistoryModalOpen(false); }
                         else if (e.key === 'Tab' || e.key === 'Enter' || e.key.includes('Arrow')) {
@@ -430,7 +430,7 @@ const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, r
                     <label className="text-[13px] font-bold text-[#504f4c]">친가복적 일자</label>
                     <DateInput 
                       value={node.restoreDate || ''} 
-                      onChange={v => handleUpdate(node.id, { restoreDate: v, isSameRegister: v ? true : false })} 
+                      onChange={v => handleUpdate({ type: 'updateHistoryInfo', nodeId: node.id, changes: { restoreDate: v } })} 
                       onKeyDown={e => {
                         if (e.key === ' ') { e.preventDefault(); setIsHistoryModalOpen(false); }
                         else if (e.key === 'Tab' || e.key === 'Enter' || e.key.includes('Arrow')) {

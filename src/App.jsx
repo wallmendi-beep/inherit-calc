@@ -13,6 +13,7 @@ import { math, getLawEra, getRelStr, formatKorDate, formatMoney, isBefore } from
 import { calculateInheritance } from './engine/inheritance';
 import { getInitialTree, getEmptyTree } from './utils/initialData';
 import { AI_PROMPT } from './utils/aiPrompt';
+import { normalizeImportedTree, updateDeathInfo, updateHistoryInfo, updateRelationInfo, setHojuStatus, applyNodeUpdates } from './utils/treeDomain';
 import { useSmartGuide } from './hooks/useSmartGuide';
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
@@ -49,12 +50,15 @@ export const migrateToVault = (oldTree) => {
       vault.persons[pId] = {
         id: pId, name: node.name || '', isDeceased: !!node.isDeceased,
         deathDate: node.deathDate || '', marriageDate: node.marriageDate || '',
-        remarriageDate: node.remarriageDate || '', gender: node.gender || ''
+        remarriageDate: node.remarriageDate || '', divorceDate: node.divorceDate || '',
+        restoreDate: node.restoreDate || '', gender: node.gender || ''
       };
     } else {
       const p = vault.persons[pId];
       if (!p.deathDate && node.deathDate) p.deathDate = node.deathDate;
       if (!p.marriageDate && node.marriageDate) p.marriageDate = node.marriageDate;
+      if (!p.divorceDate && node.divorceDate) p.divorceDate = node.divorceDate;
+      if (!p.restoreDate && node.restoreDate) p.restoreDate = node.restoreDate;
       if (!p.name && node.name) p.name = node.name;
     }
 
@@ -530,7 +534,53 @@ function App() {
     },
   ];
 
+  const getInheritedDateForNode = (targetId) => {
+    let inheritedDate = tree.deathDate;
+
+    const walk = (node, currentDate) => {
+      if (!node) return false;
+      if (node.id === targetId) {
+        inheritedDate = currentDate || tree.deathDate;
+        return true;
+      }
+      return (node.heirs || []).some((child) => walk(child, node.deathDate || currentDate));
+    };
+
+    walk(tree, tree.deathDate);
+    return inheritedDate;
+  };
+
+  const handlePersonAction = (action) => {
+    if (!action || typeof action !== 'object') return;
+
+    setTree((prev) => {
+      switch (action.type) {
+        case 'updateDeathInfo':
+          return updateDeathInfo(prev, action.nodeId, {
+            isDeceased: action.isDeceased,
+            deathDate: action.deathDate,
+            inheritedDate: action.inheritedDate || getInheritedDateForNode(action.nodeId),
+          });
+        case 'updateHistoryInfo':
+          return updateHistoryInfo(prev, action.nodeId, action.changes || {});
+        case 'updateRelationInfo':
+          return updateRelationInfo(prev, action.nodeId, action.relation);
+        case 'setHojuStatus':
+          return setHojuStatus(prev, action.nodeId, action.isHoju);
+        case 'applyNodeUpdates':
+          return applyNodeUpdates(prev, action.nodeId, action.updates || {});
+        default:
+          return prev;
+      }
+    });
+  };
+
   const handleUpdate = (id, changes, value) => {
+    if (typeof id === 'object' && id !== null && id.type) {
+      handlePersonAction(id);
+      return;
+    }
+
     const updates = (typeof changes === 'object' && changes !== null) ? changes : { [changes]: value };
     const field = typeof changes === 'string' ? changes : Object.keys(changes)[0];
     const val = updates[field];
@@ -545,17 +595,31 @@ function App() {
       }
     }
     if (field === 'relation') {
-      const isFemale = ['daughter', 'mother', 'sister', 'wife'].includes(val); const isMale = ['son', 'father', 'brother', 'husband'].includes(val);
-      if (isFemale || isMale) {
-        let targetPersonId = null; const findPId = (n) => { if (n.id === id) targetPersonId = n.personId; if (!targetPersonId && n.heirs) n.heirs.forEach(findPId); }; findPId(tree);
-        setTree(prevTree => { const syncRelation = (n) => { let nextNode = { ...n }; if (nextNode.id === id || (targetPersonId && nextNode.personId === targetPersonId)) { const newHeirs = (nextNode.heirs || []).map(h => { if (['wife', 'husband', 'spouse'].includes(h.relation)) return { ...h, relation: isFemale ? 'husband' : 'wife' }; return h; }); nextNode = { ...nextNode, relation: val, heirs: newHeirs }; } if (nextNode.heirs) nextNode.heirs = nextNode.heirs.map(syncRelation); return nextNode; }; return syncRelation(prevTree); }); return;
-      }
+      handlePersonAction({ type: 'updateRelationInfo', nodeId: id, relation: val });
+      return;
     }
-    if (field === 'isHoju' && val === true) { setTree(prev => { const updateSingleHoju = (n) => { if (n.heirs && n.heirs.some(h => h.id === id)) return { ...n, heirs: n.heirs.map(h => ({ ...h, isHoju: h.id === id ? true : false })) }; return { ...n, heirs: n.heirs?.map(updateSingleHoju) || [] }; }; return updateSingleHoju(prev); }); }
+    if (field === 'isHoju') {
+      handlePersonAction({ type: 'setHojuStatus', nodeId: id, isHoju: val });
+      return;
+    }
+    if (field === 'deathDate' || field === 'isDeceased') {
+      handlePersonAction({
+        type: 'updateDeathInfo',
+        nodeId: id,
+        deathDate: updates.deathDate,
+        isDeceased: updates.isDeceased,
+        inheritedDate: getInheritedDateForNode(id),
+      });
+      return;
+    }
+    if (['marriageDate', 'remarriageDate', 'divorceDate', 'restoreDate'].includes(field)) {
+      handlePersonAction({ type: 'updateHistoryInfo', nodeId: id, changes: updates });
+      return;
+    }
     setVault(prev => {
       let targetPersonId = id; let parentPersonId = null;
       const findNode = (n, pId) => { if (n.id === id) { targetPersonId = n.personId; parentPersonId = pId; return true; } return (n.heirs || []).some(child => findNode(child, n.personId)); }; findNode(tree, null);
-      const personalKeys = ['name', 'isDeceased', 'deathDate', 'marriageDate', 'remarriageDate', 'gender'];
+      const personalKeys = ['name', 'isDeceased', 'deathDate', 'marriageDate', 'remarriageDate', 'divorceDate', 'restoreDate', 'gender'];
       personalKeys.forEach(k => { if (updates[k] !== undefined) prev.persons[targetPersonId][k] = updates[k]; });
       const linkKeys = ['relation', 'isExcluded', 'exclusionOption', 'isHoju', 'isSameRegister'];
       if (parentPersonId && prev.relationships[parentPersonId]) { const link = prev.relationships[parentPersonId].find(l => l.targetId === targetPersonId); if (link) { linkKeys.forEach(k => { if (updates[k] !== undefined) link[k] = updates[k]; }); } }
@@ -565,25 +629,7 @@ function App() {
 
   const applyUpdate = (id, changes, value, syncGlobal = false, syncName = '') => {
     const updates = (typeof changes === 'object' && changes !== null) ? changes : { [changes]: value };
-    let targetPersonId = null; let targetNode = null;
-    const findPersonId = (n) => { if (n.id === id) { targetPersonId = n.personId; targetNode = n; } if (!targetPersonId && n.heirs) n.heirs.forEach(findPersonId); }; findPersonId(tree);
-    const personalFields = ['name', 'isDeceased', 'deathDate', 'isRemarried', 'remarriageDate', 'marriageDate'];
-    const hasPersonalUpdate = Object.keys(updates).some(k => personalFields.includes(k));
-    const isExclusionUpdate = updates.isExcluded !== undefined;
-    const isDeadWithoutHeirs = targetNode?.isDeceased && (!targetNode?.heirs || targetNode?.heirs.length === 0);
-    const updateNode = (n, visited = new Set()) => {
-      if (!n || visited.has(n.id)) return n;
-      visited.add(n.id);
-      if (n.id === id) return { ...n, personId: targetPersonId || n.personId, ...updates };
-      else if (targetPersonId && n.personId === targetPersonId) {
-         const filteredUpdates = {};
-         if (hasPersonalUpdate) Object.keys(updates).forEach(k => { if (personalFields.includes(k)) filteredUpdates[k] = updates[k]; });
-         if (isExclusionUpdate && isDeadWithoutHeirs && (!n.heirs || n.heirs.length === 0)) { filteredUpdates.isExcluded = updates.isExcluded; if (updates.exclusionOption !== undefined) filteredUpdates.exclusionOption = updates.exclusionOption; }
-         if (Object.keys(filteredUpdates).length > 0) return { ...n, ...filteredUpdates };
-      }
-      return { ...n, heirs: n.heirs?.map(h => updateNode(h, visited)) || [] };
-    };
-    setTree(prev => updateNode(prev));
+    handlePersonAction({ type: 'applyNodeUpdates', nodeId: id, updates });
   };
 
   const handleSyncConfirm = (shouldSync) => { if (!syncRequest) return; applyUpdate(syncRequest.id, syncRequest.field, syncRequest.value, shouldSync, syncRequest.name); setSyncRequest(null); };
@@ -601,7 +647,7 @@ function App() {
     let parentPersonId = parentId; const findPId = (n) => { if (n.id === parentId) parentPersonId = n.personId; if (n.heirs) n.heirs.forEach(findPId); }; findPId(tree);
     setVault(prev => {
       const newPersonId = `p_${Math.random().toString(36).substr(2, 9)}`;
-      prev.persons[newPersonId] = { id: newPersonId, name: '', isDeceased: false, deathDate: '', marriageDate: '', remarriageDate: '', gender: '' };
+      prev.persons[newPersonId] = { id: newPersonId, name: '', isDeceased: false, deathDate: '', marriageDate: '', remarriageDate: '', divorceDate: '', restoreDate: '', gender: '' };
       if (!prev.relationships[parentPersonId]) prev.relationships[parentPersonId] = [];
       prev.relationships[parentPersonId].push({ targetId: newPersonId, relation: 'son', isExcluded: false, exclusionOption: '', isHoju: false, isSameRegister: true });
       if (parentPersonId !== prev.meta.rootPersonId) { Object.values(prev.relationships).forEach(links => { const pLink = links.find(l => l.targetId === parentPersonId); if (pLink) { pLink.isExcluded = false; pLink.exclusionOption = ''; } }); }
@@ -843,7 +889,7 @@ function App() {
         };
 
         if (data.id === 'root' || (Array.isArray(data.heirs) && data.name !== undefined)) { 
-          setTree(sanitizeNode(data, data.deathDate)); 
+          setTree(normalizeImportedTree(data)); 
           setActiveTab('calc'); 
         } else if (data.people && Array.isArray(data.people)) { 
           alert('이전 버전 형식입니다. 일부 데이터가 누락될 수 있습니다.');
@@ -1106,38 +1152,33 @@ function App() {
 
           const handleAiIngest = (input) => {
             if (!input.trim() || !input.includes('{')) return;
-            try {
+          try {
               const cleanJson = input.replace(/```json/g, '').replace(/```/g, '').trim();
               const parsedTree = JSON.parse(cleanJson);
-              const effectiveDate = parsedTree.deathDate || tree.deathDate;
-              const era = getLawEra(effectiveDate);
-
-              const processAiData = (node) => {
-                if (Array.isArray(node)) { node.forEach(processAiData); return; }
-                if (!node.id) node.id = `ai_${Math.random().toString(36).substr(2, 9)}`;
-                const nodeEffDate = node.deathDate || (parsedTree.deathDate || tree.deathDate);
-                const nodeEra = getLawEra(nodeEffDate);
-                const isSpouseType = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(node.relation);
-                if (nodeEra === '1991' && !isSpouseType && node.id !== 'root') { node.marriageDate = ''; node.remarriageDate = ''; }
-                if (node.heirs) node.heirs.forEach(processAiData);
-              };
-              processAiData(parsedTree);
-
-              if (aiTargetId === 'root') setTree({ ...parsedTree, id: 'root' });
+              if (aiTargetId === 'root') {
+                setTree(normalizeImportedTree({ ...parsedTree, id: 'root' }));
+              }
               else {
                 const targetRawIds = [];
                 const findRawIds = (n) => { if (n.id === aiTargetId || n.personId === aiTargetId) targetRawIds.push(n.id); if (n.heirs) n.heirs.forEach(findRawIds); };
                 findRawIds(tree);
                 setTree(prev => {
+                  const targetInheritedDate = getInheritedDateForNode(aiTargetId);
+                  const normalizedSource = normalizeImportedTree({
+                    id: 'root',
+                    name: parsedTree.name || '',
+                    deathDate: parsedTree.deathDate || targetInheritedDate || tree.deathDate,
+                    heirs: Array.isArray(parsedTree) ? parsedTree : (parsedTree.heirs || []),
+                  });
+
                   const injectHeirs = (n) => {
                     if (targetRawIds.includes(n.id)) {
-                      const generateNewHeirs = (heirsArray) => (heirsArray || []).map(h => {
-                        const isSpouse = ['wife', 'husband', 'spouse'].includes(h.relation);
-                        if (era === '1991' && !isSpouse) { h.marriageDate = ''; h.remarriageDate = ''; }
-                        return { ...h, id: `ai_${Math.random().toString(36).substr(2, 9)}`, heirs: generateNewHeirs(h.heirs || []) };
-                      });
-                      const sourceHeirs = Array.isArray(parsedTree) ? parsedTree : (parsedTree.heirs || []);
-                      return { ...n, heirs: [...(n.heirs || []), ...generateNewHeirs(sourceHeirs)] };
+                      const generateNewHeirs = (heirsArray) => (heirsArray || []).map((h) => ({
+                        ...h,
+                        id: `ai_${Math.random().toString(36).substr(2, 9)}`,
+                        heirs: generateNewHeirs(h.heirs || []),
+                      }));
+                      return { ...n, heirs: [...(n.heirs || []), ...generateNewHeirs(normalizedSource.heirs || [])] };
                     }
                     return { ...n, heirs: n.heirs?.map(injectHeirs) || [] };
                   };

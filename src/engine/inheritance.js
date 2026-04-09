@@ -5,6 +5,11 @@ export const calculateInheritance = (tree) => {
   let steps = [];
   let warnings = [];
   let appliedLaws = new Set();
+
+  const getPersonKey = (person) => {
+    if (!person) return '';
+    return person.personId || person.id || `${person.name || ''}::${person.relation || ''}`;
+  };
   
   const findHeirsByName = (root, targetName, excludeId) => {
     if (!targetName || targetName.trim() === '') return null;
@@ -116,13 +121,13 @@ export const calculateInheritance = (tree) => {
 
     if (!node.isDeceased && !(node.isExcluded && (node.exclusionOption === 'lost' || node.exclusionOption === 'disqualified')) || node.id === 'root') {
       if (node.id !== 'root') {
-        results.push({ id: node.id, personId: node.personId, name: node.name, n: inN, d: inD, relation: node.relation });
+        results.push({ id: node.id, personId: getPersonKey(node), name: node.name, n: inN, d: inD, relation: node.relation });
       }
       if (!node.isDeceased && !isDisqualifiedOrLost) return;
     }
 
     if (isDisqualifiedOrLost) {
-      results.push({ id: node.id, personId: node.personId, name: node.name, n: 0, d: 1, relation: node.relation });
+      results.push({ id: node.id, personId: getPersonKey(node), name: node.name, n: 0, d: 1, relation: node.relation });
     }
 
     if (isRenounced(node, inheritedDate)) return;
@@ -163,7 +168,7 @@ export const calculateInheritance = (tree) => {
         const isSubstitution = node.isDeceased && node.deathDate && inheritedDate && isBefore(node.deathDate, inheritedDate);
         if (isSubstitution) return; 
         
-        results.push({ id: node.id, personId: node.personId, name: node.name, n: inN, d: inD, relation: node.relation });
+        results.push({ id: node.id, personId: getPersonKey(node), name: node.name, n: inN, d: inD, relation: node.relation });
         return; 
       }
       return; 
@@ -312,7 +317,7 @@ export const calculateInheritance = (tree) => {
   const stepByPersonId = {}; 
   
   steps.forEach(step => {
-    const pId = step.dec?.personId;
+    const pId = getPersonKey(step.dec);
     if (!pId || step.dec?.id === 'root') {
       mergedSteps.push(step);
       return;
@@ -361,14 +366,17 @@ export const calculateInheritance = (tree) => {
   });
 
   const categoryMap = {};
-  tree.heirs.forEach((h, idx) => { if (!h.isDeceased) categoryMap[h.personId] = { type: 'direct', order: idx }; });
+  tree.heirs.forEach((h, idx) => {
+    if (!h.isDeceased) categoryMap[getPersonKey(h)] = { type: 'direct', order: idx };
+  });
 
   const buildCategory = (node, branchRoot, order) => {
     if (!node.heirs) return;
     node.heirs.forEach(h => {
       if (!h.isDeceased && h.name && h.name.trim() !== '') {
-        if (!categoryMap[h.personId]) {
-          categoryMap[h.personId] = { type: 'sub', ancestor: branchRoot, order: order };
+        const personKey = getPersonKey(h);
+        if (!categoryMap[personKey]) {
+          categoryMap[personKey] = { type: 'sub', ancestor: branchRoot, order: order };
         }
       }
       if (h.isDeceased) {
@@ -383,7 +391,7 @@ export const calculateInheritance = (tree) => {
     if (h.isDeceased && isBloodPillar) {
       buildCategory(h, h, idx);
     } else if (!h.isDeceased) {
-      categoryMap[h.personId] = { type: 'direct', order: idx };
+      categoryMap[getPersonKey(h)] = { type: 'direct', order: idx };
     }
   });
 
