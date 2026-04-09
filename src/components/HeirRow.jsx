@@ -8,9 +8,6 @@ import { CSS } from '@dnd-kit/utilities';
 const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, rootDeathDate, onKeyDown, rootIsHoju, onTabClick, parentNode }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: node.id });
 
-  // 💡 재혼으로 인한 스위치 강제 ON 방지용 슬라이드 경고창 상태
-  const [showRemarriageWarning, setShowRemarriageWarning] = useState(false);
-
   // 💡 실시간 계산된 지분 당겨오기 (엔진 연동)
   // finalShares.direct와 subGroups 전체를 뒤져서 내 personId에 맞는 지분을 찾습니다.
   const calcShare = useMemo(() => {
@@ -445,37 +442,6 @@ const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, r
                         }
                       }}
                       className="w-[130px] border border-[#e5e5e5] rounded-md px-2.5 py-1.5 text-[13px] text-center font-medium bg-[#f8f8f7] focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all" 
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <button 
-            onClick={() => setIsHistoryModalOpen(false)} 
-            onKeyDown={e => {
-              if (e.key === 'Tab' || e.key === 'Enter' || e.key.includes('Arrow')) {
-                e.preventDefault();
-                const focusables = Array.from(e.currentTarget.closest('.modal-content-container').querySelectorAll('input, button:not([title="닫기"])'));
-                const idx = focusables.indexOf(e.target);
-                const next = e.shiftKey ? (idx - 1 + focusables.length) % focusables.length : (idx + 1) % focusables.length;
-                focusables[next].focus();
-              }
-            }}
-            className="w-full py-2.5 bg-[#f1f1ef] hover:bg-[#e5e5e1] dark:bg-neutral-700 dark:hover:bg-neutral-600 text-[#37352f] dark:text-neutral-200 font-bold rounded-lg transition-colors text-[13px] shadow-sm flex items-center justify-center gap-2 mt-2 focus:ring-2 focus:ring-blue-500 outline-none"
-          >
-            입력 완료 및 닫기
-          </button>
-        </div>
-      </div>
-    )}
-  </>
-);
-};
-
-export default HeirRow;
-                   className="w-[130px] border border-[#e5e5e5] rounded-md px-2.5 py-1.5 text-[13px] text-center font-medium bg-[#f8f8f7] focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all" 
                     />
                   </div>
                 </div>
