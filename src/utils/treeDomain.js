@@ -64,6 +64,11 @@ const normalizeRelation = (relation, fallback = 'son') => {
   return map[relation] || relation || fallback;
 };
 
+const toSafeName = (value) => (typeof value === 'string' ? value.trim() : '');
+
+const createPersonId = () => generateId('p');
+const createNodeId = () => generateId('n');
+
 export const normalizeImportedTree = (rawTree) => {
   const sanitizeNode = (inputNode, parentDate = '', isRoot = false) => {
     const base = pruneDerivedFields(inputNode);
@@ -273,4 +278,98 @@ export const applyNodeUpdates = (tree, nodeId, updates) => {
       return { ...node, ...personUpdates };
     }
   );
+};
+
+export const appendQuickHeirs = (tree, parentId, rawNames) => {
+  const current = findNodeById(tree, parentId);
+  if (!current) return tree;
+
+  const names = rawNames
+    .split(/[,\s]+/)
+    .map(toSafeName)
+    .filter(Boolean);
+
+  if (names.length === 0) return tree;
+
+  const usedNames = new Set((current.heirs || []).map((heir) => heir.name).filter(Boolean));
+  const hasSpouse = (current.heirs || []).some((heir) => ['wife', 'husband', 'spouse'].includes(heir.relation));
+  const isParentFemale = current.gender === 'female' || ['wife', 'daughter', 'mother', 'sister'].includes(current.relation);
+
+  const newHeirs = names.map((name, index) => {
+    const isSpouse = index === 0 && !hasSpouse;
+    let finalName = name;
+    if (usedNames.has(finalName)) {
+      let suffix = 2;
+      while (usedNames.has(`${name}(${suffix})`)) suffix += 1;
+      finalName = `${name}(${suffix})`;
+    }
+    usedNames.add(finalName);
+
+    return {
+      id: createNodeId(),
+      personId: createPersonId(),
+      name: finalName,
+      relation: isSpouse ? (isParentFemale ? 'husband' : 'wife') : 'son',
+      isDeceased: false,
+      deathDate: '',
+      marriageDate: '',
+      remarriageDate: '',
+      divorceDate: '',
+      restoreDate: '',
+      gender: '',
+      isHoju: false,
+      isExcluded: false,
+      exclusionOption: '',
+      isSameRegister: true,
+      heirs: [],
+    };
+  });
+
+  return updateTreeNodes(
+    cloneTree(tree),
+    (node) => node.id === parentId,
+    (node) => ({
+      ...node,
+      isDeceased: true,
+      isExcluded: false,
+      exclusionOption: '',
+      heirs: [...(node.heirs || []), ...newHeirs],
+    })
+  );
+};
+
+export const serializeFactTree = (tree) => {
+  const serializeNode = (node, parentDate = '') => {
+    const deathDate = normalizeDateField(node?.deathDate);
+    const refDate = parentDate || deathDate;
+    const isPredeceased = deathDate && refDate && isBefore(deathDate, refDate);
+    const exclusionOption =
+      isPredeceased && node?.isExcluded && node?.exclusionOption === 'renounce'
+        ? 'predeceased'
+        : (node?.exclusionOption || '');
+
+    return {
+      id: node?.id || 'root',
+      personId: node?.personId || (node?.id === 'root' ? 'root' : createPersonId()),
+      name: node?.name || '',
+      relation: node?.id === 'root' ? undefined : normalizeRelation(node?.relation),
+      isDeceased: !!node?.isDeceased,
+      deathDate,
+      marriageDate: normalizeDateField(node?.marriageDate),
+      remarriageDate: normalizeDateField(node?.remarriageDate),
+      divorceDate: normalizeDateField(node?.divorceDate),
+      restoreDate: normalizeDateField(node?.restoreDate),
+      gender: node?.gender || '',
+      isHoju: !!node?.isHoju,
+      isExcluded: !!node?.isExcluded,
+      exclusionOption,
+      isSameRegister: node?.isSameRegister !== false,
+      caseNo: node?.id === 'root' ? (node?.caseNo || '') : undefined,
+      shareN: node?.id === 'root' ? Math.max(1, Number(node?.shareN) || 1) : undefined,
+      shareD: node?.id === 'root' ? Math.max(1, Number(node?.shareD) || 1) : undefined,
+      heirs: (node?.heirs || []).map((child) => serializeNode(child, deathDate || refDate)),
+    };
+  };
+
+  return JSON.parse(JSON.stringify(serializeNode(tree)));
 };
