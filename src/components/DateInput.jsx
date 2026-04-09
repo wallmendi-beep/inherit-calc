@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 export const DateInput = ({ value, onChange, placeholder, className, onKeyDown, autoFocus }) => {
+  const [prevValue, setPrevValue] = useState(value);
   const [localValue, setLocalValue] = useState(value || '');
 
-  useEffect(() => {
+  if (value !== prevValue) {
+    setPrevValue(value);
     setLocalValue(value || '');
-  }, [value]);
+  }
 
   const format = (v) => {
     let val = v.replace(/\D/g, '').slice(0, 8);

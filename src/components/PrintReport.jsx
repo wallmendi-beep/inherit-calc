@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { getLawEra, getRelStr, formatKorDate, math } from '../engine/utils';
 
-const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculations, propertyValue }) => {
+const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculations }) => {
   // 1. 공통 헤더 제목 매핑
   const reportTitle = {
     input: '상속인 명부 및 가계 연혁',

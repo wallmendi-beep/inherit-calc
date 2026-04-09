@@ -1,162 +1,23 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
-  IconCalculator, IconUserPlus, IconSave, IconFolderOpen,
-  IconPrinter, IconNetwork, IconTable, IconList,
-  IconReset, IconFileText, IconXCircle, IconX, IconChevronRight,
-  IconSun, IconMoon, IconUndo, IconRedo, IconUserGroup, IconTrash2
+  IconPrinter, IconNetwork, IconList, IconTable, IconCalculator,
+  IconReset, IconFolderOpen, IconSave,
+  IconFileText, IconX, IconChevronRight,
+  IconSun, IconMoon, IconUndo, IconRedo, IconUserGroup, IconTrash2, IconSparkles
 } from './components/Icons';
 import { DateInput } from './components/DateInput';
 import HeirRow from './components/HeirRow';
 import TreeReportNode from './components/TreeReportNode';
 import PrintReport from './components/PrintReport';
-import { math, getLawEra, getRelStr, formatKorDate, formatMoney, isBefore } from './engine/utils';
+import { math, getLawEra, getRelStr, formatKorDate, isBefore } from './engine/utils';
 import { calculateInheritance } from './engine/inheritance';
-import { getInitialTree, getEmptyTree } from './utils/initialData';
+import { getInitialTree } from './utils/initialData';
+import { migrateToVault, buildTreeFromVault } from './utils/vault';
 import { useSmartGuide } from './hooks/useSmartGuide';
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { QRCodeSVG } from 'qrcode.react'; // 💡 v3.0 오프라인 QR 생성기
 
-// ============================================================================
-// 🚀 [v3.0 코어 엔진] 맥락 기반 저장 및 파생(Derived) 조립기
-// ============================================================================
-
-// 1️⃣ 저장(마이그레이션) 엔진: 상태값은 버리고 오직 절대 '팩트(Fact)'만 중앙 창고에 보관
-export const migrateToVault = (oldTree) => {
-  const vault = {
-    meta: {
-      caseNo: oldTree.caseNo || '',
-      rootPersonId: oldTree.personId || oldTree.id || 'root',
-      targetShareN: oldTree.shareN || 1,
-      targetShareD: oldTree.shareD || 1,
-    },
-    persons: {},
-    relationships: {}
-  };
-
-  const traverse = (node, parentId = null) => {
-    if (!node) return;
-    const pId = node.personId || node.id || `p_${Math.random().toString(36).substr(2,9)}`;
-    if (node.id === 'root') vault.meta.rootPersonId = pId;
-
-    // 💡 팩트 저장: 신상 정보는 변하지 않는 진실이므로 그대로 보관
-    if (!vault.persons[pId]) {
-      vault.persons[pId] = {
-        id: pId, name: node.name || '', isDeceased: !!node.isDeceased,
-        deathDate: node.deathDate || '', marriageDate: node.marriageDate || '',
-        remarriageDate: node.remarriageDate || '', gender: node.gender || ''
-      };
-    } else {
-      const p = vault.persons[pId];
-      if (!p.deathDate && node.deathDate) p.deathDate = node.deathDate;
-      if (!p.marriageDate && node.marriageDate) p.marriageDate = node.marriageDate;
-      if (!p.name && node.name) p.name = node.name;
-    }
-
-    // 💡 법적 결단 저장: 포기, 결격, 호주 등 인간이 의도적으로 조작한 스위치만 보존
-    if (parentId) {
-      if (!vault.relationships[parentId]) vault.relationships[parentId] = [];
-      const isManualExclusion = node.exclusionOption === 'renounce' || node.exclusionOption === 'disqualified' || node.exclusionOption === 'predeceased';
-      
-      const existingLink = vault.relationships[parentId].find(link => link.targetId === pId);
-      if (!existingLink) {
-        vault.relationships[parentId].push({
-          targetId: pId, relation: node.relation || 'son',
-          isExcluded: isManualExclusion ? true : !!node.isExcluded, 
-          exclusionOption: isManualExclusion ? node.exclusionOption : '',
-          isHoju: !!node.isHoju, isSameRegister: node.isSameRegister !== false
-        });
-      }
-    }
-    if (node.heirs) node.heirs.forEach(child => traverse(child, pId));
-  };
-  traverse(oldTree);
-  return vault;
-};
-
-
-// 2️⃣ 불러오기(조립) 엔진: 보관된 팩트를 꺼내어 현재 타임라인(맥락)에 맞게 스위치를 자동 해석!
-export const buildTreeFromVault = (vault) => {
-  if (!vault || !vault.meta) return null;
-  const rootId = vault.meta.rootPersonId;
-  const rootPerson = vault.persons[rootId];
-  if (!rootPerson) return null;
-
-  const buildNode = (personId, parentDeathDate = null, visited = new Set()) => {
-    if (visited.has(personId)) return null;
-    const newVisited = new Set(visited);
-    newVisited.add(personId);
-    const person = vault.persons[personId];
-    if (!person) return null;
-
-    const node = { ...person, personId: personId, heirs: [] };
-    if (personId === rootId) {
-      node.caseNo = vault.meta.caseNo; node.shareN = vault.meta.targetShareN;
-      node.shareD = vault.meta.targetShareD; node.id = 'root';
-    }
-
-    const effectiveDate = parentDeathDate || node.deathDate; // 타임라인 추적
-    const links = vault.relationships[personId] || [];
-
-    links.forEach(link => {
-      const childPerson = vault.persons[link.targetId];
-      const nextEffectiveDate = (childPerson?.deathDate && !isBefore(childPerson.deathDate, effectiveDate)) 
-                                ? childPerson.deathDate : effectiveDate;
-                                
-      const childNode = buildNode(link.targetId, nextEffectiveDate, newVisited);
-      if (childNode) {
-        childNode.id = `n_${personId}_${link.targetId}`;
-        childNode.relation = link.relation;
-        childNode.isHoju = link.isHoju;
-        
-        // 💡 [실시간 맥락 해석기] 스위치 자동 세팅 로직
-        const isPreDeceased = childNode.deathDate && effectiveDate && isBefore(childNode.deathDate, effectiveDate);
-        const hasHeirs = childNode.heirs && childNode.heirs.length > 0;
-        const isSpouseType = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(childNode.relation);
-        const isDaughter = ['daughter', '딸'].includes(childNode.relation);
-
-        childNode.isExcluded = link.isExcluded;
-        childNode.exclusionOption = link.exclusionOption;
-
-        if (isPreDeceased && !isSpouseType) {
-          childNode.isExcluded = true; 
-          childNode.exclusionOption = 'predeceased'; 
-        }
-        
-        if (isDaughter && childNode.marriageDate && effectiveDate && isBefore(childNode.marriageDate, effectiveDate)) {
-          childNode.isSameRegister = false; 
-        } else {
-          childNode.isSameRegister = link.isSameRegister;
-        }
-
-        node.heirs.push(childNode);
-      }
-    });
-    return node;
-  };
-  return buildNode(rootId, rootPerson.deathDate);
-};
-// ============================================================================
-
-const getWarningState = (n, rootDeathDate, level = 1) => {
-  if (!n) return { isDirect: false, hasDescendant: false };
-  if (n.isExcluded && (n.exclusionOption === 'no_heir' || n.exclusionOption === 'renounce' || !n.exclusionOption)) {
-    return { isDirect: false, hasDescendant: false };
-  }
-  const isRootSpouse = level === 1 && ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(n.relation);
-  const isPreDeceasedSpouse = isRootSpouse && n.deathDate && rootDeathDate && isBefore(n.deathDate, rootDeathDate);
-  const requiresHeirsIfExcluded = n.isExcluded && ['lost', 'disqualified'].includes(n.exclusionOption);
-  const requiresHeirsIfDeceased = !n.isExcluded && n.isDeceased && !isPreDeceasedSpouse;
-  const isDirect = n.id !== 'root' && (requiresHeirsIfExcluded || requiresHeirsIfDeceased) && (!n.heirs || n.heirs.length === 0);
-  let hasDescendant = false;
-  if (n.heirs && n.heirs.length > 0) {
-    hasDescendant = n.heirs.some(h => {
-      const childState = getWarningState(h, rootDeathDate, level + 1);
-      return childState.isDirect || childState.hasDescendant;
-    });
-  }
-  return { isDirect, hasDescendant };
-};
 
 const MiniTreeView = ({ node, level = 0, onSelectNode, visitedHeirs = new Set(), deathDate, toggleSignal, searchQuery, matchIds, currentMatchId, guideStatusMap }) => {
   const [isExpanded, setIsExpanded] = React.useState(level === 0);
@@ -232,40 +93,34 @@ const MiniTreeView = ({ node, level = 0, onSelectNode, visitedHeirs = new Set(),
 function App() {
   const [activeTab, setActiveTab] = useState('input'); 
   const [isResetModalOpen, setIsResetModalOpen] = useState(false); 
-  const [syncRequest, setSyncRequest] = useState(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1.0);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [aiInputText, setAiInputText] = useState("");
   const [aiTargetId, setAiTargetId] = useState('root');
-  const [showQrCode, setShowQrCode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [matchIds, setMatchIds] = useState([]);
   const [currentMatchIdx, setCurrentMatchIdx] = useState(0);
   const [propertyValue, setPropertyValue] = useState(''); 
   const [specialBenefits, setSpecialBenefits] = useState({}); 
   const [contributions, setContributions] = useState({});     
-  const [isAmountActive, setIsAmountActive] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  const stickerRef = useRef(null);
-  const stickerPos = useRef({ x: 0, y: 0 });
+  const [stickerOffset, setStickerOffset] = useState({ x: 0, y: 0 });
   const [isStickerDragging, setIsStickerDragging] = useState(false);
 
   const handleStickerMouseDown = (e) => {
     e.preventDefault(); 
     setIsStickerDragging(true);
-    const startX = e.clientX - stickerPos.current.x;
-    const startY = e.clientY - stickerPos.current.y;
-    const handleMouseMove = (moveEvent) => {
-      const newX = moveEvent.clientX - startX;
-      const newY = moveEvent.clientY - startY;
-      stickerPos.current = { x: newX, y: newY };
-      if (stickerRef.current) stickerRef.current.style.transform = `translate(${newX}px, ${newY}px)`;
+    const startX = e.clientX - stickerOffset.x;
+    const startY = e.clientY - stickerOffset.y;
+    
+    const handleMouseMove = (mv) => {
+      setStickerOffset({ x: mv.clientX - startX, y: mv.clientY - startY });
     };
     const handleMouseUp = () => {
       setIsStickerDragging(false);
@@ -365,7 +220,6 @@ function App() {
     if (typeof nodeId === 'string' && nodeId.startsWith('tab:')) {
       const targetTabId = nodeId.split(':')[1];
       setActiveDeceasedTab(targetTabId);
-      setIsFolderFocused(true);
       return;
     }
     const findTabIdForNode = (currentNode, currentTabId) => {
@@ -393,24 +247,10 @@ function App() {
     }, 150);
   };
 
-  const [isFolderFocused, setIsFolderFocused] = useState(false); 
   const [sidebarToggleSignal, setSidebarToggleSignal] = useState(1); 
   const [mainQuickVal, setMainQuickVal] = useState('');          
   const [isMainQuickActive, setIsMainQuickActive] = useState(false); 
-  const [duplicateRequest, setDuplicateRequest] = useState(null); 
 
-  const findDuplicates = (node, name, excludeId, results = []) => {
-    if (!name || name.trim() === '') return results;
-    if (node.id !== excludeId && node.name === name.trim()) results.push(node);
-    if (node.heirs) node.heirs.forEach(h => findDuplicates(h, name, excludeId, results));
-    return results;
-  };
-
-  const findParentNode = (root, targetId) => {
-    if (root.heirs && root.heirs.some(h => h.id === targetId)) return root;
-    if (root.heirs) { for (const h of root.heirs) { const p = findParentNode(h, targetId); if (p) return p; } }
-    return null;
-  };
 
   const handleQuickSubmit = (parentId, parentNode, value) => {
     if (!value.trim()) return;
@@ -451,14 +291,19 @@ function App() {
   const [sidebarMatchIds, setSidebarMatchIds] = useState([]);
   const [sidebarCurrentMatchIdx, setSidebarCurrentMatchIdx] = useState(0);
 
-  useEffect(() => {
-    if (!sidebarSearchQuery.trim()) { setSidebarMatchIds([]); setSidebarCurrentMatchIdx(0); return; }
-    const query = sidebarSearchQuery.trim().toLowerCase();
+  const [prevSidebarSearchQuery, setPrevSidebarSearchQuery] = useState(sidebarSearchQuery);
+  const [prevTree, setPrevTree] = useState(tree);
+  if (sidebarSearchQuery !== prevSidebarSearchQuery || tree !== prevTree) {
+    setPrevSidebarSearchQuery(sidebarSearchQuery);
+    setPrevTree(tree);
     const matches = [];
-    const scan = (n) => { if (n.name && n.name.toLowerCase().includes(query)) matches.push(n.id); if (n.heirs) n.heirs.forEach(scan); };
-    scan(tree);
+    if (sidebarSearchQuery.trim()) {
+      const query = sidebarSearchQuery.trim().toLowerCase();
+      const scan = (n) => { if (n.name && n.name.toLowerCase().includes(query)) matches.push(n.id); if (n.heirs) n.heirs.forEach(scan); };
+      scan(tree);
+    }
     setSidebarMatchIds(matches); setSidebarCurrentMatchIdx(0);
-  }, [sidebarSearchQuery, tree]);
+  }
 
   useEffect(() => {
     if (sidebarMatchIds.length > 0 && sidebarOpen) {
@@ -519,14 +364,8 @@ function App() {
     const field = typeof changes === 'string' ? changes : Object.keys(changes)[0];
     const val = updates[field];
     if (field === 'name' && val && val.trim() !== '') {
-      const trimmedValue = val.trim(); const baseName = trimmedValue.replace(/\(\d+\)$/, ''); const dups = findDuplicates(tree, trimmedValue, id);
-      const allSameBaseDups = dups.length > 0 ? (() => { const r = []; const scan = (n) => { if (n.id !== id && n.name && (n.name === baseName || n.name.match(new RegExp(`^${baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\(\\d+\\)$`)))) r.push(n); if (n.heirs) n.heirs.forEach(scan); }; scan(tree); return r; })() : [];
-      if (dups.length > 0) {
-        const existingNode = dups[0]; const parentNodeOfExisting = findParentNode(tree, existingNode.id); const parentNodeOfCurrent = findParentNode(tree, id);
-        if (parentNodeOfExisting?.id === parentNodeOfCurrent?.id) { setDuplicateRequest({ name: trimmedValue, parentName: parentNodeOfExisting?.name || '피상속인', relation: existingNode.relation, isSameBranch: true, onConfirm: (isSame) => { if (isSame) alert(`'${trimmedValue}'님은 이미 이 단계의 상속인으로 등록되어 있습니다.\n동일인이라면 한 번만 등록해 주세요.`); else { setTree(prev => { const renameBase = (n) => { if (n.id === existingNode.id && n.name === baseName) return { ...n, name: `${baseName}(1)`, heirs: n.heirs?.map(renameBase) || [] }; return { ...n, heirs: n.heirs?.map(renameBase) || [] }; }; return renameBase(prev); }); const nextSuffix = allSameBaseDups.length + 1; applyUpdate(id, 'name', `${baseName}(${nextSuffix})`, false); } setDuplicateRequest(null); }, onCancel: () => setDuplicateRequest(null) }); return; }
-        const parentName = parentNodeOfExisting ? (parentNodeOfExisting.name || '피상속인') : '피상속인';
-        setDuplicateRequest({ name: trimmedValue, parentName, relation: existingNode.relation, isSameBranch: false, onConfirm: (isSame) => { if (isSame) { const syncIdInTree = (n) => { if (n.id === id) return { ...n, name: trimmedValue, personId: existingNode.personId }; return { ...n, heirs: n.heirs?.map(syncIdInTree) || [] }; }; setTree(prev => syncIdInTree(prev)); } else { setTree(prev => { const renameBase = (n) => { if (n.id === existingNode.id && n.name === baseName) return { ...n, name: `${baseName}(1)`, heirs: n.heirs?.map(renameBase) || [] }; return { ...n, heirs: n.heirs?.map(renameBase) || [] }; }; return renameBase(prev); }); const nextSuffix = allSameBaseDups.length + 1; applyUpdate(id, 'name', `${baseName}(${nextSuffix})`, false); } setDuplicateRequest(null); }, onCancel: () => setDuplicateRequest(null) }); return;
-      }
+      applyUpdate(id, 'name', val.trim());
+      return;
     }
     if (field === 'relation') {
       const isFemale = ['daughter', 'mother', 'sister', 'wife'].includes(val); const isMale = ['son', 'father', 'brother', 'husband'].includes(val);
@@ -547,7 +386,7 @@ function App() {
     });
   };
 
-  const applyUpdate = (id, changes, value, syncGlobal = false, syncName = '') => {
+  const applyUpdate = (id, changes, value) => {
     const updates = (typeof changes === 'object' && changes !== null) ? changes : { [changes]: value };
     let targetPersonId = null; let targetNode = null;
     const findPersonId = (n) => { if (n.id === id) { targetPersonId = n.personId; targetNode = n; } if (!targetPersonId && n.heirs) n.heirs.forEach(findPersonId); }; findPersonId(tree);
@@ -568,7 +407,6 @@ function App() {
     setTree(prev => updateNode(prev));
   };
 
-  const handleSyncConfirm = (shouldSync) => { if (!syncRequest) return; applyUpdate(syncRequest.id, syncRequest.field, syncRequest.value, shouldSync, syncRequest.name); setSyncRequest(null); };
 
   const handleRootUpdate = (field, value) => {
     setVault(prev => {
@@ -601,7 +439,7 @@ function App() {
   const [simpleTargetN, simpleTargetD] = math.simplify(tree.shareN || 1, tree.shareD || 1);
 
   const { finalShares, calcSteps, warnings } = useMemo(() => {
-    const preprocessTree = (n, parentDate, parentNode) => {
+    const prepareCalcTree = (n, parentDate, parentNode) => {
       const clone = { ...n }; const refDate = clone.id === 'root' ? clone.deathDate : parentDate;
       if (clone.id !== 'root' && !clone.isExcluded) {
         const isPre = clone.deathDate && refDate && isBefore(clone.deathDate, refDate); const isDeadWithoutHeirs = clone.isDeceased && (!clone.heirs || clone.heirs.length === 0);
@@ -615,10 +453,10 @@ function App() {
           } else { const stepChildren = parentNode.heirs.filter(h => h.id !== clone.id && ['son', 'daughter'].includes(h.relation) && !h.isExcluded); if (stepChildren.length > 0) clone.heirs = stepChildren.map(child => ({ ...child, id: `auto_${child.id}`, relation: child.relation, heirs: [] })); }
         }
       }
-      if (clone.heirs) clone.heirs = clone.heirs.map(h => preprocessTree(h, clone.deathDate || refDate, clone));
+      if (clone.heirs) clone.heirs = clone.heirs.map(h => prepareCalcTree(h, clone.deathDate || refDate, clone));
       return clone;
     };
-    const calcTree = preprocessTree(tree, tree.deathDate, null); const result = calculateInheritance(calcTree, propertyValue);
+    const calcTree = prepareCalcTree(tree, tree.deathDate, null); const result = calculateInheritance(calcTree, propertyValue);
     if (!result.warnings) result.warnings = []; return result;
   }, [tree, propertyValue]);
 
@@ -643,13 +481,19 @@ function App() {
     const remainder = estateVal - totalDistributed; return { estateVal, deemedEstate, totalSpecial, totalContrib, results, totalDistributed, remainder };
   }, [allFinalHeirs, propertyValue, specialBenefits, contributions]);
 
-  useEffect(() => {
-    if (!searchQuery.trim() || !finalShares || activeTab !== 'summary') { setMatchIds([]); setCurrentMatchIdx(0); return; }
-    const query = searchQuery.trim().toLowerCase(); const matches = [];
-    if (finalShares.direct) finalShares.direct.forEach(s => { if (s.name && s.name.toLowerCase().includes(query)) matches.push(`summary-row-${s.personId}`); });
-    if (finalShares.subGroups) { const scan = (group) => { group.shares.forEach(s => { if (s.name && s.name.toLowerCase().includes(query)) matches.push(`summary-row-${s.personId}-${group.ancestor.id}`); }); if (group.subGroups) group.subGroups.forEach(scan); }; finalShares.subGroups.forEach(scan); }
+  const [prevSearchQuery, setPrevSearchQuery] = useState(searchQuery);
+  const [prevActiveTab, setPrevActiveTab] = useState(activeTab);
+  if (searchQuery !== prevSearchQuery || activeTab !== prevActiveTab) {
+    setPrevSearchQuery(searchQuery);
+    setPrevActiveTab(activeTab);
+    const matches = [];
+    if (searchQuery.trim() && finalShares && activeTab === 'summary') {
+      const query = searchQuery.trim().toLowerCase();
+      if (finalShares.direct) finalShares.direct.forEach(s => { if (s.name && s.name.toLowerCase().includes(query)) matches.push(`summary-row-${s.personId}`); });
+      if (finalShares.subGroups) { const scan = (group) => { group.shares.forEach(s => { if (s.name && s.name.toLowerCase().includes(query)) matches.push(`summary-row-${s.personId}-${group.ancestor.id}`); }); if (group.subGroups) group.subGroups.forEach(scan); }; finalShares.subGroups.forEach(scan); }
+    }
     setMatchIds(matches); setCurrentMatchIdx(0);
-  }, [searchQuery, finalShares, activeTab]);
+  }
 
   useEffect(() => {
     if (matchIds.length > 0 && activeTab === 'summary') { const targetId = matchIds[currentMatchIdx]; const element = document.getElementById(targetId); if (element) element.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
@@ -736,7 +580,15 @@ function App() {
   }, [tree, activeDeceasedTab, calcSteps, finalShares]);
 
   useEffect(() => { const activeEl = tabRefs.current[activeDeceasedTab]; if (activeEl) activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); }, [activeDeceasedTab]);
-  useEffect(() => { const tabIds = deceasedTabs.map(t => t.id); if (!tabIds.includes(activeDeceasedTab)) { const fallback = (activeTab === 'input' && deceasedTabs.length > 0) ? deceasedTabs[0].id : 'root'; setActiveDeceasedTab(fallback); } }, [deceasedTabs, activeTab]);
+  const [prevDeceasedTabs, setPrevDeceasedTabs] = useState(deceasedTabs);
+  if (deceasedTabs !== prevDeceasedTabs) {
+    setPrevDeceasedTabs(deceasedTabs);
+    const tabIds = deceasedTabs.map(t => t.id);
+    if (!tabIds.includes(activeDeceasedTab)) {
+      const fallback = (activeTab === 'input' && deceasedTabs.length > 0) ? deceasedTabs[0].id : 'root';
+      setActiveDeceasedTab(fallback);
+    }
+  }
 
   const activeTabObj = useMemo(() => deceasedTabs.find(t => t.id === activeDeceasedTab) || null, [deceasedTabs, activeDeceasedTab]);
   const handleDragEnd = (event) => { const { active, over } = event; if (over && active.id !== over.id) { setTree(prev => { const newTree = JSON.parse(JSON.stringify(prev)); const reorderList = (list) => { if (!list) return false; const activeIdx = list.findIndex(item => item.id === active.id); const overIdx = list.findIndex(item => item.id === over.id); if (activeIdx !== -1 && overIdx !== -1) { const [movedItem] = list.splice(activeIdx, 1); list.splice(overIdx, 0, movedItem); return true; } for (let item of list) { if (item.heirs && item.heirs.length > 0 && reorderList(item.heirs)) return true; } return false; }; reorderList(newTree.heirs); return newTree; }); } };
@@ -811,7 +663,7 @@ function App() {
           const root = data.people.find(p => p.isRoot || p.id === 'root');
           if (root) { setTree({ id: 'root', name: root.name || '', gender: root.gender || 'male', deathDate: root.deathDate || '', caseNo: data.caseNo || '', isHoju: root.isHoju !== false, shareN: data.shareN || 1, shareD: data.shareD || 1, heirs: [] }); setActiveTab('input'); }
         } else alert('인식할 수 없는 파일 형식입니다.'); 
-      } catch (err) { alert('파일을 읽는 중 오류가 발생했습니다: ' + err.message); } 
+      } catch { alert('파일을 읽는 중 오류가 발생했습니다.'); } 
     }; 
     reader.readAsText(file); 
     e.target.value = ''; 
@@ -866,7 +718,9 @@ function App() {
       <PrintReport tree={tree} activeTab={activeTab} activeDeceasedTab={activeDeceasedTab} finalShares={finalShares} calcSteps={calcSteps} amountCalculations={amountCalculations} propertyValue={propertyValue} />
       <div className="w-full min-h-screen relative flex flex-col items-start pb-24 transition-colors duration-200 bg-[#f7f7f5] dark:bg-neutral-900 min-w-[1280px] print:hidden">
         {showNavigator && (
-        <div ref={stickerRef} className={`fixed top-28 right-8 z-[9999] no-print ${isStickerDragging ? 'cursor-grabbing' : 'cursor-grab'}`} style={{ transform: `translate3d(${stickerPos.current.x}px, ${stickerPos.current.y}px, 0)`, transition: 'none', willChange: 'transform', touchAction: 'none' }} onMouseDown={handleStickerMouseDown}>
+        <div className={`fixed top-28 right-8 z-[9999] no-print ${isStickerDragging ? 'cursor-grabbing' : 'cursor-grab'}`} 
+             style={{ transform: `translate3d(${stickerOffset.x}px, ${stickerOffset.y}px, 0)`, transition: 'none', willChange: 'transform', touchAction: 'none' }} 
+             onMouseDown={handleStickerMouseDown}>
           <div className={`relative w-[340px] ${isNavigatorRolledUp ? 'p-3' : 'p-5'} bg-white dark:bg-neutral-800 shadow-[0_12px_40px_rgb(0,0,0,0.15)] border border-[#e9e9e7] dark:border-neutral-700 rounded-xl select-none transition-all duration-200 ${isStickerDragging ? 'scale-[1.02]' : ''}`}>
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2 text-[#37352f] dark:text-neutral-100"><svg className={`w-5 h-5 ${hasActionItems ? 'text-[#2383e2]' : 'text-neutral-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><circle cx="12" cy="12" r="10" /><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" /></svg><span className="font-black text-[15px]">스마트 가이드</span></div>
@@ -897,7 +751,9 @@ function App() {
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
             <div className="flex items-center gap-1.5 bg-[#f7f7f5] dark:bg-neutral-700 px-2.5 py-1 rounded border border-[#e9e9e7] dark:border-neutral-600 mr-2 transition-colors"><div className="min-w-[120px] flex items-center gap-1 overflow-hidden"><span className="text-[11px] font-bold text-[#787774] dark:text-neutral-400 whitespace-nowrap">사건:</span><span className="text-[11px] font-bold text-[#37352f] dark:text-neutral-200 truncate">{tree.caseNo || '미입력'}</span></div><div className="w-px h-2.5 bg-[#d4d4d4] dark:bg-neutral-600 mx-0.5"></div><div className="min-w-[140px] flex items-center gap-1 overflow-hidden"><span className="text-[11px] font-bold text-[#787774] dark:text-neutral-400 whitespace-nowrap">피상속인:</span><span className="text-[13px] font-black text-[#0b6e99] dark:text-blue-400 truncate">{tree.name || '미입력'}</span></div></div>
-            <button onClick={() => { setAiTargetId('root'); setIsAiModalOpen(true); }} title="가계도 전체 AI 자동입력" className="flex items-center justify-center w-8 h-8 shrink-0 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 rounded-lg transition-all shadow-sm hover:scale-105 active:scale-95"><span className="text-[16px] leading-none opacity-100 drop-shadow-sm mt-0.5">✨</span></button>
+            <button onClick={() => { setAiTargetId('root'); setIsAiModalOpen(true); }} title="가계도 전체 AI 자동입력" className="flex items-center justify-center w-8 h-8 shrink-0 bg-white dark:bg-neutral-800 border border-[#e9e9e7] dark:border-neutral-700 hover:bg-[#f7f7f5] dark:hover:bg-neutral-700/50 rounded-lg transition-all shadow-sm group">
+              <IconSparkles size={16} className="text-neutral-400 group-hover:text-[#2383e2] transition-colors" />
+            </button>
             <button onClick={() => setShowNavigator(true)} className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all shadow-sm border shrink-0 mx-[10px] active:scale-95 ${hasActionItems ? 'bg-indigo-50 text-indigo-600 border-indigo-100 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-400 dark:border-indigo-800/50 dark:hover:bg-indigo-900/40' : 'bg-white text-[#787774] border-[#e9e9e7] hover:bg-[#f7f7f5] hover:text-[#37352f] dark:bg-neutral-800 dark:border-neutral-700 dark:hover:bg-neutral-700'}`} title={hasActionItems ? "새로운 스마트 가이드가 있습니다!" : "스마트 가이드 열기"}><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={hasActionItems ? 2.5 : 2}><circle cx="12" cy="12" r="10" /><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" /></svg></button>
             <button onClick={undoTree} disabled={vaultState.currentIndex <= 0} className="disabled:opacity-40 disabled:cursor-not-allowed text-[#787774] hover:text-[#37352f] hover:bg-[#efefed] px-2 py-1 rounded border border-transparent hover:border-[#d4d4d4] text-[12px] font-bold transition-colors flex items-center gap-1"><IconUndo className="w-3.5 h-3.5" /> 이전</button>
             <button onClick={redoTree} disabled={vaultState.currentIndex >= vaultState.history.length - 1} className="disabled:opacity-40 disabled:cursor-not-allowed text-[#787774] hover:text-[#37352f] hover:bg-[#efefed] px-2 py-1 rounded border border-transparent hover:border-[#d4d4d4] text-[12px] font-bold transition-colors flex items-center gap-1"><IconRedo className="w-3.5 h-3.5" /> 재실행</button>
@@ -1064,16 +920,7 @@ function App() {
         {isAiModalOpen && (() => {
           const targetTab = deceasedTabs.find(t => t.id === aiTargetId); 
           const targetName = aiTargetId === 'root' ? '전체 가계도' : `[${targetTab?.name || '상속인'}] 하위`;
-          return (
-            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-              <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-                <div className="px-6 py-4 border-b border-gray-200 dark:border-neutral-700 flex justify-between items-center bg-indigo-50 dark:bg-indigo-900/30"><h2 className="text-lg font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-2"><span>✨</span> {targetName} AI 자동 입력기</h2><button onClick={() => setIsAiModalOpen(false)} className="text-gray-400 hover:text-gray-600"><IconX className="w-6 h-6" /></button></div>
-                <div className="p-6 overflow-y-auto flex-1">
-                  <div className="mb-6 p-4 bg-gray-50 dark:bg-neutral-700/50 rounded-lg border border-gray-200 dark:border-neutral-600">
-                    <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-2">1단계: 명령어 복사하기</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 leading-relaxed">명령어를 복사한 후 AI 앱에 문서 사진과 함께 붙여넣으세요.</p>
-                    {(() => {
-                      const aiPromptText = `당신은 한국 상속법에 기반한 가계도 분석 및 JSON 데이터 구조화 전문가입니다.
+          const aiPromptText = `당신은 한국 상속법에 기반한 가계도 분석 및 JSON 데이터 구조화 전문가입니다.
 제공된 문서(또는 이미지)를 분석하여, 아래의 [엄격한 추출 규칙]과 [JSON 스키마 양식]에 맞춰 완벽한 계층 구조의 JSON을 생성해 주세요.
 
 [추출 규칙]
@@ -1114,93 +961,142 @@ function App() {
     }
   ]
 }`;
-                      return (
+
+          const handleAiIngest = (input) => {
+            if (!input.trim() || !input.includes('{')) return;
+            try {
+              const cleanJson = input.replace(/```json/g, '').replace(/```/g, '').trim();
+              const parsedTree = JSON.parse(cleanJson);
+              const effectiveDate = parsedTree.deathDate || tree.deathDate;
+              const era = getLawEra(effectiveDate);
+
+              const processAiData = (node) => {
+                if (Array.isArray(node)) { node.forEach(processAiData); return; }
+                if (!node.id) node.id = `ai_${Math.random().toString(36).substr(2, 9)}`;
+                const nodeEffDate = node.deathDate || (parsedTree.deathDate || tree.deathDate);
+                const nodeEra = getLawEra(nodeEffDate);
+                const isSpouseType = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(node.relation);
+                if (nodeEra === '1991' && !isSpouseType && node.id !== 'root') { node.marriageDate = ''; node.remarriageDate = ''; }
+                if (node.heirs) node.heirs.forEach(processAiData);
+              };
+              processAiData(parsedTree);
+
+              if (aiTargetId === 'root') setTree({ ...parsedTree, id: 'root' });
+              else {
+                const targetRawIds = [];
+                const findRawIds = (n) => { if (n.id === aiTargetId || n.personId === aiTargetId) targetRawIds.push(n.id); if (n.heirs) n.heirs.forEach(findRawIds); };
+                findRawIds(tree);
+                setTree(prev => {
+                  const injectHeirs = (n) => {
+                    if (targetRawIds.includes(n.id)) {
+                      const generateNewHeirs = (heirsArray) => (heirsArray || []).map(h => {
+                        const isSpouse = ['wife', 'husband', 'spouse'].includes(h.relation);
+                        if (era === '1991' && !isSpouse) { h.marriageDate = ''; h.remarriageDate = ''; }
+                        return { ...h, id: `ai_${Math.random().toString(36).substr(2, 9)}`, heirs: generateNewHeirs(h.heirs || []) };
+                      });
+                      const sourceHeirs = Array.isArray(parsedTree) ? parsedTree : (parsedTree.heirs || []);
+                      return { ...n, heirs: [...(n.heirs || []), ...generateNewHeirs(sourceHeirs)] };
+                    }
+                    return { ...n, heirs: n.heirs?.map(injectHeirs) || [] };
+                  };
+                  return injectHeirs(prev);
+                });
+              }
+              setIsAiModalOpen(false); setAiInputText(""); alert(`✨ AI 상속인 자동 입력을 완료했습니다!`);
+            } catch {
+              // Auto-parse silent fail, button remains for manual
+            }
+          };
+
+          return (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+              <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] border border-[#e9e9e7] dark:border-neutral-700">
+                <div className="px-6 py-4 border-b border-[#e9e9e7] dark:border-neutral-700 flex justify-between items-center transition-colors">
+                  <h2 className="text-[16px] font-bold text-[#37352f] dark:text-neutral-100 flex items-center gap-2">
+                    <IconSparkles size={18} className="text-[#2383e2]" />
+                    {targetName} AI 상속인 자동 입력
+                  </h2>
+                  <button onClick={() => setIsAiModalOpen(false)} className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors">
+                    <IconX size={20} />
+                  </button>
+                </div>
+                
+                <div className="p-6 overflow-y-auto flex-1 space-y-6">
+                  {/* Step 1: Callout style */}
+                  <div className="bg-[#f7f7f5] dark:bg-neutral-900/50 border border-[#e9e9e7] dark:border-neutral-700 rounded-lg p-5">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 text-neutral-500"><IconFileText size={20} /></div>
+                      <div className="flex-1">
+                        <h3 className="text-[14px] font-bold text-[#37352f] dark:text-neutral-200 mb-1">1단계: 가이드라인 복사</h3>
+                        <p className="text-[13px] text-[#787774] dark:text-neutral-400 mb-5 leading-relaxed">
+                          아래 버튼을 클릭하여 명령어를 복사한 후, ChatGPT 등 AI 서비스에 문서 사진(가족관계증명서 등)과 함께 전송하세요.
+                        </p>
                         <div className="flex items-center gap-2">
                           <button 
-                            onClick={() => {
-                              navigator.clipboard.writeText(aiPromptText).then(() => alert('✅ 복사되었습니다!'));
-                            }}
-                            className="flex-1 py-2.5 bg-white dark:bg-neutral-800 border-2 border-indigo-500 text-indigo-600 dark:text-indigo-400 rounded-md font-bold hover:bg-indigo-50 transition-colors shadow-sm flex items-center justify-center gap-2"
+                            onClick={() => { navigator.clipboard.writeText(aiPromptText).then(() => alert('✅ 명령어가 클립보드에 복사되었습니다!')); }}
+                            className="flex-1 py-2.5 bg-white dark:bg-neutral-800 border border-[#e9e9e7] dark:border-neutral-700 text-[#37352f] dark:text-neutral-200 rounded-md font-bold hover:bg-[#efefed] dark:hover:bg-neutral-700 transition-all shadow-sm flex items-center justify-center gap-2 text-[13px]"
                           >
-                            <IconFileText size={18} />
-                            📋 명령어 복사하기
+                            📋 AI 명령어 복사하기
                           </button>
                           <button 
                             onClick={handlePrintPrompt}
-                            className="w-[46px] h-[46px] flex items-center justify-center border-2 border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 rounded-md hover:bg-neutral-50 dark:hover:bg-neutral-700 transition-colors shadow-sm"
-                            title="프롬프트 인쇄"
+                            className="w-10 h-10 flex items-center justify-center border border-[#e9e9e7] dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-500 hover:bg-[#efefed] dark:hover:bg-neutral-700 rounded-md transition-all shadow-sm"
+                            title="가이드라인 인쇄"
                           >
-                            <IconPrinter size={20} />
+                            <IconPrinter size={18} />
                           </button>
                         </div>
-                      );
-                    })()}
+                      </div>
+                    </div>
                   </div>
-                  <div><h3 className="font-bold text-gray-800 dark:text-gray-200 mb-2">2단계: 결과 데이터 붙여넣기</h3><textarea value={aiInputText} onChange={(e) => setAiInputText(e.target.value)} placeholder="AI가 만들어준 코드를 붙여넣으세요." className="w-full h-48 p-3 border border-gray-300 dark:border-neutral-600 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-mono bg-white dark:bg-neutral-900 text-gray-800 dark:text-gray-200" /></div>
-                </div>
-                <div className="p-4 border-t border-gray-200 dark:border-neutral-700 flex justify-end gap-2 bg-gray-50 dark:bg-neutral-800/50">
-                  <button onClick={() => setIsAiModalOpen(false)} className="px-4 py-2 text-gray-600 font-medium hover:bg-gray-200 rounded-md transition-colors">취소</button>
-                  <button 
-                    onClick={() => {
-                      try {
-                        const cleanJson = aiInputText.replace(/```json/g, '').replace(/```/g, '').trim();
-                        const parsedTree = JSON.parse(cleanJson);
-                        const effectiveDate = parsedTree.deathDate || tree.deathDate;
-                        const era = getLawEra(effectiveDate);
 
-                        const processAiData = (node) => {
-                          if (Array.isArray(node)) { node.forEach(processAiData); return; }
-                          if (!node.id) node.id = `ai_${Math.random().toString(36).substr(2, 9)}`;
-                          const effectiveDate = parsedTree.deathDate || tree.deathDate;
-                          const era = getLawEra(effectiveDate);
-                          const isSpouseType = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(node.relation);
-                          if (era === '1991' && !isSpouseType && node.id !== 'root') {
-                              node.marriageDate = '';
-                              node.remarriageDate = '';
-                          }
-                          if (node.heirs) node.heirs.forEach(processAiData);
-                        };
-                        processAiData(parsedTree);
-                        if (aiTargetId === 'root') setTree({ ...parsedTree, id: 'root' });
-                        else {
-                          const targetRawIds = []; const findRawIds = (n) => { if (n.id === aiTargetId || n.personId === aiTargetId) targetRawIds.push(n.id); if (n.heirs) n.heirs.forEach(findRawIds); }; findRawIds(tree);
-                          setTree(prev => {
-                            const injectHeirs = (n) => {
-                              if (targetRawIds.includes(n.id)) {
-                                const generateNewHeirs = (heirsArray) => (heirsArray || []).map(h => {
-                                  const isSpouse = ['wife', 'husband', 'spouse'].includes(h.relation);
-                                  if (era === '1991' && !isSpouse) { h.marriageDate = ''; h.remarriageDate = ''; }
-                                  return { ...h, id: `ai_${Math.random().toString(36).substr(2, 9)}`, heirs: generateNewHeirs(h.heirs || []) };
-                                });
-                                const sourceHeirs = Array.isArray(parsedTree) ? parsedTree : (parsedTree.heirs || []);
-                                const newHeirs = generateNewHeirs(sourceHeirs);
-                                const nodeUpdates = {};
-                                if (!Array.isArray(parsedTree)) { if (parsedTree.deathDate) nodeUpdates.deathDate = parsedTree.deathDate; if (parsedTree.isDeceased !== undefined) nodeUpdates.isDeceased = parsedTree.isDeceased; }
-                                return { ...n, ...nodeUpdates, heirs: [...(n.heirs || []), ...newHeirs] };
-                              }
-                              return { ...n, heirs: n.heirs?.map(injectHeirs) || [] };
-                            };
-                            return injectHeirs(prev);
-                          });
-                        }
-                        setIsAiModalOpen(false); setAiInputText(""); alert(`✨ 자동 입력 완료!`);
-                      } catch (error) { alert("🚨 형식 오류!"); }
-                    }}
-                    className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md font-bold shadow-md transition-colors"
-                  >🚀 상속인 자동 입력</button>
+                  {/* Step 2: Input area */}
+                  <div className="space-y-3">
+                    <h3 className="text-[14px] font-bold text-[#37352f] dark:text-neutral-200 flex items-center gap-2">
+                       <span className="flex items-center justify-center w-5 h-5 bg-[#2383e2] text-white rounded-full text-[10px] font-black">2</span>
+                       결과 데이터 입력
+                    </h3>
+                    <textarea 
+                      value={aiInputText} 
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setAiInputText(val);
+                        if (val.length > 50) handleAiIngest(val);
+                      }} 
+                      placeholder="AI가 생성한 JSON 코드를 여기에 붙여넣으세요. (자동으로 인식됩니다)" 
+                      className="w-full h-44 p-4 border border-[#e9e9e7] dark:border-neutral-700 rounded-xl focus:ring-2 focus:ring-[#2383e2]/20 focus:border-[#2383e2] outline-none text-[13px] font-mono bg-white dark:bg-neutral-900 text-[#37352f] dark:text-neutral-200 placeholder:text-neutral-400 transition-all resize-none shadow-inner" 
+                    />
+                    <div className="flex items-center gap-2 px-1">
+                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                      <p className="text-[11px] text-[#787774] dark:text-neutral-500 italic">
+                        붙여넣기 시 AI 구조를 자동으로 분석하여 입력을 시도합니다. 자동 실행되지 않으면 아래 버튼을 눌러주세요.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="px-6 py-4 border-t border-[#e9e9e7] dark:border-neutral-700 flex justify-end gap-2 bg-[#f7f7f5]/50 dark:bg-neutral-900/30 transition-colors">
+                  <button onClick={() => setIsAiModalOpen(false)} className="px-4 py-2 text-[#787774] dark:text-neutral-400 font-bold hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded-md transition-all text-[13px]">닫기</button>
+                  <button 
+                    onClick={() => handleAiIngest(aiInputText)}
+                    className="px-5 py-2 bg-[#37352f] dark:bg-neutral-100 hover:bg-[#201f1c] dark:hover:bg-white text-white dark:text-[#37352f] rounded-md font-bold shadow-md transition-all text-[13px] flex items-center gap-2"
+                  >
+                    직접 입력 실행
+                  </button>
                 </div>
               </div>
             </div>
           );
         })()}
       {isResetModalOpen && (
-        <div className="fixed inset-0 bg-black/40 z-[9999] flex items-center justify-center no-print text-[#37352f]">
-          <div className="bg-white p-8 rounded-lg shadow-xl max-w-sm w-full mx-4 border border-[#e9e9e7]">
-            <h2 className="text-xl font-bold mb-2">새 작업 시작</h2>
-            <div className="flex flex-col gap-2 mt-6">
-              <button onClick={() => performReset(true)} className="w-full py-2.5 bg-[#2383e2] hover:bg-[#0073ea] text-white font-medium rounded transition-colors text-[14px]">백업 저장 후 초기화</button>
-              <button onClick={() => performReset(false)} className="w-full py-2.5 bg-[#ffe2dd] hover:bg-[#ffc1b8] text-[#d44c47] font-medium rounded transition-colors text-[14px]">그냥 초기화</button>
-              <button onClick={() => setIsResetModalOpen(false)} className="w-full py-2.5 mt-2 bg-white border border-[#d4d4d4] text-[#37352f] font-medium rounded transition-colors text-[14px]">취소</button>
+        <div className="fixed inset-0 bg-black/40 z-[9999] flex items-center justify-center no-print text-[#37352f] backdrop-blur-[2px] animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-neutral-800 p-8 rounded-xl shadow-2xl max-w-sm w-full mx-4 border border-[#e9e9e7] dark:border-neutral-700">
+            <h2 className="text-[17px] font-bold mb-2 dark:text-neutral-100">새 작업 시작</h2>
+            <p className="text-[13px] text-[#787774] dark:text-neutral-400 mb-6 font-medium">현재 진행 중인 데이터를 초기화하고 처음부터 다시 시작할까요?</p>
+            <div className="flex flex-col gap-2 mt-2">
+              <button onClick={() => performReset(true)} className="w-full py-2.5 bg-[#2383e2] hover:bg-[#0073ea] text-white font-bold rounded-lg transition-all text-[13px] shadow-sm">백업 저장 후 초기화</button>
+              <button onClick={() => performReset(false)} className="w-full py-2.5 bg-[#ffe2dd] hover:bg-[#ffc1b8] text-[#d44c47] font-bold rounded-lg transition-all text-[13px]">데이터 삭제 및 초기화</button>
+              <button onClick={() => setIsResetModalOpen(false)} className="w-full py-2.5 mt-2 bg-white dark:bg-neutral-800 border border-[#d4d4d4] dark:border-neutral-600 text-[#37352f] dark:text-neutral-300 font-bold rounded-lg transition-all text-[13px] hover:bg-neutral-50 dark:hover:bg-neutral-700">취소</button>
             </div>
           </div>
         </div>

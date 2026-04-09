@@ -1,5 +1,3 @@
-import { complexSampleData } from './complexSample';
-
 export const getInitialTree = () => {
   return getEmptyTree();
 };

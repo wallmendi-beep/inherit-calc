@@ -1,15 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { IconChevronRight } from './Icons';
-import { getRelStr, getLawEra, isBefore, formatKorDate } from '../engine/utils';
+import { getRelStr, getLawEra, isBefore } from '../engine/utils';
 
 const TreeReportNode = ({ node, level, treeToggleSignal, rootDeathDate }) => {
   const hasHeirs = node.heirs && node.heirs.length > 0;
   const [isExpanded, setIsExpanded] = useState(level === 0);
 
-  useEffect(() => {
+  const [prevSignal, setPrevSignal] = useState(treeToggleSignal);
+  if (treeToggleSignal !== prevSignal) {
+    setPrevSignal(treeToggleSignal);
     if (treeToggleSignal > 0) setIsExpanded(true);
     else if (treeToggleSignal < 0) setIsExpanded(level === 0);
-  }, [treeToggleSignal, level]);
+  }
 
   // ⚖️ 법리 판단을 위한 변수들
   const lawEra = getLawEra(rootDeathDate || node.deathDate);

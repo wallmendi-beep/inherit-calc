@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { IconUserPlus, IconTrash2, IconChevronRight } from './Icons';
 import { DateInput } from './DateInput';
-import { getLawEra, getDisplayRelation } from '../engine/utils';
-import { REL_TYPES, createPerson } from '../engine/graphModel';
+import { getLawEra } from '../engine/utils';
 
 /** 관계 역할에 따른 한글 라벨 */
 const ROLE_OPTIONS = [
@@ -62,7 +61,7 @@ const DeceasedTabPanel = ({
 
       {/* 상속인 목록 */}
       <div className="space-y-2">
-        {heirPersons.map((heir, idx) => {
+        {heirPersons.map((heir) => {
           const isSpouse = heir.relRole === 'wife' || heir.relRole === 'husband';
           const isDeadBeforeAncestor = heir.isDeceased && heir.deathDate &&
             deceasedPerson.deathDate && heir.deathDate < deceasedPerson.deathDate;

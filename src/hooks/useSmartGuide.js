@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { getLawEra, isBefore } from '../engine/utils';
 
-export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
+export const useSmartGuide = (tree, finalShares, activeTab) => {
   return useMemo(() => {
     if (activeTab !== 'input' || !tree) {
       return { showGlobalWarning: false, showAutoCalcNotice: false, globalMismatchReasons: [], autoCalculatedNames: [], smartGuides: [], noSurvivors: false, hasActionItems: false };
@@ -86,5 +86,5 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = []) => {
       showGlobalWarning: false, showAutoCalcNotice: false, globalMismatchReasons: [], autoCalculatedNames: [],
       smartGuides, noSurvivors, hasActionItems: smartGuides.some(g => g.type === 'mandatory')
     };
-  }, [tree, finalShares, activeTab, warnings]);
+  }, [tree, activeTab]);
 };

@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { IconChevronRight, IconTrash2, IconMenu } from './Icons';
+import React, { useState, useMemo } from 'react';
+import { IconMenu, IconTrash2 } from './Icons';
 import { DateInput } from './DateInput';
 import { getLawEra, isBefore, getRelStr } from '../engine/utils';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 // 💡 finalShares 프롭스 추가
-const HeirRow = ({ node, finalShares, level, handleUpdate, handleNameBlur, removeHeir, addHeir, siblings, inheritedDate, rootDeathDate, onKeyDown, toggleSignal, rootIsHoju, isRootChildren, onTabClick, parentNode }) => {
+const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, rootDeathDate, onKeyDown, rootIsHoju, onTabClick, parentNode }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: node.id });
 
   // 💡 재혼으로 인한 스위치 강제 ON 방지용 슬라이드 경고창 상태
@@ -146,7 +146,6 @@ const HeirRow = ({ node, finalShares, level, handleUpdate, handleNameBlur, remov
           value={node.name} 
           onKeyDown={onKeyDown} 
           onChange={e => handleUpdate(node.id, 'name', e.target.value)} 
-          onBlur={e => handleNameBlur && handleNameBlur(node.id, e.target.value)}
           lang="ko"
           autoCapitalize="off"
           autoCorrect="off"

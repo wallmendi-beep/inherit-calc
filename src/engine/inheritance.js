@@ -1,6 +1,6 @@
 import { math, getLawEra, isBefore } from './utils.js';
 
-export const calculateInheritance = (tree, propertyValue) => {
+export const calculateInheritance = (tree) => {
   let results = [];
   let steps = [];
   let warnings = [];
@@ -22,7 +22,7 @@ export const calculateInheritance = (tree, propertyValue) => {
   };
 
   //  parentPersonId를 추가하여 현재 어떤 탭(부모)을 처리 중인지 추적합니다.
-  const traverse = (node, inN, inD, inheritedDate, visitedIds = [], parentDecName = '피상속인', parentPersonId = 'root') => {
+  const traverse = (node, inN, inD, inheritedDate, visitedIds = [], parentDecName = '피상속인') => {
     if (visitedIds.includes(node.id)) {
       // 🚨 UI가 클릭 이벤트를 처리할 수 있도록 문자열 대신 객체(id 포함) 형태로 경고 전송
       warnings.push({ id: node.id, text: `순차상속 순환 참조가 발생하여 [${node.name || '상속인'}]의 지분 전이가 중단되었습니다.` });
@@ -299,8 +299,7 @@ export const calculateInheritance = (tree, propertyValue) => {
       });
       steps.push(step);
       childrenToTraverse.forEach(child => { 
-        //  다음 세대를 검사할 때는 현재 노드의 personId를 부모 주소로 넘겨줍니다.
-        traverse(child.h, child.nn, child.nd, distributionDate, currentVisited, node.name || '피상속인', node.personId); 
+        traverse(child.h, child.nn, child.nd, distributionDate, currentVisited, node.name || '피상속인'); 
       });
     }
   };
