@@ -168,22 +168,29 @@ export function ingestAiJsonInput({
     setIsAiModalOpen(false);
     setAiInputText('');
     
-    // 5단계 조기 발견: AI 임포트 직후 누락된 상속인 존재 여부 1차 검증
+    // 5단계 조기 발견: AI 임포트 직후 누락된 상속인 및 배우자 중복 여부 검증
     let hasMissingHeir = false;
-    const checkMissing = (node) => {
+    let hasMultipleSpouses = false;
+    const checkIssues = (node) => {
       const isDead = node.isDeceased === true || node.isDeceased === 'true';
       const isExc = node.isExcluded === true || node.isExcluded === 'true';
       if (isDead && !isExc && (!node.heirs || node.heirs.length === 0)) hasMissingHeir = true;
-      if (node.heirs) node.heirs.forEach(checkMissing);
-    };
-    checkMissing(parsedTree);
 
-    if (hasMissingHeir) {
+      const spouses = (node.heirs || []).filter(h => ['wife', 'husband', 'spouse'].includes(h.relation) && h.isExcluded !== true);
+      if (spouses.length > 1) hasMultipleSpouses = true;
+
+      if (node.heirs) node.heirs.forEach(checkIssues);
+    };
+    checkIssues(parsedTree);
+
+    if (hasMultipleSpouses) {
+      alert("⚠️ [주의] AI 입력 결과, 동일인에게 배우자가 여러 명 등록되었습니다.\n상속 지분 계산은 '법률상 배우자 1인'을 기준으로 하므로,\n입력 탭에서 자녀의 친모 등 실제 상속권이 없는 배우자는 [상속 제외] 처리하거나 삭제해 주세요.");
+    } else if (hasMissingHeir) {
       alert("⚠️ [검증 안내] AI 상속인 자동 입력이 완료되었으나,\n사망자임에도 하위 상속인(대습/재상속인)이 없는 데이터가 포함되어 있습니다.\n입력 탭의 붉은색 경고 배너를 확인하고 보완해 주세요.");
     } else {
       alert('AI 상속인 자동 입력이 완료되었습니다.');
     }
-  } catch {
-    // Auto-parse silent fail, button remains for manual submit.
+  } catch (error) {
+    // console.error(error);
   }
 }

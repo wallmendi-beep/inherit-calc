@@ -1,4 +1,4 @@
-﻿import { isBefore } from '../engine/utils.js';
+import { isBefore } from '../engine/utils.js';
 
 const DERIVED_KEYS = new Set([
   'r',
@@ -14,6 +14,28 @@ const DERIVED_KEYS = new Set([
   'finalShares',
   'warnings',
   'appliedLaws',
+]);
+
+const ALLOWED_KEYS = new Set([
+  'id',
+  'personId',
+  'name',
+  'isDeceased',
+  'deathDate',
+  'marriageDate',
+  'remarriageDate',
+  'divorceDate',
+  'restoreDate',
+  'gender',
+  'relation',
+  'isExcluded',
+  'exclusionOption',
+  'isHoju',
+  'isSameRegister',
+  'heirs',
+  'caseNo',
+  'shareN',
+  'shareD',
 ]);
 
 const PERSON_FIELDS = [
@@ -71,7 +93,12 @@ const createNodeId = () => generateId('n');
 
 export const normalizeImportedTree = (rawTree) => {
   const sanitizeNode = (inputNode, parentDate = '', isRoot = false) => {
-    const base = pruneDerivedFields(inputNode);
+    // 화이트리스트 기반 필드 추출 (불필요한 데이터 제거)
+    const base = {};
+    Object.entries(inputNode || {}).forEach(([key, value]) => {
+      if (ALLOWED_KEYS.has(key)) base[key] = value;
+    });
+
     const personId = base.personId || (isRoot ? 'root' : generateId('p'));
     const nodeId = isRoot ? 'root' : (base.id || ('n_' + personId));
     const deathDate = normalizeDateField(base.deathDate);
