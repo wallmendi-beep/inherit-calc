@@ -1,4 +1,5 @@
 import { math, getLawEra, isBefore } from './utils.js';
+import { auditInheritanceResult } from './inheritanceAudit.js';
 
 export const calculateInheritance = (tree) => {
   let results = [];
@@ -9,6 +10,72 @@ export const calculateInheritance = (tree) => {
   const getPersonKey = (person) => {
     if (!person) return '';
     return person.personId || person.id || `${person.name || ''}::${person.relation || ''}`;
+  };
+
+  const pushWarning = ({
+    code = 'engine-warning',
+    severity = 'warning',
+    blocking = false,
+    id = null,
+    personId = null,
+    targetTabId = null,
+    text = '',
+  }) => {
+    warnings.push({
+      code,
+      severity,
+      blocking,
+      id,
+      personId,
+      targetTabId: targetTabId || personId || id || null,
+      text,
+    });
+  };
+
+  const normalizeWarning = (warning) => {
+    if (!warning) return null;
+    if (typeof warning !== 'object') {
+      return {
+        code: 'engine-warning',
+        severity: 'warning',
+        blocking: false,
+        id: null,
+        personId: null,
+        targetTabId: null,
+        text: String(warning),
+      };
+    }
+
+    const text = warning.text || '';
+    let code = warning.code || 'engine-warning';
+    let severity = warning.severity || 'warning';
+    let blocking = warning.blocking ?? false;
+
+    if (!warning.code) {
+      if (text.includes('순환 참조')) {
+        code = 'inheritance-cycle';
+        severity = 'error';
+        blocking = true;
+      } else if (text.includes('사망일자')) {
+        code = 'missing-death-date';
+        severity = 'error';
+        blocking = true;
+      } else if (text.includes('하위 상속인 정보가 없습니다')) {
+        code = 'deceased-without-heirs';
+        severity = 'error';
+        blocking = true;
+      }
+    }
+
+    return {
+      code,
+      severity,
+      blocking,
+      id: warning.id || null,
+      personId: warning.personId || warning.id || null,
+      targetTabId: warning.targetTabId || warning.personId || warning.id || null,
+      text,
+    };
   };
   
   const findHeirsByName = (root, targetName, excludeId) => {
@@ -422,17 +489,43 @@ export const calculateInheritance = (tree) => {
   const uniqueWarnings = [];
   const warningKeys = new Set();
   warnings.forEach(w => {
-    const key = typeof w === 'string' ? w : w.text;
+    const normalized = normalizeWarning(w);
+    if (!normalized) return;
+    const key = [normalized.code, normalized.id, normalized.text].join('::');
     if (!warningKeys.has(key)) {
       warningKeys.add(key);
-      uniqueWarnings.push(w);
+      uniqueWarnings.push(normalized);
     }
   });
 
+  const finalShares = { direct: directShares, subGroups: subGroups };
+  const integrity = auditInheritanceResult({
+    tree,
+    finalShares,
+    transitShares,
+    warnings: uniqueWarnings,
+  });
+  const blockingIssues = integrity.blockingIssues || [];
+  const repairHints = integrity.repairHints || [];
+
+  let status = 'success';
+  if (!tree?.deathDate) {
+    status = 'blocked';
+  } else if (blockingIssues.length > 0) {
+    status = integrity.hasTotalMismatch ? 'partial' : 'blocked';
+  } else if (uniqueWarnings.length > 0) {
+    status = 'partial';
+  }
+
   return {
-    finalShares: { direct: directShares, subGroups: subGroups },
+    status,
+    finalShares,
     transitShares,
     calcSteps: steps,
+    issues: integrity.issues,
+    blockingIssues,
+    repairHints,
+    integrity,
     warnings: uniqueWarnings, //  업그레이드된 에러 배열 내보내기
     appliedLaws: Array.from(appliedLaws).sort()
   };

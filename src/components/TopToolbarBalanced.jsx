@@ -1,0 +1,182 @@
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  IconCalculator,
+  IconFolderOpen,
+  IconMoon,
+  IconPrinter,
+  IconRedo,
+  IconReset,
+  IconSave,
+  IconSun,
+  IconTable,
+  IconUndo,
+} from './Icons';
+
+export default function TopToolbarBalanced({
+  sidebarOpen,
+  setSidebarOpen,
+  tree,
+  setAiTargetId,
+  setIsAiModalOpen,
+  setShowNavigator,
+  hasActionItems,
+  undoTree,
+  redoTree,
+  canUndo,
+  canRedo,
+  setIsResetModalOpen,
+  loadFile,
+  saveFile,
+  handleExcelExport,
+  handlePrint,
+  zoomLevel,
+  setZoomLevel,
+  isDarkMode,
+  setIsDarkMode,
+}) {
+  const [openMenu, setOpenMenu] = useState(null);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const onPointerDown = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setOpenMenu(null);
+      }
+    };
+
+    window.addEventListener('mousedown', onPointerDown);
+    return () => window.removeEventListener('mousedown', onPointerDown);
+  }, []);
+
+  const toggleMenu = (menu) => {
+    setOpenMenu((prev) => (prev === menu ? null : menu));
+  };
+
+  const closeMenus = () => setOpenMenu(null);
+
+  return (
+    <div className="sticky top-0 z-50 no-print w-full border-b border-[#e9e9e7] bg-white/92 shadow-sm backdrop-blur-md transition-all duration-300 dark:border-neutral-700 dark:bg-neutral-800/92">
+      <div className="mx-auto flex min-h-[72px] w-full max-w-[1400px] items-center justify-between gap-6 px-6 py-3">
+        <div className="flex min-w-0 items-center gap-4">
+          <button
+            onClick={() => setSidebarOpen((open) => !open)}
+            className={`flex h-10 w-10 shrink-0 flex-col items-center justify-center gap-1 rounded-xl border transition-all ${sidebarOpen ? 'border-[#cfe2fb] bg-[#eef5ff] text-[#2383e2] dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-400' : 'border-transparent text-[#787774] hover:border-[#e9e9e7] hover:bg-[#efefed] dark:text-neutral-400 dark:hover:border-neutral-700 dark:hover:bg-neutral-700'}`}
+            title={sidebarOpen ? '가계도 사이드바 닫기' : '가계도 사이드바 열기'}
+          >
+            <span className="h-0.5 w-3.5 rounded-full bg-current" />
+            <span className="h-0.5 w-3.5 rounded-full bg-current" />
+            <span className="h-0.5 w-3.5 rounded-full bg-current" />
+          </button>
+
+          <div className="flex min-w-0 items-center gap-4 rounded-2xl border border-[#eceae4] bg-[#fbfaf7] px-4 py-2 shadow-[0_1px_0_rgba(255,255,255,0.9)] dark:border-neutral-700 dark:bg-neutral-800/80">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="truncate text-[18px] font-bold tracking-tight text-[#37352f] dark:text-neutral-100">상속지분 계산기 PRO</span>
+                  <span className="shrink-0 rounded-full bg-[#e9e9e7] px-2 py-0.5 text-[11px] font-semibold text-[#787774] dark:bg-neutral-700 dark:text-neutral-300">v3.0.0</span>
+                </div>
+              </div>
+
+            <div className="hidden h-10 w-px bg-[#e1dfd8] dark:bg-neutral-700 xl:block" />
+
+            <div className="hidden min-w-0 items-center gap-2 xl:flex">
+              <div className="min-w-[132px] rounded-xl border border-[#e9e9e7] bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-800">
+                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#9a988f] dark:text-neutral-500">사건번호</div>
+                <div className="truncate text-[12px] font-semibold text-[#37352f] dark:text-neutral-200">{tree.caseNo || '미입력'}</div>
+              </div>
+              <div className="min-w-[160px] rounded-xl border border-[#dceaf8] bg-[#f7fbff] px-3 py-2 dark:border-blue-900/40 dark:bg-blue-950/20">
+                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#6e93b0] dark:text-blue-300/70">피상속인</div>
+                <div className="truncate text-[13px] font-black text-[#0b6e99] dark:text-blue-300">{tree.name || '미입력'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2" ref={menuRef}>
+          <div className="flex items-center gap-0.5 rounded-2xl border border-[#eceae4] bg-[#fbfaf7] px-1.5 py-1.5 dark:border-neutral-700 dark:bg-neutral-800/80">
+            <button
+              onClick={() => {
+                setAiTargetId('root');
+                setIsAiModalOpen(true);
+              }}
+              title="가계도 전체 AI 자동입력"
+              className="flex h-7 items-center justify-center gap-1 rounded-lg border border-indigo-100 bg-indigo-50 px-2 text-[11px] font-bold text-indigo-700 shadow-sm transition-all hover:scale-[1.02] hover:bg-indigo-100 active:scale-95 dark:border-indigo-800/50 dark:bg-indigo-900/20 dark:text-indigo-300 dark:hover:bg-indigo-900/40"
+            >
+              AI 자동입력
+            </button>
+
+            <button onClick={undoTree} disabled={!canUndo} className="flex h-7 items-center gap-0.5 rounded-lg border border-transparent px-1.5 text-[11px] font-bold text-[#787774] transition-colors hover:border-[#d4d4d4] hover:bg-[#efefed] hover:text-[#37352f] disabled:cursor-not-allowed disabled:opacity-40 dark:text-neutral-400 dark:hover:border-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200" title="이전 작업 (Ctrl+Z)">
+              <IconUndo className="h-3 w-3" /> 이전
+            </button>
+            <button onClick={redoTree} disabled={!canRedo} className="flex h-7 items-center gap-0.5 rounded-lg border border-transparent px-1.5 text-[11px] font-bold text-[#787774] transition-colors hover:border-[#d4d4d4] hover:bg-[#efefed] hover:text-[#37352f] disabled:cursor-not-allowed disabled:opacity-40 dark:text-neutral-400 dark:hover:border-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200" title="다시 실행 (Ctrl+Y)">
+              <IconRedo className="h-3 w-3" /> 다시
+            </button>
+          </div>
+
+          <div className="flex items-center gap-0.5 rounded-2xl border border-[#eceae4] bg-[#fbfaf7] px-1.5 py-1.5 dark:border-neutral-700 dark:bg-neutral-800/80">
+            <div className="relative">
+              <button onClick={() => toggleMenu('file')} className={`flex h-7 items-center gap-1 rounded-lg border px-2 text-[11px] font-bold transition-colors ${openMenu === 'file' ? 'border-[#d4d4d4] bg-white text-[#37352f] dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-100' : 'border-transparent text-[#787774] hover:border-[#d4d4d4] hover:bg-[#efefed] hover:text-[#37352f] dark:text-neutral-400 dark:hover:border-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200'}`}>
+                <IconFolderOpen className="h-3 w-3" /> 파일
+              </button>
+              {openMenu === 'file' && (
+                <div className="absolute right-0 top-11 z-[120] flex w-40 flex-col gap-1 rounded-2xl border border-[#e9e9e7] bg-white p-1.5 shadow-xl dark:border-neutral-700 dark:bg-neutral-800">
+                  <label className="flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-[12px] font-bold text-[#37352f] hover:bg-[#f7f7f5] dark:text-neutral-200 dark:hover:bg-neutral-700">
+                    <IconFolderOpen className="h-3.5 w-3.5" /> 불러오기
+                    <input type="file" accept=".json" onChange={(e) => { closeMenus(); loadFile(e); }} className="hidden" />
+                  </label>
+                  <button onClick={() => { closeMenus(); saveFile(); }} className="flex items-center gap-2 rounded-xl px-3 py-2 text-[12px] font-bold text-[#37352f] hover:bg-[#f7f7f5] dark:text-neutral-200 dark:hover:bg-neutral-700">
+                    <IconSave className="h-3.5 w-3.5" /> 저장
+                  </button>
+                  <button onClick={() => { closeMenus(); setIsResetModalOpen(true); }} className="flex items-center gap-2 rounded-xl px-3 py-2 text-[12px] font-bold text-[#d44c47] hover:bg-[#fff1ef] dark:hover:bg-red-900/20">
+                    <IconReset className="h-3.5 w-3.5" /> 초기화
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="relative">
+              <button onClick={() => toggleMenu('export')} className={`flex h-7 items-center gap-1 rounded-lg border px-2 text-[11px] font-bold transition-colors ${openMenu === 'export' ? 'border-[#d4d4d4] bg-white text-[#37352f] dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-100' : 'border-transparent text-[#787774] hover:border-[#d4d4d4] hover:bg-[#efefed] hover:text-[#37352f] dark:text-neutral-400 dark:hover:border-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200'}`}>
+                <IconPrinter className="h-3 w-3" /> 출력
+              </button>
+              {openMenu === 'export' && (
+                <div className="absolute right-0 top-11 z-[120] flex w-36 flex-col gap-1 rounded-2xl border border-[#e9e9e7] bg-white p-1.5 shadow-xl dark:border-neutral-700 dark:bg-neutral-800">
+                  <button onClick={() => { closeMenus(); handlePrint(); }} className="flex items-center gap-2 rounded-xl px-3 py-2 text-[12px] font-bold text-[#37352f] hover:bg-[#f7f7f5] dark:text-neutral-200 dark:hover:bg-neutral-700">
+                    <IconPrinter className="h-3.5 w-3.5" /> 인쇄
+                  </button>
+                  <button onClick={() => { closeMenus(); handleExcelExport(); }} className="flex items-center gap-2 rounded-xl px-3 py-2 text-[12px] font-bold text-[#37352f] hover:bg-[#f7f7f5] dark:text-neutral-200 dark:hover:bg-neutral-700">
+                    <IconTable className="h-3.5 w-3.5" /> CSV
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <button onClick={handlePrint} className="flex h-7 items-center gap-1 rounded-lg bg-[#2383e2] px-2.5 text-[11px] font-bold text-white shadow-sm transition-colors hover:bg-[#0073ea]">
+              <IconPrinter className="h-3 w-3" /> 인쇄
+            </button>
+          </div>
+
+          <div className="hidden items-center gap-0.5 rounded-2xl border border-[#eceae4] bg-[#fbfaf7] px-1.5 py-1.5 dark:border-neutral-700 dark:bg-neutral-800/80 lg:flex">
+            <button onClick={() => setZoomLevel((prev) => Math.max(0.7, prev - 0.1))} className="flex h-7 w-7 items-center justify-center rounded-lg text-[14px] font-bold text-[#787774] transition-colors hover:bg-[#efefed] hover:text-[#37352f] dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-neutral-200">-</button>
+            <span className="w-9 text-center text-[10px] font-black text-[#504f4c] dark:text-neutral-300">{Math.round(zoomLevel * 100)}%</span>
+            <button onClick={() => setZoomLevel((prev) => Math.min(1.5, prev + 0.1))} className="flex h-7 w-7 items-center justify-center rounded-lg text-[14px] font-bold text-[#787774] transition-colors hover:bg-[#efefed] hover:text-[#37352f] dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-neutral-200">+</button>
+            <div className="w-px h-4 bg-[#eceae4] dark:bg-neutral-700 mx-0.5" />
+            <button onClick={() => setIsDarkMode(!isDarkMode)} className="flex h-7 w-7 items-center justify-center rounded-lg text-[#787774] transition-colors hover:bg-[#efefed] dark:text-neutral-400 dark:hover:bg-neutral-700">
+              {isDarkMode ? <IconSun className="h-3.5 w-3.5 text-amber-300" /> : <IconMoon className="h-3.5 w-3.5" />}
+            </button>
+          </div>
+
+          <button
+            onClick={() => setShowNavigator(prev => !prev)}
+            className={`flex h-9 items-center justify-center gap-1.5 rounded-xl border px-3.5 text-[12px] font-bold shadow-sm transition-all active:scale-95 ${hasActionItems ? 'border-indigo-100 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:border-indigo-900/40 dark:bg-indigo-900/20 dark:text-indigo-400' : 'border-[#e9e9e7] bg-white text-[#787774] hover:bg-[#f7f7f5] hover:text-[#37352f] dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-700'}`}
+            title={hasActionItems ? '확인할 가이드가 있습니다.' : '스마트 가이드 열기/닫기'}
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={hasActionItems ? 2.5 : 2}>
+              <circle cx="12" cy="12" r="10" />
+              <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+            </svg>
+            <span className="tracking-tight">가이드</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

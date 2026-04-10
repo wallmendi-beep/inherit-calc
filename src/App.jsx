@@ -422,7 +422,7 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
 
   const [simpleTargetN, simpleTargetD] = math.simplify(tree.shareN || 1, tree.shareD || 1);
 
-  const { finalShares, calcSteps, warnings, transitShares } = useMemo(() => {
+  const { finalShares, calcSteps, warnings, transitShares, blockingIssues } = useMemo(() => {
     const preprocessTree = (n, parentDate, parentNode, visited = new Set()) => {
       const pId = n.personId || n.id;
       if (visited.has(pId)) return { ...n, heirs: [], _cycle: true };
@@ -499,7 +499,15 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
   }, [currentMatchIdx, matchIds, activeTab]);
 
   const guideInfo = useSmartGuide(tree, finalShares, activeTab, warnings, transitShares);
-  const { showGlobalWarning, showAutoCalcNotice, globalMismatchReasons, autoCalculatedNames, noSurvivors } = guideInfo || {};
+  const {
+    showGlobalWarning,
+    showAutoCalcNotice,
+    globalMismatchReasons,
+    autoCalculatedNames,
+    noSurvivors,
+    auditActionItems,
+    repairHints,
+  } = guideInfo || {};
 
   const multipleSpouseGuides = useMemo(() => {
     const guides = []; const checkSpouses = (node) => { const spouses = (node.heirs || []).filter(h => ['wife', 'husband', 'spouse'].includes(h.relation) && !h.isExcluded); if ( spouses.length > 1) { guides.push({ id: node.id, uniqueKey: `multi-spouse-${node.personId}`, targetTabId: node.personId, type: 'mandatory', text: `[${node.name || '이름 없음'}] 유효 배우자가 중복 입력되었습니다. 실제 상속받을 1명만 남기고 나머지는 제외 처리해 주세요.` }); } if (node.heirs) node.heirs.forEach(checkSpouses); };
@@ -667,6 +675,8 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
           dismissGuide={dismissGuide}
           showGlobalWarning={showGlobalWarning}
           globalMismatchReasons={globalMismatchReasons}
+          auditActionItems={auditActionItems}
+          repairHints={repairHints}
           handleNavigate={handleNavigate}
           showAutoCalcNotice={showAutoCalcNotice}
           autoCalculatedNames={autoCalculatedNames}
@@ -753,12 +763,14 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
                 />
               )}
               {(activeTab === 'calc' || activeTab === 'result' || activeTab === 'summary' || activeTab === 'amount') && <MetaHeader tree={tree} />}
-              {activeTab === 'calc' && <CalcPanel calcSteps={calcSteps} />}
-              {activeTab === 'result' && <ResultPanel calcSteps={calcSteps} tree={tree} />}
+              {activeTab === 'calc' && <CalcPanel calcSteps={calcSteps} issues={blockingIssues} handleNavigate={handleNavigate} />}
+              {activeTab === 'result' && <ResultPanel calcSteps={calcSteps} tree={tree} issues={blockingIssues} handleNavigate={handleNavigate} />}
               {activeTab === 'summary' && (
                 <SummaryPanel
                   tree={tree}
                   finalShares={finalShares}
+                  issues={blockingIssues}
+                  handleNavigate={handleNavigate}
                   matchIds={matchIds}
                   currentMatchIdx={currentMatchIdx}
                   searchQuery={searchQuery}

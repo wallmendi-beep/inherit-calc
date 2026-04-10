@@ -5,7 +5,17 @@ import { auditInheritanceResult } from '../engine/inheritanceAudit';
 export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], transitShares = []) => {
   return useMemo(() => {
     if (activeTab !== 'input' || !tree) {
-      return { showGlobalWarning: false, showAutoCalcNotice: false, globalMismatchReasons: [], autoCalculatedNames: [], smartGuides: [], noSurvivors: false, hasActionItems: false };
+      return {
+        showGlobalWarning: false,
+        showAutoCalcNotice: false,
+        globalMismatchReasons: [],
+        autoCalculatedNames: [],
+        smartGuides: [],
+        noSurvivors: false,
+        hasActionItems: false,
+        auditActionItems: [],
+        repairHints: [],
+      };
     }
 
     const audit = auditInheritanceResult({ tree, finalShares, transitShares, warnings });
@@ -106,10 +116,27 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
     }
 
     const smartGuides = Array.from(uniqueGuidesMap.values());
-    const globalMismatchReasons = audit.issues.map((issue) => ({ id: 'root', text: issue.text }));
+    const auditActionItems = (audit.entityIssues || []).map((issue) => ({
+      id: issue.id || issue.personId || issue.targetTabId || issue.code,
+      personId: issue.personId || null,
+      targetTabId: issue.targetTabId || issue.personId || issue.id || 'root',
+      name: issue.name || null,
+      severity: issue.severity || 'warning',
+      text: issue.text,
+      code: issue.code,
+      displayTargets: issue.displayTargets || ['guide'],
+    }));
+    const globalMismatchReasons = audit.issues.map((issue) => ({
+      id: issue.targetTabId || issue.personId || issue.id || 'root',
+      text: issue.text,
+    }));
     return {
       showGlobalWarning: audit.issues.length > 0, showAutoCalcNotice: false, globalMismatchReasons, autoCalculatedNames: [],
-      smartGuides, noSurvivors, hasActionItems: smartGuides.some(g => g.type === 'mandatory')
+      smartGuides,
+      noSurvivors,
+      hasActionItems: smartGuides.some(g => g.type === 'mandatory') || auditActionItems.length > 0,
+      auditActionItems,
+      repairHints: audit.repairHints || [],
     };
   }, [tree, finalShares, activeTab, warnings, transitShares]);
 };
