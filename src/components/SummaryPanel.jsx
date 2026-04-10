@@ -26,6 +26,19 @@ export default function SummaryPanel({
   simpleTargetD,
 }) {
   const issueMap = buildIssueMap(issues);
+
+  // 🌟 6단계 추가: 내부 미완성 체크
+  const hasMissingHeir = React.useMemo(() => {
+    if (!tree) return false;
+    let missing = false;
+    const check = (node) => {
+      if (node.isDeceased && node.isExcluded !== true && (!node.heirs || node.heirs.length === 0)) missing = true;
+      if (node.heirs) node.heirs.forEach(check);
+    };
+    check(tree);
+    return missing;
+  }, [tree]);
+
   const shareByPersonId = new Map();
   (finalShares.direct || []).forEach((s) => shareByPersonId.set(s.personId, s));
   (finalShares.subGroups || []).forEach((g) => g.shares.forEach((s) => shareByPersonId.set(s.personId, s)));
@@ -184,11 +197,20 @@ export default function SummaryPanel({
         </div>
       </div>
 
+      {/* 🌟 6단계 추가: 요약표 화면 내 미완성 경고 배너 */}
+      {hasMissingHeir && (
+        <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800/50 p-3 rounded-lg flex items-center gap-2 shadow-sm">
+          <span className="text-red-700 dark:text-red-400 font-bold text-[13px]">
+            ⚠️ 주의: 사망자 중 하위 상속인(대습/재상속인) 누락이 감지되어, 이 요약표 계산 내역은 미완성 상태입니다.
+          </span>
+        </div>
+      )}
+
       <table className="w-full border-collapse text-[13px]">
         <thead className="bg-[#fcfcfb] dark:bg-neutral-800/40">
           <tr>
             <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[40%] text-[#787774]">상속인 성명</th>
-            <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[30%] text-[#787774]">최종 지분</th>
+            <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[30%] text-[#787774]">{hasMissingHeir ? '산출 지분' : '최종 지분'}</th>
             <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[30%] text-[#787774]">통분 지분</th>
           </tr>
         </thead>

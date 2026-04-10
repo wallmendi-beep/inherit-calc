@@ -22,6 +22,23 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
   };
   const translateExclusion = (val) => exclusionDict[val] || val;
 
+  // 🌟 6단계 추가: 출력물에 불완전거리가 있는지 내부 검증
+  const hasMissingHeir = useMemo(() => {
+    if (!tree) return false;
+    let missing = false;
+    const check = (node) => {
+      if (node.isDeceased && node.isExcluded !== true && (!node.heirs || node.heirs.length === 0)) missing = true;
+      if (node.heirs) node.heirs.forEach(check);
+    };
+    check(tree);
+    return missing;
+  }, [tree]);
+
+  // 최종 결과표 명칭도 불완전할 경우 변경 처리
+  const dynamicReportTitle = hasMissingHeir && (activeTab === 'calc' || activeTab === 'result' || activeTab === 'summary' || activeTab === 'amount')
+    ? `${reportTitle} [주의: 미완성]`
+    : reportTitle;
+
   // 2. 가계도 평탄화 (상속인 명부용)
   const flatHeirs = useMemo(() => {
     if (!tree) return [];
@@ -58,9 +75,16 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
     <div className="hidden print:block w-full bg-white text-black font-sans text-[12px] leading-relaxed">
       
       {/* [공통 헤더] 문서 타이틀 및 메타 정보 */}
-      <div className="mb-6 text-center">
-        <h1 className="text-[24px] font-bold border-b-2 border-black pb-2 inline-block mb-4 px-4">{reportTitle}</h1>
+      <div className="mb-2 text-center">
+        <h1 className="text-[24px] font-bold border-b-2 border-black pb-2 inline-block mb-4 px-4">{dynamicReportTitle}</h1>
       </div>
+
+      {/* 🌟 6단계 추가: 출력물 강제 경고 배너 */}
+      {hasMissingHeir && (
+        <div className="mb-4 border-2 border-red-600 bg-red-50 p-2 text-center text-red-800 font-bold" style={{ WebkitPrintColorAdjust: 'exact', colorAdjust: 'exact' }}>
+          [경고] 하위 상속인(대습/재상속인)이 누락된 사망자가 존재합니다. 본 문서는 미완성된 임시 계산 결과이므로 실무 반영에 주의하십시오.
+        </div>
+      )}
 
       <table className="w-full border-collapse border-2 border-black mb-6 text-[12px]">
         <tbody>
@@ -182,7 +206,7 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
               <tr>
                 <th className="border border-black py-2 px-2 w-[18%]">최종 생존 상속인</th>
                 <th className="border border-black py-2 px-2 w-[52%]">지분 취득 경로 및 산출 근거</th>
-                <th className="border border-black py-2 px-2 w-[15%]">최종 합계</th>
+                <th className="border border-black py-2 px-2 w-[15%]">{hasMissingHeir ? '가계산 합계' : '최종 합계'}</th>
                 <th className="border border-black py-2 px-2 w-[15%]">통분 지분</th>
               </tr>
             </thead>
@@ -230,8 +254,8 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
             <thead className="bg-gray-100 text-center font-bold">
               <tr>
                 <th className="border border-black py-2 px-3 w-[40%]">상속인 성명</th>
-                <th className="border border-black py-2 px-3 w-[30%]">최종 지분 (통분 전)</th>
-                <th className="border border-black py-2 px-3 w-[30%]">최종 지분 (통분 후)</th>
+                <th className="border border-black py-2 px-3 w-[30%]">{hasMissingHeir ? '산출 지분 (통분 전)' : '최종 지분 (통분 전)'}</th>
+                <th className="border border-black py-2 px-3 w-[30%]">{hasMissingHeir ? '산출 지분 (통분 후)' : '최종 지분 (통분 후)'}</th>
               </tr>
             </thead>
             <tbody>

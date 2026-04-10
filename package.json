@@ -1,7 +1,7 @@
 {
   "name": "inheritance-calc-pro",
   "private": true,
-  "version": "3.0.10",
+  "version": "3.0.11",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +10,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "tauri": "tauri",
-    "test:logic": "node src/engine/check_logic.js"
+    "test:logic": "node src/engine/check_logic.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -34,6 +36,7 @@
     "postcss": "^8.5.8",
     "tailwindcss": "^3.4.19",
     "vite": "^7.3.1",
-    "vite-plugin-singlefile": "^2.3.0"
+    "vite-plugin-singlefile": "^2.3.0",
+    "vitest": "^4.1.4"
   }
 }
