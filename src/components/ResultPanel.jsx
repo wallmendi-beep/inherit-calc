@@ -99,7 +99,7 @@ export default function ResultPanel({ calcSteps, tree, issues = [], handleNaviga
                       {personIssues[0].text}
                     </span>
                   )}
-                  {isMultiSource && <span className="block text-[10px] text-blue-500 font-bold mt-0.5">복수 경로</span>}
+                  {isMultiSource && <span className="block text-[10px] text-[#787774] font-bold mt-0.5">복수 경로</span>}
                 </td>
                 <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left">
                   {r.sources.map((src, si) => (

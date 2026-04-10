@@ -245,7 +245,7 @@ const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, r
                     <span className="text-[11px] font-bold text-neutral-600 dark:text-neutral-300">{label}</span>
                   </div>
                   {multiplier && (
-                    <span className={`px-2 py-0.5 rounded-full border bg-white text-[10px] font-medium shadow-sm whitespace-nowrap ${multiplier.includes('1.5') ? 'border-emerald-800/80 text-emerald-800/80' : 'border-rose-800/80 text-rose-800/80'}`}>{multiplier}</span>
+                    <span className="px-2 py-0.5 rounded-full border border-neutral-300 bg-white text-[10px] font-bold text-[#37352f] shadow-sm whitespace-nowrap">{multiplier}</span>
                   )}
                 </div>
               );
@@ -410,15 +410,6 @@ const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, r
                 <div className="absolute -top-2.5 left-3 bg-white px-2 text-[11px] font-bold text-[#787774] flex items-center gap-1">
                    과거 민법 지분율 판별 (딸)
                 </div>
-                <div className="space-y-3 mt-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[13px] font-bold text-[#504f4c]">혼인 일자</label>
-                    <DateInput 
-                      autoFocus
-                      value={node.marriageDate || ''} 
-                      onChange={v => handleUpdate({ type: 'updateHistoryInfo', nodeId: node.id, changes: { marriageDate: v } })} 
-                      onKeyDown={e => {
-                        if (e.key === ' ') { e.preventDefault(); setIsHistoryModalOpen(false); }
                         else if (e.key === 'Tab' || e.key === 'Enter' || e.key.includes('Arrow')) {
                           e.preventDefault();
                           const focusables = Array.from(e.currentTarget.closest('.modal-content-container').querySelectorAll('input, button:not([title="닫기"])'));

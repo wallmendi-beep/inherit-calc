@@ -167,13 +167,6 @@ export default function InputPanel({
 
             {nodeHeirs.length === 0 && (
               currentNode?.isDeceased && currentNode?.isExcluded !== true ? (
-                <div className="flex flex-col items-center justify-center p-8 bg-red-50 dark:bg-red-900/10 border border-red-300 dark:border-red-800/50 rounded-lg text-center gap-2 m-2 mb-4 ring-1 ring-red-400 shadow-sm animate-pulse">
-                  <span className="text-red-700 dark:text-red-400 font-black text-[15px] flex items-center gap-1.5">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                    [필수 조건 미충족] 추가 데이터 입력 필요
-                  </span>
-                  <span className="text-red-600 dark:text-red-300/80 text-[13px] font-bold">
-                    {currentNode?.name || '본인'}은(는) 사망자입니다. 재상속인이나 대습상속인을 반드시 추가해 주세요.<br/>
                     만약 하위 상속인이 존재하지 않는다면, 본인의 상태 체크 박스(초록색 스위치)를 클릭하여<br/>
                     [상속인 없음 (지분 재분배)] 상태로 변경하셔야 올바르게 계산됩니다.
                   </span>

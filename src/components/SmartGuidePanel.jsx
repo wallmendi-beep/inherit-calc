@@ -119,7 +119,7 @@ export default function SmartGuidePanel({
 
           {activeTab === 'input' && warnings.length > 0 && (
             <div className="space-y-2">
-              <div className="text-[11px] font-bold text-red-500 uppercase tracking-wider px-1">⚠️ 주의사항</div>
+              <div className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider px-1 leading-none mb-1">주의사항</div>
               {warnings.map((warning, index) => (
                 <div
                   key={`w-${index}`}
@@ -131,34 +131,26 @@ export default function SmartGuidePanel({
                       if (tabId) setActiveDeceasedTab(tabId);
                     }
                   }}
-                  className={`flex items-start gap-3 p-3.5 bg-red-50/50 dark:bg-red-900/10 rounded-2xl border border-red-100 dark:border-red-800/20 transition-all duration-200 ${warning.id ? 'cursor-pointer hover:bg-red-100/60 dark:hover:bg-red-900/30 hover:scale-[1.01] hover:shadow-sm' : ''}`}
+                  className={`flex items-start p-3 bg-[#fbfbfb] dark:bg-neutral-800/40 border border-[#e9e9e7] border-l-4 border-l-neutral-300 dark:border-neutral-700 rounded-lg transition-all duration-200 ${warning.id ? 'cursor-pointer hover:bg-[#f2f2f0] dark:hover:bg-neutral-700 hover:scale-[1.01] hover:shadow-sm' : ''}`}
                 >
-                  <div className="w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">!</div>
-                  <span className="flex-1 leading-snug text-red-700 dark:text-red-400 font-bold text-[13px]">{warning.text || warning}</span>
+                  <span className="flex-1 leading-snug text-[#37352f] dark:text-neutral-200 font-bold text-[13px]">{warning.text || warning}</span>
                 </div>
               ))}
             </div>
           )}
 
           {activeTab === 'input' && visibleAuditActionItems.length > 0 && (
-            <div className="space-y-2">
-              <div className="text-[11px] font-bold text-red-500 uppercase tracking-wider px-1">수정 필요 인물</div>
+            <div className="space-y-2 mt-2">
+              <div className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider px-1 leading-none mb-1">수정 필요 사항</div>
               {visibleAuditActionItems.map((item, index) => (
                 <button
                   key={`a-${item.id || index}`}
                   onClick={() => handleNavigate(item.targetTabId || item.personId || item.id)}
-                  className="w-full text-left flex items-start gap-3 bg-red-50/80 dark:bg-red-900/20 p-4 rounded-2xl border border-red-200/50 dark:border-red-900/40 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all hover:scale-[1.01]"
+                  className="w-full text-left bg-[#fbfbfb] dark:bg-neutral-800/40 p-3 rounded-lg border border-[#e9e9e7] border-l-4 border-l-neutral-300 dark:border-neutral-700 hover:bg-[#f2f2f0] dark:hover:bg-neutral-700 transition-all hover:scale-[1.01] flex items-center justify-between"
                 >
-                  <div className="w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">!</div>
                   <div className="flex-1">
-                    <div className="leading-snug text-[#c93f3a] dark:text-red-400 font-bold text-[13px]">
-                      {item.text}
-                    </div>
-                    {item.name && (
-                      <div className="mt-1 text-[11px] text-red-500/80 dark:text-red-300/80 font-semibold">
-                        대상: {item.name}
-                      </div>
-                    )}
+                    <div className="text-[13px] font-bold text-[#37352f] dark:text-neutral-100">{item.name}</div>
+                    <div className="text-[12px] text-[#787774] dark:text-neutral-400 font-medium mt-0.5">{item.text}</div>
                   </div>
                 </button>
               ))}
@@ -167,35 +159,33 @@ export default function SmartGuidePanel({
 
           {activeTab === 'input' && smartGuides.filter(g => g.type === 'mandatory').length > 0 && (
             <div className="space-y-2">
-              <div className="text-[11px] font-bold text-blue-500 uppercase tracking-wider px-1">📍 필수 확인</div>
+              <div className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider px-1">필수 확인</div>
               {smartGuides.filter(g => g.type === 'mandatory').map((guide, index) => (
                 <button 
                   key={`m-${index}`} 
                   onClick={() => moveToGuideTarget(guide)} 
-                  className="w-full text-left flex items-start gap-3 bg-blue-50/60 dark:bg-blue-900/10 p-4 rounded-2xl border border-blue-100 dark:border-blue-800/20 hover:bg-blue-100/80 dark:hover:bg-blue-900/20 transition-all group hover:scale-[1.01] hover:shadow-sm"
+                  className="w-full text-left flex items-start p-3 bg-[#fbfbfb] dark:bg-neutral-800/40 border border-[#e9e9e7] border-l-4 border-l-neutral-300 dark:border-neutral-700 rounded-lg transition-all hover:bg-[#f2f2f0] dark:hover:bg-neutral-700 hover:scale-[1.01]"
                 >
-                  <div className="w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5 group-hover:rotate-12 transition-transform">✓</div>
-                  <span className="flex-1 leading-snug text-[#37352f] dark:text-neutral-200 font-bold text-[13.5px]">{guide.text}</span>
+                  <span className="flex-1 leading-snug text-[#37352f] dark:text-neutral-200 font-bold text-[13px]">{guide.text}</span>
                 </button>
               ))}
             </div>
           )}
 
           {activeTab === 'input' && smartGuides.filter(g => g.type === 'recommended' && !hiddenGuideKeys.has(g.uniqueKey)).length > 0 && (
-            <div className="space-y-2 pt-2 border-t border-[#f0f0ef] dark:border-neutral-700">
-              <div className="text-[11px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider px-1">💡 권고사항</div>
+            <div className="space-y-2 mt-2">
+              <div className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider px-1 leading-none mb-1">권장 활동</div>
               {smartGuides.filter(g => g.type === 'recommended' && !hiddenGuideKeys.has(g.uniqueKey)).map((guide, index) => (
-                <div key={`r-${index}`} className="relative group mb-2">
+                <div key={`r-${index}`} className="relative group">
                   <button 
                     onClick={() => moveToGuideTarget(guide)} 
-                    className="w-full text-left flex items-start gap-3 bg-[#fbfbfb] dark:bg-neutral-800/40 p-3.5 rounded-2xl border border-[#e9e9e7] dark:border-neutral-700 hover:bg-[#f2f2f0] dark:hover:bg-neutral-700/60 transition-all"
+                    className="w-full text-left bg-[#fbfbfb] dark:bg-neutral-800/40 p-3 rounded-lg border border-[#e9e9e7] border-l-4 border-l-neutral-300 dark:border-neutral-700 hover:bg-[#f2f2f0] dark:hover:bg-neutral-700/60 transition-all flex items-start"
                   >
-                    <div className="w-5 h-5 rounded-full bg-neutral-200 dark:bg-neutral-700 text-neutral-500 flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">?</div>
-                    <span className="flex-1 leading-snug text-[#787774] dark:text-neutral-400 font-medium text-[13px] pr-6">{guide.text}</span>
+                    <span className="leading-snug text-[#37352f] dark:text-neutral-200 font-medium text-[13px] pr-8">{guide.text}</span>
                   </button>
                   <button 
                     onClick={(e) => { e.stopPropagation(); dismissGuide(guide.uniqueKey); }} 
-                    className="absolute top-3.5 right-3 p-1 text-neutral-300 hover:text-neutral-600 dark:hover:text-neutral-300 rounded-full transition-all opacity-0 group-hover:opacity-100" 
+                    className="absolute top-2.5 right-2 p-1 text-neutral-300 hover:text-neutral-600 dark:hover:text-neutral-300 rounded-full transition-all opacity-0 group-hover:opacity-100" 
                     title="숨기기"
                   >
                     <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5">
@@ -208,8 +198,8 @@ export default function SmartGuidePanel({
           )}
 
           {showGlobalWarning && (
-            <div className="pt-2 border-t border-red-100 dark:border-red-900/30 space-y-3">
-              <div className="text-[#e53e3e] dark:text-red-400 font-black text-[14px] px-1">지분 불일치 탐지</div>
+            <div className="pt-2 border-t border-[#e9e9e7] dark:border-neutral-700 space-y-3">
+              <div className="text-[#37352f] dark:text-neutral-200 font-bold text-[13px] px-1">지분 불일치 탐지</div>
               {globalMismatchReasons.length > 0 ? (
                 <div className="space-y-2">
                   {globalMismatchReasons.map((reason, index) => (

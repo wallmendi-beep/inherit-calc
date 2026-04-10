@@ -199,9 +199,9 @@ export default function SummaryPanel({
 
       {/* 🌟 6단계 추가: 요약표 화면 내 미완성 경고 배너 */}
       {hasMissingHeir && (
-        <div className="mb-4 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800/50 p-3 rounded-lg flex items-center gap-2 shadow-sm">
-          <span className="text-red-700 dark:text-red-400 font-bold text-[13px]">
-            ⚠️ 주의: 사망자 중 하위 상속인(대습/재상속인) 누락이 감지되어, 이 요약표 계산 내역은 미완성 상태입니다.
+        <div className="mb-4 bg-[#fbfbfb] dark:bg-neutral-800/40 border border-[#e9e9e7] border-l-4 border-l-neutral-300 dark:border-neutral-700 p-3 rounded-lg flex items-center shadow-sm transition-all duration-300">
+          <span className="text-[#37352f] dark:text-neutral-200 font-bold text-[13px]">
+            사망자 중 하위 상속인(대습/재상속인) 누락이 감지되어, 이 요약표 계산 내역은 미완성 상태입니다.
           </span>
         </div>
       )}
