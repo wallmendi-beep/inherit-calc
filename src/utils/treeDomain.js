@@ -92,6 +92,8 @@ const createPersonId = () => generateId('p');
 const createNodeId = () => generateId('n');
 
 export const normalizeImportedTree = (rawTree) => {
+  const visitedPersonIds = new Set();
+
   const sanitizeNode = (inputNode, parentDate = '', isRoot = false) => {
     // 화이트리스트 기반 필드 추출 (불필요한 데이터 제거)
     const base = {};
@@ -100,6 +102,11 @@ export const normalizeImportedTree = (rawTree) => {
     });
 
     const personId = base.personId || (isRoot ? 'root' : generateId('p'));
+    
+    // [v3.0.13 중복 방지] 이미 처리된 ID가 또 나오면 (루트 제외) 자식 목록만 비우거나 처리 제외
+    const isDuplicate = !isRoot && personId && visitedPersonIds.has(personId);
+    if (personId) visitedPersonIds.add(personId);
+
     const nodeId = isRoot ? 'root' : (base.id || ('n_' + personId));
     const deathDate = normalizeDateField(base.deathDate);
     const marriageDate = normalizeDateField(base.marriageDate);
@@ -108,7 +115,8 @@ export const normalizeImportedTree = (rawTree) => {
     const restoreDate = normalizeDateField(base.restoreDate);
     const refDate = parentDate || deathDate;
     const relation = isRoot ? 'root' : normalizeRelation(base.relation);
-    const heirs = Array.isArray(base.heirs)
+    
+    const heirs = (Array.isArray(base.heirs) && !isDuplicate)
       ? base.heirs.map((child) => sanitizeNode(child, deathDate || refDate, false))
       : [];
 
@@ -135,8 +143,8 @@ export const normalizeImportedTree = (rawTree) => {
       restoreDate,
       gender: base.gender || '',
       isHoju: !!base.isHoju,
-      isExcluded,
-      exclusionOption,
+      isExcluded: isDuplicate ? true : isExcluded,
+      exclusionOption: isDuplicate ? 'duplicate' : exclusionOption,
       isSameRegister: base.isSameRegister !== false,
       heirs,
     };

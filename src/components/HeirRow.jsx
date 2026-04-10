@@ -265,10 +265,14 @@ const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, r
                 )}
                 {showMarriedDaughter && (
                   <div className="flex items-center gap-1.5">
-                    <div onClick={() => handleUpdate(node.id, 'isSameRegister', node.isSameRegister === false ? true : false)} className="relative flex items-center w-[64px] h-[26px] bg-[#efefed] dark:bg-neutral-900 rounded-full border border-[#e5e5e5] dark:border-neutral-700 p-0.5 cursor-pointer select-none">
+                    <div 
+                      onClick={() => handleUpdate(node.id, 'isSameRegister', node.isSameRegister === false ? true : false)} 
+                      className={`relative flex items-center w-[64px] h-[26px] rounded-full border p-0.5 cursor-pointer select-none transition-all ${node._isInferredRegister ? 'border-amber-400 bg-amber-50/30' : 'bg-[#efefed] dark:bg-neutral-900 border-[#e5e5e5] dark:border-neutral-700'}`}
+                      title={node._isInferredRegister ? '사망일-혼인일 대조로 자동 설정됨' : '지분율 결정을 위한 호적 상태 선택'}
+                    >
                       <div className={`absolute top-0.5 bottom-0.5 w-[calc(50%-1px)] bg-white dark:bg-neutral-700 rounded-full shadow-sm border border-[#e5e5e5] dark:border-neutral-600 transition-transform duration-300 ${node.isSameRegister === false ? 'translate-x-[calc(100%-1px)]' : 'translate-x-0'}`} />
                       <div className={`flex-1 text-center z-10 text-[11px] font-bold ${node.isSameRegister !== false ? 'text-[#37352f]' : 'text-[#a3a3a3]'}`}>동일</div>
-                      <div className={`flex-1 text-center z-10 text-[11px] font-bold ${node.isSameRegister === false ? 'text-[#37352f]' : 'text-[#a3a3a3]'}`}>출가</div>
+                      <div className={`flex-1 text-center z-10 text-[11px] font-bold ${node.isSameRegister === false ? 'text-[#37352f]' : 'text-[#a3a3a3]'}`}>출가{node._isInferredRegister && ' ✨'}</div>
                     </div>
                     {(() => {
                       let m = '';

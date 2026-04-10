@@ -89,6 +89,29 @@ export const auditInheritanceResult = ({
 
   const issues = [];
 
+  // [v3.0.13] 가계도 계층성(항렬) 유효성 검사
+  const auditRelationHierarchy = (node, path = []) => {
+    if (!node || !node.heirs) return;
+    const isDescendant = ['son', 'daughter'].includes(node.relation);
+    
+    node.heirs.forEach(h => {
+      // 자녀(비속)의 하위에 부모(존속)나 방계가 오는 것은 데이터 입력 오류일 확률이 매우 높음
+      if (isDescendant && h.relation === 'parent') {
+        pushIssue(issues, {
+          code: 'hierarchy-violation',
+          severity: 'error',
+          blocking: false, // 차단까지는 하지 않되 강한 경고
+          id: h.id,
+          personId: h.personId,
+          text: `[${h.name || '상속인'}]님은 부모 관계로 설정되어 있으나, 자녀인 [${node.name}]님의 하위에 배치되어 있습니다. 가계도 계층을 확인해 주세요.`,
+          displayTargets: ['guide', 'input']
+        });
+      }
+      auditRelationHierarchy(h, [...path, node.name]);
+    });
+  };
+  auditRelationHierarchy(tree);
+
   if (hasDeceasedInFinalShares) {
     pushIssue(issues, {
       code: 'deceased-in-final-shares',

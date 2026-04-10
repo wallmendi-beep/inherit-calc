@@ -433,6 +433,17 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
       newVisited.add(pId);
 
       if (clone.id !== 'root' && !clone.isExcluded) {
+        // [v3.0.13] Smart Inference: 상속 맥락(사망일)에 따른 동적 지위 결정
+        if (clone.relation === 'daughter' && clone.marriageDate && refDate) {
+          const lawEra = getLawEra(refDate);
+          if (lawEra !== '1991') {
+            // 사망일(refDate) 시점에 이미 결혼(marriageDate)한 상태라면 출가(isSameRegister: false)
+            const wasMarriedAtDeath = !isBefore(refDate, clone.marriageDate);
+            clone.isSameRegister = !wasMarriedAtDeath;
+            clone._isInferredRegister = true; // UI 표시용 플래그
+          }
+        }
+
         const isPre = clone.deathDate && refDate && isBefore(clone.deathDate, refDate); 
         const isDeadWithoutHeirs = clone.isDeceased && (!clone.heirs || clone.heirs.length === 0);
         
