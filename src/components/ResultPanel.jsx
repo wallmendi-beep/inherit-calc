@@ -81,7 +81,24 @@ export default function ResultPanel({ calcSteps, tree, issues = [], handleNaviga
             return (
               <tr key={i} className="hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20 align-top">
                 <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">
-                  {r.name}<span className="text-[#787774] font-normal ml-1">[{getRelStr(r.relation, tree.deathDate)}]</span>
+                  <button
+                    type="button"
+                    onClick={() => personIssues.length > 0 && handleNavigate ? handleNavigate(personIssues[0].targetTabId || r.personId) : null}
+                    className={`${personIssues.length > 0 ? 'cursor-pointer text-red-600 dark:text-red-400' : 'cursor-default'} inline-flex items-center gap-1 font-medium`}
+                  >
+                    <span>{r.name}</span>
+                    {personIssues.length > 0 && (
+                      <span className="inline-flex items-center rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 px-1.5 py-0.5 text-[10px] font-black">
+                        경고
+                      </span>
+                    )}
+                  </button>
+                  <span className="text-[#787774] font-normal ml-1">[{getRelStr(r.relation, tree.deathDate)}]</span>
+                  {personIssues.length > 0 && (
+                    <span className="block text-[11px] text-red-500 dark:text-red-400 font-semibold mt-1">
+                      {personIssues[0].text}
+                    </span>
+                  )}
                   {isMultiSource && <span className="block text-[10px] text-blue-500 font-bold mt-0.5">복수 경로</span>}
                 </td>
                 <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left">

@@ -2,9 +2,22 @@ import React from 'react';
 import { IconList } from './Icons';
 import { math, getRelStr, formatKorDate, isBefore } from '../engine/utils';
 
+const buildIssueMap = (issues = []) => {
+  const map = new Map();
+  issues.forEach((issue) => {
+    const key = issue.personId || issue.id;
+    if (!key) return;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(issue);
+  });
+  return map;
+};
+
 export default function SummaryPanel({
   tree,
   finalShares,
+  issues = [],
+  handleNavigate,
   matchIds,
   currentMatchIdx,
   searchQuery,
@@ -12,6 +25,7 @@ export default function SummaryPanel({
   simpleTargetN,
   simpleTargetD,
 }) {
+  const issueMap = buildIssueMap(issues);
   const shareByPersonId = new Map();
   (finalShares.direct || []).forEach((s) => shareByPersonId.set(s.personId, s));
   (finalShares.subGroups || []).forEach((g) => g.shares.forEach((s) => shareByPersonId.set(s.personId, s)));
@@ -92,6 +106,7 @@ export default function SummaryPanel({
     const paddingLeft = `${12 + depth * 16}px`;
     const rowId = groupAncestorId ? `summary-row-${f.personId}-${groupAncestorId}` : `summary-row-${f.personId}`;
     const isCurrentMatch = matchIds[currentMatchIdx] === rowId;
+    const personIssues = issueMap.get(f.personId) || issueMap.get(f.id) || [];
 
     return (
       <tr
@@ -100,8 +115,24 @@ export default function SummaryPanel({
         className={`transition-colors duration-300 ${isCurrentMatch ? 'bg-yellow-100 dark:bg-yellow-900/50 border-l-4 border-l-yellow-500' : 'hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20'}`}
       >
         <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left font-medium" style={{ paddingLeft }}>
-          {f.name}
+          <button
+            type="button"
+            onClick={() => personIssues.length > 0 && handleNavigate ? handleNavigate(personIssues[0].targetTabId || f.personId || f.id) : null}
+            className={`${personIssues.length > 0 ? 'cursor-pointer text-red-600 dark:text-red-400' : 'cursor-default'} inline-flex items-center gap-1 font-medium`}
+          >
+            <span>{f.name}</span>
+            {personIssues.length > 0 && (
+              <span className="inline-flex items-center rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 px-1.5 py-0.5 text-[10px] font-black">
+                경고
+              </span>
+            )}
+          </button>
           <span className="text-[#787774] font-normal ml-1">[{getRelStr(f.relation, tree.deathDate)}]</span>
+          {personIssues.map((issue, issueIndex) => (
+            <span key={`${issue.code}-${issueIndex}`} className="block text-[11px] text-red-500 dark:text-red-400 font-semibold mt-1">
+              {issue.text}
+            </span>
+          ))}
         </td>
         <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center text-[#504f4c]">{f.n} / {f.d}</td>
         <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">{f.un} / {f.ud}</td>
