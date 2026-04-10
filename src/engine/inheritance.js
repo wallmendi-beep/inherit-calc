@@ -79,6 +79,8 @@ export const calculateInheritance = (tree) => {
         if (children.length === 0 && h.name) {
           const borrowed = findHeirsByName(tree, h.name, h.id);
           if (borrowed) children = borrowed;
+
+          // 선사망 대습상속 여부는 직계비속 존재로만 판단한다.
         }
 
         if (isDisqualified) {
@@ -121,13 +123,13 @@ export const calculateInheritance = (tree) => {
 
     if (!node.isDeceased && !(node.isExcluded && (node.exclusionOption === 'lost' || node.exclusionOption === 'disqualified')) || node.id === 'root') {
       if (node.id !== 'root') {
-        results.push({ id: node.id, personId: getPersonKey(node), name: node.name, n: inN, d: inD, relation: node.relation });
+        results.push({ id: node.id, personId: getPersonKey(node), name: node.name, n: inN, d: inD, relation: node.relation, isDeceased: !!node.isDeceased });
       }
       if (!node.isDeceased && !isDisqualifiedOrLost) return;
     }
 
     if (isDisqualifiedOrLost) {
-      results.push({ id: node.id, personId: getPersonKey(node), name: node.name, n: 0, d: 1, relation: node.relation });
+      results.push({ id: node.id, personId: getPersonKey(node), name: node.name, n: 0, d: 1, relation: node.relation, isDeceased: !!node.isDeceased });
     }
 
     if (isRenounced(node, inheritedDate)) return;
@@ -168,7 +170,7 @@ export const calculateInheritance = (tree) => {
         const isSubstitution = node.isDeceased && node.deathDate && inheritedDate && isBefore(node.deathDate, inheritedDate);
         if (isSubstitution) return; 
         
-        results.push({ id: node.id, personId: getPersonKey(node), name: node.name, n: inN, d: inD, relation: node.relation });
+        results.push({ id: node.id, personId: getPersonKey(node), name: node.name, n: inN, d: inD, relation: node.relation, isDeceased: !!node.isDeceased });
         return; 
       }
       return; 
@@ -349,14 +351,20 @@ export const calculateInheritance = (tree) => {
   
   steps = mergedSteps;
   
-  const merged = [];
+  const mergedAll = [];
   results.forEach(r => {
-    const ex = merged.find(m => m.personId === r.personId);
+    const ex = mergedAll.find(m => m.personId === r.personId);
     if (ex) { 
       const [nn, nd] = math.add(ex.n, ex.d, r.n, r.d); 
       ex.n = nn; ex.d = nd; 
-    } else { merged.push({...r}); }
+    } else { mergedAll.push({...r}); }
   });
+
+  const transitShares = mergedAll
+    .filter((m) => m.isDeceased && m.n > 0)
+    .map((m) => ({ ...m }));
+
+  const merged = mergedAll.filter((m) => !m.isDeceased && m.n > 0);
 
   let commonD = 1;
   merged.forEach(m => { if (m.n > 0) commonD = math.lcm(commonD, m.d); });
@@ -423,6 +431,7 @@ export const calculateInheritance = (tree) => {
 
   return {
     finalShares: { direct: directShares, subGroups: subGroups },
+    transitShares,
     calcSteps: steps,
     warnings: uniqueWarnings, //  업그레이드된 에러 배열 내보내기
     appliedLaws: Array.from(appliedLaws).sort()

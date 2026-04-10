@@ -1,11 +1,14 @@
 import { useMemo } from 'react';
 import { getLawEra, isBefore } from '../engine/utils';
+import { auditInheritanceResult } from '../engine/inheritanceAudit';
 
-export const useSmartGuide = (tree, finalShares, activeTab) => {
+export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], transitShares = []) => {
   return useMemo(() => {
     if (activeTab !== 'input' || !tree) {
       return { showGlobalWarning: false, showAutoCalcNotice: false, globalMismatchReasons: [], autoCalculatedNames: [], smartGuides: [], noSurvivors: false, hasActionItems: false };
     }
+
+    const audit = auditInheritanceResult({ tree, finalShares, transitShares, warnings });
 
     const uniqueGuidesMap = new Map();
     let noSurvivors = false;
@@ -103,9 +106,10 @@ export const useSmartGuide = (tree, finalShares, activeTab) => {
     }
 
     const smartGuides = Array.from(uniqueGuidesMap.values());
+    const globalMismatchReasons = audit.issues.map((issue) => ({ id: 'root', text: issue.text }));
     return {
-      showGlobalWarning: false, showAutoCalcNotice: false, globalMismatchReasons: [], autoCalculatedNames: [],
+      showGlobalWarning: audit.issues.length > 0, showAutoCalcNotice: false, globalMismatchReasons, autoCalculatedNames: [],
       smartGuides, noSurvivors, hasActionItems: smartGuides.some(g => g.type === 'mandatory')
     };
-  }, [tree, activeTab]);
+  }, [tree, finalShares, activeTab, warnings, transitShares]);
 };
