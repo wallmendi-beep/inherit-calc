@@ -29,6 +29,21 @@ export function printCurrentTab({ activeTab, tree }) {
 }
 
 export function saveFactTreeToFile(tree) {
+  // 5단계 조기 발견: 사망자이나 하위 상속인이 누락된 경우 경고
+  let hasMissingHeir = false;
+  const checkMissing = (node) => {
+    if (node.isDeceased && node.isExcluded !== true && (!node.heirs || node.heirs.length === 0)) {
+      hasMissingHeir = true;
+    }
+    if (node.heirs) node.heirs.forEach(checkMissing);
+  };
+  checkMissing(tree);
+
+  if (hasMissingHeir) {
+    const proceed = window.confirm("⚠️ [경고] 사망자이나 하위 상속인이 입력되지 않은 미완성 노드가 존재합니다.\n올바른 계산이 불가능할 수 있습니다. 그래도 임시 저장용으로 내보내시겠습니까?");
+    if (!proceed) return;
+  }
+
   const pureTree = serializeFactTree(tree);
   const blob = new Blob([JSON.stringify(pureTree, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -152,7 +167,22 @@ export function ingestAiJsonInput({
 
     setIsAiModalOpen(false);
     setAiInputText('');
-    alert('AI 상속인 자동 입력이 완료되었습니다.');
+    
+    // 5단계 조기 발견: AI 임포트 직후 누락된 상속인 존재 여부 1차 검증
+    let hasMissingHeir = false;
+    const checkMissing = (node) => {
+      const isDead = node.isDeceased === true || node.isDeceased === 'true';
+      const isExc = node.isExcluded === true || node.isExcluded === 'true';
+      if (isDead && !isExc && (!node.heirs || node.heirs.length === 0)) hasMissingHeir = true;
+      if (node.heirs) node.heirs.forEach(checkMissing);
+    };
+    checkMissing(parsedTree);
+
+    if (hasMissingHeir) {
+      alert("⚠️ [검증 안내] AI 상속인 자동 입력이 완료되었으나,\n사망자임에도 하위 상속인(대습/재상속인)이 없는 데이터가 포함되어 있습니다.\n입력 탭의 붉은색 경고 배너를 확인하고 보완해 주세요.");
+    } else {
+      alert('AI 상속인 자동 입력이 완료되었습니다.');
+    }
   } catch {
     // Auto-parse silent fail, button remains for manual submit.
   }

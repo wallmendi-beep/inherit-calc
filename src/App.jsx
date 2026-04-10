@@ -544,6 +544,8 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
       if (node.deathDate && effectiveDate && isBefore(node.deathDate, effectiveDate) && !isSpouse) { if (!node.isExcluded || node.exclusionOption !== 'predeceased') { guides.push({ id: node.id, uniqueKey: `mismatch-predeceased-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름 없음'}]의 사망일(${node.deathDate})이 부모 사망일(${effectiveDate})보다 빠릅니다. [상속권 없음] 상태를 확인해 주세요.` }); } }
       if (isSpouse && node.remarriageDate && effectiveDate && isBefore(node.remarriageDate, effectiveDate)) { if (!node.isExcluded || node.exclusionOption !== 'remarried') { guides.push({ id: node.id, uniqueKey: `mismatch-remarried-self-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름 없음'}]은 피상속인 사망일(${effectiveDate}) 이전에 재혼일(${node.remarriageDate})이 입력되어 있습니다. 재혼에 따른 상속권 여부를 확인해 주세요.` }); } }
       if (node.marriageDate && node.deathDate && isBefore(node.deathDate, node.marriageDate)) { guides.push({ id: node.id, uniqueKey: `date-mismatch-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름 없음'}]의 혼인일(${node.marriageDate})이 사망일(${node.deathDate})보다 늦게 입력되어 있습니다. 날짜를 확인해 수정해 주세요.` }); }
+      // 5단계 조기 발견: 사망자이나 하위 상속인이 없는 경우 검증
+      if (node.isDeceased && node.isExcluded !== true && (!node.heirs || node.heirs.length === 0)) { guides.push({ id: node.id, uniqueKey: `missing-heirs-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름 없음'}]은(는) 사망자이나 재상속/대습상속인이 입력되지 않았습니다. 하위 상속인이 없다면 '상속인 없음(지분 재분배)' 등으로 처리해주세요.` }); }
       if (node.heirs) { node.heirs.forEach(h => { let nextEffectiveDate = effectiveDate; if (node.deathDate && !isBefore(node.deathDate, effectiveDate)) nextEffectiveDate = node.deathDate; checkMismatch(h, nextEffectiveDate, node.personId); }); }
     };
     if (tree.heirs) tree.heirs.forEach(h => checkMismatch(h, tree.deathDate, tree.personId || 'root'));
@@ -735,6 +737,7 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
                   activeDeceasedTab={activeDeceasedTab}
                   activeTabObj={activeTabObj}
                   finalShares={finalShares}
+                  issues={blockingIssues}
                   handleUpdate={handleUpdate}
                   removeHeir={removeHeir}
                   addHeir={addHeir}

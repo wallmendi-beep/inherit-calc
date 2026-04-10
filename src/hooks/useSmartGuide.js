@@ -57,6 +57,19 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
 
       // 🚨 살아있는 사람은 본인의 하위 탭이 생성되지 않으므로 하위 가계도 검사를 생략함
       if (node.isDeceased || node.id === 'root') {
+          const activeHeirs = (node.heirs || []).filter(h => !h.isExcluded);
+          if (node.id !== 'root' && node.isDeceased && node.deathDate && activeHeirs.length === 0) {
+              uniqueGuidesMap.set(`missing-successors-${node.personId}`, {
+                  id: node.id, uniqueKey: `missing-successors-${node.personId}`, targetTabId: node.personId, type: 'mandatory',
+                  text: `[${node.name || '?대쫫?놁쓬'}]은(는) 사망자로 입력되어 있으나 후속 상속인이 없습니다. 배우자/자녀/부모/형제 입력 여부를 확인해 주세요.`
+              });
+          }
+          if (node.id !== 'root' && node.isDeceased && !node.deathDate) {
+              uniqueGuidesMap.set(`missing-death-date-${node.personId}`, {
+                  id: node.id, uniqueKey: `missing-death-date-${node.personId}`, targetTabId: parentTabId, type: 'mandatory',
+                  text: `[${node.name || '?대쫫?놁쓬'}]은(는) 사망자로 표시되어 있으나 사망일이 없습니다.`
+              });
+          }
           // 1. 배우자 중복 검사
           const spouses = (node.heirs || []).filter(h => ['wife', 'husband', 'spouse'].includes(h.relation) && !h.isExcluded);
           if (spouses.length > 1) {
