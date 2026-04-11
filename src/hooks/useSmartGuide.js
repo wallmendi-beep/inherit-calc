@@ -4,7 +4,7 @@ import { auditInheritanceResult } from '../engine/inheritanceAudit';
 
 export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], transitShares = []) => {
   return useMemo(() => {
-    if (activeTab !== 'input' || !tree) {
+    if (!tree) {
       return {
         showGlobalWarning: false,
         showAutoCalcNotice: false,

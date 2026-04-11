@@ -49,7 +49,7 @@ export default function SmartGuidePanel({
           </section>
         )}
 
-        {activeTab === 'input' && visibleAuditActionItems.length > 0 && (
+        {visibleAuditActionItems.length > 0 && (
           <section className="space-y-3">
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">해결이 필요한 문제</h3>
             <ul className="space-y-2">
@@ -73,7 +73,7 @@ export default function SmartGuidePanel({
           </section>
         )}
 
-        {activeTab === 'input' && warnings.length > 0 && (
+        {warnings.length > 0 && (
           <section className="space-y-3">
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">참고사항</h3>
             <ul className="space-y-2">
@@ -89,7 +89,7 @@ export default function SmartGuidePanel({
           </section>
         )}
 
-        {activeTab === 'input' && mandatoryGuides.length > 0 && (
+        {mandatoryGuides.length > 0 && (
           <section className="space-y-3">
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">필수 검토</h3>
             <ul className="space-y-2">
@@ -110,7 +110,7 @@ export default function SmartGuidePanel({
           </section>
         )}
 
-        {activeTab === 'input' && recommendedGuides.length > 0 && (
+        {recommendedGuides.length > 0 && (
           <section className="space-y-3">
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">권장 가이드</h3>
             <ul className="space-y-2">
@@ -159,7 +159,7 @@ export default function SmartGuidePanel({
           </section>
         )}
 
-        {activeTab === 'input' && repairHints && repairHints.length > 0 && (
+        {repairHints && repairHints.length > 0 && (
           <section className="space-y-3 border-t border-slate-100 pt-4 dark:border-neutral-800">
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">수정 힌트</h3>
             <ul className="space-y-2">
