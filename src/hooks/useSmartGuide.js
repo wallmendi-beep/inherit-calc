@@ -63,20 +63,29 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
             const isChild = ['son', 'daughter', '아들', '딸'].includes(node.relation);
             const isSpouse = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(node.relation);
             
-            let guideText = `[${node.name || '이름 없음'}]은(는) 사망자로 입력되어 있으나 후속 상속인이 없습니다. 배우자/자녀/부모/형제 입력 여부를 확인해 주세요.`;
+            let guideText = `[${node.name || '이름 미상'}]은 사망자로 입력되어 있으나 후속 상속인이 없습니다.`;
 
             if (isPredeceased) {
               if (isChild) {
-                guideText = `[${node.name}]님은 피상속인보다 먼저 사망(선사망)했으나 대습상속인(비속/배우자)이 없습니다. 이 경우 상속권이 발생하지 않으므로 [상속권 없음] 상태로 확정해 주세요.`;
+                guideText = `[${node.name}]은 선사망자입니다. 하위에 대습상속인이 있다면 입력해 주세요. 입력 시 상속지분이 자동으로 계산됩니다.`;
               } else if (isSpouse) {
-                guideText = `피상속인보다 먼저 사망한 배우자([${node.name}])는 상속권이 발생하지 않습니다. [상속권 없음] 처리를 권장합니다.`;
+                guideText = `피상속인보다 먼저 사망한 배우자 [${node.name}]은 상속권이 발생하지 않습니다.`;
               }
             } else {
-              if (isChild) {
-                guideText = `[${node.name}]님은 피상속인 사후 사망자(재상속)이나 자녀/배우자 정보가 없습니다. 무자녀인 경우 고인의 부모/형제를 입력하거나 [상속인 없음] 처리가 필요합니다.`;
-              } else if (isSpouse) {
-                guideText = `사망한 배우자([${node.name}])의 지분을 상속받을 후속 상속인(직계존속 등)이 없습니다. 지분 전이 경로를 확인해 주세요.`;
-              }
+              // [v1.4] 예측형 안내: 차순위 상속인 실명 추적
+              const findSuccessorNames = () => {
+                if (isSpouse) {
+                  const children = (tree.heirs || []).filter(h => ['son', 'daughter'].includes(h.relation) && !h.isExcluded).map(h => h.name);
+                  return children.length > 0 ? `직계비속 [${children.join(', ')}]` : "피상속인의 차순위 상속인";
+                } else {
+                  const mother = (tree.heirs || []).find(h => ['wife', 'husband', 'spouse'].includes(h.relation) && !h.isDeceased && !h.isExcluded);
+                  if (mother) return `직계존속 [${mother.name}]`;
+                  const siblings = (tree.heirs || []).filter(h => h.id !== node.id && ['son', 'daughter'].includes(h.relation) && !h.isExcluded).map(h => h.name);
+                  return siblings.length > 0 ? `형제자매 [${siblings.join(', ')}]` : "피상속인의 차순위 상속인";
+                }
+              };
+              const target = findSuccessorNames();
+              guideText = `별도의 상속인을 입력하지 않으면, 법정 순위에 따라 ${target}에게 지분이 귀속됩니다.`;
             }
 
             uniqueGuidesMap.set(`missing-successors-${node.personId}`, {
@@ -87,7 +96,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
           if (node.id !== 'root' && node.isDeceased && !node.deathDate) {
               uniqueGuidesMap.set(`missing-death-date-${node.personId}`, {
                   id: node.id, uniqueKey: `missing-death-date-${node.personId}`, targetTabId: parentTabId, type: 'mandatory',
-                  text: `[${node.name || '?대쫫?놁쓬'}]은(는) 사망자로 표시되어 있으나 사망일이 없습니다.`
+                  text: `[${node.name || '이름 미상'}]은 사망자로 표시되어 있으나 사망일이 없습니다.`
               });
           }
           // 1. 배우자 중복 검사

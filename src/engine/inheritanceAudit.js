@@ -103,7 +103,7 @@ export const auditInheritanceResult = ({
           blocking: false, // 차단까지는 하지 않되 강한 경고
           id: h.id,
           personId: h.personId,
-          text: `[${h.name || '상속인'}]님은 부모 관계로 설정되어 있으나, 자녀인 [${node.name}]님의 하위에 배치되어 있습니다. 가계도 계층을 확인해 주세요.`,
+          text: `[${h.name || '상속인'}]은 부모 관계로 설정되어 있으나, 자녀인 [${node.name}] 하위에 배치되어 있습니다. 가계도 계층을 확인해 주세요.`,
           displayTargets: ['guide', 'input']
         });
       }
@@ -190,13 +190,13 @@ export const auditInheritanceResult = ({
         hintText = '사망자의 지분이 최종 결과에 남아 있습니다. 해당 사망자의 하위 상속인 입력 탭으로 이동하여 지분 전달을 마무리해 주세요.';
         break;
       case 'unresolved-transit-share':
-        hintText = `[${issue.name || '이름 미상'}]님의 하위 계보를 생성하거나 상속인 없음 처리를 통해 잔여 지분 ${issue.shareD}분의 ${issue.shareN}을 배분해 주세요.`;
+        hintText = `[${issue.name || '이름 미상'}]의 하위 계보를 생성하거나 재분배 처리를 통해 잔여 지분 ${issue.shareD}분의 ${issue.shareN}을 배분해 주세요.`;
         break;
       case 'hierarchy-violation':
         hintText = '상위/하위 계보의 부모-자식 관계 설정이 법적으로 타당한지 확인하고 인물을 재배치해 주세요.';
         break;
       default:
-        hintText = issue.personId ? `[${issue.name || '이름 미상'}]님의 입력 상태를 확인해 주세요.` : issue.text;
+        hintText = issue.personId ? `[${issue.name || '이름 미상'}]의 입력 상태를 확인해 주세요.` : issue.text;
     }
 
     return {

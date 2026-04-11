@@ -114,6 +114,22 @@ const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, r
           role="switch"
           aria-checked={!node.isExcluded}
           onClick={() => {
+            const isSpouse = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(node.relation);
+            const isChild = ['son', 'daughter', '아들', '딸'].includes(node.relation);
+            const isPredeceased = node.isDeceased && node.deathDate && tree.deathDate && isBefore(node.deathDate, tree.deathDate);
+
+            // [v1.4] 선사망 배우자 강제 제어
+            if (isSpouse && isPredeceased && node.isExcluded) {
+              alert("배우자 선사망 = 상속권 없음. 만약 사망일자에 오류가 있다면 점검 바랍니다.");
+              return;
+            }
+
+            // [v1.4] 선사망 자녀 수동 조작 차단
+            if (isChild && isPredeceased && node.isExcluded) {
+              alert("대습상속인을 입력하면 자동으로 ON 되니, 대습상속인을 입력해 주세요.");
+              return;
+            }
+
             const nextExcluded = !node.isExcluded;
             handleUpdate(node.id, {
               isExcluded: nextExcluded,

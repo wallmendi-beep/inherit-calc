@@ -102,6 +102,41 @@ export const calculateInheritance = (tree) => {
     }
     const currentVisited = [...visitedIds, node.id];
 
+    // [v4.12] 전역 계보 추적형 엔진: 하위 데이터가 없을 경우 가계도 전체에서 차순위 상속인을 탐색합니다.
+    const findGlobalSuccessors = (targetNode) => {
+      // 1. 타겟의 부모(parentNode)를 찾고, 부모의 다른 상속인들을 분석
+      const parentNode = visitedIds.length > 0 ? null : null; // traverse 인자로 전달받도록 구조 개선 필요
+      // 실제로는 tree를 전체 스캔하여 targetNode의 parent를 찾는 헬퍼 활용
+      
+      const findParent = (curr, tId) => {
+        if (!curr.heirs) return null;
+        if (curr.heirs.some(h => h.id === tId)) return curr;
+        for (const h of curr.heirs) {
+          const p = findParent(h, tId);
+          if (p) return p;
+        }
+        return null;
+      };
+
+      const pNode = findParent(tree, targetNode.id);
+      if (!pNode) return [];
+
+      // 2순위: 부모의 배우자(생존 시)
+      const survivingSpouse = (pNode.heirs || []).filter(h => 
+        (h.relation === 'wife' || h.relation === 'husband' || h.relation === 'spouse') && 
+        !h.isDeceased && !h.isExcluded
+      );
+      if (survivingSpouse.length > 0) return survivingSpouse;
+
+      // 3순위: 형제자매 (부모의 다른 자녀 중 생존자 또는 대습상속 유발자)
+      const siblings = (pNode.heirs || []).filter(h => 
+        h.id !== targetNode.id && 
+        (['son', 'daughter'].includes(h.relation)) &&
+        (!h.isExcluded || (h.exclusionOption === 'predeceased' || h.exclusionOption === 'disqualified' || h.exclusionOption === 'lost'))
+      );
+      return siblings;
+    };
+
     let isSubstitution = false;
     let distributionDate = inheritedDate;
     let isDisqualifiedOrLost = false;
@@ -175,15 +210,14 @@ export const calculateInheritance = (tree) => {
       if (node.isDeceased && !node.deathDate) {
         //  피상속인(root)은 App.jsx의 smartGuides에서 이미 처리하므로 여기서는 일반 상속인만 체크
         if (node.id !== 'root') {
-          //  수정 완료: 내비게이션 엔진이 읽을 수 있도록 { id: node.id, text: "문구" } 형태로 보냅니다!
-          warnings.push({ id: node.id, text: `[${node.name || '이름 미상'}]님의 사망일자가 입력되지 않았습니다.` });
+          warnings.push({ id: node.id, text: `[${node.name || '이름 미상'}]의 사망일자가 입력되지 않았습니다.` });
         }
       }
       if (node.id !== 'root' && node.isDeceased && node.deathDate && isBefore(node.deathDate, inheritedDate)) {
         const activeHeirs = (node.heirs || []).filter(h => !h.isExcluded);
         if (activeHeirs.length === 0) {
-          //  여기도 완벽하게 객체 형태로 묶어서 보냅니다!
-          warnings.push({ id: node.id, text: `[${node.name}] 사망(${node.deathDate})에 따른 하위 상속인 정보가 없습니다. 무자녀인 경우 고인의 부모/형제를 입력해 주세요.` });
+          // [v4.12] 하위 데이터가 없으면 전역 추적을 시작하므로 경고를 경감하거나 자동 배분됨을 안내
+          // warnings.push({ id: node.id, text: `[${node.name}] 사망(${node.deathDate})에 따른 하위 상속인 정보가 없습니다.` });
         }
       }
     }
@@ -228,6 +262,11 @@ export const calculateInheritance = (tree) => {
       if (borrowed && borrowed.length > 0) {
         targetHeirs = borrowed.filter(h => !isRenounced(h));
       }
+    }
+
+    // [v4.12] 전역 계보 추적 엔진: 여전히 상속인이 없다면 법정 순위(부모/형제)로 자동 이전
+    if (targetHeirs.length === 0 && !isSubstitution && node.id !== 'root' && !isRenounced(node, inheritedDate)) {
+      targetHeirs = findGlobalSuccessors(node).filter(h => !isRenounced(h, distributionDate));
     }
 
     if (targetHeirs.length === 0) {
