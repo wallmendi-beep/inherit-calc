@@ -72,7 +72,7 @@ export default function TopToolbarBalanced({
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="truncate text-[18px] font-bold tracking-tight text-[#37352f] dark:text-neutral-100">상속지분 계산기 PRO</span>
-                  <span className="shrink-0 rounded-full bg-[#e9e9e7] px-2 py-0.5 text-[11px] font-semibold text-[#787774] dark:bg-neutral-700 dark:text-neutral-300">v3.0.0</span>
+                  <span className="shrink-0 rounded-full bg-[#e9e9e7] px-2 py-0.5 text-[11px] font-semibold text-[#787774] dark:bg-neutral-700 dark:text-neutral-300">beta 1.0</span>
                 </div>
               </div>
 
