@@ -207,7 +207,7 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(240);
-  const [navigatorWidth, setNavigatorWidth] = useState(360);
+  const [navigatorWidth, setNavigatorWidth] = useState(310);
   const [sidebarSearchQuery, setSidebarSearchQuery] = useState('');
   const [sidebarMatchIds, setSidebarMatchIds] = useState([]);
   const [sidebarCurrentMatchIdx, setSidebarCurrentMatchIdx] = useState(0);
@@ -734,7 +734,7 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
       />
       <main className={`flex-1 flex w-full transition-all duration-300 ${sidebarOpen ? 'justify-start' : 'justify-center'}`} style={{ paddingLeft: sidebarOpen ? (sidebarWidth + 10) : 0, paddingRight: showNavigator ? (navigatorWidth + 10) : 0 }}>
         <div style={{ zoom: zoomLevel, width: '100%', display: 'flex', justifyContent: (sidebarOpen || showNavigator) ? 'flex-start' : 'center' }}>
-          <div className="flex flex-col w-[1080px] min-w-[1080px] shrink-0 px-6 mt-6 print-compact relative z-10">
+          <div className="flex flex-col w-[1080px] min-w-[1080px] shrink-0 px-6 mt-6 print-compact relative z-10 transition-all duration-300">
             <div className="flex items-end pl-[48px] gap-1 no-print relative z-20">
               {tabData.map(t => {
                 const isActive = activeTab === t.id;
@@ -806,25 +806,22 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
                   setContributions={setContributions}
                 />
               )}
+              <div
+                className="absolute bottom-1 right-8 pointer-events-none select-none no-print opacity-60"
+                style={{
+                  fontFamily: '"Segoe Script", "Snell Roundhand", "Brush Script MT", cursive',
+                  fontSize: '15px',
+                  letterSpacing: '0.01em',
+                  color: isDarkMode ? 'rgba(115,115,115,0.5)' : 'rgba(148,143,136,0.5)',
+                  transform: 'rotate(-1deg)',
+                }}
+              >
+                Designed by J.H. Lee
+              </div>
             </div>
           </div>
         </div>
       </main>
-      <div
-        className="fixed bottom-5 right-8 z-[40] pointer-events-none select-none no-print"
-        style={{
-          fontFamily: '"Segoe Script", "Snell Roundhand", "Brush Script MT", cursive',
-          fontSize: '22px',
-          letterSpacing: '0.02em',
-          color: isDarkMode ? 'rgba(115,115,115,0.42)' : 'rgba(148,143,136,0.38)',
-          textShadow: isDarkMode
-            ? '1px 1px 0 rgba(255,255,255,0.05), -1px -1px 0 rgba(0,0,0,0.22)'
-            : '1px 1px 0 rgba(255,255,255,0.82), -1px -1px 0 rgba(130,120,110,0.10)',
-          transform: 'rotate(-2deg)',
-        }}
-      >
-        Designed by J.H. Lee
-      </div>
       <AiImportModal
         isOpen={isAiModalOpen}
         onClose={() => setIsAiModalOpen(false)}

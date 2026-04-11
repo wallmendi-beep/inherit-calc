@@ -12,10 +12,14 @@ export default function ContextualDrawer({ isOpen, onClose, title, children, wid
       />
 
       <div
-        className={`fixed right-0 top-0 z-40 flex h-full ${widthClass} max-w-full transform flex-col border-l border-slate-200 bg-white shadow-2xl transition-all duration-300 ease-in-out dark:border-neutral-800 dark:bg-neutral-900 ${
+        className={`fixed right-0 z-40 flex max-w-full transform flex-col border-l border-slate-200 bg-white shadow-2xl transition-all duration-300 ease-in-out dark:border-neutral-800 dark:bg-neutral-900 ${
           isOpen ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
         }`}
-        style={{ width: isOpen ? undefined : 0 }}
+        style={{ 
+          top: '102px', 
+          height: 'calc(100vh - 102px)',
+          width: isOpen ? '310px' : 0 
+        }}
       >
         <div className="flex shrink-0 items-center justify-between border-b border-slate-100 bg-slate-50/70 px-5 py-4 dark:border-neutral-800 dark:bg-neutral-900/80">
           <h2 className="text-sm font-bold text-slate-800 dark:text-neutral-100">{title}</h2>

@@ -167,6 +167,8 @@ export default function InputPanel({
 
             {nodeHeirs.length === 0 && (
               currentNode?.isDeceased && currentNode?.isExcluded !== true ? (
+                <div className="flex flex-col items-center justify-center p-8 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 rounded-lg text-center gap-2 m-2 mb-4">
+                  <span className="text-[#b45309] dark:text-amber-500 font-bold text-[14px]">
                     만약 하위 상속인이 존재하지 않는다면, 본인의 상태 체크 박스(초록색 스위치)를 클릭하여<br/>
                     [상속인 없음 (지분 재분배)] 상태로 변경하셔야 올바르게 계산됩니다.
                   </span>

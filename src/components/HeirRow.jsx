@@ -309,9 +309,9 @@ const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, r
         {/* 💡 지분 표시는 버튼 위나 아래에 콤팩트하게 배치 (전체 너비 유지) - 왼쪽으로 10px 이동 */}
         {!node.isExcluded && !node.isDeceased && (
           <div className="flex items-center gap-0.5 text-[11px] font-black leading-none mb-0.5 ml-[-10px]">
-            <span className={isAutoCalculated ? 'text-blue-600 dark:text-blue-400' : 'text-neutral-400'}>{displayN}</span>
-            <span className="text-neutral-300 dark:text-neutral-600">/</span>
-            <span className={isAutoCalculated ? 'text-blue-600 dark:text-blue-400' : 'text-neutral-400'}>{displayD}</span>
+            <span className={isAutoCalculated ? 'text-blue-600 dark:text-blue-400' : 'text-[#1e56a0] dark:text-blue-400'}>{displayN}</span>
+            <span className="text-neutral-500 dark:text-neutral-500">/</span>
+            <span className={isAutoCalculated ? 'text-blue-600 dark:text-blue-400' : 'text-[#1e56a0] dark:text-blue-400'}>{displayD}</span>
           </div>
         )}
         {shouldShowTabBtn && onTabClick && (
@@ -407,20 +407,28 @@ const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, r
 
             {node.relation === 'daughter' && (
               <div className="mb-6 p-4 bg-white dark:bg-neutral-800 border border-[#e5e5e5] dark:border-neutral-700 rounded-lg relative">
-                <div className="absolute -top-2.5 left-3 bg-white px-2 text-[11px] font-bold text-[#787774] flex items-center gap-1">
-                   과거 민법 지분율 판별 (딸)
-                </div>
-                        else if (e.key === 'Tab' || e.key === 'Enter' || e.key.includes('Arrow')) {
-                          e.preventDefault();
-                          const focusables = Array.from(e.currentTarget.closest('.modal-content-container').querySelectorAll('input, button:not([title="닫기"])'));
-                          const idx = focusables.indexOf(e.target);
-                          const next = e.shiftKey ? (idx - 1 + focusables.length) % focusables.length : (idx + 1) % focusables.length;
-                          focusables[next].focus();
-                        }
-                      }}
-                      className="w-[130px] border border-[#e5e5e5] rounded-md px-2.5 py-1.5 text-[13px] text-center font-medium bg-[#f8f8f7] focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all" 
-                    />
-                  </div>
+                 <div className="absolute -top-2.5 left-3 bg-white px-2 text-[11px] font-bold text-[#787774] flex items-center gap-1">
+                    과거 민법 판별 (딸)
+                 </div>
+                 <div className="space-y-4 pt-2">
+                   <div className="flex items-center justify-between">
+                     <label className="text-[13px] font-bold text-[#504f4c]">혼인 일자</label>
+                     <DateInput 
+                       value={node.marriageDate || ''} 
+                       onChange={v => handleUpdate({ type: 'updateHistoryInfo', nodeId: node.id, changes: { marriageDate: v } })} 
+                       onKeyDown={e => {
+                         if (e.key === ' ') { e.preventDefault(); }
+                         else if (e.key === 'Tab' || e.key === 'Enter' || e.key.includes('Arrow')) {
+                           e.preventDefault();
+                           const focusables = Array.from(e.currentTarget.closest('.modal-content-container')?.querySelectorAll('input, button:not([title="닫기"])') || []);
+                           const idx = focusables.indexOf(e.target);
+                           const next = e.shiftKey ? (idx - 1 + focusables.length) % focusables.length : (idx + 1) % focusables.length;
+                           if (focusables[next]) focusables[next].focus();
+                         }
+                       }}
+                       className="w-[130px] border border-[#e5e5e5] rounded-md px-2.5 py-1.5 text-[13px] text-center font-medium bg-[#f8f8f7] focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all" 
+                     />
+                   </div>
                   <div className="flex items-center justify-between">
                     <label className="text-[13px] font-bold text-[#504f4c]">친가복적 일자</label>
                     <DateInput 
