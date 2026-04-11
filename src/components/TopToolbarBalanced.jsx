@@ -134,23 +134,19 @@ export default function TopToolbarBalanced({
               )}
             </div>
 
-            <div className="relative">
-              <button onClick={() => toggleMenu('export')} className={`flex h-7 items-center gap-1 rounded-lg border px-2 text-[11px] font-bold transition-colors ${openMenu === 'export' ? 'border-[#d4d4d4] bg-white text-[#37352f] dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-100' : 'border-transparent text-[#787774] hover:border-[#d4d4d4] hover:bg-[#efefed] hover:text-[#37352f] dark:text-neutral-400 dark:hover:border-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200'}`}>
-                <IconPrinter className="h-3 w-3" /> 출력
-              </button>
-              {openMenu === 'export' && (
-                <div className="absolute right-0 top-11 z-[120] flex w-36 flex-col gap-1 rounded-2xl border border-[#e9e9e7] bg-white p-1.5 shadow-xl dark:border-neutral-700 dark:bg-neutral-800">
-                  <button onClick={() => { closeMenus(); handlePrint(); }} className="flex items-center gap-2 rounded-xl px-3 py-2 text-[12px] font-bold text-[#37352f] hover:bg-[#f7f7f5] dark:text-neutral-200 dark:hover:bg-neutral-700">
-                    <IconPrinter className="h-3.5 w-3.5" /> 인쇄
-                  </button>
-                  <button onClick={() => { closeMenus(); handleExcelExport(); }} className="flex items-center gap-2 rounded-xl px-3 py-2 text-[12px] font-bold text-[#37352f] hover:bg-[#f7f7f5] dark:text-neutral-200 dark:hover:bg-neutral-700">
-                    <IconTable className="h-3.5 w-3.5" /> CSV
-                  </button>
-                </div>
-              )}
-            </div>
+            <button
+              onClick={handleExcelExport}
+              className="flex h-7 items-center gap-1 rounded-lg border border-transparent px-2 text-[11px] font-bold text-[#787774] transition-colors hover:border-[#d4d4d4] hover:bg-[#efefed] hover:text-[#37352f] dark:text-neutral-400 dark:hover:border-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
+              title="엑셀(CSV) 파일로 내보내기"
+            >
+              <IconTable className="h-3 w-3" /> 엑셀
+            </button>
 
-            <button onClick={handlePrint} className="flex h-7 items-center gap-1 rounded-lg bg-[#2383e2] px-2.5 text-[11px] font-bold text-white shadow-sm transition-colors hover:bg-[#0073ea]">
+            <button
+              onClick={handlePrint}
+              className="flex h-7 items-center gap-1 rounded-lg border border-transparent px-2 text-[11px] font-bold text-[#787774] transition-colors hover:border-[#d4d4d4] hover:bg-[#efefed] hover:text-[#37352f] dark:text-neutral-400 dark:hover:border-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
+              title="현재 탭 인쇄하기 (보고서)"
+            >
               <IconPrinter className="h-3 w-3" /> 인쇄
             </button>
           </div>
