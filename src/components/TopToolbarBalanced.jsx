@@ -93,17 +93,6 @@ export default function TopToolbarBalanced({
 
         <div className="flex shrink-0 items-center gap-2" ref={menuRef}>
           <div className="flex items-center gap-0.5 rounded-2xl border border-[#eceae4] bg-[#fbfaf7] px-1.5 py-1.5 dark:border-neutral-700 dark:bg-neutral-800/80">
-            <button
-              onClick={() => {
-                setAiTargetId('root');
-                setIsAiModalOpen(true);
-              }}
-              title="가계도 전체 AI 자동입력"
-              className="flex h-7 items-center justify-center gap-1 rounded-lg border border-indigo-100 bg-indigo-50 px-2 text-[11px] font-bold text-indigo-700 shadow-sm transition-all hover:scale-[1.02] hover:bg-indigo-100 active:scale-95 dark:border-indigo-800/50 dark:bg-indigo-900/20 dark:text-indigo-300 dark:hover:bg-indigo-900/40"
-            >
-              AI 자동입력
-            </button>
-
             <button onClick={undoTree} disabled={!canUndo} className="flex h-7 items-center gap-0.5 rounded-lg border border-transparent px-1.5 text-[11px] font-bold text-[#787774] transition-colors hover:border-[#d4d4d4] hover:bg-[#efefed] hover:text-[#37352f] disabled:cursor-not-allowed disabled:opacity-40 dark:text-neutral-400 dark:hover:border-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200" title="이전 작업 (Ctrl+Z)">
               <IconUndo className="h-3 w-3" /> 이전
             </button>
@@ -113,6 +102,18 @@ export default function TopToolbarBalanced({
           </div>
 
           <div className="flex items-center gap-0.5 rounded-2xl border border-[#eceae4] bg-[#fbfaf7] px-1.5 py-1.5 dark:border-neutral-700 dark:bg-neutral-800/80">
+            <button
+              onClick={() => {
+                setAiTargetId('root');
+                setIsAiModalOpen(true);
+              }}
+              title="가계도 전체 AI 자동입력"
+              className="flex h-7 items-center justify-center gap-1 rounded-lg border border-indigo-100 bg-indigo-50 px-2 text-[11px] font-bold text-indigo-700 shadow-sm transition-all hover:scale-[1.02] hover:bg-indigo-100 active:scale-95 dark:border-indigo-800/50 dark:bg-indigo-900/20 dark:text-indigo-300 dark:hover:bg-indigo-900/40 mr-1"
+            >
+              AI 자동입력
+            </button>
+            <div className="mr-1 h-4 w-px bg-[#eceae4] dark:bg-neutral-700" />
+
             <div className="relative">
               <button onClick={() => toggleMenu('file')} className={`flex h-7 items-center gap-1 rounded-lg border px-2 text-[11px] font-bold transition-colors ${openMenu === 'file' ? 'border-[#d4d4d4] bg-white text-[#37352f] dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-100' : 'border-transparent text-[#787774] hover:border-[#d4d4d4] hover:bg-[#efefed] hover:text-[#37352f] dark:text-neutral-400 dark:hover:border-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200'}`}>
                 <IconFolderOpen className="h-3 w-3" /> 파일
