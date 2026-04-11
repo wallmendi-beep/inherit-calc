@@ -59,10 +59,30 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
       if (node.isDeceased || node.id === 'root') {
           const activeHeirs = (node.heirs || []).filter(h => !h.isExcluded);
           if (node.id !== 'root' && node.isDeceased && node.deathDate && activeHeirs.length === 0) {
-              uniqueGuidesMap.set(`missing-successors-${node.personId}`, {
-                  id: node.id, uniqueKey: `missing-successors-${node.personId}`, targetTabId: node.personId, type: 'mandatory',
-                  text: `[${node.name || '?대쫫?놁쓬'}]은(는) 사망자로 입력되어 있으나 후속 상속인이 없습니다. 배우자/자녀/부모/형제 입력 여부를 확인해 주세요.`
-              });
+            const isPredeceased = isBefore(node.deathDate, tree.deathDate);
+            const isChild = ['son', 'daughter', '아들', '딸'].includes(node.relation);
+            const isSpouse = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(node.relation);
+            
+            let guideText = `[${node.name || '이름 없음'}]은(는) 사망자로 입력되어 있으나 후속 상속인이 없습니다. 배우자/자녀/부모/형제 입력 여부를 확인해 주세요.`;
+
+            if (isPredeceased) {
+              if (isChild) {
+                guideText = `[${node.name}]님은 피상속인보다 먼저 사망(선사망)했으나 대습상속인(비속/배우자)이 없습니다. 이 경우 상속권이 발생하지 않으므로 [상속권 없음] 상태로 확정해 주세요.`;
+              } else if (isSpouse) {
+                guideText = `피상속인보다 먼저 사망한 배우자([${node.name}])는 상속권이 발생하지 않습니다. [상속권 없음] 처리를 권장합니다.`;
+              }
+            } else {
+              if (isChild) {
+                guideText = `[${node.name}]님은 피상속인 사후 사망자(재상속)이나 자녀/배우자 정보가 없습니다. 무자녀인 경우 고인의 부모/형제를 입력하거나 [상속인 없음] 처리가 필요합니다.`;
+              } else if (isSpouse) {
+                guideText = `사망한 배우자([${node.name}])의 지분을 상속받을 후속 상속인(직계존속 등)이 없습니다. 지분 전이 경로를 확인해 주세요.`;
+              }
+            }
+
+            uniqueGuidesMap.set(`missing-successors-${node.personId}`, {
+              id: node.id, uniqueKey: `missing-successors-${node.personId}`, targetTabId: node.personId, type: 'mandatory',
+              text: guideText
+            });
           }
           if (node.id !== 'root' && node.isDeceased && !node.deathDate) {
               uniqueGuidesMap.set(`missing-death-date-${node.personId}`, {

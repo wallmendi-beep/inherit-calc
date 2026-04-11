@@ -195,15 +195,26 @@ export default function InputPanel({
             {nodeHeirs.length === 0 && (
               currentNode?.isDeceased && currentNode?.isExcluded !== true ? (
                 <div className="flex flex-col items-center justify-center p-8 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 rounded-lg text-center gap-2 m-2 mb-4">
-                  <span className="text-[#b45309] dark:text-amber-500 font-bold text-[14px]">
-                    만약 하위 상속인이 존재하지 않는다면, 본인의 상태 체크 박스(초록색 스위치)를 클릭하여<br/>
-                    [상속인 없음 (지분 재분배)] 상태로 변경하셔야 올바르게 계산됩니다.
+                  <span className="text-[#b45309] dark:text-amber-500 font-bold text-[14.5px] leading-relaxed">
+                    {(() => {
+                      const isPre = currentNode.deathDate && tree.deathDate && isBefore(currentNode.deathDate, tree.deathDate);
+                      const isSp = ['wife', 'husband', 'spouse'].includes(currentNode.relation);
+                      if (isPre) {
+                        return isSp 
+                          ? "피상속인보다 먼저 사망한 배우자는 상속권이 발생하지 않습니다.\n본인 항목의 초록색 스위치를 클릭해 [상속권 없음]으로 변경해 주세요."
+                          : "대습상속인이 없는 선사망 자녀는 상속권이 발생하지 않습니다.\n본인 항목의 초록색 스위치를 클릭해 [상속권 없음]으로 변경해 주세요.";
+                      } else {
+                        return isSp 
+                          ? "사망한 배우자의 지분을 상속받을 후속 대상을 입력해 주세요.\n하위 상속인이 없다면 [상속인 없음(지분 재분배)] 처리가 필요합니다."
+                          : "재상속 대상자이나 현재 하위 상속인(자녀/배우자 등)이 없습니다.\n가계도를 추가하거나 본인 항목을 [상속인 없음] 상태로 변경해 주세요.";
+                      }
+                    })()}
                   </span>
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center p-8 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 rounded-lg text-center gap-2 m-2 mb-4">
                   <span className="text-[#b45309] dark:text-amber-500 font-bold text-[14px]">아직 하위 상속인 데이터가 없습니다.</span>
-                  <span className="text-[#787774] dark:text-neutral-400 text-[12.5px]">상속인이 없다면 다음 순위의 상속분이 자동으로 계산됩니다.</span>
+                  <span className="text-[#787774] dark:text-neutral-400 text-[12.5px]">이 가지에 상속인이 없다면 법정 순위에 따라 다음 순위로 지분이 분배됩니다.</span>
                 </div>
               )
             )}

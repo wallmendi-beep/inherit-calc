@@ -564,7 +564,19 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
       if (isSpouse && node.remarriageDate && effectiveDate && isBefore(node.remarriageDate, effectiveDate)) { if (!node.isExcluded || node.exclusionOption !== 'remarried') { guides.push({ id: node.id, uniqueKey: `mismatch-remarried-self-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름 없음'}]은 피상속인 사망일(${effectiveDate}) 이전에 재혼일(${node.remarriageDate})이 입력되어 있습니다. 재혼에 따른 상속권 여부를 확인해 주세요.` }); } }
       if (node.marriageDate && node.deathDate && isBefore(node.deathDate, node.marriageDate)) { guides.push({ id: node.id, uniqueKey: `date-mismatch-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름 없음'}]의 혼인일(${node.marriageDate})이 사망일(${node.deathDate})보다 늦게 입력되어 있습니다. 날짜를 확인해 수정해 주세요.` }); }
       // 5단계 조기 발견: 사망자이나 하위 상속인이 없는 경우 검증
-      if (node.isDeceased && node.isExcluded !== true && (!node.heirs || node.heirs.length === 0)) { guides.push({ id: node.id, uniqueKey: `missing-heirs-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름 없음'}]은(는) 사망자이나 재상속/대습상속인이 입력되지 않았습니다. 하위 상속인이 없다면 '상속인 없음(지분 재분배)' 등으로 처리해주세요.` }); }
+      if (node.isDeceased && node.isExcluded !== true && (!node.heirs || node.heirs.length === 0)) {
+        const isPre = node.deathDate && tree.deathDate && isBefore(node.deathDate, tree.deathDate);
+        const isSp = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(node.relation);
+        let msg = `[${node.name || '이름 없음'}]은(는) 사망자이나 후속 상속인이 입력되지 않았습니다. 하위 데이터가 없다면 '상속권 없음' 등으로 처리해 주세요.`;
+        if (isPre) {
+          msg = `[${node.name}]님은 피상속인보다 먼저 사망(선사망)했으나 대습상속인이 없습니다. 이 경우 상속권이 발생하지 않으므로 [상속권 없음] 처리가 필요합니다.`;
+        } else if (isSp) {
+          msg = `사망한 배우자([${node.name}])의 지분 분배를 위한 후속 상속인 정보가 없습니다. 계보를 확인하거나 [상속권 없음] 처리를 해주세요.`;
+        } else {
+          msg = `[${node.name}]님은 재상속 대상자이나 자녀/배우자 정보가 없습니다. 지분 전이를 위해 부모/형제를 입력하거나 [상속권 없음] 처리를 해주세요.`;
+        }
+        guides.push({ id: node.id, uniqueKey: `missing-heirs-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: msg });
+      }
       if (node.heirs) { node.heirs.forEach(h => { let nextEffectiveDate = effectiveDate; if (node.deathDate && !isBefore(node.deathDate, effectiveDate)) nextEffectiveDate = node.deathDate; checkMismatch(h, nextEffectiveDate, node.personId); }); }
     };
     if (tree.heirs) tree.heirs.forEach(h => checkMismatch(h, tree.deathDate, tree.personId || 'root'));
