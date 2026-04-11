@@ -178,15 +178,35 @@ export const auditInheritanceResult = ({
   }
 
   const blockingIssues = issues.filter((issue) => issue.blocking);
-  const repairHints = blockingIssues.map((issue) => ({
-    code: issue.code,
-    personId: issue.personId || issue.id || null,
-    name: issue.name || null,
-    targetTabId: issue.targetTabId || issue.personId || issue.id || null,
-    text: issue.personId
-      ? `[${issue.name || '이름 미상'}] 입력을 확인해 주세요.`
-      : issue.text,
-  }));
+  const repairHints = blockingIssues.map((issue) => {
+    let hintText = issue.text;
+    
+    // [v4.1] 문제 코드별 맞춤형 해결 힌트 제공 (단순 현상 반복 방지)
+    switch (issue.code) {
+      case 'final-total-mismatch':
+        hintText = '하위 계보 중 지분 배분이 누락된 곳이 있는지, 혹은 상속포기/결격자의 처리가 법령에 맞게 완결되었는지 확인해 주세요.';
+        break;
+      case 'deceased-in-final-shares':
+        hintText = '사망자의 지분이 최종 결과에 남아 있습니다. 해당 사망자의 하위 상속인 입력 탭으로 이동하여 지분 전달을 마무리해 주세요.';
+        break;
+      case 'unresolved-transit-share':
+        hintText = `[${issue.name || '이름 미상'}]님의 하위 계보를 생성하거나 상속인 없음 처리를 통해 잔여 지분 ${issue.shareD}분의 ${issue.shareN}을 배분해 주세요.`;
+        break;
+      case 'hierarchy-violation':
+        hintText = '상위/하위 계보의 부모-자식 관계 설정이 법적으로 타당한지 확인하고 인물을 재배치해 주세요.';
+        break;
+      default:
+        hintText = issue.personId ? `[${issue.name || '이름 미상'}]님의 입력 상태를 확인해 주세요.` : issue.text;
+    }
+
+    return {
+      code: issue.code,
+      personId: issue.personId || issue.id || null,
+      name: issue.name || null,
+      targetTabId: issue.targetTabId || issue.personId || issue.id || null,
+      text: hintText,
+    };
+  });
   const entityIssues = issues.filter((issue) => issue.personId || issue.id);
 
   return {

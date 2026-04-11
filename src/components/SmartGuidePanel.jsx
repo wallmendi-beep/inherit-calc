@@ -51,7 +51,7 @@ export default function SmartGuidePanel({
 
         {activeTab === 'input' && visibleAuditActionItems.length > 0 && (
           <section className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">해결이 필요한 문제</h3>
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">해결이 필요한 문제</h3>
             <ul className="space-y-2">
               {visibleAuditActionItems.map((item, index) => (
                 <li key={`audit-${item.id || index}`}>
@@ -62,7 +62,7 @@ export default function SmartGuidePanel({
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <div className="text-[12.5px] font-bold text-slate-800 dark:text-neutral-100">{item.name || '확인 필요 인물'}</div>
-                        <div className="mt-0.5 text-[11.5px] leading-relaxed text-slate-600 dark:text-neutral-400">{item.text}</div>
+                        <div className="mt-0.5 text-[11.5px] font-medium leading-relaxed text-slate-600 dark:text-neutral-400">{item.text}</div>
                       </div>
                       <FatalBadge />
                     </div>
@@ -75,12 +75,12 @@ export default function SmartGuidePanel({
 
         {activeTab === 'input' && warnings.length > 0 && (
           <section className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">참고사항</h3>
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">참고사항</h3>
             <ul className="space-y-2">
               {warnings.map((warning, index) => (
                 <li key={`warning-${index}`} className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-700 dark:bg-neutral-800/50">
                   <div className="flex items-start justify-between gap-2">
-                    <span className="text-sm leading-snug text-slate-700 dark:text-neutral-200">{warning.text || warning}</span>
+                    <span className="text-[11.5px] font-medium leading-snug text-slate-700 dark:text-neutral-200">{warning.text || warning}</span>
                     <WarningBadge />
                   </div>
                 </li>
@@ -91,7 +91,7 @@ export default function SmartGuidePanel({
 
         {activeTab === 'input' && mandatoryGuides.length > 0 && (
           <section className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">필수 검토</h3>
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">필수 검토</h3>
             <ul className="space-y-2">
               {mandatoryGuides.map((guide, index) => (
                 <li key={`mandatory-${index}`}>
@@ -100,7 +100,7 @@ export default function SmartGuidePanel({
                     className="w-full rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-left shadow-sm transition-all hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800/50"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <span className="text-[12.5px] font-bold leading-relaxed text-slate-800 dark:text-neutral-100">{guide.text}</span>
+                      <span className="text-[11.5px] font-medium leading-relaxed text-slate-800 dark:text-neutral-100">{guide.text}</span>
                       <FatalBadge />
                     </div>
                   </button>
@@ -112,7 +112,7 @@ export default function SmartGuidePanel({
 
         {activeTab === 'input' && recommendedGuides.length > 0 && (
           <section className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">권장 가이드</h3>
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">권장 가이드</h3>
             <ul className="space-y-2">
               {recommendedGuides.map((guide, index) => (
                 <li key={`recommended-${index}`} className="group relative">
@@ -121,7 +121,7 @@ export default function SmartGuidePanel({
                     className="w-full rounded-lg border border-neutral-200 bg-neutral-50 p-3 pr-10 text-left shadow-sm transition-all hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800/40"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <span className="text-[12.5px] leading-relaxed text-slate-700 dark:text-neutral-200">{guide.text}</span>
+                      <span className="text-[11.5px] font-medium leading-relaxed text-slate-700 dark:text-neutral-200">{guide.text}</span>
                       <WarningBadge />
                     </div>
                   </button>
@@ -143,7 +143,7 @@ export default function SmartGuidePanel({
 
         {showGlobalWarning && (
           <section className="space-y-3 border-t border-slate-100 pt-4 dark:border-neutral-800">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">무결성 경고</h3>
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">무결성 경고</h3>
             <ul className="space-y-2">
               {globalMismatchReasons.map((reason, index) => (
                 <li key={`global-${index}`}>
@@ -151,7 +151,7 @@ export default function SmartGuidePanel({
                     onClick={() => (reason.id ? handleNavigate(reason.id) : null)}
                     className="w-full rounded-xl bg-neutral-100 border border-neutral-200 p-4 text-left text-slate-800 shadow-sm transition-all hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-200 dark:border-neutral-700"
                   >
-                    <span className="block text-[13px] font-bold leading-relaxed">{reason.text || reason}</span>
+                    <span className="block text-[12px] font-medium leading-relaxed">{reason.text || reason}</span>
                   </button>
                 </li>
               ))}
@@ -161,7 +161,7 @@ export default function SmartGuidePanel({
 
         {activeTab === 'input' && repairHints && repairHints.length > 0 && (
           <section className="space-y-3 border-t border-slate-100 pt-4 dark:border-neutral-800">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">수정 힌트</h3>
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">수정 힌트</h3>
             <ul className="space-y-2">
               {repairHints.map((hint, index) => (
                 <li key={`hint-${index}`}>
@@ -169,7 +169,7 @@ export default function SmartGuidePanel({
                     onClick={() => (hint.targetTabId ? handleNavigate(hint.targetTabId) : null)}
                     className="w-full rounded-xl border border-neutral-200 bg-neutral-50/70 p-3 text-left transition-all hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900/40"
                   >
-                    <span className="text-[12px] font-bold leading-relaxed text-slate-700 dark:text-neutral-200">{hint.text}</span>
+                    <span className="text-[11.5px] font-medium leading-relaxed text-slate-700 dark:text-neutral-200">{hint.text}</span>
                   </button>
                 </li>
               ))}
@@ -179,11 +179,11 @@ export default function SmartGuidePanel({
 
         {showAutoCalcNotice && (
           <section className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50/50 p-4 dark:border-neutral-700 dark:bg-neutral-800/20">
-            <h3 className="mb-2 text-[13px] font-bold text-slate-800 dark:text-neutral-100">자동 분배 탐지:</h3>
+            <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-500">자동 분배 탐지</h3>
             <ul className="space-y-1.5">
               {autoCalculatedNames.map((item, index) => (
                 <li key={index} className="flex items-center justify-between text-[12px]">
-                  <span className="font-bold text-slate-600 dark:text-neutral-300">{item.name}</span>
+                  <span className="font-bold text-slate-800 dark:text-neutral-100">{item.name}</span>
                   <div className="flex items-center gap-1.5 font-bold text-blue-600 dark:text-blue-400">
                     <span>→</span>
                     <span>{item.target}</span>

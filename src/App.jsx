@@ -109,7 +109,19 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
       const pId = node.personId;
       if (isTarget && !isDisqualifiedSpouse) {
         if (!registeredPersonIds.has(pId)) {
-          tabMap.set(pId, { id: pId, personId: pId, name: node.name || '(상속인)', node: node, parentNode: parentNode, parentName: parentNode.id === 'root' ? (tree.name || '피상속인') : parentNode.name, relation: node.relation, level: level, branchRootId: currentBranchRootId });
+          tabMap.set(pId, { 
+            id: pId, 
+            personId: pId, 
+            name: node.name || '(상속인)', 
+            node: node, 
+            parentNode: parentNode, 
+            parentName: parentNode.id === 'root' ? (tree.name || '피상속인') : parentNode.name, 
+            parentTabId: parentNode.id === 'root' ? 'root' : parentNode.personId,
+            inheritanceType: node.isDeceased ? 'deceased' : 'excluded',
+            relation: node.relation, 
+            level: level, 
+            branchRootId: currentBranchRootId 
+          });
           registeredPersonIds.add(pId);
         } else {
           const existingTab = tabMap.get(pId);

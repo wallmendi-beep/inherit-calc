@@ -103,14 +103,41 @@ export default function InputPanel({
       <div className="transition-colors flex-1 flex flex-col">
         <div className="relative transition-all duration-300 flex-1 bg-white dark:bg-neutral-800 border border-[#e9e9e7] dark:border-neutral-700/50 rounded-xl">
           <div className="flex items-stretch px-6 py-3 border-b border-[#f1f1ef] dark:border-neutral-700/50 bg-[#f8f9fa] dark:bg-neutral-900/40 rounded-t-xl min-h-[80px]">
-            <div className="flex items-center gap-5 w-full">
-              <div className="flex items-center shrink-0 pr-4">
-                <div className="flex items-center px-2"><span className="text-[12px] font-bold text-[#787774] dark:text-neutral-400 tracking-tight">입력 단계</span></div>
+            <div className="flex items-center gap-3 w-full">
+              <div className="flex items-center shrink-0 pr-1">
+                {activeDeceasedTab === 'root' ? (
+                  <div className="flex items-center px-2">
+                    <span className="text-[12px] font-bold text-[#787774] dark:text-neutral-400 tracking-tight">입력 단계</span>
+                  </div>
+                ) : (
+                  <button 
+                    onClick={() => setActiveDeceasedTab(activeTabObj?.parentTabId || 'root')}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-neutral-100/80 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 rounded-md border border-[#e9e9e7] dark:border-neutral-700 transition-all active:scale-95 group"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3.5} stroke="currentColor" className="w-3 h-3 text-[#1e56a0] dark:text-blue-400 group-hover:-translate-x-0.5 transition-transform">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                    </svg>
+                    <div className="flex flex-col items-start leading-none">
+                      <span className="text-[9px] font-bold text-slate-400 dark:text-neutral-500 uppercase mb-0.5">상위상속인</span>
+                      <span className="text-[11.5px] font-black text-slate-800 dark:text-neutral-100 whitespace-nowrap">
+                        {activeTabObj?.parentName || '상위'}
+                      </span>
+                    </div>
+                  </button>
+                )}
               </div>
               <div className="w-px h-8 bg-[#e9e9e7] dark:bg-neutral-700 shrink-0"></div>
               <div className="flex flex-col justify-center min-w-[80px] max-w-[180px]">
-                <span className="text-[10px] font-bold text-[#1e56a0] dark:text-blue-400 uppercase mb-0.5">{activeDeceasedTab === 'root' ? '피상속인' : '상속인'}</span>
-                <div className="flex items-center overflow-hidden"><span className="text-[16px] font-black text-neutral-800 dark:text-neutral-100 truncate">{getBriefingInfo.name}</span></div>
+                <span className="text-[10px] font-bold text-[#1e56a0] dark:text-blue-400 uppercase mb-0.5">
+                  {activeDeceasedTab === 'root' 
+                    ? '피상속인' 
+                    : (activeTabObj?.inheritanceType === 'deceased' ? '피상속인' : '피대습상속인')}
+                </span>
+                <div className="flex items-center overflow-hidden">
+                  <span className="text-[16px] font-black text-neutral-800 dark:text-neutral-100 truncate">
+                    {getBriefingInfo.name}
+                  </span>
+                </div>
               </div>
               <div className="w-px h-8 bg-[#e9e9e7] dark:bg-neutral-700 shrink-0"></div>
               <div className="flex flex-col justify-center items-center shrink-0">

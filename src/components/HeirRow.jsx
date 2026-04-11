@@ -309,9 +309,9 @@ const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, r
         {/* 💡 지분 표시는 버튼 위나 아래에 콤팩트하게 배치 (전체 너비 유지) - 왼쪽으로 10px 이동 */}
         {!node.isExcluded && !node.isDeceased && (
           <div className="flex items-center gap-0.5 text-[11px] font-black leading-none mb-0.5 ml-[-10px]">
-            <span className={isAutoCalculated ? 'text-blue-600 dark:text-blue-400' : 'text-[#1e56a0] dark:text-blue-400'}>{displayN}</span>
+            <span className="text-[#1e56a0] dark:text-blue-400">{displayN}</span>
             <span className="text-neutral-500 dark:text-neutral-500">/</span>
-            <span className={isAutoCalculated ? 'text-blue-600 dark:text-blue-400' : 'text-[#1e56a0] dark:text-blue-400'}>{displayD}</span>
+            <span className="text-[#1e56a0] dark:text-blue-400">{displayD}</span>
           </div>
         )}
         {shouldShowTabBtn && onTabClick && (
