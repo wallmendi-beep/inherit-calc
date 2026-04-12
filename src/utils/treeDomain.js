@@ -131,8 +131,13 @@ export const normalizeImportedTree = (rawTree) => {
     const isPredeceased = deathDate && refDate && isBefore(deathDate, refDate);
 
     if (isPredeceased && !isSpouseType) {
+      // 선사망: 강제 제외(OFF)
       isExcluded = true;
       exclusionOption = 'predeceased';
+    } else if (!!base.isDeceased && deathDate && refDate && !isPredeceased) {
+      // 후사망(재상속): 강제 포함(ON) - JSON에 isExcluded:true로 저장되어 있어도 덮어씀
+      isExcluded = false;
+      exclusionOption = '';
     }
 
     const normalized = {

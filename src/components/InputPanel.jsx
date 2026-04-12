@@ -235,6 +235,20 @@ export default function InputPanel({
               )
             )}
 
+
+            {nodeHeirs.length > 0 && (
+              <div className="mb-2 flex items-center w-full min-h-[28px] rounded-md border border-[#f1f1ef] bg-[#fcfcfb] px-0 text-[11px] font-bold tracking-tight text-[#787774] dark:border-neutral-700/50 dark:bg-neutral-900/20 dark:text-neutral-400">
+                <div className="w-5 ml-[10px] shrink-0" />
+                <div className="ml-[20px] w-7 shrink-0 text-center">상태</div>
+                <div className="w-[72px] ml-[50px] shrink-0">상속인</div>
+                <div className="w-[76px] ml-[30px] shrink-0">관계</div>
+                <div className="w-[150px] ml-[30px] shrink-0">사망일자</div>
+                <div className="w-[180px] ml-[10px] shrink-0">특수조건</div>
+                <div className="w-[88px] ml-[20px] shrink-0 text-center">하위 상속</div>
+                <div className="w-12 ml-[30px] mr-[20px] shrink-0 text-center">삭제</div>
+              </div>
+            )}
+
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={nodeHeirs.map((h) => h.id)} strategy={verticalListSortingStrategy}>
                 <div className="space-y-1.5">

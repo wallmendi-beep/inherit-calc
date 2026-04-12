@@ -45,9 +45,14 @@ export const migrateToVault = (oldTree) => {
     if (parentId) {
       if (!vault.relationships[parentId]) vault.relationships[parentId] = [];
       const isManualExclusion =
-        node.exclusionOption === 'renounce' ||
-        node.exclusionOption === 'disqualified' ||
-        node.exclusionOption === 'predeceased';
+        !!node.isExcluded &&
+        (
+          node.exclusionOption === 'renounce' ||
+          node.exclusionOption === 'disqualified' ||
+          node.exclusionOption === 'predeceased' ||
+          node.exclusionOption === 'lost' ||
+          node.exclusionOption === 'remarried'
+        );
 
       const existingLink = vault.relationships[parentId].find((link) => link.targetId === pId);
       if (!existingLink) {
@@ -117,6 +122,10 @@ export const buildTreeFromVault = (vault) => {
       if (isPreDeceased && !isSpouseType) {
         childNode.isExcluded = true;
         childNode.exclusionOption = 'predeceased';
+      } else if (childNode.isDeceased && childNode.deathDate && effectiveDate && !isPreDeceased) {
+        // 후사망(재상속)은 JSON에 과거 exclusionOption 값이 남아 있어도 기본 ON으로 복원한다.
+        childNode.isExcluded = false;
+        childNode.exclusionOption = '';
       }
 
       if (isDaughter && childNode.marriageDate && effectiveDate && isBefore(childNode.marriageDate, effectiveDate)) {
