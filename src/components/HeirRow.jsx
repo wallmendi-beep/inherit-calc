@@ -109,7 +109,8 @@ export default function HeirRow({
   const isRootParent = parentNode?.id === 'root';
   const isParentFemale = !isRootParent && ['wife', 'daughter', 'mother', 'sister'].includes(parentNode?.relation);
   const isParentMale = !isRootParent && ['husband', 'son', 'father', 'brother'].includes(parentNode?.relation);
-  const showHoju = node.relation === 'son' && lawEra !== '1991' && rootIsHoju !== false && !isParentFemale;
+  const isMaleNode = node.gender === 'male' || ['son', 'husband'].includes(node.relation);
+  const showHoju = isMaleNode && !!node.isDeceased && lawEra !== '1991' && rootIsHoju !== false && !isParentFemale;
   const showMarriedDaughter = node.relation === 'daughter' && lawEra !== '1991';
   const hasHistoryData = !!(node.divorceDate || node.remarriageDate || node.marriageDate || node.restoreDate);
 
@@ -183,19 +184,34 @@ export default function HeirRow({
               </button>
             </div>
 
-            <div className="ml-[50px] flex w-[72px] shrink-0 items-center">
-              <input
-                type="text"
-                value={node.name}
-                onKeyDown={onKeyDown}
-                onChange={(e) => handleUpdate(node.id, 'name', e.target.value)}
-                lang="ko"
-                autoCapitalize="off"
-                autoCorrect="off"
-                spellCheck="false"
-                className="w-full border-b border-transparent bg-transparent text-[15px] font-bold text-[#37352f] outline-none hover:border-neutral-200 focus:border-amber-400 dark:text-slate-200"
-                placeholder="성명"
-              />
+            <div className="ml-[50px] flex w-[140px] shrink-0 items-center gap-2">
+              <div className="w-[72px] shrink-0">
+                <input
+                  type="text"
+                  value={node.name}
+                  onKeyDown={onKeyDown}
+                  onChange={(e) => handleUpdate(node.id, 'name', e.target.value)}
+                  lang="ko"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck="false"
+                  className="w-full border-b border-transparent bg-transparent text-[15px] font-bold text-[#37352f] outline-none hover:border-neutral-200 focus:border-amber-400 dark:text-slate-200"
+                  placeholder="성명"
+                />
+              </div>
+              {showHoju && (
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <BadgeToggle
+                    active={node.isHoju}
+                    onToggle={(value) => handleUpdate({ type: 'setHojuStatus', nodeId: node.id, isHoju: value })}
+                    activeLabel="호주"
+                    inactiveLabel="일반"
+                    hoverClassName="hover:bg-blue-50/50 hover:text-blue-600 hover:border-blue-200"
+                    className="w-[56px]"
+                  />
+                  {node.isHoju && <MultiplierBadge multiplier="x 1.5" />}
+                </div>
+              )}
             </div>
 
             <div className="ml-[30px] w-[76px] shrink-0">
@@ -296,12 +312,6 @@ export default function HeirRow({
 
                   {!isSpouseType && (
                     <div className="flex shrink-0 items-center gap-1.5">
-                      {showHoju && (
-                        <div className="flex items-center gap-1.5">
-                          <BadgeToggle active={node.isHoju} onToggle={(value) => handleUpdate({ type: 'setHojuStatus', nodeId: node.id, isHoju: value })} activeLabel="호주" inactiveLabel="일반" hoverClassName="hover:bg-blue-50/50 hover:text-blue-600 hover:border-blue-200" className="w-[64px]" />
-                          {node.isHoju && <MultiplierBadge multiplier="x 1.5" />}
-                        </div>
-                      )}
                       {showMarriedDaughter && (
                         <div className="flex items-center gap-1.5">
                           <BadgeToggle active={node.isSameRegister !== false} onToggle={(value) => handleUpdate(node.id, 'isSameRegister', value ? true : false)} activeLabel="동일" inactiveLabel="출가" isInferred={node._isInferredRegister} inactiveClassName="border-neutral-400 bg-neutral-100 text-[#37352f]" hoverClassName="hover:bg-emerald-50/50 hover:text-emerald-600 hover:border-emerald-200" className="w-[64px]" />

@@ -95,6 +95,38 @@ export const calculateInheritance = (tree) => {
       mod: dist.mod || '',
     })),
   });
+
+  const getHojuBonusContext = ({ node, isSubstitution, parentDecName }) => {
+    const relation = node?.relation || '';
+    const isRootStage = node?.id === 'root';
+    const isFemaleDeceased = ['wife', 'daughter'].includes(relation);
+    const isSpouseEstate = ['wife', 'husband', 'spouse'].includes(relation);
+    const nodeAllowsHoju = isRootStage || !!node?.isHoju;
+
+    return {
+      sourceName: parentDecName || '피상속인',
+      isRootStage,
+      isSubstitution,
+      isFemaleDeceased,
+      isSpouseEstate,
+      nodeAllowsHoju,
+      // 여성 피상속인 본인 재산 단계에서는 자동 가산을 막고,
+      // 배우자 경유 후 별도 재산 단계는 이후 판정 함수에서 다시 열어둘 수 있게 분리한다.
+      blocksDirectFemaleEstateBonus: isFemaleDeceased && !isSubstitution,
+    };
+  };
+
+  const canApplyHojuBonus = ({ heir, law, context }) => {
+    if (!heir || heir.relation !== 'son' || !heir.isHoju) return false;
+    if (!(law === '1960' || law === '1979')) return false;
+    if (context.blocksDirectFemaleEstateBonus) return false;
+    if (!context.nodeAllowsHoju) return false;
+    return true;
+  };
+
+  const getHojuBonusReason = ({ context }) => (
+    context.isSubstitution ? '대습 호주가산 (선례 2-285호)' : '호주상속 5할 가산'
+  );
   
   const findHeirsByName = (root, targetName, excludeId) => {
     if (!targetName || targetName.trim() === '') return null;
@@ -322,6 +354,7 @@ export const calculateInheritance = (tree) => {
     targetHeirs.forEach(h => {
       const isSp = h.relation === 'wife' || h.relation === 'husband' || h.relation === 'spouse';
       const isPre = h.isDeceased && h.deathDate && isBefore(h.deathDate, distributionDate);
+      const hojuContext = getHojuBonusContext({ node, isSubstitution, parentDecName });
       let modifier = ''; 
 
       let skipped = false;
@@ -372,19 +405,14 @@ export const calculateInheritance = (tree) => {
              }
 
              if (!isMarried) { h.r = 1.0; }
-             else { h.r = 0.25; modifier = '출가녀 감산 (아들의 1/4)'; }
-           } else if (h.relation === 'son') {
-             // 피상속인(node)이 여성이면 호주상속 가산(1.5)을 적용하지 않음.
-             // 루트 피상속인은 relation이 없으므로, 루트 사건에서도 장남 호주가산이 정상 작동해야 한다.
-             const isFemaleDeceased = ['wife', 'daughter'].includes(node.relation);
-             const canApplyHojuBonus = h.isHoju && !isFemaleDeceased && (node.id === 'root' || node.isHoju);
-
-             if (canApplyHojuBonus) {
-               h.r = 1.5;
-               modifier = isSubstitution ? '대습 호주가산 (선례 2-285호)' : '호주상속 5할 가산';
-             }
-             else { h.r = 1.0; }
-           } else h.r = 1.0;
+              else { h.r = 0.25; modifier = '출가녀 감산 (아들의 1/4)'; }
+            } else if (h.relation === 'son') {
+              if (canApplyHojuBonus({ heir: h, law, context: hojuContext })) {
+                h.r = 1.5;
+                modifier = getHojuBonusReason({ context: hojuContext });
+              }
+              else { h.r = 1.0; }
+            } else h.r = 1.0;
          } else { // 1960년 구법
             if (h.relation === 'daughter') {
               // 🤖 [Phase 2-2: 시계열 판별 AI] 혼인 및 친가복적 자동 판별
@@ -396,20 +424,15 @@ export const calculateInheritance = (tree) => {
                 isMarried = false; // 복적 완료!
               }
 
-              if (!isMarried) { h.r = 0.5; modifier = '여자 감산 (남자의 1/2)'; }
-              else { h.r = 0.25; modifier = '출가녀 감산 (남자의 1/4)'; }
-           } else if (h.relation === 'son') {
-             // 피상속인(node)이 여성이면 호주상속 가산(1.5)을 적용하지 않음.
-             // 루트 피상속인은 relation이 없으므로, 루트 사건에서도 장남 호주가산이 정상 작동해야 한다.
-             const isFemaleDeceased = ['wife', 'daughter'].includes(node.relation);
-             const canApplyHojuBonus = h.isHoju && !isFemaleDeceased && (node.id === 'root' || node.isHoju);
-
-             if (canApplyHojuBonus) {
-               h.r = 1.5;
-               modifier = isSubstitution ? '대습 호주가산 (선례 2-285호)' : '호주상속 5할 가산';
-             }
-             else { h.r = 1.0; }
-           } else h.r = 1.0;
+                if (!isMarried) { h.r = 0.5; modifier = '여자 감산 (남자의 1/2)'; }
+                else { h.r = 0.25; modifier = '출가녀 감산 (남자의 1/4)'; }
+             } else if (h.relation === 'son') {
+               if (canApplyHojuBonus({ heir: h, law, context: hojuContext })) {
+                 h.r = 1.5;
+                modifier = getHojuBonusReason({ context: hojuContext });
+               }
+               else { h.r = 1.0; }
+             } else h.r = 1.0;
          }
       }
       
