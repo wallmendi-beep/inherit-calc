@@ -97,10 +97,13 @@ const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, r
     <>
       <div 
         ref={setNodeRef} 
-        style={dndStyle} 
-        data-node-id={node.id} // 💡 추가: 스마트 가이드가 이 좌표로 이동합니다
-        className="group/row flex items-center justify-start w-full pr-0 pl-0 py-2 mb-1 bg-white dark:bg-neutral-800 rounded-md border border-[#e5e5e5] dark:border-neutral-700 hover:bg-[#f8f8f7] dark:hover:bg-neutral-700/50 transition-colors relative"
-      >
+      <div className="mb-0.5 flex flex-col w-full no-print">
+        <div 
+          ref={setNodeRef} 
+          style={dndStyle} 
+          data-node-id={node.id} // 💡 추가: 스마트 가이드가 이 좌표로 이동합니다
+          className="group/row flex items-center justify-start w-full pr-0 pl-0 py-2 bg-white dark:bg-neutral-800 rounded-md border border-[#e5e5e5] dark:border-neutral-700 hover:bg-[#f8f8f7] dark:hover:bg-neutral-700/50 transition-colors relative z-10"
+        >
       
       {/* 0. 드래그 핸들 */}
       <div {...attributes} {...listeners} className="w-5 h-8 flex items-center justify-center cursor-grab active:cursor-grabbing text-neutral-300 hover:text-neutral-400 transition-colors ml-[10px] shrink-0">
@@ -114,9 +117,8 @@ const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, r
           role="switch"
           aria-checked={!node.isExcluded}
           onClick={() => {
-            // [v4.26] 선사망(Predeceased)인 경우 클릭 피드백 및 조작 차단
+            // [v4.28] 선사망(Predeceased)인 경우 클릭 피드백 (alert 제거)
             if (node.exclusionOption === 'predeceased') {
-              alert(`[${node.name || '이름 없음'}]은 피상속인보다 먼저 사망하였습니다. 대습상속(자녀/배우자) 데이터가 있다면 입력해 주세요.`);
               return;
             }
             const nextExcluded = !node.isExcluded;
@@ -348,7 +350,19 @@ const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, r
           <IconTrash2 className="w-5 h-5" />
         </button>
       </div>
-    </div>
+        
+        {/* [v4.28] 인라인 슬라이드 경고창 (선사망 배우자 전용 안내) */}
+        {node.exclusionOption === 'predeceased' && isSpouseType && (
+          <div className="w-full flex items-center pl-[150px] py-1.5 animate-in slide-in-from-top-1 fade-in duration-300 ease-out fill-mode-forwards">
+            <span className="text-[#92400e] text-[13px] font-semibold flex items-center gap-2 bg-[#fffcf0] px-3 py-1 rounded-md border border-[#fcd9a8]/50 shadow-sm mb-1">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-[#92400e]/70">
+                <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clipRule="evenodd" />
+              </svg>
+              선사망 배우자는 상속권이 없으므로 가계도에서 자동 제외됩니다. 사망일자의 오류가 있다면 수정해 주세요.
+            </span>
+          </div>
+        )}
+      </div>
 
     {/* 💡 미니멀리즘 프로페셔널 테마 모달창 */}
     {isHistoryModalOpen && (
