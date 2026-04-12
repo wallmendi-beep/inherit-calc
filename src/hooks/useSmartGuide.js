@@ -18,6 +18,27 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
       };
     }
 
+    // [v4.32] 초기 상태 (기초 정보 누락) 최우선 가이드
+    if (!tree.name?.trim() || !tree.deathDate) {
+      return {
+        showGlobalWarning: false,
+        showAutoCalcNotice: false,
+        globalMismatchReasons: [],
+        autoCalculatedNames: [],
+        smartGuides: [{
+          id: 'initial-step',
+          uniqueKey: 'initial-step',
+          type: 'mandatory',
+          text: "사건번호와 피상속인의 기본정보를 입력해주세요.",
+          targetTabId: 'root'
+        }],
+        noSurvivors: false,
+        hasActionItems: true,
+        auditActionItems: [],
+        repairHints: ["피상속인의 성명과 사망일자를 입력하시면 정교한 상속인 가이드가 시작됩니다."],
+      };
+    }
+
     const audit = auditInheritanceResult({ tree, finalShares, transitShares, warnings });
 
     const uniqueGuidesMap = new Map();
@@ -73,19 +94,23 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
               }
             } else {
               // [v1.4] 예측형 안내: 차순위 상속인 실명 추적
-              const findSuccessorNames = () => {
-                if (isSpouse) {
-                  const children = (tree.heirs || []).filter(h => ['son', 'daughter'].includes(h.relation) && !h.isExcluded).map(h => h.name);
-                  return children.length > 0 ? `직계비속 [${children.join(', ')}]` : "피상속인의 차순위 상속인";
-                } else {
-                  const mother = (tree.heirs || []).find(h => ['wife', 'husband', 'spouse'].includes(h.relation) && !h.isDeceased && !h.isExcluded);
-                  if (mother) return `직계존속 [${mother.name}]`;
-                  const siblings = (tree.heirs || []).filter(h => h.id !== node.id && ['son', 'daughter'].includes(h.relation) && !h.isExcluded).map(h => h.name);
-                  return siblings.length > 0 ? `형제자매 [${siblings.join(', ')}]` : "피상속인의 차순위 상속인";
-                }
-              };
-              const target = findSuccessorNames();
-              guideText = `별도의 상속인을 입력하지 않으면, 법정 순위에 따라 ${target}에게 지분이 귀속됩니다.`;
+            const findSuccessorNames = () => {
+              if (isSpouse) {
+                // [v3.1.5] 루트의 자녀(직계비속)를 전수 추출 (제외 여부 무관하게 실명 노출)
+                const children = (tree.heirs || [])
+                  .filter(h => ['son', 'daughter'].includes(h.relation))
+                  .map(h => h.name)
+                  .filter(Boolean);
+                return children.length > 0 ? ` [${children.join('], [')}]` : "피상속인의 차순위 상속인";
+              } else {
+                const mother = (tree.heirs || []).find(h => ['wife', 'husband', 'spouse'].includes(h.relation) && !h.isDeceased && !h.isExcluded);
+                if (mother) return `직계존속 [${mother.name}]`;
+                const siblings = (tree.heirs || []).filter(h => h.id !== node.id && ['son', 'daughter'].includes(h.relation) && !h.isExcluded).map(h => h.name);
+                return siblings.length > 0 ? `형제자매 [${siblings.join(', ')}]` : "피상속인의 차순위 상속인";
+              }
+            };
+            const target = findSuccessorNames();
+            guideText = `별도의 상속인을 입력하지 않으면 [${tree.name}]의 직계비속인 ${target}에게 상속지분이 자동으로 분배됩니다.\n\n${node.name}의 상속인이 아닌 사람이 있으면 '불러오기' 버튼으로 편집해 주세요.`;
             }
 
             uniqueGuidesMap.set(`missing-successors-${node.personId}`, {
@@ -157,27 +182,45 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
       noSurvivors = true;
     }
 
+    // [v3.1.4] 감사 엔진 이슈 통합 (entityIssues를 uniqueGuidesMap에 병합)
+    (audit.entityIssues || []).forEach((issue) => {
+      const personId = issue.personId || issue.id;
+      const key = `audit-${issue.code}-${personId}`;
+      if (!uniqueGuidesMap.has(key)) {
+        uniqueGuidesMap.set(key, {
+          id: issue.id || personId,
+          uniqueKey: key,
+          personId: personId,
+          targetTabId: issue.targetTabId || personId || 'root',
+          name: issue.name || null,
+          type: issue.severity === 'error' ? 'mandatory' : 'recommended',
+          text: issue.text,
+          code: issue.code,
+          displayTargets: issue.displayTargets || ['guide'],
+        });
+      }
+    });
+
     const smartGuides = Array.from(uniqueGuidesMap.values());
-    const auditActionItems = (audit.entityIssues || []).map((issue) => ({
-      id: issue.id || issue.personId || issue.targetTabId || issue.code,
-      personId: issue.personId || null,
-      targetTabId: issue.targetTabId || issue.personId || issue.id || 'root',
-      name: issue.name || null,
-      severity: issue.severity || 'warning',
-      text: issue.text,
-      code: issue.code,
-      displayTargets: issue.displayTargets || ['guide'],
-    }));
+    
+    // UI 호환성을 위해 필터링된 리스트 생성
+    const mandatoryGuides = smartGuides.filter(g => g.type === 'mandatory');
+    const recommendedGuides = smartGuides.filter(g => g.type === 'recommended');
+
     const globalMismatchReasons = audit.issues.map((issue) => ({
       id: issue.targetTabId || issue.personId || issue.id || 'root',
       text: issue.text,
     }));
+
     return {
-      showGlobalWarning: audit.issues.length > 0, showAutoCalcNotice: false, globalMismatchReasons, autoCalculatedNames: [],
-      smartGuides,
+      showGlobalWarning: audit.issues.length > 0, 
+      showAutoCalcNotice: false, 
+      globalMismatchReasons, 
+      autoCalculatedNames: [],
+      smartGuides, // 전체 리스트 (SmartGuidePanel에서 내부 필터링함)
       noSurvivors,
-      hasActionItems: smartGuides.some(g => g.type === 'mandatory') || auditActionItems.length > 0,
-      auditActionItems,
+      hasActionItems: smartGuides.length > 0 || audit.issues.length > 0,
+      auditActionItems: [], // smartGuides로 통합되었으므로 빈 배열 리턴
       repairHints: audit.repairHints || [],
     };
   }, [tree, finalShares, activeTab, warnings, transitShares]);

@@ -36,6 +36,11 @@ const ALLOWED_KEYS = new Set([
   'caseNo',
   'shareN',
   'shareD',
+  '_lastDeathDate',
+  '_lastMarriageDate',
+  '_lastRemarriageDate',
+  '_lastDivorceDate',
+  '_lastRestoreDate',
 ]);
 
 const PERSON_FIELDS = [
@@ -202,12 +207,34 @@ export const updateDeathInfo = (tree, nodeId, payload) => {
       const next = {
         ...node,
         isDeceased: nextIsDeceased,
-        deathDate: nextIsDeceased ? nextDeathDate : '',
       };
 
-      if (nextIsDeceased && isPre && !isSpouseType) {
-        next.isExcluded = true;
-        next.exclusionOption = 'predeceased';
+      // [v3.0.29] 날짜 메모리 캡처 및 복원
+      if (nextIsDeceased) {
+        if (payload.deathDate) {
+          next.deathDate = nextDeathDate;
+          next._lastDeathDate = nextDeathDate;
+        } else if (!node.isDeceased) {
+          // 체크박스를 새로 켰을 때(isDeceased가 false였을 때), 메모리가 있다면 복원
+          next.deathDate = node._lastDeathDate || '';
+        } else {
+          // 이미 체크된 상태에서 날짜를 수동으로 지운 경우 (''로 유지)
+          next.deathDate = '';
+        }
+      } else {
+        next.deathDate = '';
+      }
+
+      if (next.isDeceased) {
+        if (isPre && !isSpouseType) {
+          // 선사망: 기본 제외(OFF) + 옵션 고정
+          next.isExcluded = true;
+          next.exclusionOption = 'predeceased';
+        } else if (!isPre) {
+          // 후사망: 기본 포함(ON) -> 재상속 데이터 입력 가능케 함
+          next.isExcluded = false;
+          next.exclusionOption = '';
+        }
       } else if (payload.deathDate !== undefined && next.exclusionOption === 'predeceased') {
         next.isExcluded = false;
         next.exclusionOption = '';
@@ -226,7 +253,12 @@ export const updateHistoryInfo = (tree, nodeId, changes) => {
   const nextChanges = {};
   PERSON_FIELDS.forEach((field) => {
     if (changes[field] !== undefined) {
-      nextChanges[field] = field.endsWith('Date') ? normalizeDateField(changes[field]) : changes[field];
+      const val = field.endsWith('Date') ? normalizeDateField(changes[field]) : changes[field];
+      nextChanges[field] = val;
+      // [v3.0.29] 연혁 날짜 메모리 캡처
+      if (field.endsWith('Date') && val) {
+        nextChanges[`_last${field.charAt(0).toUpperCase() + field.slice(1)}`] = val;
+      }
     }
   });
 

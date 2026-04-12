@@ -440,29 +440,41 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
       const newVisited = new Set(visited);
       newVisited.add(pId);
 
-      if (clone.id !== 'root' && !clone.isExcluded) {
+      if (clone.id !== 'root') {
         // [v3.0.13] Smart Inference: 상속 맥락(사망일)에 따른 동적 지위 결정
         if (clone.relation === 'daughter' && clone.marriageDate && refDate) {
           const lawEra = getLawEra(refDate);
           if (lawEra !== '1991') {
-            // 사망일(refDate) 시점에 이미 결혼(marriageDate)한 상태라면 출가(isSameRegister: false)
             const wasMarriedAtDeath = !isBefore(refDate, clone.marriageDate);
             clone.isSameRegister = !wasMarriedAtDeath;
-            clone._isInferredRegister = true; // UI 표시용 플래그
+            clone._isInferredRegister = true;
           }
         }
 
         const isPre = clone.deathDate && refDate && isBefore(clone.deathDate, refDate); 
-        const isDeadWithoutHeirs = clone.isDeceased && (!clone.heirs || clone.heirs.length === 0);
+        const hasHeirsInModel = clone.heirs && clone.heirs.length > 0;
         
+        // [v3.1.5] 데이터가 있다면 제외 처리(isExcluded)를 강제로 해제함 (지분 0원 방지)
+        if (hasHeirsInModel) {
+          clone.isExcluded = false;
+          clone.exclusionOption = ''; 
+        }
+
+        const isDeadWithoutHeirs = clone.isDeceased && !hasHeirsInModel;
+        
+        // [선사망자] 하위 데이터가 없으면 강제 제외 (3초 가드레일 대상)
         if (isPre && isDeadWithoutHeirs) { 
           clone.isExcluded = true; 
           clone.exclusionOption = 'predeceased'; 
-        } else if (!isPre && isDeadWithoutHeirs && parentNode && !clone.id.startsWith('auto_')) {
+        } 
+        // [후사망자] 하위 데이터가 없더라도 기본적으로 상속권을 유지(On)하며 안내만 표시
+        else if (!isPre && isDeadWithoutHeirs && parentNode && !clone.id.startsWith('auto_')) {
           const isSpouseType = ['wife', 'husband', 'spouse'].includes(clone.relation);
+          clone.isExcluded = false; // 후사망자는 명시적으로 제외 상태 해제
+          clone.exclusionOption = '';
           if (!isSpouseType) {
             const pHeirs = parentNode.heirs || []; 
-            const aliveAscendants = pHeirs.filter(h => ['wife', 'husband', 'spouse'].includes(h.relation) && (!h.isDeceased || (h.deathDate && isBefore(clone.deathDate, h.deathDate))) && !h.isExcluded);
+            const aliveAscendants = pHeirs.filter(h => ['wife', 'husband', 'spouse'].includes(h.relation) && (!h.isDeceased || (h.deathDate && !isBefore(h.deathDate, clone.deathDate))) && !h.isExcluded);
             if (aliveAscendants.length > 0) {
               clone.heirs = aliveAscendants.map(asc => ({ ...asc, id: `auto_${asc.id}`, relation: 'parent', heirs: [] }));
             } else { 
@@ -528,73 +540,8 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
     repairHints,
   } = guideInfo || {};
 
-  const multipleSpouseGuides = useMemo(() => {
-    const guides = []; const checkSpouses = (node) => { const spouses = (node.heirs || []).filter(h => ['wife', 'husband', 'spouse'].includes(h.relation) && !h.isExcluded); if ( spouses.length > 1) { guides.push({ id: node.id, uniqueKey: `multi-spouse-${node.personId}`, targetTabId: node.personId, type: 'mandatory', text: `[${node.name || '이름 없음'}] 유효 배우자가 중복 입력되었습니다. 실제 상속받을 1명만 남기고 나머지는 제외 처리해 주세요.` }); } if (node.heirs) node.heirs.forEach(checkSpouses); };
-    checkSpouses(tree); return guides;
-  }, [tree]);
 
-  const hojuMissingGuides = useMemo(() => {
-    const guides = [];
-    const checkHoju = (node) => {
-      if (node.isDeceased && node.heirs && node.heirs.length > 0) {
-        const hasHoju = node.heirs.some(h => h.isHoju && !h.isExcluded);
-        const effectiveDate = node.deathDate || tree.deathDate; 
-        const needsHoju = getLawEra(effectiveDate) !== '1991' && (node.id === 'root' || ['son', '아들'].includes(node.relation));
-        if (needsHoju && !hasHoju) {
-          guides.push({
-            id: node.id, uniqueKey: `missing-hoju-${node.personId}`, targetTabId: node.personId, type: 'mandatory',
-            text: `[${node.name || '이름 없음'}]은 구법(${effectiveDate} 사망) 적용 대상입니다. 하위 상속인 중 호주상속인을 지정해 주세요.`
-          });
-        }
-      }
-      if (node.heirs) node.heirs.forEach(checkHoju);
-    };
-    checkHoju(tree);
-    return guides;
-  }, [tree]);
-
-  const logicalMismatchGuides = useMemo(() => {
-    const guides = [];
-    if (!tree.name || !tree.name.trim()) { guides.push({ id: 'root', uniqueKey: 'missing-root-name', targetTabId: 'root', type: 'mandatory', text: '피상속인의 성명과 사망일자를 먼저 입력해 주세요.' }); } else if (!tree.deathDate) { guides.push({ id: 'root', uniqueKey: 'missing-root-death', targetTabId: 'root', type: 'mandatory', text: `[${tree.name || '이름 없음'}]의 사망일자를 입력해 주세요. 사망일자를 기준으로 적용 법령이 결정됩니다.` }); }
-    const checkMismatch = (node, parentDeathDate, parentPersonId) => {
-      const effectiveDate = parentDeathDate || tree.deathDate;
-      const isSpouse = ['wife', 'husband', 'spouse'].includes(node.relation);
-      if (node.relation === 'daughter' && node.marriageDate && effectiveDate) { if (getLawEra(effectiveDate) !== '1991' && isBefore(node.marriageDate, effectiveDate) && node.isSameRegister !== false) { guides.push({ id: node.id, uniqueKey: `mismatch-married-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름 없음'}]의 혼인일(${node.marriageDate})이 상속개시일(${effectiveDate}) 이전입니다. 구법 적용 대상일 수 있으므로 [출가] 상태를 확인해 주세요.` }); } }
-      // [v4.26] 디자인 룰 기준: 배우자 포함 모든 선사망자 경고 동기화
-      if (node.deathDate && effectiveDate && isBefore(node.deathDate, effectiveDate)) { 
-        if (!node.isExcluded || node.exclusionOption !== 'predeceased') { 
-          guides.push({ 
-            id: node.id, 
-            uniqueKey: `mismatch-predeceased-${node.personId}`, 
-            targetTabId: parentPersonId, 
-            type: 'mandatory', 
-            text: `[${node.name || '이름 없음'}]은 피상속인보다 먼저 사망하였습니다. 대습상속(자녀/배우자) 데이터가 있다면 입력해 주세요.` 
-          }); 
-        } 
-      }
-      if (isSpouse && node.remarriageDate && effectiveDate && isBefore(node.remarriageDate, effectiveDate)) { if (!node.isExcluded || node.exclusionOption !== 'remarried') { guides.push({ id: node.id, uniqueKey: `mismatch-remarried-self-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름 없음'}]은 피상속인 사망일(${effectiveDate}) 이전에 재혼일(${node.remarriageDate})이 입력되어 있습니다. 재혼에 따른 상속권 여부를 확인해 주세요.` }); } }
-      if (node.marriageDate && node.deathDate && isBefore(node.deathDate, node.marriageDate)) { guides.push({ id: node.id, uniqueKey: `date-mismatch-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름 없음'}]의 혼인일(${node.marriageDate})이 사망일(${node.deathDate})보다 늦게 입력되어 있습니다. 날짜를 확인해 수정해 주세요.` }); }
-      // 5단계 조기 발견: 사망자이나 하위 상속인이 없는 경우 검증
-      if (node.isDeceased && node.isExcluded !== true && (!node.heirs || node.heirs.length === 0)) {
-        const isPre = node.deathDate && tree.deathDate && isBefore(node.deathDate, tree.deathDate);
-        const isSp = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(node.relation);
-        let msg = `[${node.name || '이름 없음'}]은(는) 사망자이나 후속 상속인이 입력되지 않았습니다. 하위 데이터가 없다면 '상속권 없음' 등으로 처리해 주세요.`;
-        if (isPre) {
-          msg = `[${node.name}]님은 피상속인보다 먼저 사망(선사망)했으나 대습상속인이 없습니다. 이 경우 상속권이 발생하지 않으므로 [상속권 없음] 처리가 필요합니다.`;
-        } else if (isSp) {
-          msg = `사망한 배우자([${node.name}])의 지분 분배를 위한 후속 상속인 정보가 없습니다. 계보를 확인하거나 [상속권 없음] 처리를 해주세요.`;
-        } else {
-          msg = `[${node.name}]님은 재상속 대상자이나 자녀/배우자 정보가 없습니다. 지분 전이를 위해 부모/형제를 입력하거나 [상속권 없음] 처리를 해주세요.`;
-        }
-        guides.push({ id: node.id, uniqueKey: `missing-heirs-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: msg });
-      }
-      if (node.heirs) { node.heirs.forEach(h => { let nextEffectiveDate = effectiveDate; if (node.deathDate && !isBefore(node.deathDate, effectiveDate)) nextEffectiveDate = node.deathDate; checkMismatch(h, nextEffectiveDate, node.personId); }); }
-    };
-    if (tree.heirs) tree.heirs.forEach(h => checkMismatch(h, tree.deathDate, tree.personId || 'root'));
-    return guides;
-  }, [tree]);
-
-  const rawSmartGuides = [ ...(guideInfo.smartGuides || []), ...multipleSpouseGuides, ...hojuMissingGuides, ...logicalMismatchGuides ];
+  const rawSmartGuides = [ ...(guideInfo.smartGuides || []) ];
   const uniqueGuidesMap = new Map(); rawSmartGuides.forEach(g => { const key = g.uniqueKey || g.text; if (!uniqueGuidesMap.has(key)) uniqueGuidesMap.set(key, g); });
   const smartGuides = Array.from(uniqueGuidesMap.values());
   const hasActionItems = (guideInfo?.hasActionItems) || smartGuides.length > 0;

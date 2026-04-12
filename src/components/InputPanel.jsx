@@ -195,18 +195,34 @@ export default function InputPanel({
             {nodeHeirs.length === 0 && (
               currentNode?.isDeceased && currentNode?.isExcluded !== true ? (
                 <div className="flex flex-col items-center justify-center p-8 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 rounded-lg text-center gap-2 m-2 mb-4">
-                  <span className="text-[#b45309] dark:text-amber-500 font-bold text-[14.5px] leading-relaxed">
+                  <span className="text-[#b45309] dark:text-amber-500 font-bold text-[14.5px] leading-relaxed whitespace-pre-wrap">
                     {(() => {
+                      // [v4.32] 최상위(루트) 정보가 없으면 기초 정보 입력을 우선 안내
+                      if (isRootNode && (!tree.name?.trim() || !tree.deathDate)) {
+                        return "사건번호와 피상속인의 기본정보를 입력해주세요.";
+                      }
+
                       const isPre = currentNode.deathDate && tree.deathDate && isBefore(currentNode.deathDate, tree.deathDate);
-                      const isSp = ['wife', 'husband', 'spouse'].includes(currentNode.relation);
                       if (isPre) {
-                        return isSp 
-                          ? "피상속인보다 먼저 사망한 배우자는 상속권이 발생하지 않습니다.\n본인 항목의 초록색 스위치를 클릭해 [상속권 없음]으로 변경해 주세요."
-                          : "대습상속인이 없는 선사망 자녀는 상속권이 발생하지 않습니다.\n본인 항목의 초록색 스위치를 클릭해 [상속권 없음]으로 변경해 주세요.";
+                        return "선사망 자녀는 대습상속인(배우자 또는 직계비속)을 입력하지 않으면 상속계산에서 제외됩니다.";
                       } else {
-                        return isSp 
-                          ? "사망한 배우자의 지분을 상속받을 후속 대상을 입력해 주세요.\n하위 상속인이 없다면 [상속인 없음(지분 재분배)] 처리가 필요합니다."
-                          : "재상속 대상자이나 현재 하위 상속인(자녀/배우자 등)이 없습니다.\n가계도를 추가하거나 본인 항목을 [상속인 없음] 상태로 변경해 주세요.";
+                        const rootHeirs = tree.heirs || [];
+                        const parentNode = rootHeirs.find(h => ['wife', 'husband', 'spouse'].includes(h.relation) && !h.isExcluded);
+                        const isParentAliveAtTargetDeath = parentNode && (!parentNode.deathDate || !currentNode.deathDate || !isBefore(parentNode.deathDate, currentNode.deathDate));
+
+                        let autoDistText = "";
+                        if (isParentAliveAtTargetDeath) {
+                          autoDistText = `별도의 상속인을 입력하지 않으면 직계존속 [${parentNode.name}]에게 상속지분이 분배됩니다.`;
+                        } else {
+                          const siblings = rootHeirs
+                            .filter(h => h.id !== currentNode.id && ['son', 'daughter'].includes(h.relation))
+                            .map(h => h.name)
+                            .filter(Boolean);
+                          const siblingStr = siblings.length > 0 ? ` [${siblings.join('], [')}]` : "차순위 상속인";
+                          autoDistText = `별도의 상속인을 입력하지 않으면 형제자매 ${siblingStr}에게 상속지분이 분배됩니다.`;
+                        }
+                        
+                        return `${autoDistText}\n\n자동 분배를 차단하려면 상속인을 추가해 주세요.`;
                       }
                     })()}
                   </span>
