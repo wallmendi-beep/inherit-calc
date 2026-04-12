@@ -22,6 +22,22 @@ const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, r
     return null;
   }, [finalShares, node.personId]);
 
+  // [v4.29] 선사망 경고 슬라이드 3초 노출 제어용 로컬 상태
+  const [showPredeceasedWarning, setShowPredeceasedWarning] = useState(false);
+
+  // 3초 후 자동 원복 타이머
+  React.useEffect(() => {
+    let timer;
+    if (showPredeceasedWarning) {
+      timer = setTimeout(() => {
+        setShowPredeceasedWarning(false);
+        // 3초 후 다시 Off(Excluded: true)로 원복
+        handleUpdate(node.id, { isExcluded: true });
+      }, 3000);
+    }
+    return () => clearTimeout(timer);
+  }, [showPredeceasedWarning, node.id, handleUpdate]);
+
   // 엔진 결과값이 있으면 그걸 보여주고, 없으면 노드에 저장된 기본값 노출
   const displayN = calcShare ? calcShare.n : (node.shareN || 0);
   const displayD = calcShare ? calcShare.d : (node.shareD || 1);
@@ -116,6 +132,12 @@ const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, r
           aria-checked={!node.isExcluded}
           onClick={() => {
             const nextExcluded = !node.isExcluded;
+
+            // 선사망(Predeceased) 상속인을 On으로 켠 경우 -> 3초 타이머 작동
+            if (node.exclusionOption === 'predeceased' && !nextExcluded) {
+              setShowPredeceasedWarning(true);
+            }
+
             handleUpdate(node.id, {
               isExcluded: nextExcluded,
               exclusionOption: nextExcluded ? (isDaeseupSpouse ? 'remarried' : 'renounce') : ''
@@ -347,7 +369,8 @@ const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, r
       </div>
         
         {/* [v4.28] 인라인 슬라이드 경고창 (선사망 배우자 전용 안내) */}
-        {node.exclusionOption === 'predeceased' && (isSpouseType || !node.isExcluded) && (
+        {/* [v4.29] 선사망 경고 슬라이드 (3초 노출 연동) */}
+        {(showPredeceasedWarning || (node.exclusionOption === 'predeceased' && isSpouseType)) && (
           <div className="w-full flex items-center pl-[150px] py-1.5 animate-in slide-in-from-top-1 fade-in duration-300 ease-out fill-mode-forwards">
             <span className="text-[#92400e] text-[13px] font-semibold flex items-center gap-2 bg-[#fffcf0] px-3 py-1 rounded-md border border-[#fcd9a8]/50 shadow-sm mb-1">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-[#92400e]/70">
