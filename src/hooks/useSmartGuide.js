@@ -111,29 +111,17 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
 
             if (isPredeceased) {
               if (isChild) {
-                guideText = `[${node.name}]은 선사망자입니다. 하위에 대습상속인이 있다면 입력해 주세요. 입력 시 상속지분이 자동으로 계산됩니다.`;
+                guideText = `[${node.name}]은 선사망자입니다. 대습상속인이 있으면 입력하세요.`;
               } else if (isSpouse) {
                 guideText = '';
               }
             } else {
-              // [v1.4] 예측형 안내: 차순위 상속인 실명 추적
-            const findSuccessorNames = () => {
+              const contextName = parentNode?.name || tree.name || '현재 계보';
               if (isSpouse) {
-                // [v3.1.5] 루트의 자녀(직계비속)를 전수 추출 (제외 여부 무관하게 실명 노출)
-                const children = (tree.heirs || [])
-                  .filter(h => ['son', 'daughter'].includes(h.relation))
-                  .map(h => h.name)
-                  .filter(Boolean);
-                return children.length > 0 ? ` [${children.join('], [')}]` : "피상속인의 차순위 상속인";
+                guideText = `[${node.name}]의 후속 상속인이 비어 있습니다. 미입력 시 [${contextName}] 계보 기준으로 자동 분배됩니다.`;
               } else {
-                const mother = (tree.heirs || []).find(h => ['wife', 'husband', 'spouse'].includes(h.relation) && !h.isDeceased && !h.isExcluded);
-                if (mother) return `직계존속 [${mother.name}]`;
-                const siblings = (tree.heirs || []).filter(h => h.id !== node.id && ['son', 'daughter'].includes(h.relation) && !h.isExcluded).map(h => h.name);
-                return siblings.length > 0 ? `형제자매 [${siblings.join(', ')}]` : "피상속인의 차순위 상속인";
+                guideText = `[${node.name}]의 후속 상속인이 비어 있습니다. 미입력 시 차순위 상속인에게 자동 분배됩니다.`;
               }
-            };
-            const target = findSuccessorNames();
-            guideText = `별도의 상속인을 입력하지 않으면 [${tree.name}]의 직계비속인 ${target}에게 상속지분이 자동으로 분배됩니다.\n\n${node.name}의 상속인이 아닌 사람이 있으면 '불러오기' 버튼으로 편집해 주세요.`;
             }
 
             if (guideText) {

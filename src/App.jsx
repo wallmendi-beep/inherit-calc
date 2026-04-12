@@ -169,8 +169,8 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
       if (currentNode.id === nodeId || currentNode.personId === nodeId) return currentTabId;
       if (currentNode.heirs) {
         for (const h of currentNode.heirs) {
-          if (h.id === nodeId || h.personId === nodeId) return currentTabId;
           const isTabOwner = h.isDeceased || (h.isExcluded && ['lost', 'disqualified'].includes(h.exclusionOption));
+          if (h.id === nodeId || h.personId === nodeId) return isTabOwner ? h.personId : currentTabId;
           const nextTabId = isTabOwner ? h.personId : currentTabId;
           const found = findTabIdForNode(h, nextTabId, visited);
           if (found) return found;

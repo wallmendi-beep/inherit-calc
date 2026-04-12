@@ -158,8 +158,9 @@ export const calculateInheritance = (tree) => {
     //  최종 진화: 1순위 가지 멸절 시 2순위/3순위로의 자동 이전을 완벽하게 제어하는 스마트 필터
     const isRenounced = (h, contextDate) => {
       // 🤖 [Phase 2-2: 시계열 판별 AI] 날짜 기반 상속권/대습상속권 자동 박탈 (이혼/재혼)
-      const isDivorcedAuto = h.divorceDate && contextDate && !isBefore(contextDate, h.divorceDate);
-      const isRemarriedAuto = h.remarriageDate && contextDate && !isBefore(contextDate, h.remarriageDate);
+      const isSpouseRelation = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(h.relation);
+      const isDivorcedAuto = isSpouseRelation && h.divorceDate && contextDate && !isBefore(contextDate, h.divorceDate);
+      const isRemarriedAuto = isSpouseRelation && h.remarriageDate && contextDate && !isBefore(contextDate, h.remarriageDate);
 
       // 1. 대습/재상속 유발 사유 판별 (선사망, 결격, 상실선고)
       const isPredeceasedOption = h.isExcluded && h.exclusionOption === 'predeceased';
@@ -355,12 +356,14 @@ export const calculateInheritance = (tree) => {
              if (!isMarried) { h.r = 1.0; }
              else { h.r = 0.25; modifier = '출가녀 감산 (아들의 1/4)'; }
            } else if (h.relation === 'son') {
-             //  피상속인(node)이 여성이면 호주상속 가산(1.5)을 적용하지 않음 (대법원 판례 반영)
+             // 피상속인(node)이 여성이면 호주상속 가산(1.5)을 적용하지 않음.
+             // 루트 피상속인은 relation이 없으므로, 루트 사건에서도 장남 호주가산이 정상 작동해야 한다.
              const isFemaleDeceased = ['wife', 'daughter'].includes(node.relation);
-             
-             if (h.isHoju && !isFemaleDeceased && node.isHoju) { 
-               h.r = 1.5; 
-               modifier = isSubstitution ? '대습 호주가산 (선례 2-285호)' : '호주상속 5할 가산'; 
+             const canApplyHojuBonus = h.isHoju && !isFemaleDeceased && (node.id === 'root' || node.isHoju);
+
+             if (canApplyHojuBonus) {
+               h.r = 1.5;
+               modifier = isSubstitution ? '대습 호주가산 (선례 2-285호)' : '호주상속 5할 가산';
              }
              else { h.r = 1.0; }
            } else h.r = 1.0;
@@ -378,12 +381,14 @@ export const calculateInheritance = (tree) => {
               if (!isMarried) { h.r = 0.5; modifier = '여자 감산 (남자의 1/2)'; }
               else { h.r = 0.25; modifier = '출가녀 감산 (남자의 1/4)'; }
            } else if (h.relation === 'son') {
-             //  피상속인(node)이 여성이면 호주상속 가산(1.5)을 적용하지 않음 (대법원 판례 반영)
+             // 피상속인(node)이 여성이면 호주상속 가산(1.5)을 적용하지 않음.
+             // 루트 피상속인은 relation이 없으므로, 루트 사건에서도 장남 호주가산이 정상 작동해야 한다.
              const isFemaleDeceased = ['wife', 'daughter'].includes(node.relation);
-             
-             if (h.isHoju && !isFemaleDeceased && node.isHoju) { 
-               h.r = 1.5; 
-               modifier = isSubstitution ? '대습 호주가산 (선례 2-285호)' : '호주상속 5할 가산'; 
+             const canApplyHojuBonus = h.isHoju && !isFemaleDeceased && (node.id === 'root' || node.isHoju);
+
+             if (canApplyHojuBonus) {
+               h.r = 1.5;
+               modifier = isSubstitution ? '대습 호주가산 (선례 2-285호)' : '호주상속 5할 가산';
              }
              else { h.r = 1.0; }
            } else h.r = 1.0;
