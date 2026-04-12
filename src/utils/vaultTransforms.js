@@ -64,6 +64,7 @@ export const migrateToVault = (oldTree) => {
           isExcluded: isManualExclusion ? true : !!node.isExcluded,
           exclusionOption: isManualExclusion ? node.exclusionOption : '',
           isHoju: !!node.isHoju,
+          isPrimaryHojuSuccessor: !!node.isPrimaryHojuSuccessor,
           isSameRegister: node.isSameRegister !== false,
         });
       }
@@ -113,6 +114,7 @@ export const buildTreeFromVault = (vault) => {
       childNode.id = `n_${personId}_${link.targetId}`;
       childNode.relation = link.relation;
       childNode.isHoju = link.isHoju;
+      childNode.isPrimaryHojuSuccessor = !!link.isPrimaryHojuSuccessor;
 
       const isPreDeceased = childNode.deathDate && effectiveDate && isBefore(childNode.deathDate, effectiveDate);
       const isSpouseType = ['wife', 'husband', 'spouse'].includes(childNode.relation);

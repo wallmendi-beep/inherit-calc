@@ -33,6 +33,8 @@ export default function InputPanel({
   const nodeHeirs = currentNode ? (currentNode.heirs || []) : [];
   const isRootNode = currentNode && currentNode.id === 'root';
   const canAutoFill = !isRootNode && ['wife', 'husband', 'son', 'daughter'].includes(currentNode?.relation);
+  const inheritedDate = currentNode?.deathDate || tree.deathDate;
+  const showPrimaryHojuSelector = getLawEra(inheritedDate) !== '1991' && currentNode?.isHoju === true;
 
   const handleRemoveAllHeirs = () => {
     if (!nodeHeirs.length) return;
@@ -249,7 +251,7 @@ export default function InputPanel({
                 <div className="w-[72px] ml-[50px] shrink-0">성명</div>
                 <div className="w-[76px] ml-[30px] shrink-0">관계</div>
                 <div className="w-[150px] ml-[50px] shrink-0">생존/사망(사망일자)</div>
-                <div className="w-[180px] ml-[10px] shrink-0">특수조건 및 가감산</div>
+                <div className="w-[180px] ml-[10px] shrink-0">{showPrimaryHojuSelector ? '원호/특수조건 및 가감산' : '특수조건 및 가감산'}</div>
                 <div className="w-[88px] ml-[10px] shrink-0 text-center">재상속/지분</div>
                 <div className="ml-[20px] mr-[20px] w-12 shrink-0 flex justify-center">
                   <button
@@ -281,12 +283,13 @@ export default function InputPanel({
                       removeHeir={removeHeir}
                       addHeir={addHeir}
                       siblings={nodeHeirs}
-                      inheritedDate={currentNode?.deathDate || tree.deathDate}
+                      inheritedDate={inheritedDate}
                       rootDeathDate={tree.deathDate}
                       onKeyDown={handleKeyDown}
                       rootIsHoju={tree.isHoju !== false}
                       isRootChildren={activeDeceasedTab === 'root'}
                       parentNode={currentNode}
+                      showPrimaryHojuSelector={showPrimaryHojuSelector}
                       onTabClick={(id) => {
                         let targetPId = id;
                         const findPId = (n) => {

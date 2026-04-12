@@ -32,6 +32,7 @@ export default function HeirRow({
   rootIsHoju,
   onTabClick,
   parentNode,
+  showPrimaryHojuSelector = false,
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: node.id });
 
@@ -54,10 +55,10 @@ export default function HeirRow({
   const isDaeseupContext = !!(rootDeathDate && inheritedDate && inheritedDate !== rootDeathDate && isBefore(inheritedDate, rootDeathDate));
   const isDaeseupSpouse = isSpouseType && isDaeseupContext;
   const blocksHusbandSubstitution = node.relation === 'husband' && isDaeseupContext && lawEra !== '1991';
-  const isToggleOff = !!node.isExcluded;
+  const isToggleOff = !!node.isExcluded || blocksHusbandSubstitution;
   const isEffectivePredeceased = isPreDeceasedCondition && !isSpouseType;
   const effectiveExclusionOption = isToggleOff
-    ? (node.exclusionOption || (isEffectivePredeceased ? 'predeceased' : 'renounce'))
+    ? (blocksHusbandSubstitution ? 'blocked_husband_substitution' : (node.exclusionOption || (isEffectivePredeceased ? 'predeceased' : 'renounce')))
     : '';
 
   const [showPredeceasedWarning, setShowPredeceasedWarning] = useState(false);
@@ -79,13 +80,16 @@ export default function HeirRow({
     const hideTimer = setTimeout(() => {
       setShowPredeceasedWarning(false);
       setIsWarningClosing(false);
-      handleUpdateRef.current(node.id, { isExcluded: true, exclusionOption: 'predeceased' });
+      handleUpdateRef.current(node.id, {
+        isExcluded: true,
+        exclusionOption: blocksHusbandSubstitution ? 'blocked_husband_substitution' : 'predeceased',
+      });
     }, 3000);
     return () => {
       clearTimeout(closeTimer);
       clearTimeout(hideTimer);
     };
-  }, [showPredeceasedWarning, node.id]);
+  }, [showPredeceasedWarning, node.id, blocksHusbandSubstitution]);
 
   useEffect(() => {
     if (!isPredeceasedActive) return undefined;
@@ -125,7 +129,7 @@ export default function HeirRow({
   let tabBtnText = '재상속 >>';
   let tabBtnClass = 'bg-transparent text-[#787774] border border-[#e9e9e7] hover:bg-blue-50/50 hover:text-blue-600 hover:border-blue-200 dark:border-neutral-700';
 
-  if (isPredeceasedSpouse) {
+  if (isPredeceasedSpouse || blocksHusbandSubstitution) {
     shouldShowTabBtn = false;
   } else if (isToggleOff) {
     if (['lost', 'disqualified', 'remarried'].includes(effectiveExclusionOption)) {
@@ -150,6 +154,7 @@ export default function HeirRow({
 
   const renderOffLabel = () => {
     if (isEffectivePredeceased) return (node.heirs || []).length > 0 ? '대습상속 진행' : '대습상속인 없음';
+    if (blocksHusbandSubstitution) return '사위(대습상속 불가)';
     if (node.isDeceased && (node.heirs || []).length > 0) return '재상속 경로';
     if (node.isDeceased) return '상속인 없음 (지분 재분배)';
     return '상속포기';
@@ -175,6 +180,12 @@ export default function HeirRow({
                 role="switch"
                 aria-checked={isToggleVisuallyOn}
                 onClick={() => {
+                  if (blocksHusbandSubstitution) {
+                    setShowPredeceasedWarning(true);
+                    setIsWarningClosing(false);
+                    return;
+                  }
+
                   if (isAnyPredeceased && isToggleOff && !isPredeceasedActive) {
                     setIsPredeceasedActive(true);
                     setShowPredeceasedWarning(true);
@@ -260,6 +271,27 @@ export default function HeirRow({
             </div>
 
             <div className="ml-[10px] flex w-[180px] shrink-0 items-center gap-1.5">
+              {showPrimaryHojuSelector && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleUpdate({
+                      type: 'setPrimaryHojuSuccessor',
+                      parentNodeId: parentNode?.id,
+                      nodeId: node.id,
+                      isSelected: true,
+                    })
+                  }
+                  title="원호주상속인 지정"
+                  className={`flex h-[26px] w-[48px] shrink-0 items-center justify-center rounded-full border text-[10.5px] font-semibold shadow-sm transition-colors ${
+                    node.isPrimaryHojuSuccessor
+                      ? 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800/60 dark:bg-blue-900/30 dark:text-blue-300'
+                      : 'border-[#e9e9e7] bg-white text-[#787774] hover:border-blue-200 hover:bg-blue-50/50 hover:text-blue-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400'
+                  }`}
+                >
+                  원호
+                </button>
+              )}
               {(isEffectivePredeceased && isToggleOff && !isPredeceasedActive) ? (
                 <div className="flex h-[26px] w-[120px] shrink-0 items-center justify-center rounded-full border border-neutral-200 bg-neutral-100 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
                   <span className="text-[10.5px] font-normal text-neutral-500 dark:text-neutral-400">
@@ -303,7 +335,7 @@ export default function HeirRow({
                             <span className="text-[11px] font-bold text-neutral-600 dark:text-neutral-300">{getRelStr(node.relation, inheritedDate || rootDeathDate)}</span>
                           </div>
                           <div className="flex h-[26px] shrink-0 items-center justify-center rounded-full border border-red-200 bg-red-50 px-2.5 shadow-sm dark:border-red-900/40 dark:bg-red-900/20">
-                            <span className="text-[10.5px] font-semibold text-red-600 dark:text-red-300">사위 대습권 없음</span>
+                            <span className="text-[10.5px] font-semibold text-red-600 dark:text-red-300">사위(대습상속 불가)</span>
                           </div>
                         </div>
                       );
@@ -400,7 +432,9 @@ export default function HeirRow({
                 <span className="mb-1 flex items-center gap-2 rounded-md border border-[#fcd9a8]/50 bg-[#fffcf0] px-3 py-1 text-[13px] font-semibold text-[#92400e] shadow-sm transition-all duration-300 ease-out">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-[#92400e]/70"><path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clipRule="evenodd" /></svg>
                 {isSpouseType
-                  ? '선사망 배우자는 상속권이 없으므로 자동 제외됩니다. 사망일자가 맞는지 확인해 주세요.'
+                  ? (blocksHusbandSubstitution
+                    ? '1991년 이전 사위는 대습상속권이 없습니다. 피상속인의 사위가 아니라면 관계를 수정하세요.'
+                    : '선사망 배우자는 상속권이 없으므로 자동 제외됩니다. 사망일자가 맞는지 확인해 주세요.')
                   : '선사망자는 대습상속 여부를 다시 확인해 주세요. 별도 정보가 없으면 3초 후 원상복구됩니다.'}
                 </span>
               </div>

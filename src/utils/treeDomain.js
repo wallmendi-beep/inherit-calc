@@ -31,6 +31,7 @@ const ALLOWED_KEYS = new Set([
   'isExcluded',
   'exclusionOption',
   'isHoju',
+  'isPrimaryHojuSuccessor',
   'isSameRegister',
   'heirs',
   'caseNo',
@@ -59,6 +60,7 @@ const LINK_FIELDS = [
   'isExcluded',
   'exclusionOption',
   'isHoju',
+  'isPrimaryHojuSuccessor',
   'isSameRegister',
 ];
 
@@ -130,7 +132,20 @@ export const normalizeImportedTree = (rawTree) => {
     const isSpouseType = ['wife', 'husband', 'spouse'].includes(relation);
     const isPredeceased = deathDate && refDate && isBefore(deathDate, refDate);
 
-    if (isPredeceased && isSpouseType) {
+    if (
+      isSpouseType &&
+      isExcluded &&
+      exclusionOption === 'renounce' &&
+      deathDate &&
+      refDate &&
+      !isBefore(deathDate, refDate)
+    ) {
+      // Imported JSON can carry stale manual exclusions from a prior UI state.
+      // A spouse who dies on/after the inherited reference date is a post-deceased
+      // spouse estate, not a renouncing heir, so clear the stale exclusion here.
+      isExcluded = false;
+      exclusionOption = '';
+    } else if (isPredeceased && isSpouseType) {
       isExcluded = true;
       exclusionOption = 'predeceased';
     } else if (isPredeceased && !isSpouseType) {
@@ -162,6 +177,7 @@ export const normalizeImportedTree = (rawTree) => {
       restoreDate,
       gender: base.gender || '',
       isHoju: !!base.isHoju,
+      isPrimaryHojuSuccessor: !!base.isPrimaryHojuSuccessor,
       isExcluded: isDuplicate ? true : isExcluded,
       exclusionOption: isDuplicate ? 'duplicate' : exclusionOption,
       isSameRegister: base.isSameRegister !== false,
@@ -327,6 +343,25 @@ export const updateRelationInfo = (tree, nodeId, relation) => {
   );
 };
 
+export const setPrimaryHojuSuccessor = (tree, parentNodeId, nodeId, isSelected = true) => {
+  const walk = (node) => {
+    if (!node) return node;
+    if (node.id !== parentNodeId) {
+      return { ...node, heirs: (node.heirs || []).map(walk) };
+    }
+
+    return {
+      ...node,
+      heirs: (node.heirs || []).map((child) => ({
+        ...child,
+        isPrimaryHojuSuccessor: isSelected ? child.id === nodeId : false,
+      })),
+    };
+  };
+
+  return walk(cloneTree(tree));
+};
+
 export const setHojuStatus = (tree, nodeId, isHoju) => {
   const walk = (node) => {
     if (!node.heirs || node.heirs.length === 0) return { ...node };
@@ -407,6 +442,7 @@ export const appendQuickHeirs = (tree, parentId, rawNames) => {
       restoreDate: '',
       gender: '',
       isHoju: false,
+      isPrimaryHojuSuccessor: false,
       isExcluded: false,
       exclusionOption: '',
       isSameRegister: true,
@@ -450,6 +486,7 @@ export const serializeFactTree = (tree) => {
       restoreDate: normalizeDateField(node?.restoreDate),
       gender: node?.gender || '',
       isHoju: !!node?.isHoju,
+      isPrimaryHojuSuccessor: !!node?.isPrimaryHojuSuccessor,
       isExcluded: !!node?.isExcluded,
       exclusionOption,
       isSameRegister: node?.isSameRegister !== false,

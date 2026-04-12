@@ -12,6 +12,11 @@
 | **호주가산 보조룰(공식 UTF-8)** | **HOJU_BONUS_FILTER_RULES_UTF8.md** | `!명세서/specs/HOJU_BONUS_FILTER_RULES_UTF8.md` | 본인 상속/대습상속/배우자 선사망 구분을 포함한 호주가산 필터 | 2순위 (계산 검증) |
 | **가이드(공식 UTF-8)** | **GUIDE_RULES_AND_NAVIGATION_UTF8.md** | `!명세서/specs/GUIDE_RULES_AND_NAVIGATION_UTF8.md` | 가이드 생성 규칙, 클릭 이동, 권고/필수 정책 | 2순위 (가이드 UX) |
 | **배우자 선사망 보조룰** | **SPOUSE_PREDECEASE_AND_HOJU_BONUS_RULES.md** | `!명세서/specs/SPOUSE_PREDECEASE_AND_HOJU_BONUS_RULES.md` | 선사망 배우자는 피대습자가 아니라는 원칙과 엔진 반영 지침 | 2순위 (법리 보조) |
+| **원호주상속인 선택룰** | **HOJU_SUCCESSOR_SELECTION_RULE_UTF8.md** | `!명세서/specs/HOJU_SUCCESSOR_SELECTION_RULE_UTF8.md` | 원호주상속인 지정 방식, 단일선택 UI 위치, 직접/대습 호주가산 조건 분리 | 2순위 (호주가산 입력 설계) |
+| **대습상속 실무서 메모** | **SUBSTITUTION_RULES_FROM_SEOUL_BOOK_2026-04-13_UTF8.md** | `!명세서/specs/SUBSTITUTION_RULES_FROM_SEOUL_BOOK_2026-04-13_UTF8.md` | 서울중앙지법 실무서 발췌 기반 대습상속/포기/결격/동시사망/재혼 규칙 정리 | 2순위 (대습 규칙 보강) |
+| **상속분 실무서 메모** | **INHERITANCE_SHARE_RULES_FROM_SEOUL_BOOK_2026-04-13_UTF8.md** | `!명세서/specs/INHERITANCE_SHARE_RULES_FROM_SEOUL_BOOK_2026-04-13_UTF8.md` | 서울중앙지법 실무서 발췌 기반 시기별 상속분 규칙 정리 | 2순위 (상속분 시기판정 보강) |
+| **상속인 자격 실무서 메모** | **HEIR_QUALIFICATION_AND_DISQUALIFICATION_FROM_SEOUL_BOOK_2026-04-13_UTF8.md** | `!명세서/specs/HEIR_QUALIFICATION_AND_DISQUALIFICATION_FROM_SEOUL_BOOK_2026-04-13_UTF8.md` | 서울중앙지법 실무서 발췌 기반 상속인 자격, 결격, 상실 규칙 정리 | 2순위 (상속인 자격 보강) |
+| **검산 메모** | **KIM_HYEOKJO_VALIDATION_2026-04-13_UTF8.md** | `!명세서/specs/KIM_HYEOKJO_VALIDATION_2026-04-13_UTF8.md` | 김혁조 사건 계통별 검산 결과, JSON 정정 내역, 최종 합계 검증 | 2순위 (사건 검산) |
 | **디자인** | **UI_DESIGN_SYSTEM.md** | `!명세서/ui/UI_DESIGN_SYSTEM.md` | 컬러, 타이포그래피, 컴포넌트 규격, 비주얼 스냅샷 | 2순위 (스타일) |
 | **이력** | **history/** | `!명세서/history/` | 과거 버전별 업데이트 기록 및 변경 로그 | 3순위 |
 

@@ -24,8 +24,8 @@ import TopToolbar from './components/TopToolbarBalanced';
 import { math, getLawEra, getRelStr, formatKorDate, formatMoney, isBefore } from './engine/utils';
 import { calculateInheritance } from './engine/inheritance';
 import { getInitialTree, getEmptyTree } from './utils/initialData';
-import { AI_PROMPT } from './utils/aiPrompt';
-import { normalizeImportedTree, updateDeathInfo, updateHistoryInfo, updateRelationInfo, setHojuStatus, applyNodeUpdates, appendQuickHeirs, serializeFactTree } from './utils/treeDomain';
+import { AI_PROMPT } from './utils/aiPromptUtf8';
+import { normalizeImportedTree, updateDeathInfo, updateHistoryInfo, updateRelationInfo, setHojuStatus, setPrimaryHojuSuccessor, applyNodeUpdates, appendQuickHeirs, serializeFactTree } from './utils/treeDomain';
 import { migrateToVault, buildTreeFromVault } from './utils/vaultTransforms';
 import { ingestAiJsonInput, loadTreeFromJsonFile, printAiPromptDocument, printCurrentTab, saveFactTreeToFile } from './utils/appActions';
 import { useSmartGuide } from './hooks/useSmartGuide';
@@ -334,6 +334,8 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
           return updateRelationInfo(prev, action.nodeId, action.relation);
         case 'setHojuStatus':
           return setHojuStatus(prev, action.nodeId, action.isHoju);
+        case 'setPrimaryHojuSuccessor':
+          return setPrimaryHojuSuccessor(prev, action.parentNodeId, action.nodeId, action.isSelected);
         case 'applyNodeUpdates':
           return applyNodeUpdates(prev, action.nodeId, action.updates || {});
         default:
@@ -388,7 +390,7 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
       const findNode = (n, pId) => { if (n.id === id) { targetPersonId = n.personId; parentPersonId = pId; return true; } return (n.heirs || []).some(child => findNode(child, n.personId)); }; findNode(tree, null);
       const personalKeys = ['name', 'isDeceased', 'deathDate', 'marriageDate', 'remarriageDate', 'divorceDate', 'restoreDate', 'gender'];
       personalKeys.forEach(k => { if (updates[k] !== undefined) prev.persons[targetPersonId][k] = updates[k]; });
-      const linkKeys = ['relation', 'isExcluded', 'exclusionOption', 'isHoju', 'isSameRegister'];
+      const linkKeys = ['relation', 'isExcluded', 'exclusionOption', 'isHoju', 'isPrimaryHojuSuccessor', 'isSameRegister'];
       if (parentPersonId && prev.relationships[parentPersonId]) { const link = prev.relationships[parentPersonId].find(l => l.targetId === targetPersonId); if (link) { linkKeys.forEach(k => { if (updates[k] !== undefined) link[k] = updates[k]; }); } }
       return prev;
     });

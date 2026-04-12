@@ -1,5 +1,26 @@
-import { AI_PROMPT } from './aiPrompt';
+import { AI_PROMPT } from './aiPromptUtf8';
 import { normalizeImportedTree, serializeFactTree } from './treeDomain';
+
+const sanitizeAiFacts = (node, isRoot = true) => {
+  if (!node || typeof node !== 'object') return node;
+
+  const src = Array.isArray(node) ? { heirs: node } : node;
+  const allowed = isRoot
+    ? ['name', 'isDeceased', 'deathDate', 'marriageDate', 'remarriageDate', 'divorceDate', 'restoreDate', 'gender', 'isHoju', 'isSameRegister', 'caseNo', 'shareN', 'shareD', 'heirs']
+    : ['name', 'relation', 'isDeceased', 'deathDate', 'marriageDate', 'remarriageDate', 'divorceDate', 'restoreDate', 'gender', 'isHoju', 'isSameRegister', 'heirs'];
+
+  const next = {};
+  allowed.forEach((key) => {
+    if (key === 'heirs') {
+      const heirs = Array.isArray(src.heirs) ? src.heirs.map((child) => sanitizeAiFacts(child, false)) : [];
+      next.heirs = heirs;
+      return;
+    }
+    if (src[key] !== undefined) next[key] = src[key];
+  });
+
+  return next;
+};
 
 const sanitizeKorFilePart = (value, fallback) =>
   (value || fallback).replace(/[^a-zA-Z0-9가-힣_-]/g, '');
@@ -122,7 +143,7 @@ export function ingestAiJsonInput({
 
   try {
     const cleanJson = input.replace(/```json/g, '').replace(/```/g, '').trim();
-    const parsedTree = JSON.parse(cleanJson);
+    const parsedTree = sanitizeAiFacts(JSON.parse(cleanJson));
 
     if (aiTargetId === 'root') {
       setTree(normalizeImportedTree({ ...parsedTree, id: 'root' }));
