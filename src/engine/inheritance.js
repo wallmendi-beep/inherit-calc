@@ -77,6 +77,24 @@ export const calculateInheritance = (tree) => {
       text,
     };
   };
+
+  const toSourceBreakdown = (step) => ({
+    from: step.parentDecName || '피상속인',
+    lawEra: step.lawEra,
+    inN: step.inN,
+    inD: step.inD,
+    dists: (step.dists || []).map((dist) => ({
+      personId: getPersonKey(dist.h),
+      name: dist.h?.name || '',
+      relation: dist.h?.relation || '',
+      n: dist.n,
+      d: dist.d,
+      sn: dist.sn,
+      sd: dist.sd,
+      ex: dist.ex || '',
+      mod: dist.mod || '',
+    })),
+  });
   
   const findHeirsByName = (root, targetName, excludeId) => {
     if (!targetName || targetName.trim() === '') return null;
@@ -438,11 +456,14 @@ export const calculateInheritance = (tree) => {
     
     if (!stepByPersonId[pId]) {
       step.mergeSources = [{ from: step.parentDecName || '피상속인', n: step.inN, d: step.inD }];
+      step.sourceBreakdowns = [toSourceBreakdown(step)];
       stepByPersonId[pId] = step;
       mergedSteps.push(step);
     } else {
       const existing = stepByPersonId[pId];
       existing.mergeSources.push({ from: step.parentDecName || '피상속인', n: step.inN, d: step.inD });
+      existing.sourceBreakdowns = existing.sourceBreakdowns || [];
+      existing.sourceBreakdowns.push(toSourceBreakdown(step));
       
       const [newN, newD] = math.add(existing.inN, existing.inD, step.inN, step.inD);
       existing.inN = newN;
@@ -543,6 +564,18 @@ export const calculateInheritance = (tree) => {
   });
 
   const finalShares = { direct: directShares, subGroups: subGroups };
+
+  Object.values(subMap).forEach((group) => {
+    const ancestorKey = getPersonKey(group.ancestor);
+    const ancestorStep = stepByPersonId[ancestorKey];
+    if (ancestorStep?.mergeSources) {
+      group.sourceBreakdown = {
+        mergeSources: ancestorStep.mergeSources,
+        sourceBreakdowns: ancestorStep.sourceBreakdowns || [],
+      };
+    }
+  });
+
   const integrity = auditInheritanceResult({
     tree,
     finalShares,

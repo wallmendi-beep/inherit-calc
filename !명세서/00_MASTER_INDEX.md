@@ -8,6 +8,7 @@
 | :--- | :--- | :--- | :--- | :--- |
 | **컨트롤** | **00_MASTER_INDEX.md** | `!명세서/00_MASTER_INDEX.md` | 프로젝트 전체 개요, 문서 색인, AI 동작 지침 | 1순위 |
 | **로직** | **CORE_LOGIC_SPECS.md** | `!명세서/specs/CORE_LOGIC_SPECS.md` | 상속 법리, 시차별 전이 규칙, 스마트 가이드 문구 | 2순위 (기능) |
+| **계산룰** | **INHERITANCE_SHARE_RULES.md** | `!명세서/specs/INHERITANCE_SHARE_RULES.md` | 시점별 상속분 계산 규칙, 배우자/대습/호주가산, 디버깅용 계산 근거 읽는 법 | 2순위 (계산 검증) |
 | **가이드** | **GUIDE_RULES_AND_NAVIGATION.md** | `!명세서/specs/GUIDE_RULES_AND_NAVIGATION.md` | 가이드 생성 규칙, 예시 문구, 카드 클릭 이동 위치, 확인 체크 정책 | 2순위 (가이드 UX) |
 | **디자인** | **UI_DESIGN_SYSTEM.md** | `!명세서/ui/UI_DESIGN_SYSTEM.md` | 컬러, 타이포그래피, 컴포넌트 규격, 비주얼 스냅샷 | 2순위 (스타일) |
 | **이력** | **history/** | `!명세서/history/` | 과거 버전별 업데이트 기록 및 변경 로그 | 3순위 |
@@ -24,6 +25,6 @@
 ---
 
 ## 🚀 프로젝트 현황
-- **현재 버전**: v4.33
+- **현재 버전**: v4.34
 - **개발 환경**: Vite + React + TailwindCSS (Vanilla CSS 지향)
 - **주요 철학**: Notion-inspired Professional Minimalist / Vault-based Inheritance Tracking
