@@ -77,8 +77,8 @@ export const buildTreeFromVault = (vault) => {
         childNode.isExcluded = link.isExcluded;
         childNode.exclusionOption = link.exclusionOption;
 
-        // 1. 선사망 판별 (context-aware 정공법)
-        if (isPreDeceased && !isSpouseType) {
+        // 1. 선사망 판별 (배우자 포함 전원 적용)
+        if (isPreDeceased) {
           childNode.isExcluded = true; 
           childNode.exclusionOption = 'predeceased'; 
         }

@@ -114,13 +114,20 @@ const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, r
           role="switch"
           aria-checked={!node.isExcluded}
           onClick={() => {
+            // [v4.26] 선사망(Predeceased)인 경우 클릭 피드백 및 조작 차단
+            if (node.exclusionOption === 'predeceased') {
+              alert(`[${node.name || '이름 없음'}]은 피상속인보다 먼저 사망하였습니다. 대습상속(자녀/배우자) 데이터가 있다면 입력해 주세요.`);
+              return;
+            }
             const nextExcluded = !node.isExcluded;
             handleUpdate(node.id, {
               isExcluded: nextExcluded,
               exclusionOption: nextExcluded ? (isDaeseupSpouse ? 'remarried' : 'renounce') : ''
             });
           }}
-          className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer items-center rounded-full transition-all duration-200 ease-in-out focus:outline-none ${!node.isExcluded ? 'bg-[#15803d] opacity-80' : 'bg-neutral-200 dark:bg-neutral-600'}`}
+          className={`relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-all duration-200 ease-in-out focus:outline-none 
+            ${node.exclusionOption === 'predeceased' ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}
+            ${!node.isExcluded ? 'bg-[#15803d] opacity-80' : 'bg-neutral-200 dark:bg-neutral-600'}`}
         >
           <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition duration-200 ease-in-out ${!node.isExcluded ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
         </button>

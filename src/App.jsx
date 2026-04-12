@@ -560,7 +560,18 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
       const effectiveDate = parentDeathDate || tree.deathDate;
       const isSpouse = ['wife', 'husband', 'spouse'].includes(node.relation);
       if (node.relation === 'daughter' && node.marriageDate && effectiveDate) { if (getLawEra(effectiveDate) !== '1991' && isBefore(node.marriageDate, effectiveDate) && node.isSameRegister !== false) { guides.push({ id: node.id, uniqueKey: `mismatch-married-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름 없음'}]의 혼인일(${node.marriageDate})이 상속개시일(${effectiveDate}) 이전입니다. 구법 적용 대상일 수 있으므로 [출가] 상태를 확인해 주세요.` }); } }
-      if (node.deathDate && effectiveDate && isBefore(node.deathDate, effectiveDate) && !isSpouse) { if (!node.isExcluded || node.exclusionOption !== 'predeceased') { guides.push({ id: node.id, uniqueKey: `mismatch-predeceased-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름 없음'}]의 사망일(${node.deathDate})이 부모 사망일(${effectiveDate})보다 빠릅니다. [상속권 없음] 상태를 확인해 주세요.` }); } }
+      // [v4.26] 디자인 룰 기준: 배우자 포함 모든 선사망자 경고 동기화
+      if (node.deathDate && effectiveDate && isBefore(node.deathDate, effectiveDate)) { 
+        if (!node.isExcluded || node.exclusionOption !== 'predeceased') { 
+          guides.push({ 
+            id: node.id, 
+            uniqueKey: `mismatch-predeceased-${node.personId}`, 
+            targetTabId: parentPersonId, 
+            type: 'mandatory', 
+            text: `[${node.name || '이름 없음'}]은 피상속인보다 먼저 사망하였습니다. 대습상속(자녀/배우자) 데이터가 있다면 입력해 주세요.` 
+          }); 
+        } 
+      }
       if (isSpouse && node.remarriageDate && effectiveDate && isBefore(node.remarriageDate, effectiveDate)) { if (!node.isExcluded || node.exclusionOption !== 'remarried') { guides.push({ id: node.id, uniqueKey: `mismatch-remarried-self-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름 없음'}]은 피상속인 사망일(${effectiveDate}) 이전에 재혼일(${node.remarriageDate})이 입력되어 있습니다. 재혼에 따른 상속권 여부를 확인해 주세요.` }); } }
       if (node.marriageDate && node.deathDate && isBefore(node.deathDate, node.marriageDate)) { guides.push({ id: node.id, uniqueKey: `date-mismatch-${node.personId}`, targetTabId: parentPersonId, type: 'mandatory', text: `[${node.name || '이름 없음'}]의 혼인일(${node.marriageDate})이 사망일(${node.deathDate})보다 늦게 입력되어 있습니다. 날짜를 확인해 수정해 주세요.` }); }
       // 5단계 조기 발견: 사망자이나 하위 상속인이 없는 경우 검증
