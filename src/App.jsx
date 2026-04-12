@@ -428,6 +428,26 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
     setVault(prev => { if (prev.relationships[parentPersonId]) prev.relationships[parentPersonId] = prev.relationships[parentPersonId].filter(l => l.targetId !== targetPersonId); return prev; });
   };
 
+  const removeAllHeirs = (parentId) => {
+    let parentPersonId = parentId;
+    const findPId = (n) => {
+      if (!n) return;
+      if (n.id === parentId || n.personId === parentId) {
+        parentPersonId = n.personId || n.id;
+        return;
+      }
+      (n.heirs || []).forEach(findPId);
+    };
+    findPId(tree);
+
+    setVault(prev => {
+      if (prev.relationships[parentPersonId]) {
+        prev.relationships[parentPersonId] = [];
+      }
+      return prev;
+    });
+  };
+
   const [simpleTargetN, simpleTargetD] = math.simplify(tree.shareN || 1, tree.shareD || 1);
 
   const { finalShares, calcSteps, warnings, transitShares, blockingIssues } = useMemo(() => {
@@ -729,6 +749,7 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
                   issues={blockingIssues}
                   handleUpdate={handleUpdate}
                   removeHeir={removeHeir}
+                  removeAllHeirs={removeAllHeirs}
                   addHeir={addHeir}
                   handleKeyDown={handleKeyDown}
                   handleRootUpdate={handleRootUpdate}
