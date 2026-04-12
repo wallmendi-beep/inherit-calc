@@ -347,13 +347,15 @@ const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, r
       </div>
         
         {/* [v4.28] 인라인 슬라이드 경고창 (선사망 배우자 전용 안내) */}
-        {node.exclusionOption === 'predeceased' && isSpouseType && (
+        {node.exclusionOption === 'predeceased' && (isSpouseType || !node.isExcluded) && (
           <div className="w-full flex items-center pl-[150px] py-1.5 animate-in slide-in-from-top-1 fade-in duration-300 ease-out fill-mode-forwards">
             <span className="text-[#92400e] text-[13px] font-semibold flex items-center gap-2 bg-[#fffcf0] px-3 py-1 rounded-md border border-[#fcd9a8]/50 shadow-sm mb-1">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-[#92400e]/70">
                 <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clipRule="evenodd" />
               </svg>
-              선사망 배우자는 상속권이 없으므로 가계도에서 자동 제외됩니다. 사망일자의 오류가 있다면 수정해 주세요.
+              {isSpouseType 
+                ? "선사망 배우자는 상속권이 없으므로 가계도에서 자동 제외됩니다. 사망일자의 오류가 있다면 수정해 주세요."
+                : "본인은 선사망하였으나 대습상속 등으로 인해 가계도에 포함되었습니다. 사망일자가 정확한지 확인해 주세요."}
             </span>
           </div>
         )}
