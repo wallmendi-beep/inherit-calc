@@ -53,7 +53,7 @@ const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, r
       tabBtnClass = "bg-transparent text-[#787774] border border-[#e9e9e7] hover:bg-emerald-50/50 hover:text-emerald-600 hover:border-emerald-200 dark:border-neutral-700 dark:hover:bg-emerald-900/20";
     } else if (isPreDeceasedCondition && ['son', 'daughter', 'sibling'].includes(node.relation)) {
       shouldShowTabBtn = true;
-      tabBtnText = '대습상속 입력 »';
+      tabBtnText = '대습상속 »';
       tabBtnClass = "bg-transparent text-neutral-400 border border-neutral-300 border-dashed hover:bg-emerald-50/50 hover:text-emerald-600 hover:border-emerald-200 hover:border-solid dark:border-neutral-700";
       onBtnClick = () => {
         // 💡 탭에 그냥 들어가는 것만으로는 스위치를 켜지 않습니다. (자유로운 탐색 허용)
@@ -196,10 +196,10 @@ const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, r
 
       {/* 5. 특수조건 (드롭다운 OR 가감산) - 레이아웃 분리 성공! */}
       <div className="w-[180px] ml-[10px] shrink-0 flex items-center gap-1.5">
-        {/* 💡 선사망(Predeceased)인 경우: 드롭다운 대신 조작 불가능한 고정 뱃지 표시 */}
+        {/* 💡 선사망(Predeceased)인 경우: 그레이톤 고정 뱃지 표시 (v4.22 수정) */}
         {node.exclusionOption === 'predeceased' ? (
-          <div className="w-[150px] h-[26px] shrink-0 flex items-center justify-center bg-amber-50 dark:bg-amber-900/20 rounded-full border border-amber-200 dark:border-amber-800/50 shadow-sm" title="피상속인보다 먼저 사망하여 상속권이 발생하지 않습니다.">
-            <span className="text-[10.5px] font-black text-amber-700 dark:text-amber-400">상속권 없음 (선사망)</span>
+          <div className="w-[150px] h-[26px] shrink-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 rounded-full border border-neutral-200 dark:border-neutral-700 shadow-sm" title="피상속인보다 먼저 사망하여 상속권이 발생하지 않습니다.">
+            <span className="text-[10.5px] font-black text-neutral-500 dark:text-neutral-400">상속권 없음 (선사망)</span>
           </div>
         ) : isToggleOff && isSpouseType && isPreDeceasedCondition ? (
           <div className="w-[150px] h-[26px] shrink-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 rounded-full border border-neutral-200 dark:border-neutral-700 shadow-sm">
