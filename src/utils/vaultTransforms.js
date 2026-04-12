@@ -125,8 +125,13 @@ export const buildTreeFromVault = (vault) => {
         childNode.isExcluded = false;
         childNode.exclusionOption = '';
       } else if (isPreDeceased && !isSpouseType) {
-        childNode.isExcluded = true;
-        childNode.exclusionOption = 'predeceased';
+        if ((childNode.heirs || []).length > 0) {
+          childNode.isExcluded = false;
+          childNode.exclusionOption = '';
+        } else {
+          childNode.isExcluded = true;
+          childNode.exclusionOption = 'predeceased';
+        }
       } else if (childNode.isDeceased && childNode.deathDate && effectiveDate && !isPreDeceased) {
         // 후사망 상태는 과거 파생 predeceased 값을 남기지 않고 기본 ON으로 복원한다.
         childNode.isExcluded = false;

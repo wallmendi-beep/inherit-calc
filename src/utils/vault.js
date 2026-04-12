@@ -77,10 +77,15 @@ export const buildTreeFromVault = (vault) => {
         childNode.isExcluded = link.isExcluded;
         childNode.exclusionOption = link.exclusionOption;
 
-        // 1. 선사망 판별 (배우자 포함 전원 적용)
-        if (isPreDeceased) {
-          childNode.isExcluded = true; 
-          childNode.exclusionOption = 'predeceased'; 
+        // 1. 선사망 판별
+        if (isPreDeceased && !isSpouseType) {
+          if ((childNode.heirs || []).length > 0) {
+            childNode.isExcluded = false;
+            childNode.exclusionOption = '';
+          } else {
+            childNode.isExcluded = true;
+            childNode.exclusionOption = 'predeceased';
+          }
         }
         
         // 2. 출가/동일가적 판별
@@ -120,7 +125,13 @@ export const preprocessTree = (n, parentDate, parentNode) => {
   let isExcluded = !!n.isExcluded;
   let exclusionOption = n.exclusionOption || '';
   if (n.isDeceased && n.deathDate && parentDate && isBefore(n.deathDate, parentDate) && !isSpouse) {
-    isExcluded = true; exclusionOption = 'predeceased';
+    if ((n.heirs || []).length > 0) {
+      isExcluded = false;
+      exclusionOption = '';
+    } else {
+      isExcluded = true;
+      exclusionOption = 'predeceased';
+    }
   }
   const processed = { ...n, isExcluded, exclusionOption, parentNode };
   if (n.heirs) processed.heirs = n.heirs.map(h => preprocessTree(h, n.isDeceased ? n.deathDate : parentDate, processed)).filter(Boolean);

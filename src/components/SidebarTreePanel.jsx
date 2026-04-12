@@ -32,7 +32,7 @@ export default function SidebarTreePanel({
   if (!sidebarOpen) return null;
 
   return (
-    <aside className="fixed left-0 top-[54px] z-30 flex h-[calc(100vh-54px)] items-stretch no-print" style={{ width: sidebarWidth + 10 }}>
+    <aside className="fixed left-0 top-[60px] z-30 flex h-[calc(100vh-60px)] items-stretch no-print" style={{ width: sidebarWidth + 10 }}>
       <div className="flex flex-col overflow-hidden border-r border-[#e9e9e7] bg-white dark:border-neutral-700 dark:bg-neutral-800" style={{ width: sidebarWidth }}>
         <div className="shrink-0 border-b border-[#e9e9e7] bg-[#faf9f6] px-3 py-3 dark:border-neutral-700 dark:bg-neutral-900/60">
           <div className="mb-2 flex items-center justify-between gap-2">

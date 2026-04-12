@@ -16,8 +16,8 @@ export default function ContextualDrawer({ isOpen, onClose, title, children, wid
           isOpen ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
         }`}
         style={{ 
-          top: '102px', 
-          height: 'calc(100vh - 102px)',
+          top: '60px', 
+          height: 'calc(100vh - 60px)',
           width: isOpen ? '310px' : 0 
         }}
       >

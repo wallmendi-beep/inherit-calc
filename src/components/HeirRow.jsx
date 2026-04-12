@@ -130,7 +130,7 @@ export default function HeirRow({
   } else if (node.isDeceased) {
     shouldShowTabBtn = true;
     if (isEffectivePredeceased) {
-      tabBtnText = '대습상속 탭';
+      tabBtnText = '대습상속 >>';
       tabBtnClass = 'bg-transparent text-[#787774] border border-[#e9e9e7] hover:bg-emerald-50/50 hover:text-emerald-600 hover:border-emerald-200 dark:border-neutral-700';
     } else {
       tabBtnText = '재상속 >>';
@@ -139,7 +139,7 @@ export default function HeirRow({
   }
 
   const renderOffLabel = () => {
-    if (isEffectivePredeceased) return '대습상속인 없음';
+    if (isEffectivePredeceased) return (node.heirs || []).length > 0 ? '대습상속 진행' : '대습상속인 없음';
     if (node.isDeceased && (node.heirs || []).length > 0) return '재상속 경로';
     if (node.isDeceased) return '상속인 없음 (지분 재분배)';
     return '상속포기';
@@ -250,7 +250,9 @@ export default function HeirRow({
             <div className="ml-[10px] flex w-[180px] shrink-0 items-center gap-1.5">
               {(isEffectivePredeceased && isToggleOff && !isPredeceasedActive) ? (
                 <div className="flex h-[26px] w-[120px] shrink-0 items-center justify-center rounded-full border border-neutral-200 bg-neutral-100 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
-                  <span className="text-[10.5px] font-normal text-neutral-500 dark:text-neutral-400">상속권 없음 (선사망)</span>
+                  <span className="text-[10.5px] font-normal text-neutral-500 dark:text-neutral-400">
+                    {(node.heirs || []).length > 0 ? '대습상속 진행' : '상속권 없음 (선사망)'}
+                  </span>
                 </div>
               ) : (isToggleOff && isSpouseType && isPreDeceasedCondition && !isPredeceasedActive) ? (
                 <div className="flex h-[26px] w-[150px] shrink-0 items-center justify-center rounded-full border border-neutral-200 bg-neutral-100 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">

@@ -131,9 +131,15 @@ export const normalizeImportedTree = (rawTree) => {
     const isPredeceased = deathDate && refDate && isBefore(deathDate, refDate);
 
     if (isPredeceased && !isSpouseType) {
-      // 선사망: 강제 제외(OFF)
-      isExcluded = true;
-      exclusionOption = 'predeceased';
+      // 선사망 자녀/형제자매는 하위 상속인이 없을 때만 OFF로 유지한다.
+      // 하위 상속인이 있으면 대습상속 경로가 살아 있으므로 기본 ON으로 복구한다.
+      if (heirs.length > 0) {
+        isExcluded = false;
+        exclusionOption = '';
+      } else {
+        isExcluded = true;
+        exclusionOption = 'predeceased';
+      }
     } else if (!!base.isDeceased && deathDate && refDate && !isPredeceased) {
       // 후사망(재상속): 강제 포함(ON) - JSON에 isExcluded:true로 저장되어 있어도 덮어씀
       isExcluded = false;

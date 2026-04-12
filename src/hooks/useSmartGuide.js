@@ -71,9 +71,12 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
     };
 
     const checkDuplicateSpouseGuide = (node, level = 0) => {
-      const spouses = (node.heirs || []).filter(
-        (h) => ['wife', 'husband', 'spouse'].includes(h.relation) && h.isExcluded !== true
-      );
+      const spouses = (node.heirs || []).filter((h) => {
+        if (!['wife', 'husband', 'spouse'].includes(h.relation)) return false;
+        if (h.isExcluded === true) return false;
+        if (h.isDeceased && h.deathDate && node.deathDate && isBefore(h.deathDate, node.deathDate)) return false;
+        return true;
+      });
 
       if (spouses.length > 1) {
         const spouseNames = spouses.map((spouse) => spouse.name || '이름없음');
@@ -110,7 +113,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
               if (isChild) {
                 guideText = `[${node.name}]은 선사망자입니다. 하위에 대습상속인이 있다면 입력해 주세요. 입력 시 상속지분이 자동으로 계산됩니다.`;
               } else if (isSpouse) {
-                guideText = `피상속인보다 먼저 사망한 배우자 [${node.name}]은 상속권이 발생하지 않습니다.`;
+                guideText = '';
               }
             } else {
               // [v1.4] 예측형 안내: 차순위 상속인 실명 추적
@@ -133,10 +136,12 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
             guideText = `별도의 상속인을 입력하지 않으면 [${tree.name}]의 직계비속인 ${target}에게 상속지분이 자동으로 분배됩니다.\n\n${node.name}의 상속인이 아닌 사람이 있으면 '불러오기' 버튼으로 편집해 주세요.`;
             }
 
-            uniqueGuidesMap.set(`missing-successors-${node.personId}`, {
-              id: node.id, uniqueKey: `missing-successors-${node.personId}`, targetTabId: node.personId, type: 'mandatory',
-              text: guideText
-            });
+            if (guideText) {
+              uniqueGuidesMap.set(`missing-successors-${node.personId}`, {
+                id: node.id, uniqueKey: `missing-successors-${node.personId}`, targetTabId: node.personId, type: 'mandatory',
+                text: guideText
+              });
+            }
           }
           if (node.id !== 'root' && node.isDeceased && !node.deathDate) {
               uniqueGuidesMap.set(`missing-death-date-${node.personId}`, {
@@ -145,7 +150,12 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
               });
           }
           // 1. 배우자 중복 검사
-          const spouses = (node.heirs || []).filter(h => ['wife', 'husband', 'spouse'].includes(h.relation) && !h.isExcluded);
+          const spouses = (node.heirs || []).filter((h) => {
+              if (!['wife', 'husband', 'spouse'].includes(h.relation)) return false;
+              if (h.isExcluded) return false;
+              if (h.isDeceased && h.deathDate && node.deathDate && isBefore(h.deathDate, node.deathDate)) return false;
+              return true;
+          });
           if (spouses.length > 1) {
               uniqueGuidesMap.set(`multi-spouse-${node.personId}`, {
                   id: node.id, uniqueKey: `multi-spouse-${node.personId}`, targetTabId: node.personId, type: 'mandatory',

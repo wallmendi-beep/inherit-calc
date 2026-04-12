@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { getRelStr, isBefore } from '../engine/utils';
 
 export default function MiniTreeView({
@@ -44,8 +44,8 @@ export default function MiniTreeView({
   const showMandatory = status.mandatory || (!isExpanded && status.childMandatory);
   const showRecommended = !showMandatory && (status.recommended || (!isExpanded && status.childRecommended));
   const warningTitle = status.mandatory
-    ? '하위 상속인 입력 확인 필요 (필수 조치 필요)'
-    : '하위 상속인 중 일부 입력 확인 필요 (권장 확인)';
+    ? '하위 상속인 입력 확인이 필요합니다. 필수 조치가 남아 있습니다.'
+    : '하위 상속 구조를 한 번 더 확인해 주세요.';
 
   const getStatusStyle = (targetNode, hasSubHeirs) => {
     const isAlive = !targetNode.deathDate && !targetNode.isDeceased;
@@ -68,49 +68,58 @@ export default function MiniTreeView({
 
   return (
     <div className={`flex flex-col ${level > 0 ? 'ml-3' : ''}`}>
-      <div className="flex items-center gap-1.5 py-1 pr-1 group">
+      <div className="group flex items-center gap-1.5 py-1 pr-1">
         {level > 0 && (
-          <span className="text-[#d4d4d4] dark:text-neutral-600 text-[12px] shrink-0 font-bold opacity-40">
+          <span className="shrink-0 text-[12px] font-bold text-[#d4d4d4] opacity-40 dark:text-neutral-600">
             |
           </span>
         )}
-        <span
+        <div
           id={`sidebar-node-${node.id}`}
           onClick={() => {
             if (hasHeirs) setIsExpanded(!isExpanded);
             onSelectNode && onSelectNode(node.id);
           }}
-          className={`text-[13px] truncate transition-all flex-1 min-w-0 cursor-pointer ${itemStyleClass} ${highlightStyle}`}
+          className={`flex flex-1 min-w-0 cursor-pointer items-center gap-1.5 text-[13px] transition-all ${highlightStyle}`}
         >
-          {node.name || (level === 0 ? '피상속인' : '(이름 없음)')}
-        </span>
-        <div className="flex items-center gap-1 shrink-0">
+          <span className={`min-w-0 truncate ${itemStyleClass}`}>
+            {node.name || (level === 0 ? '피상속인' : '(이름 없음)')}
+          </span>
           {showMandatory && (
-            <span className="text-[12px] cursor-help opacity-100" title={warningTitle}>
-              필수
+            <span
+              className="shrink-0 cursor-help text-[12px] leading-none"
+              title={warningTitle}
+              aria-label="필수 확인"
+            >
+              ⚠️
             </span>
           )}
           {!showMandatory && showRecommended && (
-            <span className="text-[12px] cursor-help opacity-100" title="권고 사항">
-              권고
+            <span
+              className="shrink-0 cursor-help text-[12px] leading-none"
+              title="참고용 안내가 있습니다."
+              aria-label="참고 안내"
+            >
+              💡
             </span>
           )}
-          {level > 0 &&
-            (() => {
-              const isSpouse = ['wife', 'husband', 'spouse'].includes(node.relation);
-              const isPre = node.isDeceased && node.deathDate && deathDate && isBefore(node.deathDate, deathDate) && !isSpouse;
-              return (
-                <span
-                  className={`text-[10px] font-bold opacity-40 uppercase tracking-tighter ${isPre ? 'text-[#787774]' : 'text-[#37352f] dark:text-neutral-100 font-bold opacity-100'}`}
-                >
-                  [{getRelStr(node.relation, deathDate) || '관계'}]
-                </span>
-              );
-            })()}
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          {level > 0 && (() => {
+            const isSpouse = ['wife', 'husband', 'spouse'].includes(node.relation);
+            const isPre = node.isDeceased && node.deathDate && deathDate && isBefore(node.deathDate, deathDate) && !isSpouse;
+            return (
+              <span
+                className={`text-[10px] uppercase tracking-tighter ${isPre ? 'text-[#787774] opacity-40' : 'font-bold text-[#37352f] opacity-100 dark:text-neutral-100'}`}
+              >
+                [{getRelStr(node.relation, deathDate) || '관계'}]
+              </span>
+            );
+          })()}
         </div>
       </div>
       {isExpanded && hasHeirs && (
-        <div className="border-l border-[#e9e9e7] dark:border-neutral-700 ml-1.5 pl-1.5 pb-1 transition-colors">
+        <div className="ml-1.5 border-l border-[#e9e9e7] pl-1.5 pb-1 transition-colors dark:border-neutral-700">
           {node.heirs.map((heir, index) => (
             <MiniTreeView
               key={heir.id || index}

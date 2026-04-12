@@ -568,6 +568,29 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
 
   const [hiddenGuideKeys, setHiddenGuideKeys] = useState(new Set());
   const dismissGuide = (key) => setHiddenGuideKeys(prev => new Set(prev).add(key));
+  const [checkedGuideKeys, setCheckedGuideKeys] = useState(new Set());
+  const [confirmedGuidesOpen, setConfirmedGuidesOpen] = useState(false);
+  const toggleGuideChecked = (key) => {
+    setCheckedGuideKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    const liveKeys = new Set((smartGuides || []).map((guide) => guide.uniqueKey || guide.text));
+    setCheckedGuideKeys((prev) => {
+      const next = new Set([...prev].filter((key) => liveKeys.has(key)));
+      return next;
+    });
+  }, [smartGuides]);
+
+  const confirmedGuides = useMemo(
+    () => (smartGuides || []).filter((guide) => checkedGuideKeys.has(guide.uniqueKey || guide.text)),
+    [smartGuides, checkedGuideKeys],
+  );
 
   const guideStatusMap = useMemo(() => {
     const map = {}; const setStatus = (key, type) => { if (!map[key]) map[key] = { mandatory: false, recommended: false, childMandatory: false, childRecommended: false }; if (type === 'mandatory') map[key].mandatory = true; if (type === 'recommended') map[key].recommended = true; };
@@ -683,10 +706,15 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
           tree={tree}
           smartGuides={smartGuides}
           hiddenGuideKeys={hiddenGuideKeys}
-          dismissGuide={dismissGuide}
-          showGlobalWarning={showGlobalWarning}
-          globalMismatchReasons={globalMismatchReasons}
-          auditActionItems={auditActionItems}
+        dismissGuide={dismissGuide}
+        checkedGuideKeys={checkedGuideKeys}
+        toggleGuideChecked={toggleGuideChecked}
+        confirmedGuides={confirmedGuides}
+        confirmedGuidesOpen={confirmedGuidesOpen}
+        setConfirmedGuidesOpen={setConfirmedGuidesOpen}
+        showGlobalWarning={showGlobalWarning}
+        globalMismatchReasons={globalMismatchReasons}
+        auditActionItems={auditActionItems}
           repairHints={repairHints}
           handleNavigate={handleNavigate}
           showAutoCalcNotice={showAutoCalcNotice}

@@ -21,6 +21,20 @@ function PanelToggleIcon({ open }) {
   );
 }
 
+function InlineMeta({ label, value, tone = 'neutral', minWidth = '' }) {
+  const toneClass =
+    tone === 'accent'
+      ? 'border-[#dceaf8] bg-[#f7fbff] text-[#0b6e99] dark:border-blue-900/40 dark:bg-blue-950/20 dark:text-blue-300'
+      : 'border-[#e9e9e7] bg-white text-[#37352f] dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200';
+
+  return (
+    <div className={`inline-flex h-9 items-center gap-2 rounded-xl border px-3 ${toneClass} ${minWidth}`}>
+      <span className="shrink-0 text-[10px] font-bold uppercase tracking-[0.12em] text-[#9a988f] dark:text-neutral-500">{label}</span>
+      <span className="truncate text-[12px] font-semibold">{value}</span>
+    </div>
+  );
+}
+
 export default function TopToolbarBalanced({
   sidebarOpen,
   setSidebarOpen,
@@ -64,36 +78,28 @@ export default function TopToolbarBalanced({
   const closeMenus = () => setOpenMenu(null);
 
   return (
-    <div className="sticky top-0 z-50 no-print w-full border-b border-[#e9e9e7] bg-white/92 shadow-sm backdrop-blur-md transition-all duration-300 dark:border-neutral-700 dark:bg-neutral-800/92">
-      <div className="mx-auto flex min-h-[72px] w-full max-w-[1400px] items-center gap-6 px-6 py-3">
-        <div className="flex min-w-0 flex-1 items-center gap-4">
+    <div className="sticky top-0 z-50 no-print w-full border-b border-[#e9e9e7] bg-white/94 shadow-sm backdrop-blur-md transition-all duration-300 dark:border-neutral-700 dark:bg-neutral-800/94">
+      <div className="mx-auto flex min-h-[56px] w-full max-w-[1400px] items-center gap-4 px-5 py-2">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
           <button
             onClick={() => setSidebarOpen((open) => !open)}
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-all ${sidebarOpen ? 'border-[#cfe2fb] bg-[#eef5ff] text-[#2383e2] dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-400' : 'border-[#eceae4] bg-[#fbfaf7] text-[#787774] hover:border-[#e1dfd8] hover:bg-[#f2f1ee] dark:border-neutral-700 dark:bg-neutral-800/80 dark:text-neutral-400 dark:hover:border-neutral-600 dark:hover:bg-neutral-700'}`}
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-all ${sidebarOpen ? 'border-[#cfe2fb] bg-[#eef5ff] text-[#2383e2] dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-400' : 'border-[#eceae4] bg-[#fbfaf7] text-[#787774] hover:border-[#e1dfd8] hover:bg-[#f2f1ee] dark:border-neutral-700 dark:bg-neutral-800/80 dark:text-neutral-400 dark:hover:border-neutral-600 dark:hover:bg-neutral-700'}`}
             title={sidebarOpen ? '좌측 가계도 패널 닫기' : '좌측 가계도 패널 열기'}
           >
             <PanelToggleIcon open={sidebarOpen} />
           </button>
 
-          <div className="flex min-w-0 items-center gap-4 rounded-2xl border border-[#eceae4] bg-[#fbfaf7] px-4 py-2 shadow-[0_1px_0_rgba(255,255,255,0.9)] dark:border-neutral-700 dark:bg-neutral-800/80">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="truncate text-[18px] font-bold tracking-tight text-[#37352f] dark:text-neutral-100">상속지분계산기 PRO</span>
-                <span className="shrink-0 rounded-full bg-[#e9e9e7] px-2 py-0.5 text-[11px] font-semibold text-[#787774] dark:bg-neutral-700 dark:text-neutral-300">beta 1.0</span>
-              </div>
+          <div className="flex min-w-0 items-center gap-3 overflow-hidden rounded-2xl border border-[#eceae4] bg-[#fbfaf7] px-3 py-1.5 shadow-[0_1px_0_rgba(255,255,255,0.9)] dark:border-neutral-700 dark:bg-neutral-800/80">
+            <div className="flex min-w-0 items-center gap-2 pr-1">
+              <span className="truncate text-[17px] font-bold tracking-tight text-[#37352f] dark:text-neutral-100">상속지분계산기 PRO</span>
+              <span className="shrink-0 rounded-full bg-[#e9e9e7] px-2 py-0.5 text-[10px] font-semibold text-[#787774] dark:bg-neutral-700 dark:text-neutral-300">beta 1.0</span>
             </div>
 
-            <div className="hidden h-10 w-px bg-[#e1dfd8] dark:bg-neutral-700 xl:block" />
+            <div className="hidden h-7 w-px bg-[#e1dfd8] dark:bg-neutral-700 lg:block" />
 
-            <div className="hidden min-w-0 items-center gap-2 xl:flex">
-              <div className="min-w-[132px] rounded-xl border border-[#e9e9e7] bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-800">
-                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#9a988f] dark:text-neutral-500">사건번호</div>
-                <div className="truncate text-[12px] font-semibold text-[#37352f] dark:text-neutral-200">{tree.caseNo || '미입력'}</div>
-              </div>
-              <div className="min-w-[160px] rounded-xl border border-[#dceaf8] bg-[#f7fbff] px-3 py-2 dark:border-blue-900/40 dark:bg-blue-950/20">
-                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#6e93b0] dark:text-blue-300/70">피상속인</div>
-                <div className="truncate text-[13px] font-black text-[#0b6e99] dark:text-blue-300">{tree.name || '미입력'}</div>
-              </div>
+            <div className="hidden min-w-0 items-center gap-2 lg:flex">
+              <InlineMeta label="사건번호" value={tree.caseNo || '미입력'} minWidth="min-w-[168px]" />
+              <InlineMeta label="피상속인" value={tree.name || '미입력'} tone="accent" minWidth="min-w-[186px]" />
             </div>
           </div>
         </div>
