@@ -309,8 +309,8 @@ const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, r
         )}
       </div>
 
-      {/* 6. 재상속/대습상속 버튼 (규정 복구: W 112px, ML 20px) */}
-      <div className="w-[112px] ml-[20px] shrink-0 flex flex-col items-center justify-center gap-1">
+      {/* 6. 재상속/대습상속 버튼 (규정 최적화: W 88px, ML 20px) */}
+      <div className="w-[88px] ml-[20px] shrink-0 flex flex-col items-center justify-center gap-1">
         {/* 💡 지분 표시는 버튼 위나 아래에 콤팩트하게 배치 (전체 너비 유지) - 왼쪽으로 10px 이동 */}
         {!node.isExcluded && !node.isDeceased && (
           <div className="flex items-center gap-0.5 text-[11px] font-black leading-none mb-0.5 ml-[-10px]">
