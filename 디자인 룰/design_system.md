@@ -33,7 +33,15 @@
 - **곡률**: `rounded-md` (0.375rem) 고정.
 - **그림자**: `shadow-sm`, 호버 시 `shadow`로 시각적 반응.
 
-### 3.2. 알림 및 안내 (Feedback)
+### 3.2. 가중치 뱃지 (Multiplier Badges)
+- **곡률**: `rounded-full` (완전한 원형) 적용하여 버튼과 시각적 구분.
+- **색상 체계**:
+    - **가산(Bonus)**: `border-sky-800/80` / `text-sky-800/80` / `bg-white` (예: 호주 가산 x 1.5)
+    - **감산(Penalty)**: `border-rose-800/80` / `text-rose-800/80` / `bg-white` (예: 처/딸 감산 x 1/2)
+    - **중립(Neutral)**: `border-neutral-300` / `text-[#37352f]` / `bg-white`
+- **폰트**: `text-[10px] / font-medium` 고정.
+
+### 3.3. 알림 및 안내 (Feedback)
 - **일반 경고**: 가로로 긴 팝업보다는 해당 영역 하단에서 **슬라이드 다운(`animate-in`)**되는 인라인 방식을 권장합니다.
 - **어조**: "수정해 주세요", "확인해 주세요" 등 객관적이고 정중한 표현을 사용합니다.
 
