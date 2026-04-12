@@ -8,9 +8,10 @@
 | :--- | :--- | :--- | :--- | :--- |
 | **컨트롤** | **00_MASTER_INDEX.md** | `!명세서/00_MASTER_INDEX.md` | 프로젝트 전체 개요, 문서 색인, AI 동작 지침 | 1순위 |
 | **로직** | **CORE_LOGIC_SPECS.md** | `!명세서/specs/CORE_LOGIC_SPECS.md` | 상속 법리, 시차별 전이 규칙, 스마트 가이드 문구 | 2순위 (기능) |
-| **계산룰** | **INHERITANCE_SHARE_RULES.md** | `!명세서/specs/INHERITANCE_SHARE_RULES.md` | 시점별 상속분 계산 규칙, 배우자/대습/호주가산, 디버깅용 계산 근거 읽는 법 | 2순위 (계산 검증) |
-| **호주가산 보조룰** | **HOJU_BONUS_FILTER_RULES.md** | `!명세서/specs/HOJU_BONUS_FILTER_RULES.md` | 여성 피상속인 단계, 배우자 경유 단계, 대습/본위상속 단계별 호주가산 필터 규칙 | 2순위 (계산 검증) |
-| **가이드** | **GUIDE_RULES_AND_NAVIGATION.md** | `!명세서/specs/GUIDE_RULES_AND_NAVIGATION.md` | 가이드 생성 규칙, 예시 문구, 카드 클릭 이동 위치, 확인 체크 정책 | 2순위 (가이드 UX) |
+| **계산룰(공식 UTF-8)** | **INHERITANCE_SHARE_RULES_UTF8.md** | `!명세서/specs/INHERITANCE_SHARE_RULES_UTF8.md` | 시점별 상속분 계산 규칙, 배우자/대습/호주가산 기준 | 2순위 (계산 검증) |
+| **호주가산 보조룰(공식 UTF-8)** | **HOJU_BONUS_FILTER_RULES_UTF8.md** | `!명세서/specs/HOJU_BONUS_FILTER_RULES_UTF8.md` | 본인 상속/대습상속/배우자 선사망 구분을 포함한 호주가산 필터 | 2순위 (계산 검증) |
+| **가이드(공식 UTF-8)** | **GUIDE_RULES_AND_NAVIGATION_UTF8.md** | `!명세서/specs/GUIDE_RULES_AND_NAVIGATION_UTF8.md` | 가이드 생성 규칙, 클릭 이동, 권고/필수 정책 | 2순위 (가이드 UX) |
+| **배우자 선사망 보조룰** | **SPOUSE_PREDECEASE_AND_HOJU_BONUS_RULES.md** | `!명세서/specs/SPOUSE_PREDECEASE_AND_HOJU_BONUS_RULES.md` | 선사망 배우자는 피대습자가 아니라는 원칙과 엔진 반영 지침 | 2순위 (법리 보조) |
 | **디자인** | **UI_DESIGN_SYSTEM.md** | `!명세서/ui/UI_DESIGN_SYSTEM.md` | 컬러, 타이포그래피, 컴포넌트 규격, 비주얼 스냅샷 | 2순위 (스타일) |
 | **이력** | **history/** | `!명세서/history/` | 과거 버전별 업데이트 기록 및 변경 로그 | 3순위 |
 
@@ -20,6 +21,7 @@
 
 1. **선조회 후작업**: 모든 기능 수정 및 UI 변경 요청 시, 위 문서들을 먼저 정독하여 기존 규칙과의 정합성을 검토하십시오.
 2. **SSOT 준수**: 파편화된 과거의 업데이트 노트보다 `!명세서/specs/` 및 `!명세서/ui/`에 명시된 최신 명세를 최우선으로 따르십시오.
+   같은 주제의 기존 문서와 `_UTF8.md` 재작성본이 함께 있을 경우에는 `_UTF8.md` 문서를 공식 참조본으로 사용합니다.
 3. **디자인 성역화**: `!명세서/ui/UI_DESIGN_SYSTEM.md`에 정의된 원자적 디자인 규격(뱃지 형태, 색상 코드 등)은 명시적 요청 없이 임의로 수정하지 마십시오.
 4. **문서 동기화**: 기능 변경이나 UI 조정이 승인된 후에는 반드시 관련 명세서(`CORE_LOGIC_SPECS.md` 등)를 최신 상태로 업데이트해야 합니다.
 

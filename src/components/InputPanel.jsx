@@ -248,10 +248,10 @@ export default function InputPanel({
                 <div className="ml-[20px] w-7 shrink-0 text-center">상태</div>
                 <div className="w-[72px] ml-[50px] shrink-0">성명</div>
                 <div className="w-[76px] ml-[30px] shrink-0">관계</div>
-                <div className="w-[150px] ml-[30px] shrink-0">생존/사망(사망일자)</div>
+                <div className="w-[150px] ml-[50px] shrink-0">생존/사망(사망일자)</div>
                 <div className="w-[180px] ml-[10px] shrink-0">특수조건 및 가감산</div>
-                <div className="w-[88px] ml-[20px] shrink-0 text-center">재상속/지분</div>
-                <div className="ml-[30px] mr-[20px] w-12 shrink-0 flex justify-center">
+                <div className="w-[88px] ml-[10px] shrink-0 text-center">재상속/지분</div>
+                <div className="ml-[20px] mr-[20px] w-12 shrink-0 flex justify-center">
                   <button
                     type="button"
                     onClick={handleRemoveAllHeirs}

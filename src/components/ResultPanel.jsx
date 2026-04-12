@@ -12,7 +12,13 @@ const buildIssueMap = (issues = []) => {
   return map;
 };
 
-export default function ResultPanel({ calcSteps, tree, issues = [], handleNavigate }) {
+const getInterpretationNote = (mode) => (
+  mode === 'conservative'
+    ? "보수해석 비교: 민법 제1009조의 '동시 상속' 문언을 엄격 해석하면 가산 배제 가능"
+    : '실무해석 적용: 대법원 90마772, 등기선례 제8-187호 취지 참조'
+);
+
+export default function ResultPanel({ calcSteps, tree, issues = [], handleNavigate, interpretationMode = 'practical' }) {
   const issueMap = buildIssueMap(issues);
   const heirMap = new Map();
   calcSteps.forEach((s) => {
@@ -45,6 +51,9 @@ export default function ResultPanel({ calcSteps, tree, issues = [], handleNaviga
 
   return (
     <section className="w-full text-[#37352f] dark:text-neutral-200">
+      <div className="mb-4 rounded-lg border border-[#e9e9e7] bg-[#fcfcfb] px-4 py-3 text-[12px] text-[#787774] dark:border-neutral-700 dark:bg-neutral-800/40 dark:text-neutral-400">
+        {getInterpretationNote(interpretationMode)}
+      </div>
       <div className="mb-4 text-[13px] text-[#787774] dark:text-neutral-500">
         최종 생존 상속인이 어떤 경로로 지분을 취득했는지 한눈에 검토하는 표입니다.
       </div>

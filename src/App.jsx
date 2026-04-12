@@ -48,7 +48,8 @@ function App() {
   const [currentMatchIdx, setCurrentMatchIdx] = useState(0);
   const [propertyValue, setPropertyValue] = useState(''); 
   const [specialBenefits, setSpecialBenefits] = useState({}); 
-  const [contributions, setContributions] = useState({});     
+  const [contributions, setContributions] = useState({});
+  const [interpretationMode, setInterpretationMode] = useState('practical');
   const [isAmountActive, setIsAmountActive] = useState(false);
 
   const sensors = useSensors(
@@ -472,12 +473,18 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
         }
 
         const isPre = clone.deathDate && refDate && isBefore(clone.deathDate, refDate); 
+        const isSpouseType = ['wife', 'husband', 'spouse'].includes(clone.relation);
         const hasHeirsInModel = clone.heirs && clone.heirs.length > 0;
         
         // [v3.1.5] 데이터가 있다면 제외 처리(isExcluded)를 강제로 해제함 (지분 0원 방지)
-        if (hasHeirsInModel) {
+        if (hasHeirsInModel && !(isPre && isSpouseType)) {
           clone.isExcluded = false;
           clone.exclusionOption = ''; 
+        }
+
+        if (isPre && isSpouseType) {
+          clone.isExcluded = true;
+          clone.exclusionOption = 'predeceased';
         }
 
         const isDeadWithoutHeirs = clone.isDeceased && !hasHeirsInModel;
@@ -489,7 +496,6 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
         } 
         // [후사망자] 하위 데이터가 없더라도 기본적으로 상속권을 유지(On)하며 안내만 표시
         else if (!isPre && isDeadWithoutHeirs && parentNode && !clone.id.startsWith('auto_')) {
-          const isSpouseType = ['wife', 'husband', 'spouse'].includes(clone.relation);
           clone.isExcluded = false; // 후사망자는 명시적으로 제외 상태 해제
           clone.exclusionOption = '';
           if (!isSpouseType) {
@@ -804,8 +810,8 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
                 />
               )}
               {(activeTab === 'calc' || activeTab === 'result' || activeTab === 'summary' || activeTab === 'amount') && <MetaHeader tree={tree} />}
-              {activeTab === 'calc' && <CalcPanel calcSteps={calcSteps} issues={blockingIssues} handleNavigate={handleNavigate} />}
-              {activeTab === 'result' && <ResultPanel calcSteps={calcSteps} tree={tree} issues={blockingIssues} handleNavigate={handleNavigate} />}
+              {activeTab === 'calc' && <CalcPanel calcSteps={calcSteps} issues={blockingIssues} handleNavigate={handleNavigate} interpretationMode={interpretationMode} setInterpretationMode={setInterpretationMode} />}
+              {activeTab === 'result' && <ResultPanel calcSteps={calcSteps} tree={tree} issues={blockingIssues} handleNavigate={handleNavigate} interpretationMode={interpretationMode} />}
               {activeTab === 'summary' && (
                 <SummaryPanel
                   tree={tree}
@@ -818,6 +824,7 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
                   setSearchQuery={setSearchQuery}
                   simpleTargetN={simpleTargetN}
                   simpleTargetD={simpleTargetD}
+                  interpretationMode={interpretationMode}
                 />
               )}
               {activeTab === 'amount' && (

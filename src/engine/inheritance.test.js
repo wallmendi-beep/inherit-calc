@@ -157,4 +157,51 @@ describe('상속지분 계산 엔진 회귀 테스트 (6종 필수 시나리오)
     expect(['partial', 'blocked'].includes(result.status)).toBe(true);
   });
 
+  it('7. 선사망 배우자는 자녀가 있어도 대습상속을 열지 않는다', () => {
+    const tree = {
+      id: 'root',
+      name: '김말수',
+      isDeceased: true,
+      deathDate: '1955-01-01',
+      shareN: 1,
+      shareD: 1,
+      heirs: [
+        {
+          id: 'sp1',
+          personId: 'sp1',
+          name: '옥태진',
+          relation: 'husband',
+          isDeceased: true,
+          deathDate: '1946-01-01',
+          heirs: [
+            { id: 'c1', personId: 'c1', name: '옥인철', relation: 'son', isDeceased: false, heirs: [] }
+          ]
+        },
+        {
+          id: 'd1',
+          personId: 'd1',
+          name: '김씨딸',
+          relation: 'daughter',
+          isDeceased: false,
+          heirs: []
+        }
+      ]
+    };
+
+    const result = calculateInheritance(tree);
+    const allShares = [
+      ...(result.finalShares.direct || []),
+      ...(result.finalShares.subGroups || []).flatMap(g => g.shares)
+    ];
+
+    const spouse = allShares.find(h => h.name === '옥태진');
+    const childOfSpouse = allShares.find(h => h.name === '옥인철');
+    const daughter = allShares.find(h => h.name === '김씨딸');
+
+    expect(spouse).toBeUndefined();
+    expect(childOfSpouse).toBeUndefined();
+    expect(daughter).toBeDefined();
+    expect(daughter.n).toBe(1);
+    expect(daughter.d).toBe(1);
+  });
 });

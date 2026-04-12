@@ -130,7 +130,10 @@ export const normalizeImportedTree = (rawTree) => {
     const isSpouseType = ['wife', 'husband', 'spouse'].includes(relation);
     const isPredeceased = deathDate && refDate && isBefore(deathDate, refDate);
 
-    if (isPredeceased && !isSpouseType) {
+    if (isPredeceased && isSpouseType) {
+      isExcluded = true;
+      exclusionOption = 'predeceased';
+    } else if (isPredeceased && !isSpouseType) {
       // 선사망 자녀/형제자매는 하위 상속인이 없을 때만 OFF로 유지한다.
       // 하위 상속인이 있으면 대습상속 경로가 살아 있으므로 기본 ON으로 복구한다.
       if (heirs.length > 0) {
@@ -242,7 +245,10 @@ export const updateDeathInfo = (tree, nodeId, payload) => {
       }
 
       if (next.isDeceased) {
-        if (isPre && !isSpouseType) {
+        if (isPre && isSpouseType) {
+          next.isExcluded = true;
+          next.exclusionOption = 'predeceased';
+        } else if (isPre && !isSpouseType) {
           // 선사망: 기본 제외(OFF) + 옵션 고정
           next.isExcluded = true;
           next.exclusionOption = 'predeceased';

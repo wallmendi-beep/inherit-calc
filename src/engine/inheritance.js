@@ -127,6 +127,10 @@ export const calculateInheritance = (tree) => {
   const getHojuBonusReason = ({ context }) => (
     context.isSubstitution ? '대습 호주가산 (선례 2-285호)' : '호주상속 5할 가산'
   );
+
+  const isSpouseRelation = (relation) => (
+    ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(relation)
+  );
   
   const findHeirsByName = (root, targetName, excludeId) => {
     if (!targetName || targetName.trim() === '') return null;
@@ -208,9 +212,9 @@ export const calculateInheritance = (tree) => {
     //  최종 진화: 1순위 가지 멸절 시 2순위/3순위로의 자동 이전을 완벽하게 제어하는 스마트 필터
     const isRenounced = (h, contextDate) => {
       // 🤖 [Phase 2-2: 시계열 판별 AI] 날짜 기반 상속권/대습상속권 자동 박탈 (이혼/재혼)
-      const isSpouseRelation = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(h.relation);
-      const isDivorcedAuto = isSpouseRelation && h.divorceDate && contextDate && !isBefore(contextDate, h.divorceDate);
-      const isRemarriedAuto = isSpouseRelation && h.remarriageDate && contextDate && !isBefore(contextDate, h.remarriageDate);
+      const isSpouseHeir = isSpouseRelation(h.relation);
+      const isDivorcedAuto = isSpouseHeir && h.divorceDate && contextDate && !isBefore(contextDate, h.divorceDate);
+      const isRemarriedAuto = isSpouseHeir && h.remarriageDate && contextDate && !isBefore(contextDate, h.remarriageDate);
 
       // 1. 대습/재상속 유발 사유 판별 (선사망, 결격, 상실선고)
       const isPredeceasedOption = h.isExcluded && h.exclusionOption === 'predeceased';
@@ -225,6 +229,10 @@ export const calculateInheritance = (tree) => {
 
       // 3. 대습상속 유발 사유 (선사망 또는 결격/상실선고)
       const isPre = h.isDeceased && h.deathDate && contextDate && isBefore(h.deathDate, contextDate);
+
+      // 선사망 배우자는 상속권이 없는 배우자일 뿐, 피대습자가 아니다.
+      // 따라서 자녀가 있더라도 배우자 라인에서 대습상속을 열지 않는다.
+      if (isSpouseHeir && (isPre || isDisqualified)) return true;
       
       if (isPre || isDisqualified) {
         let children = h.heirs || [];
@@ -239,7 +247,7 @@ export const calculateInheritance = (tree) => {
         if (isDisqualified) {
           const rootDDate = tree.deathDate || contextDate; 
           if (!isBefore(rootDDate, '2024-04-25')) {
-            children = children.filter(c => !(['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(c.relation)));
+            children = children.filter(c => !isSpouseRelation(c.relation));
           }
         }
 
@@ -255,7 +263,9 @@ export const calculateInheritance = (tree) => {
     };
 
     const isSubstitutionTrigger = (h) => 
-      h.isDeceased || (h.isExcluded && (h.exclusionOption === 'disqualified' || h.exclusionOption === 'lost'));
+      !isSpouseRelation(h.relation) && (
+        h.isDeceased || (h.isExcluded && (h.exclusionOption === 'disqualified' || h.exclusionOption === 'lost'))
+      );
 
     if (!node.isExcluded) {
       if (node.isDeceased && !node.deathDate) {
@@ -289,7 +299,7 @@ export const calculateInheritance = (tree) => {
     let targetHeirs = (node.heirs || []).filter(h => !isRenounced(h, distributionDate)); 
 
     if (isDisqualifiedOrLost && !isBefore(tree.deathDate || distributionDate, '2024-04-25')) {
-      targetHeirs = targetHeirs.filter(h => !(['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(h.relation)));
+      targetHeirs = targetHeirs.filter(h => !isSpouseRelation(h.relation));
     }
     const originalChildren = (node.heirs || []).filter(h => h.relation === 'son' || h.relation === 'daughter');
     const renouncedChildrenCount = originalChildren.filter(isRenounced).length;

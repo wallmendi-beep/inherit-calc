@@ -49,9 +49,11 @@ export default function HeirRow({
   const lawEra = getLawEra(inheritedDate);
   const isSpouseType = ['wife', 'husband', 'spouse'].includes(node.relation);
   const isPreDeceasedCondition = !!(node.isDeceased && node.deathDate && inheritedDate && isBefore(node.deathDate, inheritedDate));
+  const isPredeceasedSpouse = isSpouseType && isPreDeceasedCondition;
   const isAnyPredeceased = isPreDeceasedCondition;
   const isDaeseupContext = !!(rootDeathDate && inheritedDate && inheritedDate !== rootDeathDate && isBefore(inheritedDate, rootDeathDate));
   const isDaeseupSpouse = isSpouseType && isDaeseupContext;
+  const blocksHusbandSubstitution = node.relation === 'husband' && isDaeseupContext && lawEra !== '1991';
   const isToggleOff = !!node.isExcluded;
   const isEffectivePredeceased = isPreDeceasedCondition && !isSpouseType;
   const effectiveExclusionOption = isToggleOff
@@ -62,6 +64,11 @@ export default function HeirRow({
   const [isWarningClosing, setIsWarningClosing] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [isPredeceasedActive, setIsPredeceasedActive] = useState(false);
+  const handleUpdateRef = React.useRef(handleUpdate);
+
+  useEffect(() => {
+    handleUpdateRef.current = handleUpdate;
+  }, [handleUpdate]);
 
   useEffect(() => {
     if (!showPredeceasedWarning) return undefined;
@@ -72,13 +79,13 @@ export default function HeirRow({
     const hideTimer = setTimeout(() => {
       setShowPredeceasedWarning(false);
       setIsWarningClosing(false);
-      handleUpdate(node.id, { isExcluded: true, exclusionOption: 'predeceased' });
+      handleUpdateRef.current(node.id, { isExcluded: true, exclusionOption: 'predeceased' });
     }, 3000);
     return () => {
       clearTimeout(closeTimer);
       clearTimeout(hideTimer);
     };
-  }, [showPredeceasedWarning, node.id, handleUpdate]);
+  }, [showPredeceasedWarning, node.id]);
 
   useEffect(() => {
     if (!isPredeceasedActive) return undefined;
@@ -86,10 +93,10 @@ export default function HeirRow({
       setIsPredeceasedActive(false);
       setShowPredeceasedWarning(false);
       setIsWarningClosing(false);
-      handleUpdate(node.id, { isExcluded: true, exclusionOption: 'predeceased' });
+      handleUpdateRef.current(node.id, { isExcluded: true, exclusionOption: 'predeceased' });
     }, 3000);
     return () => clearTimeout(timer);
-  }, [isPredeceasedActive, node.id, handleUpdate]);
+  }, [isPredeceasedActive, node.id]);
 
   const isToggleVisuallyOn = isPredeceasedActive || !isToggleOff;
   const displayN = isEffectivePredeceased && isToggleOff && (!node.heirs || node.heirs.length === 0)
@@ -118,7 +125,9 @@ export default function HeirRow({
   let tabBtnText = '재상속 >>';
   let tabBtnClass = 'bg-transparent text-[#787774] border border-[#e9e9e7] hover:bg-blue-50/50 hover:text-blue-600 hover:border-blue-200 dark:border-neutral-700';
 
-  if (isToggleOff) {
+  if (isPredeceasedSpouse) {
+    shouldShowTabBtn = false;
+  } else if (isToggleOff) {
     if (['lost', 'disqualified', 'remarried'].includes(effectiveExclusionOption)) {
       shouldShowTabBtn = true;
       tabBtnText = '대습상속 >>';
@@ -184,8 +193,8 @@ export default function HeirRow({
               </button>
             </div>
 
-            <div className="ml-[50px] flex w-[140px] shrink-0 items-center gap-2">
-              <div className="w-[72px] shrink-0">
+            <div className="ml-[50px] flex w-[72px] shrink-0 items-center">
+              <div className="w-full shrink-0">
                 <input
                   type="text"
                   value={node.name}
@@ -199,19 +208,6 @@ export default function HeirRow({
                   placeholder="성명"
                 />
               </div>
-              {showHoju && (
-                <div className="flex shrink-0 items-center gap-1.5">
-                  <BadgeToggle
-                    active={node.isHoju}
-                    onToggle={(value) => handleUpdate({ type: 'setHojuStatus', nodeId: node.id, isHoju: value })}
-                    activeLabel="호주"
-                    inactiveLabel="일반"
-                    hoverClassName="hover:bg-blue-50/50 hover:text-blue-600 hover:border-blue-200"
-                    className="w-[56px]"
-                  />
-                  {node.isHoju && <MultiplierBadge multiplier="x 1.5" />}
-                </div>
-              )}
             </div>
 
             <div className="ml-[30px] w-[76px] shrink-0">
@@ -300,6 +296,19 @@ export default function HeirRow({
                     else if (lawEra === '1979' && node.relation === 'wife') multiplier = 'x 1.5';
                     else if (lawEra === '1991') multiplier = 'x 1.5';
 
+                    if (blocksHusbandSubstitution) {
+                      return (
+                        <div className="flex shrink-0 items-center gap-1.5">
+                          <div className="flex h-[26px] w-[64px] shrink-0 items-center justify-center rounded-full border border-[#e9e9e7] bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
+                            <span className="text-[11px] font-bold text-neutral-600 dark:text-neutral-300">{getRelStr(node.relation, inheritedDate || rootDeathDate)}</span>
+                          </div>
+                          <div className="flex h-[26px] shrink-0 items-center justify-center rounded-full border border-red-200 bg-red-50 px-2.5 shadow-sm dark:border-red-900/40 dark:bg-red-900/20">
+                            <span className="text-[10.5px] font-semibold text-red-600 dark:text-red-300">사위 대습권 없음</span>
+                          </div>
+                        </div>
+                      );
+                    }
+
                     return (
                       <div className="flex shrink-0 items-center gap-1.5">
                         <div className="flex h-[26px] w-[64px] shrink-0 items-center justify-center rounded-full border border-[#e9e9e7] bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
@@ -312,6 +321,19 @@ export default function HeirRow({
 
                   {!isSpouseType && (
                     <div className="flex shrink-0 items-center gap-1.5">
+                      {showHoju && (
+                        <div className="flex items-center gap-1.5">
+                          <BadgeToggle
+                            active={node.isHoju}
+                            onToggle={(value) => handleUpdate({ type: 'setHojuStatus', nodeId: node.id, isHoju: value })}
+                            activeLabel="호주"
+                            inactiveLabel="일반"
+                            hoverClassName="hover:bg-blue-50/50 hover:text-blue-600 hover:border-blue-200"
+                            className="w-[64px]"
+                          />
+                          {node.isHoju && <MultiplierBadge multiplier="x 1.5" />}
+                        </div>
+                      )}
                       {showMarriedDaughter && (
                         <div className="flex items-center gap-1.5">
                           <BadgeToggle active={node.isSameRegister !== false} onToggle={(value) => handleUpdate(node.id, 'isSameRegister', value ? true : false)} activeLabel="동일" inactiveLabel="출가" isInferred={node._isInferredRegister} inactiveClassName="border-neutral-400 bg-neutral-100 text-[#37352f]" hoverClassName="hover:bg-emerald-50/50 hover:text-emerald-600 hover:border-emerald-200" className="w-[64px]" />
@@ -339,7 +361,7 @@ export default function HeirRow({
               )}
             </div>
 
-            <div className="ml-[20px] flex w-[88px] shrink-0 flex-col items-center justify-center gap-1">
+            <div className="ml-[30px] flex w-[88px] shrink-0 flex-col items-center justify-center gap-1">
               {(!isToggleOff || isPredeceasedActive) && !node.isDeceased && (
                 <div className="ml-[-10px] mb-0.5 flex items-center gap-0.5 text-[11px] font-black leading-none">
                   <span className="text-[#1e56a0] dark:text-blue-400">{displayN}</span>
@@ -358,7 +380,7 @@ export default function HeirRow({
               )}
             </div>
 
-            <div className="ml-[30px] mr-[20px] flex w-12 shrink-0 justify-center">
+            <div className="ml-[25px] mr-[20px] flex w-12 shrink-0 justify-center">
               <button
                 type="button"
                 onClick={() => removeHeir(node.id)}

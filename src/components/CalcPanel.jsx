@@ -12,10 +12,55 @@ const buildIssueMap = (issues = []) => {
   return map;
 };
 
-export default function CalcPanel({ calcSteps, issues = [], handleNavigate }) {
+const getInterpretationMeta = (mode) => {
+  if (mode === 'conservative') {
+    return {
+      title: '보수 해석',
+      summary: "민법 제1009조의 '동시 상속' 문언을 엄격하게 보는 비교 모드",
+      basis: '보수해석 비교: 민법 제1009조의 동시상속 문언을 엄격 해석하면 가산 배제 가능',
+    };
+  }
+
+  return {
+    title: '실무 해석',
+    summary: '기본값. 대법원 90마772 및 등기선례 제8-187호 취지를 우선 반영',
+    basis: '실무해석 적용: 대법원 90마772, 등기선례 제8-187호 취지 참조',
+  };
+};
+
+const getInterpretationMemo = (mode, modifier) => {
+  if (!modifier) return '';
+  if (!modifier.includes('호주상속') && !modifier.includes('가산')) return '';
+  return getInterpretationMeta(mode).basis;
+};
+
+export default function CalcPanel({ calcSteps, issues = [], handleNavigate, interpretationMode = 'practical', setInterpretationMode }) {
   const issueMap = buildIssueMap(issues);
+  const interpretationMeta = getInterpretationMeta(interpretationMode);
   return (
     <section className="w-full text-[#37352f] dark:text-neutral-200">
+      <div className="mb-4 flex items-center justify-between gap-4 rounded-xl border border-[#e9e9e7] bg-[#fcfcfb] px-4 py-3 dark:border-neutral-700 dark:bg-neutral-800/40">
+        <div>
+          <div className="text-[13px] font-bold text-[#37352f] dark:text-neutral-100">법리 해석</div>
+          <div className="mt-1 text-[12px] text-[#787774] dark:text-neutral-400">{interpretationMeta.summary}</div>
+        </div>
+        <div className="inline-flex rounded-full border border-[#e5e5e5] bg-white p-1 shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
+          <button
+            type="button"
+            onClick={() => setInterpretationMode && setInterpretationMode('practical')}
+            className={`rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors ${interpretationMode === 'practical' ? 'bg-[#37352f] text-white' : 'text-[#787774] hover:bg-[#f1f1ef] dark:text-neutral-400 dark:hover:bg-neutral-800'}`}
+          >
+            실무 해석
+          </button>
+          <button
+            type="button"
+            onClick={() => setInterpretationMode && setInterpretationMode('conservative')}
+            className={`rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors ${interpretationMode === 'conservative' ? 'bg-[#37352f] text-white' : 'text-[#787774] hover:bg-[#f1f1ef] dark:text-neutral-400 dark:hover:bg-neutral-800'}`}
+          >
+            보수 해석
+          </button>
+        </div>
+      </div>
       <div className="mb-4 text-[13px] text-[#787774] dark:text-neutral-500">
         피상속인부터 시작해 각 상속 단계에서 지분이 어떻게 분배되는지 보여주는 계산표입니다.
       </div>
@@ -47,6 +92,8 @@ export default function CalcPanel({ calcSteps, issues = [], handleNavigate }) {
                   if (d.ex) memo.push(`상속권 없음(${d.ex})`);
                   if (d.h.isDeceased && !(d.ex && (d.ex.includes('사망') || d.ex.includes('선사망')))) memo.push('망인');
                   if (d.mod) memo.push(...d.mod.split(',').map((m) => m.trim()));
+                  const interpretationMemo = getInterpretationMemo(interpretationMode, d.mod);
+                  if (interpretationMemo) memo.push(interpretationMemo);
                   personIssues.forEach((issue) => memo.push(issue.text));
 
                   return (

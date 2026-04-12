@@ -24,6 +24,7 @@ export default function SummaryPanel({
   setSearchQuery,
   simpleTargetN,
   simpleTargetD,
+  interpretationMode = 'practical',
 }) {
   const issueMap = buildIssueMap(issues);
 
@@ -171,6 +172,11 @@ export default function SummaryPanel({
 
   return (
     <div className="w-full text-[#37352f] dark:text-neutral-200">
+      <div className="mb-4 rounded-lg border border-[#e9e9e7] bg-[#fcfcfb] px-4 py-3 text-[12px] text-[#787774] dark:border-neutral-700 dark:bg-neutral-800/40 dark:text-neutral-400">
+        {interpretationMode === 'conservative'
+          ? "보수해석 비교: 민법 제1009조의 '동시 상속' 문언을 엄격 해석하면 가산 배제 가능"
+          : '실무해석 적용: 대법원 90마772, 등기선례 제8-187호 취지 참조'}
+      </div>
       <div className="mb-4 flex items-center justify-between no-print">
         <div className="flex items-center gap-6">
           <h2 className="text-lg font-black text-[#37352f] dark:text-neutral-200 flex items-center gap-2">
