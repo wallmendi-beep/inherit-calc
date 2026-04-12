@@ -1,6 +1,6 @@
-import React from 'react';
+﻿import React from 'react';
 import ContextualDrawer from './ui/ContextualDrawer';
-import { FatalBadge, WarningBadge } from './ui/MicroBadges';
+import { FatalBadge, WarningBadge, InfoBadge } from './ui/MicroBadges';
 
 export default function SmartGuidePanel({
   showNavigator,
@@ -122,7 +122,7 @@ export default function SmartGuidePanel({
                   >
                     <div className="flex items-start justify-between gap-2">
                       <span className="text-[11.5px] font-medium leading-relaxed text-slate-700 dark:text-neutral-200">{guide.text}</span>
-                      <WarningBadge />
+                      <InfoBadge />
                     </div>
                   </button>
                   <button
@@ -169,7 +169,10 @@ export default function SmartGuidePanel({
                     onClick={() => (hint.targetTabId ? handleNavigate(hint.targetTabId) : null)}
                     className="w-full rounded-xl border border-neutral-200 bg-neutral-50/70 p-3 text-left transition-all hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900/40"
                   >
-                    <span className="text-[11.5px] font-medium leading-relaxed text-slate-700 dark:text-neutral-200">{hint.text}</span>
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-[11.5px] font-medium leading-relaxed text-slate-700 dark:text-neutral-200">{hint.text}</span>
+                      <InfoBadge />
+                    </div>
                   </button>
                 </li>
               ))}
@@ -185,7 +188,7 @@ export default function SmartGuidePanel({
                 <li key={index} className="flex items-center justify-between text-[12px]">
                   <span className="font-bold text-slate-800 dark:text-neutral-100">{item.name}</span>
                   <div className="flex items-center gap-1.5 font-bold text-blue-600 dark:text-blue-400">
-                    <span>→</span>
+                    <InfoBadge />
                     <span>{item.target}</span>
                   </div>
                 </li>
@@ -197,3 +200,4 @@ export default function SmartGuidePanel({
     </ContextualDrawer>
   );
 }
+

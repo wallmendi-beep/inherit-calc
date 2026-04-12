@@ -1,5 +1,17 @@
-import React from 'react';
+﻿import React from 'react';
 import MiniTreeView from './MiniTreeView';
+
+function PanelActionButton({ children, onClick, title }) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className="inline-flex h-7 items-center justify-center rounded-lg border border-[#e9e9e7] bg-white px-2.5 text-[11px] font-semibold text-[#5f5e5b] transition-colors hover:border-[#d7d5cf] hover:bg-[#f3f2ef] hover:text-[#37352f] dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:border-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-100"
+    >
+      {children}
+    </button>
+  );
+}
 
 export default function SidebarTreePanel({
   sidebarOpen,
@@ -20,48 +32,56 @@ export default function SidebarTreePanel({
   if (!sidebarOpen) return null;
 
   return (
-    <aside className="fixed left-0 top-[54px] h-[calc(100vh-54px)] z-30 no-print flex items-stretch" style={{ width: sidebarWidth + 10 }}>
-      <div className="flex flex-col bg-white dark:bg-neutral-800 border-r border-[#e9e9e7] dark:border-neutral-700 overflow-hidden" style={{ width: sidebarWidth }}>
-        <div className="p-2 border-b border-[#e9e9e7] dark:border-neutral-700 flex flex-col gap-1.5 shrink-0">
-          <div className="flex items-center gap-1 bg-[#f7f7f5] dark:bg-neutral-900 border border-[#e9e9e7] dark:border-neutral-700 rounded px-2 py-1">
-            <svg className="w-3 h-3 text-neutral-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <aside className="fixed left-0 top-[54px] z-30 flex h-[calc(100vh-54px)] items-stretch no-print" style={{ width: sidebarWidth + 10 }}>
+      <div className="flex flex-col overflow-hidden border-r border-[#e9e9e7] bg-white dark:border-neutral-700 dark:bg-neutral-800" style={{ width: sidebarWidth }}>
+        <div className="shrink-0 border-b border-[#e9e9e7] bg-[#faf9f6] px-3 py-3 dark:border-neutral-700 dark:bg-neutral-900/60">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#9a988f] dark:text-neutral-500">가계도 요약</div>
+              <div className="mt-0.5 text-[13px] font-semibold text-[#37352f] dark:text-neutral-100">상속인 구조 탐색</div>
+            </div>
+            <div className="flex items-center gap-1">
+              <PanelActionButton onClick={() => setSidebarToggleSignal((signal) => Math.abs(signal) + 1)} title="모두 펼치기">
+                펼치기
+              </PanelActionButton>
+              <PanelActionButton onClick={() => setSidebarToggleSignal((signal) => -(Math.abs(signal) + 1))} title="모두 접기">
+                접기
+              </PanelActionButton>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 rounded-xl border border-[#e9e9e7] bg-white px-3 py-2 shadow-[0_1px_0_rgba(255,255,255,0.9)] dark:border-neutral-700 dark:bg-neutral-800">
+            <svg className="h-3.5 w-3.5 shrink-0 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
               type="text"
-              placeholder="이름 검색"
+              placeholder="상속인 검색"
               value={sidebarSearchQuery}
               onChange={(e) => setSidebarSearchQuery(e.target.value)}
-              className="bg-transparent outline-none flex-1 text-[12px] text-[#37352f] dark:text-neutral-200 min-w-0"
+              className="min-w-0 flex-1 bg-transparent text-[12px] text-[#37352f] outline-none placeholder:text-neutral-400 dark:text-neutral-200"
             />
             {sidebarMatchIds.length > 0 && (
-              <div className="flex items-center gap-0.5 shrink-0">
-                <span className="text-[10px] text-neutral-400">
+              <div className="flex shrink-0 items-center gap-1">
+                <span className="text-[10px] font-medium text-neutral-400">
                   {sidebarCurrentMatchIdx + 1}/{sidebarMatchIds.length}
                 </span>
-                <button onClick={handleSidebarPrevMatch} className="p-0.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300">
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 15l7-7 7 7" />
+                <button onClick={handleSidebarPrevMatch} className="rounded p-0.5 text-neutral-400 transition-colors hover:bg-[#f0f0ee] hover:text-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200" title="이전 결과">
+                  <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 15l7-7 7 7" />
                   </svg>
                 </button>
-                <button onClick={handleSidebarNextMatch} className="p-0.5 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300">
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7" />
+                <button onClick={handleSidebarNextMatch} className="rounded p-0.5 text-neutral-400 transition-colors hover:bg-[#f0f0ee] hover:text-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200" title="다음 결과">
+                  <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
               </div>
             )}
           </div>
-          <div className="flex gap-1">
-            <button onClick={() => setSidebarToggleSignal((signal) => Math.abs(signal) + 1)} className="flex-1 text-[10px] text-[#787774] dark:text-neutral-400 hover:text-[#37352f] hover:bg-[#f0f0ee] dark:hover:bg-neutral-700 py-0.5 rounded transition-colors font-bold">
-              모두 펼치기
-            </button>
-            <button onClick={() => setSidebarToggleSignal((signal) => -(Math.abs(signal) + 1))} className="flex-1 text-[10px] text-[#787774] dark:text-neutral-400 hover:text-[#37352f] hover:bg-[#f0f0ee] dark:hover:bg-neutral-700 py-0.5 rounded transition-colors font-bold">
-              모두 접기
-            </button>
-          </div>
         </div>
-        <div className="flex-1 overflow-y-auto p-2">
+
+        <div className="hover-scrollbar flex-1 overflow-y-auto px-2 py-2">
           {tree && (
             <MiniTreeView
               node={tree}
@@ -76,7 +96,7 @@ export default function SidebarTreePanel({
           )}
         </div>
       </div>
-      <div className="w-[10px] cursor-col-resize hover:bg-blue-200/40 dark:hover:bg-blue-900/30 active:bg-blue-300/40 transition-colors shrink-0" onMouseDown={handleResizeMouseDown} />
+      <div className="w-[10px] shrink-0 cursor-col-resize transition-colors hover:bg-blue-200/40 active:bg-blue-300/40 dark:hover:bg-blue-900/30" onMouseDown={handleResizeMouseDown} />
     </aside>
   );
 }

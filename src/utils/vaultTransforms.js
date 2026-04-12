@@ -1,4 +1,4 @@
-import { isBefore } from '../engine/utils';
+﻿import { isBefore } from '../engine/utils';
 
 export const migrateToVault = (oldTree) => {
   const vault = {
@@ -27,6 +27,7 @@ export const migrateToVault = (oldTree) => {
         name: node.name || '',
         isDeceased: !!node.isDeceased,
         deathDate: node.deathDate || '',
+        _lastDeathDate: node._lastDeathDate || node.deathDate || '',
         marriageDate: node.marriageDate || '',
         remarriageDate: node.remarriageDate || '',
         divorceDate: node.divorceDate || '',
@@ -36,6 +37,7 @@ export const migrateToVault = (oldTree) => {
     } else {
       const p = vault.persons[pId];
       if (!p.deathDate && node.deathDate) p.deathDate = node.deathDate;
+      if (!p._lastDeathDate && (node._lastDeathDate || node.deathDate)) p._lastDeathDate = node._lastDeathDate || node.deathDate;
       if (!p.marriageDate && node.marriageDate) p.marriageDate = node.marriageDate;
       if (!p.divorceDate && node.divorceDate) p.divorceDate = node.divorceDate;
       if (!p.restoreDate && node.restoreDate) p.restoreDate = node.restoreDate;
@@ -119,11 +121,14 @@ export const buildTreeFromVault = (vault) => {
       childNode.isExcluded = link.isExcluded;
       childNode.exclusionOption = link.exclusionOption;
 
-      if (isPreDeceased && !isSpouseType) {
+      if (!childNode.isDeceased && childNode.exclusionOption === 'predeceased') {
+        childNode.isExcluded = false;
+        childNode.exclusionOption = '';
+      } else if (isPreDeceased && !isSpouseType) {
         childNode.isExcluded = true;
         childNode.exclusionOption = 'predeceased';
       } else if (childNode.isDeceased && childNode.deathDate && effectiveDate && !isPreDeceased) {
-        // 후사망(재상속)은 JSON에 과거 exclusionOption 값이 남아 있어도 기본 ON으로 복원한다.
+        // 후사망 상태는 과거 파생 predeceased 값을 남기지 않고 기본 ON으로 복원한다.
         childNode.isExcluded = false;
         childNode.exclusionOption = '';
       }
@@ -142,3 +147,4 @@ export const buildTreeFromVault = (vault) => {
 
   return buildNode(rootId, rootPerson.deathDate);
 };
+

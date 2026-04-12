@@ -1,6 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import {
-  IconCalculator,
   IconFolderOpen,
   IconMoon,
   IconPrinter,
@@ -11,6 +10,16 @@ import {
   IconTable,
   IconUndo,
 } from './Icons';
+
+function PanelToggleIcon({ open }) {
+  return (
+    <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3.5" y="4" width="17" height="16" rx="2.5" />
+      <path d="M9 4v16" />
+      {open ? <path d="m14 12 3-3m-3 3 3 3" /> : <path d="m17 12-3-3m3 3-3 3" />}
+    </svg>
+  );
+}
 
 export default function TopToolbarBalanced({
   sidebarOpen,
@@ -56,25 +65,23 @@ export default function TopToolbarBalanced({
 
   return (
     <div className="sticky top-0 z-50 no-print w-full border-b border-[#e9e9e7] bg-white/92 shadow-sm backdrop-blur-md transition-all duration-300 dark:border-neutral-700 dark:bg-neutral-800/92">
-      <div className="mx-auto flex min-h-[72px] w-full max-w-[1400px] items-center justify-between gap-6 px-6 py-3">
-        <div className="flex min-w-0 items-center gap-4">
+      <div className="mx-auto flex min-h-[72px] w-full max-w-[1400px] items-center gap-6 px-6 py-3">
+        <div className="flex min-w-0 flex-1 items-center gap-4">
           <button
             onClick={() => setSidebarOpen((open) => !open)}
-            className={`flex h-10 w-10 shrink-0 flex-col items-center justify-center gap-1 rounded-xl border transition-all ${sidebarOpen ? 'border-[#cfe2fb] bg-[#eef5ff] text-[#2383e2] dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-400' : 'border-transparent text-[#787774] hover:border-[#e9e9e7] hover:bg-[#efefed] dark:text-neutral-400 dark:hover:border-neutral-700 dark:hover:bg-neutral-700'}`}
-            title={sidebarOpen ? '가계도 사이드바 닫기' : '가계도 사이드바 열기'}
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-all ${sidebarOpen ? 'border-[#cfe2fb] bg-[#eef5ff] text-[#2383e2] dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-400' : 'border-[#eceae4] bg-[#fbfaf7] text-[#787774] hover:border-[#e1dfd8] hover:bg-[#f2f1ee] dark:border-neutral-700 dark:bg-neutral-800/80 dark:text-neutral-400 dark:hover:border-neutral-600 dark:hover:bg-neutral-700'}`}
+            title={sidebarOpen ? '좌측 가계도 패널 닫기' : '좌측 가계도 패널 열기'}
           >
-            <span className="h-0.5 w-3.5 rounded-full bg-current" />
-            <span className="h-0.5 w-3.5 rounded-full bg-current" />
-            <span className="h-0.5 w-3.5 rounded-full bg-current" />
+            <PanelToggleIcon open={sidebarOpen} />
           </button>
 
           <div className="flex min-w-0 items-center gap-4 rounded-2xl border border-[#eceae4] bg-[#fbfaf7] px-4 py-2 shadow-[0_1px_0_rgba(255,255,255,0.9)] dark:border-neutral-700 dark:bg-neutral-800/80">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="truncate text-[18px] font-bold tracking-tight text-[#37352f] dark:text-neutral-100">상속지분 계산기 PRO</span>
-                  <span className="shrink-0 rounded-full bg-[#e9e9e7] px-2 py-0.5 text-[11px] font-semibold text-[#787774] dark:bg-neutral-700 dark:text-neutral-300">beta 1.0</span>
-                </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="truncate text-[18px] font-bold tracking-tight text-[#37352f] dark:text-neutral-100">상속지분계산기 PRO</span>
+                <span className="shrink-0 rounded-full bg-[#e9e9e7] px-2 py-0.5 text-[11px] font-semibold text-[#787774] dark:bg-neutral-700 dark:text-neutral-300">beta 1.0</span>
               </div>
+            </div>
 
             <div className="hidden h-10 w-px bg-[#e1dfd8] dark:bg-neutral-700 xl:block" />
 
@@ -108,7 +115,7 @@ export default function TopToolbarBalanced({
                 setIsAiModalOpen(true);
               }}
               title="가계도 전체 AI 자동입력"
-              className="flex h-7 items-center justify-center gap-1 rounded-lg border border-indigo-100 bg-indigo-50 px-2 text-[11px] font-bold text-indigo-700 shadow-sm transition-all hover:scale-[1.02] hover:bg-indigo-100 active:scale-95 dark:border-indigo-800/50 dark:bg-indigo-900/20 dark:text-indigo-300 dark:hover:bg-indigo-900/40 mr-1"
+              className="mr-1 flex h-7 items-center justify-center gap-1 rounded-lg border border-indigo-100 bg-indigo-50 px-2 text-[11px] font-bold text-indigo-700 shadow-sm transition-all hover:scale-[1.02] hover:bg-indigo-100 active:scale-95 dark:border-indigo-800/50 dark:bg-indigo-900/20 dark:text-indigo-300 dark:hover:bg-indigo-900/40"
             >
               AI 자동입력
             </button>
@@ -139,7 +146,7 @@ export default function TopToolbarBalanced({
               className="flex h-7 items-center gap-1 rounded-lg border border-transparent px-2 text-[11px] font-bold text-[#787774] transition-colors hover:border-[#d4d4d4] hover:bg-[#efefed] hover:text-[#37352f] dark:text-neutral-400 dark:hover:border-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
               title="엑셀(CSV) 파일로 내보내기"
             >
-              <IconTable className="h-3 w-3" /> 엑셀
+              <IconTable className="h-3 w-3" /> 출력
             </button>
 
             <button
@@ -155,16 +162,16 @@ export default function TopToolbarBalanced({
             <button onClick={() => setZoomLevel((prev) => Math.max(0.7, prev - 0.1))} className="flex h-7 w-7 items-center justify-center rounded-lg text-[14px] font-bold text-[#787774] transition-colors hover:bg-[#efefed] hover:text-[#37352f] dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-neutral-200">-</button>
             <span className="w-9 text-center text-[10px] font-black text-[#504f4c] dark:text-neutral-300">{Math.round(zoomLevel * 100)}%</span>
             <button onClick={() => setZoomLevel((prev) => Math.min(1.5, prev + 0.1))} className="flex h-7 w-7 items-center justify-center rounded-lg text-[14px] font-bold text-[#787774] transition-colors hover:bg-[#efefed] hover:text-[#37352f] dark:text-neutral-400 dark:hover:bg-neutral-700 dark:hover:text-neutral-200">+</button>
-            <div className="w-px h-4 bg-[#eceae4] dark:bg-neutral-700 mx-0.5" />
+            <div className="mx-0.5 h-4 w-px bg-[#eceae4] dark:bg-neutral-700" />
             <button onClick={() => setIsDarkMode(!isDarkMode)} className="flex h-7 w-7 items-center justify-center rounded-lg text-[#787774] transition-colors hover:bg-[#efefed] dark:text-neutral-400 dark:hover:bg-neutral-700">
               {isDarkMode ? <IconSun className="h-3.5 w-3.5 text-amber-300" /> : <IconMoon className="h-3.5 w-3.5" />}
             </button>
           </div>
 
           <button
-            onClick={() => setShowNavigator(prev => !prev)}
+            onClick={() => setShowNavigator((prev) => !prev)}
             className={`flex h-9 items-center justify-center gap-1.5 rounded-xl border px-3.5 text-[12px] font-bold shadow-sm transition-all active:scale-95 ${hasActionItems ? 'border-indigo-100 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:border-indigo-900/40 dark:bg-indigo-900/20 dark:text-indigo-400' : 'border-[#e9e9e7] bg-white text-[#787774] hover:bg-[#f7f7f5] hover:text-[#37352f] dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-700'}`}
-            title={hasActionItems ? '확인할 가이드가 있습니다.' : '스마트 가이드 열기/닫기'}
+            title={hasActionItems ? '확인이 필요한 가이드가 있습니다.' : '스마트 가이드 열기/닫기'}
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={hasActionItems ? 2.5 : 2}>
               <circle cx="12" cy="12" r="10" />

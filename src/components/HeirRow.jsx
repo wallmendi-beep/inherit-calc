@@ -235,7 +235,7 @@ export default function HeirRow({
                       type: 'updateDeathInfo',
                       nodeId: node.id,
                       deathDate: value,
-                      isDeceased: !!value,
+                      isDeceased: node.isDeceased,
                       inheritedDate,
                     })}
                     className={`flex-1 bg-transparent text-[13px] font-bold outline-none ${isEffectivePredeceased ? 'text-[#787774] dark:text-neutral-400' : 'text-[#37352f] dark:text-neutral-100'}`}

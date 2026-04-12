@@ -214,6 +214,10 @@ export const updateDeathInfo = (tree, nodeId, payload) => {
         isDeceased: nextIsDeceased,
       };
 
+      if (!next._lastDeathDate && node.deathDate) {
+        next._lastDeathDate = node.deathDate;
+      }
+
       // [v3.0.29] 날짜 메모리 캡처 및 복원
       if (nextIsDeceased) {
         if (payload.deathDate) {
@@ -227,6 +231,7 @@ export const updateDeathInfo = (tree, nodeId, payload) => {
           next.deathDate = '';
         }
       } else {
+        if (node.deathDate) next._lastDeathDate = node.deathDate;
         next.deathDate = '';
       }
 
@@ -240,7 +245,7 @@ export const updateDeathInfo = (tree, nodeId, payload) => {
           next.isExcluded = false;
           next.exclusionOption = '';
         }
-      } else if (payload.deathDate !== undefined && next.exclusionOption === 'predeceased') {
+      } else if (next.exclusionOption === 'predeceased') {
         next.isExcluded = false;
         next.exclusionOption = '';
       }

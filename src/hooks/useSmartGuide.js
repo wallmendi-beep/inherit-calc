@@ -70,6 +70,26 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
       if (node.heirs) node.heirs.forEach(h => checkIndependentExclusionGuide(h, level + 1));
     };
 
+    const checkDuplicateSpouseGuide = (node, level = 0) => {
+      const spouses = (node.heirs || []).filter(
+        (h) => ['wife', 'husband', 'spouse'].includes(h.relation) && h.isExcluded !== true
+      );
+
+      if (spouses.length > 1) {
+        const spouseNames = spouses.map((spouse) => spouse.name || '이름없음');
+        uniqueGuidesMap.set(`multi-spouse-${node.personId || node.id}`, {
+          id: node.id,
+          uniqueKey: `multi-spouse-${node.personId || node.id}`,
+          targetTabId: node.personId || node.id || 'root',
+          type: 'mandatory',
+          level,
+          text: `[${node.name || '이름없음'}] 기준으로 유효 배우자가 중복 입력되어 있습니다. 현재 배우자: [${spouseNames.join('], [')}]. 실제 상속받는 1명을 제외하고 나머지는 제외 처리해 주세요.`,
+        });
+      }
+
+      if (node.heirs) node.heirs.forEach((h) => checkDuplicateSpouseGuide(h, level + 1));
+    };
+
     const checkGuideNode = (node, parentDate, level = 0) => {
       const parentNode = findParentNodeInHook(tree, node.id);
       const parentTabId = parentNode ? parentNode.personId : 'root';
@@ -176,6 +196,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
     };
 
     checkIndependentExclusionGuide(tree, 0);
+    checkDuplicateSpouseGuide(tree, 0);
     if (tree.heirs) { tree.heirs.forEach(h => checkGuideNode(h, tree.deathDate, 0)); }
 
     if (!tree.heirs || tree.heirs.length === 0 || tree.heirs.every(h => h.isExcluded && (!h.heirs || h.heirs.length === 0))) {

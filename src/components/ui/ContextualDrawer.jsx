@@ -32,7 +32,7 @@ export default function ContextualDrawer({ isOpen, onClose, title, children, wid
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar">{children}</div>
+        <div className="hover-scrollbar min-h-0 flex-1 overflow-y-auto">{children}</div>
       </div>
     </>
   );

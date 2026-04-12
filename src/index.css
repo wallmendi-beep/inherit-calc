@@ -32,18 +32,48 @@ body {
   }
 }
 
-/* Notion Style Scrollbar */
+/* Base Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: rgba(155, 154, 151, 0.3);
   border-radius: 20px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
+  background: rgba(155, 154, 151, 0.5);
+}
+
+/* Panel Scrollbar: mostly hidden until hover */
+.hover-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.hover-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.hover-scrollbar::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 20px;
+}
+
+.hover-scrollbar:hover {
+  scrollbar-color: rgba(155, 154, 151, 0.34) transparent;
+}
+
+.hover-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: rgba(155, 154, 151, 0.34);
+}
+
+.hover-scrollbar:hover::-webkit-scrollbar-thumb:hover {
   background: rgba(155, 154, 151, 0.5);
 }
