@@ -115,18 +115,13 @@ const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, r
           role="switch"
           aria-checked={!node.isExcluded}
           onClick={() => {
-            // [v4.28] 선사망(Predeceased)인 경우 클릭 피드백 (alert 제거)
-            if (node.exclusionOption === 'predeceased') {
-              return;
-            }
             const nextExcluded = !node.isExcluded;
             handleUpdate(node.id, {
               isExcluded: nextExcluded,
               exclusionOption: nextExcluded ? (isDaeseupSpouse ? 'remarried' : 'renounce') : ''
             });
           }}
-          className={`relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-all duration-200 ease-in-out focus:outline-none 
-            ${node.exclusionOption === 'predeceased' ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}
+          className={`relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-all duration-200 ease-in-out focus:outline-none cursor-pointer
             ${!node.isExcluded ? 'bg-[#15803d] opacity-80' : 'bg-neutral-200 dark:bg-neutral-600'}`}
         >
           <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition duration-200 ease-in-out ${!node.isExcluded ? 'translate-x-3.5' : 'translate-x-0.5'}`} />
