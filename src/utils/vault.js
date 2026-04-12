@@ -77,15 +77,26 @@ export const buildTreeFromVault = (vault) => {
         childNode.isExcluded = link.isExcluded;
         childNode.exclusionOption = link.exclusionOption;
 
+        // 1. 선사망 판별 (context-aware 정공법)
         if (isPreDeceased && !isSpouseType) {
           childNode.isExcluded = true; 
           childNode.exclusionOption = 'predeceased'; 
         }
         
+        // 2. 출가/동일가적 판별
         if (isDaughter && childNode.marriageDate && effectiveDate && isBefore(childNode.marriageDate, effectiveDate)) {
           childNode.isSameRegister = false; 
+          childNode._isInferredRegister = true; // 자동 판별됨을 UI에 알림
         } else {
           childNode.isSameRegister = link.isSameRegister;
+        }
+
+        // 3. 호주 승계 판별 (부가 호주일 때만 장남이 호주 승계 가산)
+        // 피상속인(node)이 호주가 아니면 자녀는 해당 상속에서 호주 승계인이 될 수 없음
+        if (node.isHoju) {
+          childNode.isHoju = link.isHoju;
+        } else {
+          childNode.isHoju = false;
         }
 
         node.heirs.push(childNode);

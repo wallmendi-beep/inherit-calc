@@ -114,22 +114,6 @@ const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, r
           role="switch"
           aria-checked={!node.isExcluded}
           onClick={() => {
-            const isSpouse = ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(node.relation);
-            const isChild = ['son', 'daughter', '아들', '딸'].includes(node.relation);
-            const isPredeceased = node.isDeceased && node.deathDate && tree.deathDate && isBefore(node.deathDate, tree.deathDate);
-
-            // [v1.4] 선사망 배우자 강제 제어
-            if (isSpouse && isPredeceased && node.isExcluded) {
-              alert("배우자 선사망 = 상속권 없음. 만약 사망일자에 오류가 있다면 점검 바랍니다.");
-              return;
-            }
-
-            // [v1.4] 선사망 자녀 수동 조작 차단
-            if (isChild && isPredeceased && node.isExcluded) {
-              alert("대습상속인을 입력하면 자동으로 ON 되니, 대습상속인을 입력해 주세요.");
-              return;
-            }
-
             const nextExcluded = !node.isExcluded;
             handleUpdate(node.id, {
               isExcluded: nextExcluded,
@@ -212,8 +196,12 @@ const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, r
 
       {/* 5. 특수조건 (드롭다운 OR 가감산) - 레이아웃 분리 성공! */}
       <div className="w-[180px] ml-[10px] shrink-0 flex items-center gap-1.5">
-        {/* ... 중략 (배우자/호주/출가녀 로직 유지) ... */}
-        {isToggleOff && isSpouseType && isPreDeceasedCondition ? (
+        {/* 💡 선사망(Predeceased)인 경우: 드롭다운 대신 조작 불가능한 고정 뱃지 표시 */}
+        {node.exclusionOption === 'predeceased' ? (
+          <div className="w-[150px] h-[26px] shrink-0 flex items-center justify-center bg-amber-50 dark:bg-amber-900/20 rounded-full border border-amber-200 dark:border-amber-800/50 shadow-sm" title="피상속인보다 먼저 사망하여 상속권이 발생하지 않습니다.">
+            <span className="text-[10.5px] font-black text-amber-700 dark:text-amber-400">상속권 없음 (선사망)</span>
+          </div>
+        ) : isToggleOff && isSpouseType && isPreDeceasedCondition ? (
           <div className="w-[150px] h-[26px] shrink-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 rounded-full border border-neutral-200 dark:border-neutral-700 shadow-sm">
             <span className="text-[11px] font-bold text-neutral-500 dark:text-neutral-400">배우자 선사망 (상속권 없음)</span>
           </div>
@@ -233,7 +221,8 @@ const HeirRow = ({ node, finalShares, handleUpdate, removeHeir, inheritedDate, r
               <option value="disqualified">
                 {node.heirs && node.heirs.length > 0 ? '상속결격 (대습상속)' : '상속결격'}
               </option>
-              {!isBefore(rootDeathDate, '2024-04-25') && (
+              {/* 💡 상실선고: 상위 상속인의 사망일(inheritedDate)이 2024.04.25 이후인 경우에만 노출 */}
+              {!isBefore(inheritedDate || rootDeathDate, '2024-04-25') && (
                 <option value="lost">
                   {node.heirs && node.heirs.length > 0 ? '상실선고 (대습상속)' : '상실선고'}
                 </option>

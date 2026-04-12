@@ -1,4 +1,4 @@
-import { math, getLawEra, isBefore } from './utils.js';
+﻿import { math, getLawEra, isBefore } from './utils.js';
 import { auditInheritanceResult } from './inheritanceAudit.js';
 
 export const calculateInheritance = (tree) => {
@@ -358,7 +358,7 @@ export const calculateInheritance = (tree) => {
              //  피상속인(node)이 여성이면 호주상속 가산(1.5)을 적용하지 않음 (대법원 판례 반영)
              const isFemaleDeceased = ['wife', 'daughter'].includes(node.relation);
              
-             if (h.isHoju && !isFemaleDeceased && (!isSubstitution || node.isHoju)) { 
+             if (h.isHoju && !isFemaleDeceased && node.isHoju) { 
                h.r = 1.5; 
                modifier = isSubstitution ? '대습 호주가산 (선례 2-285호)' : '호주상속 5할 가산'; 
              }
@@ -381,7 +381,7 @@ export const calculateInheritance = (tree) => {
              //  피상속인(node)이 여성이면 호주상속 가산(1.5)을 적용하지 않음 (대법원 판례 반영)
              const isFemaleDeceased = ['wife', 'daughter'].includes(node.relation);
              
-             if (h.isHoju && !isFemaleDeceased && (!isSubstitution || node.isHoju)) { 
+             if (h.isHoju && !isFemaleDeceased && node.isHoju) { 
                h.r = 1.5; 
                modifier = isSubstitution ? '대습 호주가산 (선례 2-285호)' : '호주상속 5할 가산'; 
              }

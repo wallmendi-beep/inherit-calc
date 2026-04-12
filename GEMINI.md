@@ -44,7 +44,7 @@ text2. **승인 대기**
 2. **Simplicity First** — Minimum code, no speculative features or abstractions.
 3. **Surgical Changes** — Touch only what’s needed; don’t “improve” unrelated code.
 4. **Goal-Driven Execution** — Define success criteria and verify (e.g. with tests).
-5. **Version Control & Auto-Commit** — 3번의 주요 요청마다 버전을 업데이트(Patch)하고, 작업 내용을 요약하여 자동으로 커밋합니다.
+5. **Version Control & Auto-Commit** — 2번의 주요 요청마다 버전을 업데이트(Patch)하고, 작업 내용을 요약하여 자동으로 커밋합니다.
 
 ---
 
@@ -55,8 +55,13 @@ text2. **승인 대기**
 
 ---
 
+## 📑 문서화 및 기록 의무
+1. **디자인 규칙 동기화**: 모든 레이아웃 및 디스플레이 관련 수정 시 `디자인 룰/main_display_rules.md`를 최신 상태로 업데이트하거나 대조해야 합니다.
+2. **업데이트 노트 기록**: 기능 추가, 로직 수정, 오류 해결 등 모든 유의미한 변경 사항은 `업데이트 노트/` 폴더에 버전별 문서로 상세히 기록해야 합니다.
+3. **Vault 철학 유지**: 한 인물이 다층적 관계를 맺는 'Vault' 구조의 특성을 이해하고, 모든 상태값은 피상속인별 맥락(Context)에 따라 독립적으로 산출되도록 구현해야 합니다.
+
 ---
 
 ## 작업 지침 (Project Specific)
 - 모든 답변과 코드 주석, 설명은 **한국어**로 작성합니다.
-- 위 **절대 고정 레이아웃 규정**을 엄격히 준수하며, 향후 수정 시 이 수치를 기준점으로 삼습니다.
+- 위 **절대 고정 레이아웃 규정** 및 **문서화 의무**를 엄격히 준수하며, 향후 수정 시 이 수치를 기준점으로 삼습니다.
