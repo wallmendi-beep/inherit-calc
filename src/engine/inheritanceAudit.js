@@ -89,18 +89,18 @@ export const auditInheritanceResult = ({
 
   const issues = [];
 
-  // [v3.0.13] 媛怨꾨룄 怨꾩링????젹) ?좏슚??寃??
+  // [v3.0.13] 가계도 관계 입력의 유효성 검사
   const auditRelationHierarchy = (node, path = []) => {
     if (!node || !node.heirs) return;
     const isDescendant = ['son', 'daughter'].includes(node.relation);
     
     node.heirs.forEach(h => {
-      // ?먮?(鍮꾩냽)???섏쐞??遺紐?議댁냽)??諛⑷퀎媛 ?ㅻ뒗 寃껋? ?곗씠???낅젰 ?ㅻ쪟???뺣쪧??留ㅼ슦 ?믪쓬
+      // 자녀(비속) 아래에 부모(존속) 관계가 있으면 데이터 입력 오류일 가능성이 매우 높다.
       if (isDescendant && h.relation === 'parent') {
         pushIssue(issues, {
           code: 'hierarchy-violation',
           severity: 'error',
-          blocking: false, // 李⑤떒源뚯????섏? ?딅릺 媛뺥븳 寃쎄퀬
+          blocking: false, // 계산 차단까지는 아니지만 강한 경고
           id: h.id,
           personId: h.personId,
           text: `[${h.name || '상속인'}]은(는) 부모 관계로 설정되어 있는데 [${node.name || '해당 인물'}]의 하위에 배치되어 있습니다. 가계도 관계를 다시 확인해 주세요.`,
@@ -129,7 +129,7 @@ export const auditInheritanceResult = ({
       blocking: true,
       id: share.id || share.personId,
       personId: share.personId,
-      name: share.name || '?대쫫 誘몄긽',
+      name: share.name || '이름 미상',
       relation: share.relation || '',
       shareN: share.n,
       shareD: share.d,
@@ -181,7 +181,7 @@ export const auditInheritanceResult = ({
   const repairHints = blockingIssues.map((issue) => {
     let hintText = issue.text;
     
-    // [v4.1] 臾몄젣 肄붾뱶蹂?留욎땄???닿껐 ?뚰듃 ?쒓났 (?⑥닚 ?꾩긽 諛섎났 諛⑹?)
+    // [v4.1] 문제 코드별 맞춤형 해결 힌트 제공
     switch (issue.code) {
       case 'final-total-mismatch':
         hintText = '하위 계보 중 지분 분배가 끝나지 않은 곳이 있는지, 또는 상속포기·결격·상실선고 처리가 올바른지 확인해 주세요.';

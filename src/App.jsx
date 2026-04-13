@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+﻿import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   IconCalculator, IconUserPlus, IconSave, IconFolderOpen,
   IconPrinter, IconNetwork, IconTable, IconList,
@@ -33,7 +33,7 @@ import { ingestAiJsonInput, loadTreeFromJsonFile, printAiPromptDocument, printCu
 import { useSmartGuide } from './hooks/useSmartGuide';
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
-import { QRCodeSVG } from 'qrcode.react'; // ?뮕 v3.0 ?ㅽ봽?쇱씤 QR ?앹꽦湲?
+import { QRCodeSVG } from 'qrcode.react'; // 메모: v3.0 브리핑 출력용 QR 코드 생성
 
 function App() {
   const HISTORY_LIMIT = 10;
@@ -130,8 +130,8 @@ function App() {
   const tree = useMemo(() => buildTreeFromVault(rawVault) || getInitialTree(), [rawVault]);
 
   useEffect(() => {
-    // [v4.47 안정화] 입력 중 실시간 import 재검사는 메모리/CPU 부담이 커서 중단한다.
-    // importIssues는 파일/AI 불러오기 시점에 생성하고, 이후에는 명시적 재불러오기 전까지 유지한다.
+    // [v4.47 안정화] 입력 중 실시간 import 재검사는 메모리/CPU 부담이 커서 중단했다.
+    // importIssues는 파일/AI 불러오기 시점에만 생성하고, 이후에는 명시적 확인 흐름만 유지한다.
   }, [tree, importIssues, activeTab]);
 
   useEffect(() => {
@@ -154,8 +154,8 @@ function App() {
   const deceasedTabs = useMemo(() => {
     const tabMap = new Map();
     const registeredPersonIds = new Set();
-    const visitedNodes = new Set(); // ?슚 ?몃뱶 ?먯껜???쒗솚 李몄“ 諛⑹???
-tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속인', node: tree, parentName: null, level: 0, branchRootId: null });
+    const visitedNodes = new Set(); // ????紐껊굡 ?癒?퍥????쀬넎 筌〓챷??獄쎻뫗???
+  tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속인', node: tree, parentName: null, level: 0, branchRootId: null });
     const queue = [];
     if (tree.heirs) tree.heirs.forEach(h => queue.push({ node: h, parentNode: tree, level: 1, branchRootId: h.personId }));
     while (queue.length > 0) {
@@ -364,7 +364,7 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
 
   const tabData = [
     { id: 'input', label: '데이터 입력', icon: <IconFileText className="w-4 h-4"/>, style: { activeBorder: 'border-[#37352f]', activeText: 'text-[#37352f] dark:text-neutral-100', inactiveBg: 'bg-transparent', inactiveBorder: 'border-transparent', inactiveText: 'text-[#9b9a97]' } },
-    { id: 'tree', label: '가계도', icon: <IconNetwork className="w-4 h-4"/>, style: { activeBorder: 'border-[#37352f]', activeText: 'text-[#37352f] dark:text-neutral-100', inactiveBg: 'bg-transparent', inactiveBorder: 'border-transparent', inactiveText: 'text-[#9b9a97]' } },
+      { id: 'tree', label: '시뮬레이션', icon: <IconNetwork className="w-4 h-4"/>, style: { activeBorder: 'border-[#37352f]', activeText: 'text-[#37352f] dark:text-neutral-100', inactiveBg: 'bg-transparent', inactiveBorder: 'border-transparent', inactiveText: 'text-[#9b9a97]' } },
     { id: 'calc', label: '계산 상세', icon: <IconTable className="w-4 h-4"/>, style: { activeBorder: 'border-[#37352f]', activeText: 'text-[#37352f] dark:text-neutral-100', inactiveBg: 'bg-transparent', inactiveBorder: 'border-transparent', inactiveText: 'text-[#9b9a97]' } },
     { id: 'result', label: '결과 리포트', icon: <IconFileText className="w-4 h-4"/>, style: { activeBorder: 'border-[#37352f]', activeText: 'text-[#37352f] dark:text-neutral-100', inactiveBg: 'bg-transparent', inactiveBorder: 'border-transparent', inactiveText: 'text-[#9b9a97]' } },
     { id: 'summary', label: '법정 상속분', icon: <IconList className="w-4 h-4"/>, style: { activeBorder: 'border-[#37352f]', activeText: 'text-[#37352f] dark:text-neutral-100', inactiveBg: 'bg-transparent', inactiveBorder: 'border-transparent', inactiveText: 'text-[#9b9a97]' } },
@@ -429,7 +429,32 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
       const allSameBaseDups = dups.length > 0 ? (() => { const r = []; const scan = (n) => { if (n.id !== id && n.name && (n.name === baseName || n.name.match(new RegExp(`^${baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\(\\d+\\)$`)))) r.push(n); if (n.heirs) n.heirs.forEach(scan); }; scan(tree); return r; })() : [];
       if (dups.length > 0) {
         const existingNode = dups[0]; const parentNodeOfExisting = findParentNode(tree, existingNode.id); const parentNodeOfCurrent = findParentNode(tree, id);
-        if (parentNodeOfExisting?.id === parentNodeOfCurrent?.id) { setDuplicateRequest({ name: trimmedValue, parentName: parentNodeOfExisting?.name || '피상속인', relation: existingNode.relation, isSameBranch: true, onConfirm: (isSame) => { if (isSame) alert(`'${trimmedValue}'는 이미 같은 관계의 상속인으로 등록되어 있습니다.\n동일인이라면 한 번만 등록해 주세요.`); else { setTree(prev => { const renameBase = (n) => { if (n.id === existingNode.id && n.name === baseName) return { ...n, name: `${baseName}(1)`, heirs: n.heirs?.map(renameBase) || [] }; return { ...n, heirs: n.heirs?.map(renameBase) || [] }; }; return renameBase(prev); }); const nextSuffix = allSameBaseDups.length + 1; applyUpdate(id, 'name', `${baseName}(${nextSuffix})`, false); } setDuplicateRequest(null); }, onCancel: () => setDuplicateRequest(null) }); return; }
+        if (parentNodeOfExisting?.id === parentNodeOfCurrent?.id) {
+          setDuplicateRequest({
+            name: trimmedValue,
+            parentName: parentNodeOfExisting?.name || '피상속인',
+            relation: existingNode.relation,
+            isSameBranch: true,
+            onConfirm: (isSame) => {
+              if (isSame) {
+                alert(`'${trimmedValue}'은(는) 같은 관계의 상속인으로 이미 등록되어 있습니다.\n동일인이라면 한 번만 등록해 주세요.`);
+              } else {
+                setTree(prev => {
+                  const renameBase = (n) => {
+                    if (n.id === existingNode.id && n.name === baseName) return { ...n, name: `${baseName}(1)`, heirs: n.heirs?.map(renameBase) || [] };
+                    return { ...n, heirs: n.heirs?.map(renameBase) || [] };
+                  };
+                  return renameBase(prev);
+                });
+                const nextSuffix = allSameBaseDups.length + 1;
+                applyUpdate(id, 'name', `${baseName}(${nextSuffix})`, false);
+              }
+              setDuplicateRequest(null);
+            },
+            onCancel: () => setDuplicateRequest(null),
+          });
+          return;
+        }
         const parentName = parentNodeOfExisting ? (parentNodeOfExisting.name || '피상속인') : '피상속인';
         setDuplicateRequest({ name: trimmedValue, parentName, relation: existingNode.relation, isSameBranch: false, onConfirm: (isSame) => { if (isSame) { const syncIdInTree = (n) => { if (n.id === id) return { ...n, name: trimmedValue, personId: existingNode.personId }; return { ...n, heirs: n.heirs?.map(syncIdInTree) || [] }; }; setTree(prev => syncIdInTree(prev)); } else { setTree(prev => { const renameBase = (n) => { if (n.id === existingNode.id && n.name === baseName) return { ...n, name: `${baseName}(1)`, heirs: n.heirs?.map(renameBase) || [] }; return { ...n, heirs: n.heirs?.map(renameBase) || [] }; }; return renameBase(prev); }); const nextSuffix = allSameBaseDups.length + 1; applyUpdate(id, 'name', `${baseName}(${nextSuffix})`, false); } setDuplicateRequest(null); }, onCancel: () => setDuplicateRequest(null) }); return;
       }
@@ -558,7 +583,7 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
         }
 
         // 기존 인물을 재사용하는 경우에는 이미 그 personId 아래 관계 그래프가 존재하므로
-        // 하위 서브트리를 다시 복제하지 않는다. 이게 메모리 폭증의 주 원인이었다.
+        // 하위 서브트리를 다시 복제하지 않는다. 이게 메모리 폭증의 주된 원인이었다.
         if (!(item.personId && prev.persons[item.personId])) {
           (item.heirs || []).forEach((child) => ensureLink(targetId, child));
         }
@@ -618,7 +643,7 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
       newVisited.add(pId);
 
       if (clone.id !== 'root') {
-        // [v3.0.13] Smart Inference: 상속 맥락(사망일)에 따른 동적 지위 결정
+        // [v3.0.13] Smart Inference: 혼인 시점에 따른 동일가적 여부 자동 추정
         if (clone.relation === 'daughter' && clone.marriageDate && refDate) {
           const lawEra = getLawEra(refDate);
           if (lawEra !== '1991') {
@@ -632,7 +657,7 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
         const isSpouseType = ['wife', 'husband', 'spouse'].includes(clone.relation);
         const hasHeirsInModel = clone.heirs && clone.heirs.length > 0;
         
-        // [v3.1.5] 데이터가 있다면 제외 처리(isExcluded)를 강제로 해제함 (지분 0원 방지)
+        // [v3.1.5] 하위 상속인이 있다면 제외 처리(isExcluded)를 강제로 해제한다. (지분 0 방지)
         if (hasHeirsInModel && !(isPre && isSpouseType)) {
           clone.isExcluded = false;
           clone.exclusionOption = ''; 
@@ -645,12 +670,12 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
 
         const isDeadWithoutHeirs = clone.isDeceased && !hasHeirsInModel;
         
-        // [선사망자] 하위 데이터가 없으면 강제 제외 (3초 가드레일 대상)
+        // [선사망자] 하위 상속인이 없으면 강제로 제외 처리
         if (isPre && isDeadWithoutHeirs) { 
           clone.isExcluded = true; 
           clone.exclusionOption = 'predeceased'; 
         } 
-        // [후사망자] 하위 데이터가 없더라도 기본적으로 상속권을 유지(On)하며 안내만 표시
+        // [후사망자] 하위 상속인이 없어도 기본적으로 상속권을 유지(On)하고 안내만 표시
         else if (!isPre && isDeadWithoutHeirs && parentNode && !clone.id.startsWith('auto_')) {
           clone.isExcluded = false; // 후사망자는 명시적으로 제외 상태 해제
           clone.exclusionOption = '';
@@ -675,7 +700,7 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
       return clone;
     };
     const calcTree = preprocessTree(tree, tree.deathDate, null);
-    const shouldBuildCalcSteps = ['calc', 'result', 'summary', 'amount'].includes(activeTab);
+    const shouldBuildCalcSteps = ['tree', 'calc', 'result', 'summary', 'amount'].includes(activeTab);
     const result = calculateInheritance(calcTree, propertyValue, { includeCalcSteps: shouldBuildCalcSteps });
     const shouldBuildCompare = ['calc', 'result', 'summary'].includes(activeTab);
     const compareTree = shouldBuildCompare ? stripHojuBonusInputs(calcTree) : null;
@@ -723,14 +748,21 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
     if (matchIds.length > 0 && activeTab === 'summary') { const targetId = matchIds[currentMatchIdx]; const element = document.getElementById(targetId); if (element) element.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
   }, [currentMatchIdx, matchIds, activeTab]);
 
+  useEffect(() => {
+    if (activeTab === 'tree') {
+      setSidebarOpen(false);
+      setShowNavigator(false);
+    }
+  }, [activeTab]);
+
   const shouldComputeSmartGuide = showNavigator || activeTab === 'input';
   const guideInfo = useSmartGuide(
     shouldComputeSmartGuide ? tree : null,
-    shouldComputeSmartGuide ? finalShares : {},
+    shouldComputeSmartGuide ? finalShares : null,
     activeTab,
-    shouldComputeSmartGuide ? warnings : [],
-    shouldComputeSmartGuide ? transitShares : [],
-    shouldComputeSmartGuide ? importIssues : [],
+    shouldComputeSmartGuide ? warnings : null,
+    shouldComputeSmartGuide ? transitShares : null,
+    shouldComputeSmartGuide ? importIssues : null,
   );
   const {
     showGlobalWarning,
@@ -743,9 +775,15 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
   } = guideInfo || {};
 
 
-  const rawSmartGuides = [ ...(guideInfo.smartGuides || []) ];
-  const uniqueGuidesMap = new Map(); rawSmartGuides.forEach(g => { const key = g.uniqueKey || g.text; if (!uniqueGuidesMap.has(key)) uniqueGuidesMap.set(key, g); });
-  const smartGuides = Array.from(uniqueGuidesMap.values());
+  // guideInfo.smartGuides가 실제로 바뀔 때만 새 배열을 만든다.
+  // useMemo 없이 spread를 쓰면 매 렌더마다 새 참조가 생기고,
+  // useEffect([smartGuides])가 무한 실행되며 메모리 누수가 발생한다.
+  const smartGuides = useMemo(() => {
+    const rawGuides = guideInfo.smartGuides || [];
+    const uniqueGuidesMap = new Map();
+    rawGuides.forEach(g => { const key = g.uniqueKey || g.text; if (!uniqueGuidesMap.has(key)) uniqueGuidesMap.set(key, g); });
+    return Array.from(uniqueGuidesMap.values());
+  }, [guideInfo.smartGuides]);
   const hasActionItems = (guideInfo?.hasActionItems) || smartGuides.length > 0;
 
   const [hiddenGuideKeys, setHiddenGuideKeys] = useState(new Set());
@@ -765,6 +803,8 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
     const liveKeys = new Set((smartGuides || []).map((guide) => guide.uniqueKey || guide.text));
     setCheckedGuideKeys((prev) => {
       const next = new Set([...prev].filter((key) => liveKeys.has(key)));
+      // 내용이 같으면 이전 참조를 그대로 반환해 불필요한 리렌더를 막는다.
+      if (next.size === prev.size && [...next].every(k => prev.has(k))) return prev;
       return next;
     });
   }, [smartGuides]);
@@ -785,15 +825,94 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
   const tabRefs = React.useRef({});
 
   const getBriefingInfo = useMemo(() => {
-    const findPath = (curr, target, currentPath = []) => { if (!curr) return null; const newPath = [...currentPath, curr]; if (curr.id === target || curr.personId === target) return newPath; if (curr.heirs) { for (const h of curr.heirs) { const res = findPath(h, target, newPath); if (res) return res; } } return null; };
-    const lineage = findPath(tree, activeDeceasedTab); if (!lineage || lineage.length === 0) return { name: '', relationInfo: '', shareStr: '0', sources: [], isRoot: true };
-    const targetNode = lineage[lineage.length - 1]; if (!targetNode) return { name: '', relationInfo: '', shareStr: '0', sources: [], isRoot: false };
-    const isRoot = activeDeceasedTab === 'root'; const name = targetNode.name || (isRoot ? '피상속인' : '(이름 없음)'); let relationInfo = isRoot ? '(피상속인)' : '';
-    if (!isRoot && lineage.length > 1) { const parent = lineage[lineage.length - 2]; const isChild = targetNode.relation === 'son' || targetNode.relation === 'daughter'; let parentNames = parent.name || '피상속인'; if (isChild) { const parentIsSp = parent.relation === 'wife' || parent.relation === 'husband' || parent.relation === 'spouse'; if (lineage.length > 2 && parentIsSp) { const grandparent = lineage[lineage.length - 3]; if (grandparent?.name) parentNames = `${grandparent.name}·${parent.name}`; } else if (parent.heirs) { const spouse = parent.heirs.find(h => h.id !== targetNode.id && ['wife', 'husband', 'spouse'].includes(h.relation) && h.name && h.name.trim() !== ''); if (spouse) parentNames = `${parent.name}·${spouse.name}`; } } relationInfo = `(${parentNames}의 ${getRelStr(targetNode.relation, tree.deathDate)})`; }
-    let totalN = 0, totalD = 1; const sourceList = []; if (calcSteps && Array.isArray(calcSteps) && targetNode) { const myStep = calcSteps.find(s => s.dec?.personId === targetNode.personId); if (myStep) { totalN = myStep.inN; totalD = myStep.inD; if (myStep.mergeSources && myStep.mergeSources.length > 0) myStep.mergeSources.forEach(src => sourceList.push({ from: src.from, n: src.n, d: src.d })); else sourceList.push({ from: myStep.parentDecName || '피상속인', n: myStep.inN, d: myStep.inD }); } else { const myFinalShare = finalShares.direct.find(f => f.personId === targetNode.personId) || finalShares.subGroups.flatMap(g => g.shares).find(f => f.personId === targetNode.personId); if (myFinalShare) { totalN = myFinalShare.n; totalD = myFinalShare.d; } } }
-    const shareStr = isRoot ? '1분의 1' : (totalN > 0 ? `${totalD}분의 ${totalN}` : '0'); return { name, relationInfo, shareStr, sources: sourceList, isRoot };
-  }, [tree, activeDeceasedTab, calcSteps, finalShares]);
+    const findPath = (curr, target, currentPath = []) => {
+      if (!curr) return null;
+      const newPath = [...currentPath, curr];
+      if (curr.id === target || curr.personId === target) return newPath;
+      if (curr.heirs) {
+        for (const h of curr.heirs) {
+          const res = findPath(h, target, newPath);
+          if (res) return res;
+        }
+      }
+      return null;
+    };
 
+    const lineage = findPath(tree, activeDeceasedTab);
+    if (!lineage || lineage.length === 0) return { name: '', relationInfo: '', shareStr: '0', sources: [], isRoot: true };
+
+    const targetNode = lineage[lineage.length - 1];
+    if (!targetNode) return { name: '', relationInfo: '', shareStr: '0', sources: [], isRoot: false };
+
+    const isRoot = activeDeceasedTab === 'root';
+    const name = targetNode.name || (isRoot ? '피상속인' : '(이름 없음)');
+    let relationInfo = isRoot ? '(피상속인)' : '';
+
+    if (!isRoot && lineage.length > 1) {
+      const parent = lineage[lineage.length - 2];
+      const isChild = targetNode.relation === 'son' || targetNode.relation === 'daughter';
+      let parentNames = parent.name || '피상속인';
+
+      if (isChild) {
+        const parentIsSpouse = ['wife', 'husband', 'spouse'].includes(parent.relation);
+        if (lineage.length > 2 && parentIsSpouse) {
+          const grandparent = lineage[lineage.length - 3];
+          if (grandparent?.name) parentNames = `${grandparent.name}·${parent.name}`;
+        } else if (parent.heirs) {
+          const spouse = parent.heirs.find(
+            (h) => h.id !== targetNode.id && ['wife', 'husband', 'spouse'].includes(h.relation) && h.name && h.name.trim() !== ''
+          );
+          if (spouse) parentNames = `${parent.name}·${spouse.name}`;
+        }
+      }
+
+      relationInfo = `(${parentNames}의 ${getRelStr(targetNode.relation, tree.deathDate)})`;
+    }
+
+    let totalN = 0;
+    let totalD = 1;
+    const sourceList = [];
+    const gcd = (a, b) => (b ? gcd(b, a % b) : Math.abs(a));
+    const lcm = (a, b) => Math.abs(a * b) / gcd(a, b);
+
+    const myStep = Array.isArray(calcSteps)
+      ? calcSteps.find((s) => s.dec?.personId === targetNode.personId)
+      : null;
+
+    if (myStep) {
+      totalN = myStep.inN;
+      totalD = myStep.inD;
+      if (myStep.mergeSources?.length) {
+        myStep.mergeSources.forEach((src) => sourceList.push({ from: src.from, n: src.n, d: src.d }));
+      } else {
+        sourceList.push({ from: myStep.parentDecName || '피상속인', n: myStep.inN, d: myStep.inD });
+      }
+    } else {
+      const myFinalShare =
+        finalShares.direct.find((f) => f.personId === targetNode.personId) ||
+        finalShares.subGroups.flatMap((g) => g.shares).find((f) => f.personId === targetNode.personId);
+
+      if (myFinalShare) {
+        totalN = myFinalShare.n;
+        totalD = myFinalShare.d;
+      } else {
+        const ancestorGroup = finalShares.subGroups.find((g) => g.ancestor?.personId === targetNode.personId);
+        const mergedSources = ancestorGroup?.sourceBreakdown?.mergeSources || [];
+        if (mergedSources.length > 0) {
+          const commonD = mergedSources.reduce((acc, src) => lcm(acc, Number(src.d) || 1), 1);
+          totalN = mergedSources.reduce(
+            (sum, src) => sum + (Number(src.n) || 0) * (commonD / (Number(src.d) || 1)),
+            0,
+          );
+          totalD = commonD;
+          mergedSources.forEach((src) => sourceList.push({ from: src.from, n: src.n, d: src.d }));
+        }
+      }
+    }
+
+    const shareStr = isRoot ? '1분의 1' : totalN > 0 ? `${totalD}분의 ${totalN}` : '0';
+    return { name, relationInfo, shareStr, sources: sourceList, isRoot };
+  }, [tree, activeDeceasedTab, calcSteps, finalShares]);
   useEffect(() => { const activeEl = tabRefs.current[activeDeceasedTab]; if (activeEl) activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); }, [activeDeceasedTab]);
   useEffect(() => { const tabIds = deceasedTabs.map(t => t.id); if (!tabIds.includes(activeDeceasedTab)) { const fallback = (activeTab === 'input' && deceasedTabs.length > 0) ? deceasedTabs[0].id : 'root'; setActiveDeceasedTab(fallback); } }, [deceasedTabs, activeTab]);
 
@@ -809,7 +928,7 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
   const handlePrintPrompt = () => printAiPromptDocument();
   const handleCopyPrompt = () => {
     if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(AI_PROMPT).then(() => alert('AI 안내문이 클립보드에 복사되었습니다. ChatGPT 등에 붙여넣어 사용하세요.'));
+      navigator.clipboard.writeText(AI_PROMPT).then(() => alert('AI 안내문이 클립보드에 복사되었습니다. ChatGPT 창에 붙여 넣어 사용해 주세요.'));
     } else {
       const textArea = document.createElement("textarea");
       textArea.value = AI_PROMPT;
@@ -819,7 +938,7 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
         document.execCommand('copy');
         alert('AI 안내문이 복사되었습니다.');
       } catch (err) {
-        alert('복사에 실패했습니다. 직접 드래그하여 복사해 주세요.');
+        alert('복사에 실패했습니다. 직접 드래그해서 복사해 주세요.');
       }
       document.body.removeChild(textArea);
     }
@@ -846,7 +965,7 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
       ['피상속인', tree.name || ''],
       ['사망일자', tree.deathDate || ''],
       [''],
-      ['상속인', '관계', '지분 분자', '지분 분모', '통분 분자', '통분 분모'],
+      ['상속인', '관계', '지분 분자', '지분 분모', '금액 분자', '금액 분모'],
     ];
 
     finalShares.direct.forEach((f) => {
@@ -864,7 +983,7 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    const safeName = (tree.name || '피상속인없음').replace(/[^a-zA-Z0-9가-힣_-]/g, '');
+    const safeName = (tree.name || '피상속인없음').replace(/[^a-zA-Z0-9가-힣-]/g, '');
 
     a.href = url;
     a.download = `상속지분_${safeName}_${new Date().toISOString().slice(0, 10)}.csv`;
@@ -944,7 +1063,7 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
       />
       <main className={`flex-1 flex w-full transition-all duration-300 ${sidebarOpen ? 'justify-start' : 'justify-center'}`} style={{ paddingLeft: sidebarOpen ? (sidebarWidth + 10) : 0, paddingRight: showNavigator ? (navigatorWidth + 10) : 0 }}>
         <div style={{ zoom: zoomLevel, width: '100%', display: 'flex', justifyContent: (sidebarOpen || showNavigator) ? 'flex-start' : 'center' }}>
-          <div className="flex flex-col w-[1080px] min-w-[1080px] shrink-0 px-6 mt-6 print-compact relative z-10 transition-all duration-300">
+          <div className={`flex flex-col shrink-0 mt-6 print-compact relative z-10 transition-all duration-300 ${activeTab === 'tree' ? 'w-[1480px] min-w-[1480px] px-3' : 'w-[1080px] min-w-[1080px] px-6'}`}>
             <div className="flex items-end pl-[48px] gap-1 no-print relative z-20">
               {tabData.map(t => {
                 const isActive = activeTab === t.id;
@@ -986,6 +1105,8 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
                   isAllExpanded={isAllExpanded}
                   setTreeToggleSignal={setTreeToggleSignal}
                   setIsAllExpanded={setIsAllExpanded}
+                  calcSteps={calcSteps}
+                  handleNavigate={handleNavigate}
                 />
               )}
               {(activeTab === 'calc' || activeTab === 'result' || activeTab === 'summary' || activeTab === 'amount') && <MetaHeader tree={tree} />}
@@ -1059,10 +1180,11 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
               <IconUserPlus className="w-5 h-5 text-blue-500" /> 이름 중복 확인
             </h3>
             <p className="mt-3 text-[14px] text-[#787774] dark:text-neutral-400 leading-relaxed">
-              이미 등록된 <span className="font-bold text-[#37352f] dark:text-neutral-200">[{duplicateRequest.name}]</span>(이)라는 이름이 <span className="font-bold text-[#37352f] dark:text-neutral-200">{duplicateRequest.parentName}</span>의 {getRelStr(duplicateRequest.relation, tree.deathDate)} 계보에 존재합니다.
+              이미 등록된 <span className="font-bold text-[#37352f] dark:text-neutral-200">{duplicateRequest.name}</span>과(와)
+              같은 이름의 인물이 <span className="font-bold text-[#37352f] dark:text-neutral-200">{duplicateRequest.parentName}</span>의 {getRelStr(duplicateRequest.relation, tree.deathDate)} 관계로 존재합니다.
             </p>
             <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-[13px] text-blue-700 dark:text-blue-300">
-              이 상속인이 <span className="font-bold">동일인</span>입니까?
+              같은 사람이라면 <span className="font-bold">예</span>, 다른 동명이인이라면 <span className="font-bold">아니오</span>를 선택하세요.
             </div>
             <div className="mt-6 flex justify-end gap-3">
               <button onClick={duplicateRequest.onCancel} className="px-4 py-2 text-[13px] font-bold text-[#787774] hover:bg-[#f7f7f5] rounded-xl transition-colors">취소</button>
@@ -1078,3 +1200,4 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
 }
 
 export default App;
+

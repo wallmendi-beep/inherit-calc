@@ -173,6 +173,7 @@ export default function SummaryPanelFixed({
     const isCurrentMatch = matchIds[currentMatchIdx] === rowId;
     const personIssues = issueMap.get(share.personId) || issueMap.get(share.id) || [];
     const hojuApplied = hojuBonusMap.has(share.personId);
+    const navigateTarget = personIssues[0]?.targetTabId || share.personId || share.id;
 
     return (
       <tr
@@ -183,15 +184,17 @@ export default function SummaryPanelFixed({
         <td className="border border-[#e9e9e7] p-2.5 text-left font-medium dark:border-neutral-700" style={{ paddingLeft }}>
           <button
             type="button"
-            onClick={() => personIssues.length > 0 && handleNavigate ? handleNavigate(personIssues[0].targetTabId || share.personId || share.id) : null}
-            className={`${personIssues.length > 0 ? 'cursor-pointer text-red-600 dark:text-red-400' : hojuApplied ? 'cursor-default text-blue-600 dark:text-blue-400' : 'cursor-default'} inline-flex items-center gap-1 font-medium`}
+            onClick={() => handleNavigate ? handleNavigate(navigateTarget) : null}
+            title="입력 탭에서 이 사람 정보 수정"
+            className={`${personIssues.length > 0 ? 'text-red-600 dark:text-red-400' : hojuApplied ? 'text-blue-600 dark:text-blue-400' : 'text-[#37352f] dark:text-neutral-200'} group inline-flex cursor-pointer items-center gap-1 font-medium transition-colors hover:text-blue-600 dark:hover:text-blue-400`}
           >
-            <span>{share.name}</span>
+            <span className="underline-offset-2 group-hover:underline">{share.name}</span>
             {personIssues.length > 0 && (
               <span className="inline-flex items-center rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-black text-red-700 dark:bg-red-900/30 dark:text-red-300">
                 경고
               </span>
             )}
+            <span className="hidden text-[10px] font-bold text-blue-500 group-hover:inline dark:text-blue-300">수정</span>
           </button>
           <span className="ml-1 font-normal text-[#787774]">[{getRelStr(share.relation, tree.deathDate)}]</span>
           {personIssues.map((issue, issueIndex) => (

@@ -388,26 +388,19 @@ export default function HeirRow({
               )}
             </div>
 
-            <div className="ml-[30px] flex w-[88px] shrink-0 flex-col items-center justify-center gap-1">
-              {(!isToggleOff || isPredeceasedActive) && !node.isDeceased && (
-                <div className="ml-[-10px] mb-0.5 flex items-center gap-0.5 text-[11px] font-black leading-none">
-                  <span className="text-[#1e56a0] dark:text-blue-400">{displayN}</span>
-                  <span className="text-neutral-500 dark:text-neutral-500">/</span>
-                  <span className="text-[#1e56a0] dark:text-blue-400">{displayD}</span>
-                </div>
-              )}
+            <div className="ml-[30px] flex w-[98px] shrink-0 flex-col items-center justify-center gap-1">
               {shouldShowTabBtn && onTabClick && (
                 <button
                   type="button"
                   onClick={() => onTabClick(node.id)}
-                  className={`ml-[10px] w-full shrink-0 rounded-md border py-1 text-[12px] font-normal shadow-sm transition-all ${tabBtnClass}`}
+                  className={`ml-[10px] w-[84px] shrink-0 rounded-md border py-1 text-[11.5px] font-normal shadow-sm transition-all ${tabBtnClass}`}
                 >
                   {tabBtnText}
                 </button>
               )}
             </div>
 
-            <div className="ml-[25px] mr-[20px] flex w-12 shrink-0 justify-center">
+            <div className="ml-[15px] mr-[20px] flex w-12 shrink-0 justify-center">
               <button
                 type="button"
                 onClick={() => removeHeir(node.id)}

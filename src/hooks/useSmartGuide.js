@@ -2,23 +2,27 @@
 import { getLawEra, isBefore } from '../engine/utils';
 import { auditInheritanceResult } from '../engine/inheritanceAudit';
 
-export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], transitShares = [], importIssues = []) => {
+// 모듈 레벨 상수: tree가 null이거나 비어있을 때 항상 동일한 참조를 반환해
+// App.jsx의 useMemo([guideInfo.smartGuides])가 불필요하게 재실행되지 않도록 한다.
+const EMPTY_GUIDE_STATE = {
+  showGlobalWarning: false,
+  showAutoCalcNotice: false,
+  globalMismatchReasons: [],
+  autoCalculatedNames: [],
+  smartGuides: [],
+  noSurvivors: false,
+  hasActionItems: false,
+  auditActionItems: [],
+  repairHints: [],
+};
+
+export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitShares, importIssues) => {
   return useMemo(() => {
     if (!tree) {
-      return {
-        showGlobalWarning: false,
-        showAutoCalcNotice: false,
-        globalMismatchReasons: [],
-        autoCalculatedNames: [],
-        smartGuides: [],
-        noSurvivors: false,
-        hasActionItems: false,
-        auditActionItems: [],
-        repairHints: [],
-      };
+      return EMPTY_GUIDE_STATE;
     }
 
-    // [v4.32] 珥덇린 ?곹깭 (湲곗큹 ?뺣낫 ?꾨씫) 理쒖슦??媛?대뱶
+    // [v4.32] 초기 상태(기초 정보 미입력) 최우선 가이드
     if (!tree.name?.trim() || !tree.deathDate) {
       return {
         showGlobalWarning: false,
@@ -29,17 +33,17 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
           id: 'initial-step',
           uniqueKey: 'initial-step',
           type: 'mandatory',
-          text: "?ш굔踰덊샇? ?쇱긽?띿씤??湲곕낯?뺣낫瑜??낅젰?댁＜?몄슂.",
+          text: '사건번호와 피상속인의 기본정보를 먼저 입력해 주세요.',
           targetTabId: 'root'
         }],
         noSurvivors: false,
         hasActionItems: true,
         auditActionItems: [],
-        repairHints: ["?쇱긽?띿씤???깅챸怨??щ쭩?쇱옄瑜??낅젰?섏떆硫??뺢탳???곸냽??媛?대뱶媛 ?쒖옉?⑸땲??"],
+        repairHints: ['피상속인 이름과 사망일자를 입력하면 상속 가이드가 시작됩니다.'],
       };
     }
 
-    const audit = auditInheritanceResult({ tree, finalShares, transitShares, warnings });
+    const audit = auditInheritanceResult({ tree, finalShares: finalShares || {}, transitShares: transitShares || [], warnings: warnings || [] });
 
     const uniqueGuidesMap = new Map();
     let noSurvivors = false;
@@ -59,11 +63,11 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
       const isPredeceased = node.deathDate && tree.deathDate && isBefore(node.deathDate, tree.deathDate);
       
       if (node.id !== 'root' && node.isExcluded && ['renounce', 'disqualified'].includes(node.exclusionOption) && !isPredeceased) {
-        const optionText = node.exclusionOption === 'renounce' ? '?곸냽?ш린' : '?곸냽寃곌꺽';
+        const optionText = node.exclusionOption === 'renounce' ? '상속포기' : '상속결격';
         uniqueGuidesMap.set(`indep-excl-${node.personId}`, {
           id: node.id, uniqueKey: `indep-excl-${node.personId}`, type: 'recommended',
-          // ?슚 ?쒖옄由?遺硫붾옉 ?뚰봽 ?쒓굅: targetTabId ?띿꽦????젣?섏뿬 ?⑥닚 ?뚮┝????븷留??섑뻾
-          text: `[${node.name}] ${optionText}媛 ?곸슜?섏뿀?듬땲?? ? ?쇱긽?띿씤 ??뿉?쒕룄 蹂꾨룄濡??쒖쇅 泥섎━??二쇱꽭??`,
+          // 동일인 처리 문맥 알림용: targetTabId는 두지 않고 텍스트 가이드만 보여준다.
+          text: `[${node.name}]은(는) ${optionText} 처리되었습니다. 동일인이 다른 단계에도 있으면 그 단계에서도 제외 여부를 확인해 주세요.`,
           level, relation: node.relation
         });
       }
@@ -79,14 +83,14 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
       });
 
       if (spouses.length > 1) {
-        const spouseNames = spouses.map((spouse) => spouse.name || '?대쫫?놁쓬');
+        const spouseNames = spouses.map((spouse) => spouse.name || '이름 없음');
         uniqueGuidesMap.set(`multi-spouse-${node.personId || node.id}`, {
           id: node.id,
           uniqueKey: `multi-spouse-${node.personId || node.id}`,
           targetTabId: node.personId || node.id || 'root',
           type: 'mandatory',
           level,
-          text: `[${node.name || '?대쫫?놁쓬'}] 湲곗??쇰줈 ?좏슚 諛곗슦?먭? 以묐났 ?낅젰?섏뼱 ?덉뒿?덈떎. ?꾩옱 諛곗슦?? [${spouseNames.join('], [')}]. ?ㅼ젣 ?곸냽諛쏅뒗 1紐낆쓣 ?쒖쇅?섍퀬 ?섎㉧吏???쒖쇅 泥섎━??二쇱꽭??`,
+          text: `[${node.name || '이름 없음'}]에게 유효 배우자가 중복 입력되어 있습니다. 현재 배우자 [${spouseNames.join('], [')}]. 실제 상속받는 1명만 남기고 나머지는 제외 처리해 주세요.`,
         });
       }
 
@@ -107,7 +111,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
         'blocked_husband_substitution',
       ].includes(node.exclusionOption || '');
 
-      // ?슚 ?댁븘?덈뒗 ?щ엺? 蹂몄씤???섏쐞 ??씠 ?앹꽦?섏? ?딆쑝誘濡??섏쐞 媛怨꾨룄 寃?щ? ?앸왂??
+      // 아래 단계에서는 본인 하위 탭이 따로 생성되므로, 하위 가계도 중복 검사는 생략한다.
       if ((node.isDeceased || node.id === 'root') && !isHardExcluded) {
           const activeHeirs = (node.heirs || []).filter(h => !h.isExcluded);
           if (node.id !== 'root' && node.isDeceased && node.deathDate && activeHeirs.length === 0) {
@@ -127,9 +131,9 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
             } else {
               const contextName = parentNode?.name || tree.name || '현재 계보';
               if (isSpouse) {
-                guideText = `[${node.name}]의 직접 입력된 후속 상속인이 없습니다. 미입력 시 [${contextName}] 계보 기준으로 자동 분배됩니다.`;
+                guideText = `[${node.name}]의 후속 상속인이 직접 입력되지 않았습니다. 미입력 시 [${contextName}] 계보 기준으로 자동 분배될 수 있습니다.`;
               } else {
-                guideText = `[${node.name}]의 직접 입력된 후속 상속인이 없습니다. 미입력 시 차순위 상속인에게 자동 분배됩니다.`;
+                guideText = `[${node.name}]의 후속 상속인이 직접 입력되지 않았습니다. 미입력 시 차순위 상속으로 자동 분배될 수 있습니다.`;
               }
             }
 
@@ -146,7 +150,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
                   text: `[${node.name || '이름 미상'}]은(는) 사망자로 표시되어 있으나 사망일이 없습니다.`
               });
           }
-          // 1. 諛곗슦??以묐났 寃??
+          // 1. 배우자 중복 검사
           const spouses = (node.heirs || []).filter((h) => {
               if (!['wife', 'husband', 'spouse'].includes(h.relation)) return false;
               if (h.isExcluded) return false;
@@ -160,7 +164,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
               });
           }
 
-          // 2. 援щ쾿 ?몄＜ 吏??寃??
+          // 2. 구법 호주상속 여부 검사
           const hasHoju = (node.heirs || []).some(h => h.isHoju && !h.isExcluded);
           const needsHoju = getLawEra(effectiveDate) !== '1991' && (node.id === 'root' || ['son', '아들'].includes(node.relation));
           if (needsHoju && !hasHoju && node.heirs && node.heirs.length > 0) {
@@ -170,20 +174,20 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
               });
           }
 
-          // 3. ?곗뇙 ?몄＜ ?밴퀎 ??(?λ궓/?μ넀)
+          // 3. 대습 호주상속 연계 검사(장남/장손 계열)
           if (getLawEra(effectiveDate) !== '1991' && node.isHoju && node.isDeceased && !isBlockedHusbandSubstitution) {
               const hasHojuChild = node.heirs && node.heirs.some(h => h.isHoju);
               if (!hasHojuChild && node.heirs && node.heirs.length > 0) {
                   uniqueGuidesMap.set(`chained-hoju-${node.personId}`, {
                       id: node.id, uniqueKey: `chained-hoju-${node.personId}`, type: 'recommended',
                       targetTabId: node.personId,
-                      text: `[${node.name || '해당 인물'}] 단계는 대습 호주상속 검토 대상일 수 있습니다. 1차 상속인들의 호주상속/재산상속 토글을 확인해 주세요.`,
+                      text: `[${node.name || '해당 인물'}] 단계는 대습 호주상속 검토 대상일 수 있습니다. 1차 상속인의 호주상속/재산상속 토글을 확인해 주세요.`,
                       level, relation: node.relation
                   });
               }
           }
 
-          // 4. [援щ쾿 ?곗씠??怨듬갚 諛⑹?] 1990???댁쟾 ?щ쭩嫄댁쓽 '???몃뜲 ?쇱씤 ?뺣낫媛 ?꾪? ?녿뒗 寃쎌슦 ?뺤씤 ?붿껌
+          // 4. 구법 딸의 혼인/동일가적 정보가 비어 있을 때 확인 요청
           if (getLawEra(effectiveDate) !== '1991' && node.relation === 'daughter') {
               if (!node.marriageDate && node.isSameRegister !== false) {
                   uniqueGuidesMap.set(`verify-marriage-${node.personId}`, {
@@ -210,7 +214,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
       noSurvivors = true;
     }
 
-    // [v3.1.4] 媛먯궗 ?붿쭊 ?댁뒋 ?듯빀 (entityIssues瑜?uniqueGuidesMap??蹂묓빀)
+    // [v3.1.4] 감사 엔진 이슈를 스마트 가이드에 통합
     (audit.entityIssues || []).forEach((issue) => {
       const personId = issue.personId || issue.id;
       const key = `audit-${issue.code}-${personId}`;
@@ -250,7 +254,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
 
     const smartGuides = Array.from(uniqueGuidesMap.values());
     
-    // UI ?명솚?깆쓣 ?꾪빐 ?꾪꽣留곷맂 由ъ뒪???앹꽦
+    // UI 표시용으로 필터링된 리스트 생성
     const mandatoryGuides = smartGuides.filter(g => g.type === 'mandatory');
     const recommendedGuides = smartGuides.filter(g => g.type === 'recommended');
 
@@ -264,12 +268,11 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
       showAutoCalcNotice: false, 
       globalMismatchReasons, 
       autoCalculatedNames: [],
-      smartGuides, // ?꾩껜 由ъ뒪??(SmartGuidePanel?먯꽌 ?대? ?꾪꽣留곹븿)
+      smartGuides, // 전체 리스트(SmartGuidePanel에서 추가 필터링)
       noSurvivors,
       hasActionItems: smartGuides.length > 0 || audit.issues.length > 0,
-      auditActionItems: [], // smartGuides濡??듯빀?섏뿀?쇰?濡?鍮?諛곗뿴 由ы꽩
+      auditActionItems: [], // smartGuides로 통합했으므로 빈 배열 반환
       repairHints: audit.repairHints || [],
     };
   }, [tree, finalShares, activeTab, warnings, transitShares, importIssues]);
 };
-

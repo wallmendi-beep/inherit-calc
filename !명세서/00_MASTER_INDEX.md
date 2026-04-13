@@ -27,6 +27,8 @@
 | **실시간 감시 안정화 룰** | **REALTIME_WATCHER_STABILIZATION_RULES_2026-04-13_UTF8.md** | `!명세서/specs/REALTIME_WATCHER_STABILIZATION_RULES_2026-04-13_UTF8.md` | import 검수 실시간 재검사 중단, 스마트 가이드 지연 계산 등 안정화 규칙 | 2순위 (성능/메모리 관리) |
 | **스마트가이드 호주 예외룰** | **SMARTGUIDE_HOJU_EXCLUSION_RULES_2026-04-13_UTF8.md** | `!명세서/specs/SMARTGUIDE_HOJU_EXCLUSION_RULES_2026-04-13_UTF8.md` | 법리상 배제된 사람에게 호주 관련 가이드를 띄우지 않는 예외 규칙 | 2순위 (가이드 정합성) |
 | **불러오기 재링크 우선룰** | **AUTOFILL_RELINK_INSTEAD_OF_SUBTREE_CLONE_RULES_2026-04-13_UTF8.md** | `!명세서/specs/AUTOFILL_RELINK_INSTEAD_OF_SUBTREE_CLONE_RULES_2026-04-13_UTF8.md` | 상속인 불러오기 시 기존 personId를 재사용하고 하위 서브트리 재복제를 막는 규칙 | 2순위 (성능/구조 안정성) |
+| **메모리누수 원인분석(참조안정성)** | **MEMORY_LEAK_ROOT_CAUSE_SMARTGUIDE_REFERENTIAL_STABILITY_2026-04-13_UTF8.md** | `!명세서/specs/MEMORY_LEAK_ROOT_CAUSE_SMARTGUIDE_REFERENTIAL_STABILITY_2026-04-13_UTF8.md` | smartGuides/useEffect/Set 참조 불안정으로 생긴 무한 리렌더 메모리 누수 원인과 재발 방지 규칙 | 2순위 (성능/회귀 방지) |
+| **탭 역할 정의/가계도 시뮬레이션 초안** | **TAB_ROLE_DEFINITION_AND_TREE_SIMULATION_DRAFT_2026-04-13_UTF8.md** | `!명세서/specs/TAB_ROLE_DEFINITION_AND_TREE_SIMULATION_DRAFT_2026-04-13_UTF8.md` | 데이터 입력, 가계도, 계산 상세, 결과 탭의 역할 정의와 가계도 시뮬레이션 UI 초안 | 2순위 (정보구조/탭 UX) |
 | **사건형 호주가산 안내룰** | **HOJU_BONUS_CASE_NOTICE_RULES_2026-04-13_UTF8.md** | `!명세서/specs/HOJU_BONUS_CASE_NOTICE_RULES_2026-04-13_UTF8.md` | 실제 호주가산 적용자에게만 사건형 안내를 띄우는 규칙과 후속 비교 UI 범위 | 2순위 (결과 UX/사건 안내) |
 | **대습상속 실무서 메모** | **SUBSTITUTION_RULES_FROM_SEOUL_BOOK_2026-04-13_UTF8.md** | `!명세서/specs/SUBSTITUTION_RULES_FROM_SEOUL_BOOK_2026-04-13_UTF8.md` | 서울중앙지법 실무서 발췌 기반 대습상속/포기/결격/동시사망/재혼 규칙 정리 | 2순위 (대습 규칙 보강) |
 | **상속분 실무서 메모** | **INHERITANCE_SHARE_RULES_FROM_SEOUL_BOOK_2026-04-13_UTF8.md** | `!명세서/specs/INHERITANCE_SHARE_RULES_FROM_SEOUL_BOOK_2026-04-13_UTF8.md` | 서울중앙지법 실무서 발췌 기반 시기별 상속분 규칙 정리 | 2순위 (상속분 시기판정 보강) |
@@ -48,6 +50,8 @@
 ---
 
 ## 🚀 프로젝트 현황
-- **현재 버전**: v4.49
+- **현재 버전**: v4.51
 - **개발 환경**: Vite + React + TailwindCSS (Vanilla CSS 지향)
 - **주요 철학**: Notion-inspired Professional Minimalist / Vault-based Inheritance Tracking
+
+- [SIMULATION_EVENT_SCOPE_RULES_2026-04-13_UTF8.md](C:\VS_CODE\상속지분 계산기\!명세서\specs\SIMULATION_EVENT_SCOPE_RULES_2026-04-13_UTF8.md)

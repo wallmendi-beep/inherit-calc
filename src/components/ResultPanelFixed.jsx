@@ -107,15 +107,19 @@ export default function ResultPanelFixed({ calcSteps, tree, issues = [], handleN
                 <td className="border border-[#e9e9e7] p-2.5 text-center font-medium dark:border-neutral-700">
                   <button
                     type="button"
-                    onClick={() => personIssues.length > 0 && handleNavigate ? handleNavigate(personIssues[0].targetTabId || result.personId) : null}
-                    className={`${personIssues.length > 0 ? 'cursor-pointer text-red-600 dark:text-red-400' : hojuApplied ? 'cursor-default text-blue-600 dark:text-blue-400' : 'cursor-default'} inline-flex items-center gap-1 font-medium`}
+                    onClick={() => handleNavigate && handleNavigate(personIssues[0]?.targetTabId || result.personId)}
+                    title="입력 탭에서 이 사람 정보 수정"
+                    className={`${personIssues.length > 0 ? 'cursor-pointer text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300' : hojuApplied ? 'cursor-pointer text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300' : 'cursor-pointer hover:text-blue-700 dark:hover:text-blue-300'} group inline-flex items-center gap-1 font-medium transition-colors`}
                   >
-                    <span>{result.name}</span>
+                    <span className="underline-offset-2 group-hover:underline">{result.name}</span>
                     {personIssues.length > 0 && (
                       <span className="inline-flex items-center rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-black text-red-700 dark:bg-red-900/30 dark:text-red-300">
                         경고
                       </span>
                     )}
+                    <span className="hidden text-[10px] font-bold text-[#787774] group-hover:inline dark:text-neutral-500">
+                      수정
+                    </span>
                   </button>
                   <span className="ml-1 font-normal text-[#787774]">[{getRelStr(result.relation, tree.deathDate)}]</span>
                   {personIssues.length > 0 && (
