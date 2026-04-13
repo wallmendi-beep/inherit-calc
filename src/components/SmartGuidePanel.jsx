@@ -98,10 +98,24 @@ export default function SmartGuidePanel({
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">💡 참고사항</h3>
             <ul className="space-y-2">
               {warnings.map((warning, index) => (
-                <li key={`warning-${index}`} className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-700 dark:bg-neutral-800/50">
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-[11.5px] font-medium leading-snug text-slate-700 dark:text-neutral-200">{warning.text || warning}</span>
-                  </div>
+                <li key={`warning-${index}`}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const target = warning?.targetTabId || warning?.personId || warning?.id || null;
+                      if (target) handleNavigate(target);
+                    }}
+                    disabled={!(warning?.targetTabId || warning?.personId || warning?.id)}
+                    className={`w-full rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-left dark:border-neutral-700 dark:bg-neutral-800/50 ${
+                      warning?.targetTabId || warning?.personId || warning?.id
+                        ? 'transition-all hover:bg-neutral-100'
+                        : 'cursor-default'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-[11.5px] font-medium leading-snug text-slate-700 dark:text-neutral-200">{warning.text || warning}</span>
+                    </div>
+                  </button>
                 </li>
               ))}
             </ul>

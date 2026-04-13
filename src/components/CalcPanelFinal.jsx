@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { getRelStr, formatKorDate } from '../engine/utils';
 import { extractHojuBonusNotices, buildHojuBonusPersonMap } from '../utils/hojuBonusNotice';
 
@@ -20,53 +20,23 @@ const NoticeCard = ({ notice }) => (
   </div>
 );
 
-export default function CalcPanelFinal({
-  calcSteps,
-  issues = [],
-  handleNavigate,
-  hojuBonusDiffs = [],
-}) {
+export default function CalcPanelFinal({ calcSteps, issues = [], handleNavigate }) {
   const issueMap = buildIssueMap(issues);
   const hojuBonusNotices = extractHojuBonusNotices(calcSteps);
   const hojuBonusMap = buildHojuBonusPersonMap(calcSteps);
-  const [showCompare, setShowCompare] = React.useState(false);
 
   return (
     <section className="w-full text-[#37352f] dark:text-neutral-200">
       {hojuBonusNotices.length > 0 && (
         <div className="mb-4 space-y-2">
           {hojuBonusNotices.map((notice) => (
-            <div key={`${notice.personId}-${notice.decedentName}-${notice.modifier}`} className="space-y-2">
-              <NoticeCard notice={notice} />
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setShowCompare((prev) => !prev)}
-                  className="rounded-full border border-[#d6d6d3] bg-white px-3 py-1.5 text-[12px] font-semibold text-[#504f4c] transition hover:bg-[#f3f3f1] dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-                >
-                  {showCompare ? '비교 닫기' : '미반영시 결과보기'}
-                </button>
-              </div>
-            </div>
+            <NoticeCard key={`${notice.personId}-${notice.decedentName}-${notice.modifier}`} notice={notice} />
           ))}
-          {showCompare && hojuBonusDiffs.length > 0 && (
-            <div className="rounded-xl border border-[#e9e9e7] bg-[#fcfcfb] px-4 py-3 dark:border-neutral-700 dark:bg-neutral-800/30">
-              <div className="text-[13px] font-semibold text-[#37352f] dark:text-neutral-100">호주가산 미반영 시 변동 상속인</div>
-              <div className="mt-2 space-y-1 text-[12px] text-[#787774] dark:text-neutral-400">
-                {hojuBonusDiffs.map((diff) => (
-                  <div key={`calc-diff-${diff.personId}`}>
-                    <span className="font-semibold text-blue-600 dark:text-blue-400">{diff.name}</span>
-                    <span>{` : 현재 ${diff.currentN}/${diff.currentD} → 미반영 ${diff.compareN}/${diff.compareD}`}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
       <div className="mb-4 text-[13px] text-[#787774] dark:text-neutral-500">
-        각 상속 단계에서 지분이 어떻게 나뉘는지 순서대로 보여주는 계산 상세표입니다.
+        각 상속 단계에서 지분이 어떻게 산정되었는지 순서대로 보여주는 계산 상세입니다.
       </div>
 
       <div className="space-y-6 print-mt-4">
@@ -100,7 +70,7 @@ export default function CalcPanelFinal({
                   const memo = [];
 
                   if (dist.ex) memo.push(`상속권 없음(${dist.ex})`);
-                  if (dist.h.isDeceased && !(dist.ex && (dist.ex.includes('선사망') || dist.ex.includes('후사망')))) {
+                  if (dist.h.isDeceased && !(dist.ex && (dist.ex.includes('후사망') || dist.ex.includes('선사망')))) {
                     memo.push('망인');
                   }
                   if (dist.mod) memo.push(...dist.mod.split(',').map((item) => item.trim()).filter(Boolean));

@@ -11,6 +11,7 @@ export default function InputPanel({
   activeDeceasedTab,
   activeTabObj,
   finalShares,
+  issues = [],
   handleUpdate,
   removeHeir,
   removeAllHeirs,
@@ -32,6 +33,10 @@ export default function InputPanel({
 }) {
   const currentNode = activeTabObj ? activeTabObj.node : tree;
   const nodeHeirs = currentNode ? (currentNode.heirs || []) : [];
+  const currentNodeIssues = (issues || []).filter((issue) => {
+    const target = issue?.targetTabId || issue?.personId || issue?.id;
+    return !!currentNode && !!target && (target === currentNode.personId || target === currentNode.id);
+  });
   const isRootNode = currentNode && currentNode.id === 'root';
   const canAutoFill = !isRootNode && ['wife', 'husband', 'son', 'daughter'].includes(currentNode?.relation);
   const inheritedDate = currentNode?.deathDate || tree.deathDate;
@@ -48,9 +53,56 @@ export default function InputPanel({
   const requiresHojuReview =
     currentLawEra !== '1991' &&
     (isRootNode || ['son', 'husband'].includes(currentNode?.relation));
-  const parentHeirsForGuide = activeTabObj?.parentNode?.heirs || [];
+  const findParentNode = React.useCallback((root, targetId, targetPersonId, visited = new Set()) => {
+    if (!root || visited.has(root.id)) return null;
+    visited.add(root.id);
+    if ((root.heirs || []).some((h) => h.id === targetId || h.personId === targetPersonId)) return root;
+    for (const heir of root.heirs || []) {
+      const found = findParentNode(heir, targetId, targetPersonId, visited);
+      if (found) return found;
+    }
+    return null;
+  }, []);
+  const resolvedParentNode = React.useMemo(() => {
+    if (isRootNode || !currentNode) return null;
+    return findParentNode(tree, currentNode.id, currentNode.personId) || activeTabObj?.parentNode || null;
+  }, [isRootNode, currentNode, tree, activeTabObj, findParentNode]);
+  const parentHeirsForGuide = resolvedParentNode?.heirs || [];
+  const isEligibleAtCurrentStep = (person) => {
+    if (!person || person.isExcluded) return false;
+    if (!person.isDeceased) return true;
+    if (!person.deathDate || !currentNode?.deathDate) return false;
+    return !isBefore(person.deathDate, currentNode.deathDate);
+  };
+  const isStickyExcluded = (person) => (
+    ['lost', 'disqualified', 'remarried', 'renounce', 'blocked_husband_substitution'].includes(person?.exclusionOption || '')
+  );
+  const collectSubstituteDisplayNames = (person, visited = new Set()) => {
+    if (!person || visited.has(person.id)) return [];
+    visited.add(person.id);
+    const names = [];
+    (person.heirs || []).forEach((heir) => {
+      if (!heir || isStickyExcluded(heir)) return;
+      if (!heir.isDeceased && !heir.isExcluded) {
+        if (heir.name?.trim()) names.push(heir.name.trim());
+        return;
+      }
+      if ((heir.heirs || []).length > 0) {
+        names.push(...collectSubstituteDisplayNames(heir, visited));
+      }
+    });
+    return Array.from(new Set(names));
+  };
 
   const getEmptyStateGuide = () => {
+    const cycleIssue = currentNodeIssues.find((issue) => issue.code === 'inheritance-cycle');
+    if (cycleIssue) {
+      return {
+        title: '순환 참조 오류를 먼저 정리해 주세요.',
+        body: cycleIssue.text,
+      };
+    }
+
     if (isRootNode && (!tree.name?.trim() || !tree.deathDate)) {
       return {
         title: '기본정보를 먼저 입력해 주세요.',
@@ -92,14 +144,28 @@ export default function InputPanel({
       (!parentNode.deathDate || !currentNode?.deathDate || !isBefore(parentNode.deathDate, currentNode.deathDate));
 
     if (['wife', 'husband', 'spouse'].includes(currentNode?.relation)) {
-      const stepChildren = activeGuideHeirs
-        .filter((h) => ['son', 'daughter'].includes(h.relation))
+      const livingChildren = activeGuideHeirs
+        .filter((h) => ['son', 'daughter'].includes(h.relation) && isEligibleAtCurrentStep(h))
         .map((h) => h.name)
         .filter(Boolean);
-      const childStr = stepChildren.length > 0 ? ` [${stepChildren.join('], [')}]` : '직계비속';
+
+      const substituteChildren = activeGuideHeirs
+        .filter((h) =>
+          ['son', 'daughter'].includes(h.relation) &&
+          h.isDeceased &&
+          h.deathDate &&
+          currentNode?.deathDate &&
+          isBefore(h.deathDate, currentNode.deathDate) &&
+          (h.heirs || []).length > 0,
+        )
+        .flatMap((h) => collectSubstituteDisplayNames(h))
+        .filter(Boolean);
+
+      const childStr = livingChildren.length > 0 ? `[${livingChildren.join('], [')}]` : '없음';
+      const substituteStr = substituteChildren.length > 0 ? `[${substituteChildren.join('], [')}]` : '없음';
       return {
-        title: `${childStr}에게 자동 분배될 수 있습니다.`,
-        body: '자동 분배를 차단하려면 상속인을 추가해 주세요.',
+        title: '별도의 상속인을 입력하지 않으면 직계비속 상속으로 자동 분배가 진행됩니다.',
+        body: `직계비속: ${childStr}\n대습상속인: ${substituteStr}\n자동 분배를 차단하려면 상속인을 추가해 주세요.`,
       };
     }
 
@@ -110,14 +176,27 @@ export default function InputPanel({
       };
     }
 
-    const siblings = activeGuideHeirs
-      .filter((h) => h.id !== currentNode?.id && ['son', 'daughter'].includes(h.relation))
+    const livingSiblings = activeGuideHeirs
+      .filter((h) => h.id !== currentNode?.id && ['son', 'daughter'].includes(h.relation) && isEligibleAtCurrentStep(h))
       .map((h) => h.name)
       .filter(Boolean);
-    const siblingStr = siblings.length > 0 ? ` [${siblings.join('], [')}]` : '차순위 상속인';
+    const substituteHeirs = activeGuideHeirs
+      .filter((h) =>
+        h.id !== currentNode?.id &&
+        ['son', 'daughter'].includes(h.relation) &&
+        h.isDeceased &&
+        h.deathDate &&
+        currentNode?.deathDate &&
+        isBefore(h.deathDate, currentNode.deathDate) &&
+        (h.heirs || []).length > 0,
+      )
+      .flatMap((h) => collectSubstituteDisplayNames(h))
+      .filter(Boolean);
+    const siblingStr = livingSiblings.length > 0 ? `[${livingSiblings.join('], [')}]` : '없음';
+    const substituteStr = substituteHeirs.length > 0 ? `[${substituteHeirs.join('], [')}]` : '없음';
     return {
-      title: `별도의 상속인을 입력하지 않으면 형제자매 ${siblingStr}에게 상속지분이 분배됩니다.`,
-      body: '자동 분배를 차단하려면 상속인을 추가해 주세요.',
+      title: '별도의 상속인을 입력하지 않으면 차순위 상속으로 자동 분배가 진행됩니다.',
+      body: `형제자매: ${siblingStr}\n대습상속인: ${substituteStr}\n자동 분배를 차단하려면 상속인을 추가해 주세요.`,
     };
   };
 
@@ -131,7 +210,7 @@ export default function InputPanel({
   };
 
   const handleAutoFill = () => {
-    const parentHeirs = activeTabObj.parentNode?.heirs || [];
+    const parentHeirs = parentHeirsForGuide;
     const existingNames = new Set(nodeHeirs.map((h) => h.name).filter((n) => n.trim() !== ''));
     let baseAdd = [];
 

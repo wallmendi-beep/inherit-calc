@@ -164,14 +164,21 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
       setIsFolderFocused(true);
       return;
     }
+    let resolvedNodeId = null;
     const findTabIdForNode = (currentNode, currentTabId, visited = new Set()) => {
       if (!currentNode || visited.has(currentNode.id)) return null;
       visited.add(currentNode.id);
-      if (currentNode.id === nodeId || currentNode.personId === nodeId) return currentTabId;
+      if (currentNode.id === nodeId || currentNode.personId === nodeId) {
+        resolvedNodeId = currentNode.id;
+        return currentTabId;
+      }
       if (currentNode.heirs) {
         for (const h of currentNode.heirs) {
           const isTabOwner = h.isDeceased || (h.isExcluded && ['lost', 'disqualified'].includes(h.exclusionOption));
-          if (h.id === nodeId || h.personId === nodeId) return isTabOwner ? h.personId : currentTabId;
+          if (h.id === nodeId || h.personId === nodeId) {
+            resolvedNodeId = h.id;
+            return isTabOwner ? h.personId : currentTabId;
+          }
           const nextTabId = isTabOwner ? h.personId : currentTabId;
           const found = findTabIdForNode(h, nextTabId, visited);
           if (found) return found;
@@ -182,7 +189,8 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
     const foundTabId = findTabIdForNode(tree, 'root');
     if (foundTabId) setActiveDeceasedTab(foundTabId);
     setTimeout(() => {
-      const element = document.querySelector(`[data-node-id="${nodeId}"]`);
+      const targetDomId = resolvedNodeId || nodeId;
+      const element = document.querySelector(`[data-node-id="${targetDomId}"]`);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         element.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2', 'bg-blue-50/50');
@@ -446,9 +454,7 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
     findPId(tree);
 
     setVault(prev => {
-      if (!prev.relationships[parentPersonId]) prev.relationships[parentPersonId] = [];
-
-      heirsToAdd.forEach((item) => {
+      const cloneHeirSubtreeIntoVault = (parentVaultPersonId, item) => {
         const newPersonId = `p_${Math.random().toString(36).substr(2, 9)}`;
         prev.persons[newPersonId] = {
           id: newPersonId,
@@ -461,7 +467,9 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
           restoreDate: item.restoreDate || '',
           gender: item.gender || '',
         };
-        prev.relationships[parentPersonId].push({
+
+        if (!prev.relationships[parentVaultPersonId]) prev.relationships[parentVaultPersonId] = [];
+        prev.relationships[parentVaultPersonId].push({
           targetId: newPersonId,
           relation: item.relation || 'son',
           isExcluded: !!item.isExcluded,
@@ -470,6 +478,14 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
           isPrimaryHojuSuccessor: !!item.isPrimaryHojuSuccessor,
           isSameRegister: item.isSameRegister !== false,
         });
+
+        (item.heirs || []).forEach((child) => cloneHeirSubtreeIntoVault(newPersonId, child));
+      };
+
+      if (!prev.relationships[parentPersonId]) prev.relationships[parentPersonId] = [];
+
+      heirsToAdd.forEach((item) => {
+        cloneHeirSubtreeIntoVault(parentPersonId, item);
       });
 
       if (parentPersonId !== prev.meta.rootPersonId) {

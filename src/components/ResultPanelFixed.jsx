@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { math, getRelStr } from '../engine/utils';
 import { extractHojuBonusNotices, buildHojuBonusPersonMap } from '../utils/hojuBonusNotice';
 
@@ -27,7 +27,7 @@ const NoticeCard = ({ notice }) => (
   </div>
 );
 
-export default function ResultPanelFixed({ calcSteps, tree, issues = [], handleNavigate, hojuBonusDiffs = [] }) {
+export default function ResultPanelFixed({ calcSteps, tree, issues = [], handleNavigate }) {
   const issueMap = buildIssueMap(issues);
   const hojuBonusNotices = extractHojuBonusNotices(calcSteps);
   const hojuBonusMap = buildHojuBonusPersonMap(calcSteps);
@@ -74,19 +74,6 @@ export default function ResultPanelFixed({ calcSteps, tree, issues = [], handleN
           {hojuBonusNotices.map((notice) => (
             <NoticeCard key={`${notice.personId}-${notice.decedentName}-${notice.modifier}`} notice={notice} />
           ))}
-          {hojuBonusDiffs.length > 0 && (
-            <div className="rounded-xl border border-[#e9e9e7] bg-[#fcfcfb] px-4 py-3 dark:border-neutral-700 dark:bg-neutral-800/30">
-              <div className="text-[13px] font-semibold text-[#37352f] dark:text-neutral-100">호주가산 미반영 시 변동 상속인</div>
-              <div className="mt-2 space-y-1 text-[12px] text-[#787774] dark:text-neutral-400">
-                {hojuBonusDiffs.map((diff) => (
-                  <div key={`result-diff-${diff.personId}`}>
-                    <span className="font-semibold text-blue-600 dark:text-blue-400">{diff.name}</span>
-                    <span>{` : 현재 ${diff.currentN}/${diff.currentD} → 미반영 ${diff.compareN}/${diff.compareD}`}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -97,10 +84,10 @@ export default function ResultPanelFixed({ calcSteps, tree, issues = [], handleN
       <table className="w-full border-collapse text-[13px]">
         <thead className="bg-[#fcfcfb] dark:bg-neutral-800/40">
           <tr>
-            <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[18%] text-[#787774]">최종 상속인</th>
-            <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[52%] text-[#787774]">지분 취득 경로</th>
-            <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[15%] text-[#787774]">최종 합계</th>
-            <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[15%] text-[#787774]">통분 지분</th>
+            <th className="w-[18%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-700">최종 상속인</th>
+            <th className="w-[52%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-700">지분 취득 경로</th>
+            <th className="w-[15%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-700">최종 합계</th>
+            <th className="w-[15%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-700">통분 지분</th>
           </tr>
         </thead>
         <tbody>
@@ -117,7 +104,7 @@ export default function ResultPanelFixed({ calcSteps, tree, issues = [], handleN
 
             return (
               <tr key={`result-${result.personId}`} className="align-top hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20">
-                <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">
+                <td className="border border-[#e9e9e7] p-2.5 text-center font-medium dark:border-neutral-700">
                   <button
                     type="button"
                     onClick={() => personIssues.length > 0 && handleNavigate ? handleNavigate(personIssues[0].targetTabId || result.personId) : null}
@@ -125,12 +112,12 @@ export default function ResultPanelFixed({ calcSteps, tree, issues = [], handleN
                   >
                     <span>{result.name}</span>
                     {personIssues.length > 0 && (
-                      <span className="inline-flex items-center rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 px-1.5 py-0.5 text-[10px] font-black">
+                      <span className="inline-flex items-center rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-black text-red-700 dark:bg-red-900/30 dark:text-red-300">
                         경고
                       </span>
                     )}
                   </button>
-                  <span className="ml-1 text-[#787774] font-normal">[{getRelStr(result.relation, tree.deathDate)}]</span>
+                  <span className="ml-1 font-normal text-[#787774]">[{getRelStr(result.relation, tree.deathDate)}]</span>
                   {personIssues.length > 0 && (
                     <span className="mt-1 block text-[11px] font-semibold text-red-500 dark:text-red-400">
                       {personIssues[0].text}
@@ -138,7 +125,7 @@ export default function ResultPanelFixed({ calcSteps, tree, issues = [], handleN
                   )}
                   {isMultiSource && <span className="mt-0.5 block text-[10px] font-bold text-[#787774]">복수 경로</span>}
                 </td>
-                <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left">
+                <td className="border border-[#e9e9e7] p-2.5 text-left dark:border-neutral-700">
                   {result.sources.map((source, index) => (
                     <div key={`${result.personId}-source-${index}`} className={`flex items-baseline gap-1 ${index > 0 ? 'mt-1.5 border-t border-dashed border-[#e9e9e7] pt-1.5 dark:border-neutral-700' : ''}`}>
                       <span className="shrink-0 font-medium text-[#37352f] dark:text-neutral-200">{source.n}/{source.d}</span>
@@ -155,13 +142,13 @@ export default function ResultPanelFixed({ calcSteps, tree, issues = [], handleN
                     </div>
                   )}
                 </td>
-                <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">{total.n} / {total.d}</td>
-                <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">{unifiedN} / {commonD}</td>
+                <td className="border border-[#e9e9e7] p-2.5 text-center font-medium dark:border-neutral-700">{total.n} / {total.d}</td>
+                <td className="border border-[#e9e9e7] p-2.5 text-center font-medium dark:border-neutral-700">{unifiedN} / {commonD}</td>
               </tr>
             );
           }) : (
             <tr>
-              <td colSpan="4" className="border border-[#e9e9e7] dark:border-neutral-700 bg-[#fcfcfb] p-8 text-center font-bold text-[#787774] dark:bg-neutral-800/30">
+              <td colSpan="4" className="border border-[#e9e9e7] bg-[#fcfcfb] p-8 text-center font-bold text-[#787774] dark:border-neutral-700 dark:bg-neutral-800/30">
                 최종 생존 상속인이 없습니다.
               </td>
             </tr>

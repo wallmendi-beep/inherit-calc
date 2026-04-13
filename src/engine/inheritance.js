@@ -157,8 +157,15 @@ export const calculateInheritance = (tree) => {
   //  parentPersonId를 추가하여 현재 어떤 탭(부모)을 처리 중인지 추적합니다.
   const traverse = (node, inN, inD, inheritedDate, visitedIds = [], parentDecName = '피상속인') => {
     if (visitedIds.includes(node.id)) {
-      // 🚨 UI가 클릭 이벤트를 처리할 수 있도록 문자열 대신 객체(id 포함) 형태로 경고 전송
-      warnings.push({ id: node.id, text: `순차상속 순환 참조가 발생하여 [${node.name || '상속인'}]의 지분 전이가 중단되었습니다.` });
+      pushWarning({
+        code: 'inheritance-cycle',
+        severity: 'error',
+        blocking: true,
+        id: node.id,
+        personId: node.personId || node.id,
+        targetTabId: node.personId || node.id,
+        text: `순차상속 순환 참조가 발생하여 [${node.name || '상속인'}]의 지분 전이가 중단되었습니다. 본인이나 조상 계통이 다시 하위 상속인으로 연결되었는지 확인하고, 잘못 연결된 상속인 입력을 제거해 주세요.`,
+      });
       return;
     }
     const currentVisited = [...visitedIds, node.id];

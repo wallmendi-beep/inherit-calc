@@ -126,6 +126,12 @@ export const buildTreeFromVault = (vault) => {
       if (!childNode.isDeceased && childNode.exclusionOption === 'predeceased') {
         childNode.isExcluded = false;
         childNode.exclusionOption = '';
+      } else if ((childNode.heirs || []).length > 0 && childNode.isExcluded && !isSpouseType) {
+        const stickyExclusions = ['lost', 'disqualified', 'remarried', 'renounce', 'blocked_husband_substitution'];
+        if (!stickyExclusions.includes(childNode.exclusionOption || '')) {
+          childNode.isExcluded = false;
+          childNode.exclusionOption = '';
+        }
       } else if (isPreDeceased && !isSpouseType) {
         if ((childNode.heirs || []).length > 0) {
           childNode.isExcluded = false;

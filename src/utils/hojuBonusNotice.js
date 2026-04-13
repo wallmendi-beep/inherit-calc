@@ -1,8 +1,9 @@
-export const HOJU_BASIS_TEXT = '실무상 대법원 90마772, 등기선례 제8-187호 취지를 반영했습니다.';
+﻿export const HOJU_BASIS_TEXT = '실무상 대법원 90마772, 등기선례 제8-187호 취지를 반영했습니다.';
+
+const SUBSTITUTION_HOJU_TEXT = '대습 호주가산';
 
 export const isHojuBonusModifier = (modifier = '') => (
-  typeof modifier === 'string'
-  && (modifier.includes('호주상속 5할 가산') || modifier.includes('대습 호주가산'))
+  typeof modifier === 'string' && modifier.includes(SUBSTITUTION_HOJU_TEXT)
 );
 
 export const extractHojuBonusNotices = (calcSteps = []) => {
@@ -12,12 +13,13 @@ export const extractHojuBonusNotices = (calcSteps = []) => {
   calcSteps.forEach((step) => {
     (step?.dists || []).forEach((dist) => {
       if (!dist?.h || !isHojuBonusModifier(dist.mod)) return;
+
       const personId = dist.h.personId || dist.h.id;
-      const key = [personId, step.dec?.name || '', dist.mod || ''].join('::');
+      const modifier = dist.mod || '';
+      const key = [personId, step.dec?.name || '', modifier].join('::');
       if (seen.has(key)) return;
       seen.add(key);
 
-      const isSubstitution = (dist.mod || '').includes('대습 호주가산');
       const recipientName = dist.h.name || '해당 상속인';
       const decedentName = step.dec?.name || '피상속인';
 
@@ -25,10 +27,8 @@ export const extractHojuBonusNotices = (calcSteps = []) => {
         personId,
         recipientName,
         decedentName,
-        modifier: dist.mod || '',
-        title: isSubstitution
-          ? `${recipientName}은(는) ${decedentName} 상속 단계에서 대습 호주가산으로 계산되었습니다.`
-          : `${recipientName}은(는) ${decedentName} 상속 단계에서 호주상속 5할 가산으로 계산되었습니다.`,
+        modifier,
+        title: `${recipientName}는 ${decedentName} 상속 단계에서 피대습자 관련 호주상속 가산을 반영하여 계산하였습니다.`,
         basis: HOJU_BASIS_TEXT,
       });
     });

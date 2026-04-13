@@ -54,7 +54,13 @@ export default function HeirRow({
   const isDaeseupContext = !!(rootDeathDate && inheritedDate && inheritedDate !== rootDeathDate && isBefore(inheritedDate, rootDeathDate));
   const isDaeseupSpouse = isSpouseType && isDaeseupContext;
   const blocksHusbandSubstitution = node.relation === 'husband' && isDaeseupContext && lawEra !== '1991';
-  const isToggleOff = !!node.isExcluded || blocksHusbandSubstitution;
+  const hasEnteredHeirs = !!(node.heirs && node.heirs.length > 0);
+  const mustStayExcludedEvenWithHeirs = (
+    isPredeceasedSpouse
+    || blocksHusbandSubstitution
+    || ['lost', 'disqualified', 'remarried', 'renounce', 'blocked_husband_substitution'].includes(node.exclusionOption || '')
+  );
+  const isToggleOff = blocksHusbandSubstitution || (!!node.isExcluded && !(hasEnteredHeirs && !mustStayExcludedEvenWithHeirs));
   const isEffectivePredeceased = isPreDeceasedCondition && !isSpouseType;
   const effectiveExclusionOption = isToggleOff
     ? (blocksHusbandSubstitution ? 'blocked_husband_substitution' : (node.exclusionOption || (isEffectivePredeceased ? 'predeceased' : 'renounce')))

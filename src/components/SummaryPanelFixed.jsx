@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { IconList } from './Icons';
 import { math, getRelStr, formatKorDate, isBefore } from '../engine/utils';
 import { extractHojuBonusNotices, buildHojuBonusPersonMap } from '../utils/hojuBonusNotice';
@@ -33,7 +33,6 @@ export default function SummaryPanelFixed({
   simpleTargetN,
   simpleTargetD,
   calcSteps = [],
-  hojuBonusDiffs = [],
 }) {
   const issueMap = buildIssueMap(issues);
   const hojuBonusNotices = extractHojuBonusNotices(calcSteps);
@@ -73,7 +72,7 @@ export default function SummaryPanelFixed({
         return;
       }
 
-      const type = heir.deathDate && isBefore(heir.deathDate, parentDeathDate) ? '대습상속' : '후사망상속';
+      const type = heir.deathDate && isBefore(heir.deathDate, parentDeathDate) ? '대습상속' : '재상속';
       const child = buildGroups(heir, heir.deathDate || parentDeathDate);
       if (child.directShares.length > 0 || child.subGroups.length > 0) {
         subGroups.push({ ancestor: heir, type, ...child });
@@ -100,7 +99,7 @@ export default function SummaryPanelFixed({
       return;
     }
 
-    const type = heir.deathDate && isBefore(heir.deathDate, tree.deathDate) ? '대습상속' : '후사망상속';
+    const type = heir.deathDate && isBefore(heir.deathDate, tree.deathDate) ? '대습상속' : '재상속';
     const child = buildGroups(heir, heir.deathDate || tree.deathDate);
     if (child.directShares.length > 0 || child.subGroups.length > 0) {
       topGroups.push({ ancestor: heir, type, ...child });
@@ -191,19 +190,6 @@ export default function SummaryPanelFixed({
           {hojuBonusNotices.map((notice) => (
             <NoticeCard key={`${notice.personId}-${notice.decedentName}-${notice.modifier}`} notice={notice} />
           ))}
-          {hojuBonusDiffs.length > 0 && (
-            <div className="rounded-xl border border-[#e9e9e7] bg-[#fcfcfb] px-4 py-3 dark:border-neutral-700 dark:bg-neutral-800/30">
-              <div className="text-[13px] font-semibold text-[#37352f] dark:text-neutral-100">호주가산 미반영 시 변동 상속인</div>
-              <div className="mt-2 space-y-1 text-[12px] text-[#787774] dark:text-neutral-400">
-                {hojuBonusDiffs.map((diff) => (
-                  <div key={`summary-diff-${diff.personId}`}>
-                    <span className="font-semibold text-blue-600 dark:text-blue-400">{diff.name}</span>
-                    <span>{` : 현재 ${diff.currentN}/${diff.currentD} → 미반영 ${diff.compareN}/${diff.compareD}`}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -211,7 +197,7 @@ export default function SummaryPanelFixed({
         <div className="flex items-center gap-6">
           <h2 className="flex items-center gap-2 text-lg font-black text-[#37352f] dark:text-neutral-200">
             <IconList className="h-5 w-5 text-[#787774]" />
-            지분 요약표
+            지분 요약
           </h2>
           <div className="flex items-center gap-2 rounded-full border border-[#e5e5e5] bg-white px-3 py-1.5 shadow-sm focus-within:ring-2 focus-within:ring-blue-100 dark:border-neutral-700 dark:bg-neutral-800">
             <svg className="h-4 w-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -236,7 +222,7 @@ export default function SummaryPanelFixed({
       {hasMissingHeir && (
         <div className="mb-4 flex items-center rounded-lg border border-[#e9e9e7] border-l-4 border-l-neutral-300 bg-[#fbfbfb] p-3 shadow-sm transition-all duration-300 dark:border-neutral-700 dark:bg-neutral-800/40">
           <span className="text-[13px] font-bold text-[#37352f] dark:text-neutral-200">
-            사망자 중 하위 상속인 입력이 누락된 사람이 있어, 이 요약표와 계산 내역은 미완성 상태입니다.
+            사망자 중 하위 상속인 입력이 누락된 곳이 있어, 이 요약표는 계산 내역상 미완성 상태입니다.
           </span>
         </div>
       )}
