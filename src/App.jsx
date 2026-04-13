@@ -28,6 +28,7 @@ import { AI_PROMPT } from './utils/aiPromptUtf8';
 import { normalizeImportedTree, updateDeathInfo, updateHistoryInfo, updateRelationInfo, setHojuStatus, setPrimaryHojuSuccessor, applyNodeUpdates, appendQuickHeirs, serializeFactTree } from './utils/treeDomain';
 import { migrateToVault, buildTreeFromVault } from './utils/vaultTransforms';
 import { stripHojuBonusInputs, buildHojuBonusDiffs } from './utils/hojuBonusCompare';
+import { collectImportValidationIssues } from './utils/importValidationV2';
 import { ingestAiJsonInput, loadTreeFromJsonFile, printAiPromptDocument, printCurrentTab, saveFactTreeToFile } from './utils/appActions';
 import { useSmartGuide } from './hooks/useSmartGuide';
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core';
@@ -51,6 +52,7 @@ function App() {
   const [specialBenefits, setSpecialBenefits] = useState({}); 
   const [contributions, setContributions] = useState({});
   const [isAmountActive, setIsAmountActive] = useState(false);
+  const [importIssues, setImportIssues] = useState([]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -90,6 +92,16 @@ function App() {
   };
 
   const tree = useMemo(() => buildTreeFromVault(rawVault) || getInitialTree(), [rawVault]);
+
+  useEffect(() => {
+    if (importIssues.length === 0) return;
+    const refreshedIssues = collectImportValidationIssues(tree);
+    const prevJson = JSON.stringify(importIssues);
+    const nextJson = JSON.stringify(refreshedIssues);
+    if (prevJson !== nextJson) {
+      setImportIssues(refreshedIssues);
+    }
+  }, [tree, importIssues]);
 
   const deceasedTabs = useMemo(() => {
     const tabMap = new Map();
@@ -636,7 +648,7 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
     if (matchIds.length > 0 && activeTab === 'summary') { const targetId = matchIds[currentMatchIdx]; const element = document.getElementById(targetId); if (element) element.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
   }, [currentMatchIdx, matchIds, activeTab]);
 
-  const guideInfo = useSmartGuide(tree, finalShares, activeTab, warnings, transitShares);
+  const guideInfo = useSmartGuide(tree, finalShares, activeTab, warnings, transitShares, importIssues);
   const {
     showGlobalWarning,
     showAutoCalcNotice,
@@ -708,7 +720,7 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
   const handlePrint = () => printCurrentTab({ activeTab, tree });
   const saveFile = () => saveFactTreeToFile(tree);
   const loadFile = (e) => {
-    loadTreeFromJsonFile(e.target.files[0], { setTree, setActiveTab });
+    loadTreeFromJsonFile(e.target.files[0], { setTree, setActiveTab, setImportIssues });
     e.target.value = '';
   };
   const handlePrintPrompt = () => printAiPromptDocument();
@@ -735,12 +747,14 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
       aiTargetId,
       tree,
       setTree,
+      setActiveTab,
+      setImportIssues,
       getInheritedDateForNode,
       setIsAiModalOpen,
       setAiInputText,
     });
 
-  const performReset = (saveFirst) => { if (saveFirst) saveFile(); setVaultState({ history: [migrateToVault(getInitialTree())], currentIndex: 0 }); setActiveTab('input'); setActiveDeceasedTab('root'); setIsResetModalOpen(false); };
+  const performReset = (saveFirst) => { if (saveFirst) saveFile(); setVaultState({ history: [migrateToVault(getInitialTree())], currentIndex: 0 }); setImportIssues([]); setActiveTab('input'); setActiveDeceasedTab('root'); setIsResetModalOpen(false); };
   useEffect(() => { const handleScroll = () => setShowScrollTop(window.scrollY > 200); window.addEventListener('scroll', handleScroll); return () => window.removeEventListener('scroll', handleScroll); }, []);
   useEffect(() => { const handleGlobalKeyDown = (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undoTree(); } if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redoTree(); } if (e.key === 'Escape' && !isAiModalOpen) { e.preventDefault(); setIsResetModalOpen(true); } }; window.addEventListener('keydown', handleGlobalKeyDown); return () => window.removeEventListener('keydown', handleGlobalKeyDown); }, [isAiModalOpen]);
   const handleExcelExport = () => {

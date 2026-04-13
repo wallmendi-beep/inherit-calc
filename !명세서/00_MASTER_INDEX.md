@@ -16,6 +16,10 @@
 | **호주 UI/빈상태 안내룰** | **HOJU_UI_AND_EMPTY_STATE_RULES_2026-04-13_UTF8.md** | `!명세서/specs/HOJU_UI_AND_EMPTY_STATE_RULES_2026-04-13_UTF8.md` | 호주/비호주 토글, 원호 선택, 빈상태 안내 단일화 규칙 | 2순위 (입력 UX/안내 로직) |
 | **토글 상태 판정룰** | **TOGGLE_STATUS_RESOLUTION_RULES_2026-04-13_UTF8.md** | `!명세서/specs/TOGGLE_STATUS_RESOLUTION_RULES_2026-04-13_UTF8.md` | 하위 상속인 입력 이후 상태 토글을 ON/OFF로 복구 또는 유지하는 규칙 | 2순위 (입력 UX/상태 판정) |
 | **불러오기/순환참조 방지룰** | **HEIR_IMPORT_SUBTREE_AND_CYCLE_PREVENTION_RULES_2026-04-13_UTF8.md** | `!명세서/specs/HEIR_IMPORT_SUBTREE_AND_CYCLE_PREVENTION_RULES_2026-04-13_UTF8.md` | 상속인 불러오기 시 서브트리 복제 원칙, cycle 우선 처리, 재발 방지 기준 | 2순위 (입력 구조 안정성) |
+| **빈상태/불러오기 부모해석룰** | **EMPTY_STATE_AND_AUTOFILL_PARENT_RESOLUTION_RULES_2026-04-13_UTF8.md** | `!명세서/specs/EMPTY_STATE_AND_AUTOFILL_PARENT_RESOLUTION_RULES_2026-04-13_UTF8.md` | 빈상태 안내와 불러오기가 같은 현재 부모 기준을 사용하도록 통일하는 규칙 | 2순위 (입력 UX/부모 해석) |
+| **AI 누락 확인 경고룰** | **AI_IMPORT_MISSING_DESCENDANTS_WARNING_RULES_2026-04-13_UTF8.md** | `!명세서/specs/AI_IMPORT_MISSING_DESCENDANTS_WARNING_RULES_2026-04-13_UTF8.md` | AI 입력에서 사망자 하위상속인이 비어 있을 때 누락 가능성을 먼저 경고하는 규칙 | 2순위 (AI 입력 방어) |
+| **불러오기 선검사룰** | **IMPORT_PRECHECK_AND_REENTRY_RULES_2026-04-13_UTF8.md** | `!명세서/specs/IMPORT_PRECHECK_AND_REENTRY_RULES_2026-04-13_UTF8.md` | AI/파일 불러오기 시 구조 오류를 선검사하고 재입력을 유도하는 규칙 | 2순위 (AI/파일 입력 방어) |
+| **불러오기 검수 가이드룰** | **IMPORT_GUIDE_FIRST_REVIEW_RULES_2026-04-13_UTF8.md** | `!명세서/specs/IMPORT_GUIDE_FIRST_REVIEW_RULES_2026-04-13_UTF8.md` | 불러오기 차단 대신 입력 탭과 스마트 가이드에서 직접 수정하도록 유도하는 규칙 | 2순위 (AI/파일 입력 UX) |
 | **사건형 호주가산 안내룰** | **HOJU_BONUS_CASE_NOTICE_RULES_2026-04-13_UTF8.md** | `!명세서/specs/HOJU_BONUS_CASE_NOTICE_RULES_2026-04-13_UTF8.md` | 실제 호주가산 적용자에게만 사건형 안내를 띄우는 규칙과 후속 비교 UI 범위 | 2순위 (결과 UX/사건 안내) |
 | **대습상속 실무서 메모** | **SUBSTITUTION_RULES_FROM_SEOUL_BOOK_2026-04-13_UTF8.md** | `!명세서/specs/SUBSTITUTION_RULES_FROM_SEOUL_BOOK_2026-04-13_UTF8.md` | 서울중앙지법 실무서 발췌 기반 대습상속/포기/결격/동시사망/재혼 규칙 정리 | 2순위 (대습 규칙 보강) |
 | **상속분 실무서 메모** | **INHERITANCE_SHARE_RULES_FROM_SEOUL_BOOK_2026-04-13_UTF8.md** | `!명세서/specs/INHERITANCE_SHARE_RULES_FROM_SEOUL_BOOK_2026-04-13_UTF8.md` | 서울중앙지법 실무서 발췌 기반 시기별 상속분 규칙 정리 | 2순위 (상속분 시기판정 보강) |
@@ -37,6 +41,6 @@
 ---
 
 ## 🚀 프로젝트 현황
-- **현재 버전**: v4.38
+- **현재 버전**: v4.42
 - **개발 환경**: Vite + React + TailwindCSS (Vanilla CSS 지향)
 - **주요 철학**: Notion-inspired Professional Minimalist / Vault-based Inheritance Tracking

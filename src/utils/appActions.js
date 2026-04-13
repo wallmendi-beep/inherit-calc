@@ -1,5 +1,6 @@
 import { AI_PROMPT } from './aiPromptUtf8';
 import { normalizeImportedTree, serializeFactTree } from './treeDomain';
+import { collectImportValidationIssues } from './importValidationV2';
 
 const sanitizeAiFacts = (node, isRoot = true) => {
   if (!node || typeof node !== 'object') return node;
@@ -78,7 +79,7 @@ export function saveFactTreeToFile(tree) {
   URL.revokeObjectURL(url);
 }
 
-export function loadTreeFromJsonFile(file, { setTree, setActiveTab }) {
+export function loadTreeFromJsonFile(file, { setTree, setActiveTab, setImportIssues }) {
   if (!file) return;
 
   const reader = new FileReader();
@@ -87,8 +88,11 @@ export function loadTreeFromJsonFile(file, { setTree, setActiveTab }) {
       const data = JSON.parse(event.target.result);
 
       if (data.id === 'root' || (Array.isArray(data.heirs) && data.name !== undefined)) {
-        setTree(normalizeImportedTree(data));
-        setActiveTab('calc');
+        const normalized = normalizeImportedTree(data);
+        const issues = collectImportValidationIssues(normalized);
+        setImportIssues?.(issues);
+        setTree(normalized);
+        setActiveTab(issues.length > 0 ? 'input' : 'calc');
       } else if (data.people && Array.isArray(data.people)) {
         alert('이전 버전 형식입니다. 일부 데이터가 누락될 수 있습니다.');
         const root = data.people.find((person) => person.isRoot || person.id === 'root');
@@ -104,6 +108,7 @@ export function loadTreeFromJsonFile(file, { setTree, setActiveTab }) {
             shareD: data.shareD || 1,
             heirs: [],
           });
+          setImportIssues?.([]);
           setActiveTab('input');
         }
       } else {
@@ -135,6 +140,8 @@ export function ingestAiJsonInput({
   aiTargetId,
   tree,
   setTree,
+  setActiveTab,
+  setImportIssues,
   getInheritedDateForNode,
   setIsAiModalOpen,
   setAiInputText,
@@ -144,9 +151,21 @@ export function ingestAiJsonInput({
   try {
     const cleanJson = input.replace(/```json/g, '').replace(/```/g, '').trim();
     const parsedTree = sanitizeAiFacts(JSON.parse(cleanJson));
+    const normalizedPreview = normalizeImportedTree(
+      aiTargetId === 'root'
+        ? { ...parsedTree, id: 'root' }
+        : {
+            id: 'root',
+            name: parsedTree.name || '',
+            deathDate: parsedTree.deathDate || getInheritedDateForNode(aiTargetId) || tree.deathDate,
+            heirs: Array.isArray(parsedTree) ? parsedTree : parsedTree.heirs || [],
+          }
+    );
+    const importIssues = collectImportValidationIssues(normalizedPreview);
+    setImportIssues?.(importIssues);
 
     if (aiTargetId === 'root') {
-      setTree(normalizeImportedTree({ ...parsedTree, id: 'root' }));
+      setTree(normalizedPreview);
     } else {
       const targetRawIds = [];
       const findRawIds = (node) => {
@@ -157,12 +176,7 @@ export function ingestAiJsonInput({
 
       setTree((prev) => {
         const targetInheritedDate = getInheritedDateForNode(aiTargetId);
-        const normalizedSource = normalizeImportedTree({
-          id: 'root',
-          name: parsedTree.name || '',
-          deathDate: parsedTree.deathDate || targetInheritedDate || tree.deathDate,
-          heirs: Array.isArray(parsedTree) ? parsedTree : parsedTree.heirs || [],
-        });
+        const normalizedSource = normalizedPreview;
 
         const injectHeirs = (node) => {
           if (targetRawIds.includes(node.id)) {
@@ -188,6 +202,7 @@ export function ingestAiJsonInput({
 
     setIsAiModalOpen(false);
     setAiInputText('');
+    setActiveTab?.(importIssues.length > 0 ? 'input' : 'calc');
     
     // 5단계 조기 발견: AI 임포트 직후 누락된 상속인 및 배우자 중복 여부 검증
     let hasMissingHeir = false;
