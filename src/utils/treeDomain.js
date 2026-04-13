@@ -33,6 +33,7 @@ const ALLOWED_KEYS = new Set([
   'isHoju',
   'isPrimaryHojuSuccessor',
   'isSameRegister',
+  'successorStatus',
   'heirs',
   'caseNo',
   'shareN',
@@ -53,6 +54,7 @@ const PERSON_FIELDS = [
   'divorceDate',
   'restoreDate',
   'gender',
+  'successorStatus',
 ];
 
 const LINK_FIELDS = [
@@ -197,6 +199,7 @@ export const normalizeImportedTree = (rawTree) => {
       divorceDate,
       restoreDate,
       gender: base.gender || '',
+      successorStatus: base.successorStatus || '',
       isHoju: base.isHoju === true ? true : shouldDefaultHojuOn(relation, refDate, isRoot),
       isPrimaryHojuSuccessor: !!base.isPrimaryHojuSuccessor,
       isExcluded: isDuplicate ? true : isExcluded,

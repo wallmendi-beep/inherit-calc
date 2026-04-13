@@ -42,7 +42,7 @@ export default function SummaryPanelFixed({
     if (!tree) return false;
     let missing = false;
     const check = (node) => {
-      if (node.isDeceased && node.isExcluded !== true && (!node.heirs || node.heirs.length === 0)) missing = true;
+      if (node.isDeceased && node.isExcluded !== true && !node.successorStatus && (!node.heirs || node.heirs.length === 0)) missing = true;
       if (node.heirs) node.heirs.forEach(check);
     };
     check(tree);
@@ -68,6 +68,7 @@ export default function SummaryPanelFixed({
         node.id !== 'root' &&
         node.isDeceased &&
         node.isExcluded !== true &&
+        !node.successorStatus &&
         (!node.heirs || node.heirs.length === 0) &&
         !(isSpouse && isPredeceased)
       ) {

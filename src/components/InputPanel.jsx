@@ -95,6 +95,13 @@ export default function InputPanel({
   };
 
   const getEmptyStateGuide = () => {
+    if (currentNode?.successorStatus) {
+      return {
+        title: '후속 상속인 없음이 확정되었습니다.',
+        body: '이 단계는 추가 상속인 없이 진행하도록 확인된 상태입니다. 필요하면 상속인을 추가하거나 아래에서 확정을 해제할 수 있습니다.',
+      };
+    }
+
     const cycleIssue = currentNodeIssues.find((issue) => issue.code === 'inheritance-cycle');
     if (cycleIssue) {
       return {
@@ -164,6 +171,31 @@ export default function InputPanel({
   };
 
   const emptyStateGuide = getEmptyStateGuide();
+  const compareDateForCurrentNode = resolvedParentNode?.deathDate || tree?.deathDate || '';
+  const isCurrentPredeceased =
+    !!(currentNode?.deathDate && compareDateForCurrentNode && isBefore(currentNode.deathDate, compareDateForCurrentNode));
+  const emptyStateConfirm = React.useMemo(() => {
+    if (!currentNode || currentNode.id === 'root' || !currentNode.isDeceased || currentNode.isExcluded === true) return null;
+    if (['wife', 'husband', 'spouse'].includes(currentNode.relation)) {
+      return {
+        label: '추가 상속인 없음',
+        value: 'confirmed_no_additional_heirs',
+        helper: '이 단계에서 더 입력할 후속 상속인이 없음을 확정합니다.',
+      };
+    }
+    if (isCurrentPredeceased && ['son', 'daughter', 'sibling'].includes(currentNode.relation)) {
+      return {
+        label: '대습상속인 없음',
+        value: 'confirmed_no_substitute_heirs',
+        helper: '배우자나 직계비속이 없어 대습상속이 없음을 확정합니다.',
+      };
+    }
+    return {
+      label: '직계비속·배우자 없음',
+      value: 'confirmed_no_spouse_descendants',
+      helper: '직계비속과 배우자가 없어 차순위 상속으로 넘어가도 됨을 확정합니다.',
+    };
+  }, [currentNode, isCurrentPredeceased]);
 
   const handleRemoveAllHeirs = () => {
     if (!nodeHeirs.length) return;
@@ -360,6 +392,34 @@ export default function InputPanel({
                   <span className="text-[#787774] dark:text-neutral-400 text-[12.5px] leading-relaxed whitespace-pre-wrap">
                     {emptyStateGuide.body}
                   </span>
+                  {emptyStateConfirm && !currentNode?.successorStatus && (
+                    <div className="mt-3 flex flex-col items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleUpdate(currentNode.id, 'successorStatus', emptyStateConfirm.value)}
+                        className="inline-flex items-center rounded-md border border-neutral-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-700 shadow-sm transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200"
+                      >
+                        {emptyStateConfirm.label}
+                      </button>
+                      <span className="text-[11.5px] text-[#787774] dark:text-neutral-400">
+                        {emptyStateConfirm.helper}
+                      </span>
+                    </div>
+                  )}
+                  {currentNode?.successorStatus && (
+                    <div className="mt-3 flex flex-col items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleUpdate(currentNode.id, 'successorStatus', '')}
+                        className="inline-flex items-center rounded-md border border-neutral-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-700 shadow-sm transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200"
+                      >
+                        확정 해제
+                      </button>
+                      <span className="text-[11.5px] text-[#787774] dark:text-neutral-400">
+                        후속 상속인을 추가해야 하면 확정을 해제한 뒤 입력하세요.
+                      </span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center p-8 bg-[#f8f8f7] dark:bg-neutral-800/40 border border-[#e9e9e7] dark:border-neutral-700 rounded-lg text-center gap-2 m-2 mb-4">

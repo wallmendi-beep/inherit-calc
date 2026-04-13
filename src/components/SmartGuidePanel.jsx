@@ -52,10 +52,31 @@ export default function SmartGuidePanel({
       !hiddenGuideKeys.has(guide.uniqueKey) &&
       !checkedSet.has(guide.uniqueKey),
   );
+  const hasUrgentSignals =
+    mandatoryGuides.length > 0 ||
+    visibleAuditActionItems.length > 0 ||
+    !!showGlobalWarning;
 
   return (
-    <ContextualDrawer isOpen={showNavigator} onClose={() => setShowNavigator(false)} title="스마트 가이드">
-      <div className="space-y-6 p-5">
+    <>
+      {!showNavigator && (
+        <button
+          type="button"
+          onClick={() => setShowNavigator(true)}
+          className={`fixed right-4 top-[92px] z-50 inline-flex items-center gap-2 rounded-full border px-3 py-2 text-[12px] font-bold shadow-lg transition-all ${
+            hasUrgentSignals
+              ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-900/40 dark:bg-amber-950/60 dark:text-amber-300'
+              : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200'
+          }`}
+          title={hasUrgentSignals ? '확인이 필요한 가이드가 있습니다.' : '가이드 펼치기'}
+        >
+          <span className={`h-2 w-2 rounded-full ${hasUrgentSignals ? 'bg-amber-500' : 'bg-slate-300 dark:bg-neutral-600'}`} />
+          가이드
+        </button>
+      )}
+
+      <ContextualDrawer isOpen={showNavigator} onClose={() => setShowNavigator(false)} title="스마트 가이드">
+        <div className="space-y-6 p-5">
         {noSurvivors && (
           <section className="rounded-lg border border-slate-200 bg-slate-50 p-4 shadow-sm dark:border-neutral-700 dark:bg-neutral-800/50">
             <div className="text-[13px] font-bold text-slate-800 dark:text-neutral-100">최종 생존 상속인이 없습니다.</div>
@@ -278,7 +299,8 @@ export default function SmartGuidePanel({
             </ul>
           </section>
         )}
-      </div>
-    </ContextualDrawer>
+        </div>
+      </ContextualDrawer>
+    </>
   );
 }

@@ -33,6 +33,7 @@ export const migrateToVault = (oldTree) => {
         divorceDate: node.divorceDate || '',
         restoreDate: node.restoreDate || '',
         gender: node.gender || '',
+        successorStatus: node.successorStatus || '',
       };
     } else {
       const p = vault.persons[pId];
@@ -42,6 +43,7 @@ export const migrateToVault = (oldTree) => {
       if (!p.divorceDate && node.divorceDate) p.divorceDate = node.divorceDate;
       if (!p.restoreDate && node.restoreDate) p.restoreDate = node.restoreDate;
       if (!p.name && node.name) p.name = node.name;
+      if (!p.successorStatus && node.successorStatus) p.successorStatus = node.successorStatus;
     }
 
     if (parentId) {

@@ -215,7 +215,7 @@ function App() {
 
   const [treeToggleSignal, setTreeToggleSignal] = useState(0); 
   const [isAllExpanded, setIsAllExpanded] = useState(false); 
-  const [showNavigator, setShowNavigator] = useState(false);
+  const [showNavigator, setShowNavigator] = useState(true);
 
   const handleNavigate = (nodeId) => {
     setActiveTab('input');
@@ -484,7 +484,7 @@ function App() {
     setVault(prev => {
       let targetPersonId = id; let parentPersonId = null;
       const findNode = (n, pId) => { if (n.id === id) { targetPersonId = n.personId; parentPersonId = pId; return true; } return (n.heirs || []).some(child => findNode(child, n.personId)); }; findNode(tree, null);
-      const personalKeys = ['name', 'isDeceased', 'deathDate', 'marriageDate', 'remarriageDate', 'divorceDate', 'restoreDate', 'gender'];
+      const personalKeys = ['name', 'isDeceased', 'deathDate', 'marriageDate', 'remarriageDate', 'divorceDate', 'restoreDate', 'gender', 'successorStatus'];
       personalKeys.forEach(k => { if (updates[k] !== undefined) prev.persons[targetPersonId][k] = updates[k]; });
       const linkKeys = ['relation', 'isExcluded', 'exclusionOption', 'isHoju', 'isPrimaryHojuSuccessor', 'isSameRegister'];
       if (parentPersonId && prev.relationships[parentPersonId]) { const link = prev.relationships[parentPersonId].find(l => l.targetId === targetPersonId); if (link) { linkKeys.forEach(k => { if (updates[k] !== undefined) link[k] = updates[k]; }); } }
@@ -514,7 +514,8 @@ function App() {
     let parentPersonId = parentId; const findPId = (n) => { if (n.id === parentId) parentPersonId = n.personId; if (n.heirs) n.heirs.forEach(findPId); }; findPId(tree);
     setVault(prev => {
       const newPersonId = `p_${Math.random().toString(36).substr(2, 9)}`;
-      prev.persons[newPersonId] = { id: newPersonId, name: '', isDeceased: false, deathDate: '', marriageDate: '', remarriageDate: '', divorceDate: '', restoreDate: '', gender: '' };
+      prev.persons[newPersonId] = { id: newPersonId, name: '', isDeceased: false, deathDate: '', marriageDate: '', remarriageDate: '', divorceDate: '', restoreDate: '', gender: '', successorStatus: '' };
+      if (prev.persons[parentPersonId]) prev.persons[parentPersonId].successorStatus = '';
       if (!prev.relationships[parentPersonId]) prev.relationships[parentPersonId] = [];
       prev.relationships[parentPersonId].push({ targetId: newPersonId, relation: 'son', isExcluded: false, exclusionOption: '', isHoju: false, isSameRegister: true });
       if (parentPersonId !== prev.meta.rootPersonId) { Object.values(prev.relationships).forEach(links => { const pLink = links.find(l => l.targetId === parentPersonId); if (pLink) { pLink.isExcluded = false; pLink.exclusionOption = ''; } }); }
@@ -561,6 +562,7 @@ function App() {
           divorceDate: item.divorceDate || '',
           restoreDate: item.restoreDate || '',
           gender: item.gender || '',
+          successorStatus: item.successorStatus || '',
         };
         return newPersonId;
       };
@@ -590,6 +592,7 @@ function App() {
       };
 
       if (!prev.relationships[parentPersonId]) prev.relationships[parentPersonId] = [];
+      if (prev.persons[parentPersonId]) prev.persons[parentPersonId].successorStatus = '';
 
       heirsToAdd.forEach((item) => {
         ensureLink(parentPersonId, item);
@@ -751,7 +754,6 @@ function App() {
   useEffect(() => {
     if (activeTab === 'tree') {
       setSidebarOpen(false);
-      setShowNavigator(false);
     }
   }, [activeTab]);
 
@@ -781,7 +783,10 @@ function App() {
   const smartGuides = useMemo(() => {
     const rawGuides = guideInfo.smartGuides || [];
     const uniqueGuidesMap = new Map();
-    rawGuides.forEach(g => { const key = g.uniqueKey || g.text; if (!uniqueGuidesMap.has(key)) uniqueGuidesMap.set(key, g); });
+    rawGuides.forEach((g) => {
+      const key = `${g.type || 'guide'}:${g.text || g.uniqueKey || ''}`;
+      if (!uniqueGuidesMap.has(key)) uniqueGuidesMap.set(key, g);
+    });
     return Array.from(uniqueGuidesMap.values());
   }, [guideInfo.smartGuides]);
   const hasActionItems = (guideInfo?.hasActionItems) || smartGuides.length > 0;

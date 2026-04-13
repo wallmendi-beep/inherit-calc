@@ -451,7 +451,7 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
              }
 
              if (!isMarried) { h.r = 1.0; }
-              else { h.r = 0.25; modifier = '출가녀 감산 (아들의 1/4)'; }
+              else { h.r = 0.25; modifier = '출가녀 감산 (남자의 1/4)'; }
             } else if (h.relation === 'son') {
               if (canApplyHojuBonus({ heir: h, law, context: hojuContext })) {
                 h.r = 1.5;

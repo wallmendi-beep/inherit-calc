@@ -46,6 +46,8 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
     const audit = auditInheritanceResult({ tree, finalShares: finalShares || {}, transitShares: transitShares || [], warnings: warnings || [] });
 
     const uniqueGuidesMap = new Map();
+    const groupedPredeceasedMissingMap = new Map();
+    const groupedDirectMissingMap = new Map();
     let noSurvivors = false;
 
     const findParentNodeInHook = (root, targetId) => {
@@ -110,38 +112,44 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
         'renounce',
         'blocked_husband_substitution',
       ].includes(node.exclusionOption || '');
+      const hasConfirmedNoSuccessors = !!node.successorStatus;
 
       // 아래 단계에서는 본인 하위 탭이 따로 생성되므로, 하위 가계도 중복 검사는 생략한다.
       if ((node.isDeceased || node.id === 'root') && !isHardExcluded) {
           const activeHeirs = (node.heirs || []).filter(h => !h.isExcluded);
-          if (node.id !== 'root' && node.isDeceased && node.deathDate && activeHeirs.length === 0) {
+          if (node.id !== 'root' && node.isDeceased && node.deathDate && activeHeirs.length === 0 && !hasConfirmedNoSuccessors) {
             const compareDate = parentDate || tree.deathDate;
             const isPredeceased = compareDate ? isBefore(node.deathDate, compareDate) : false;
             const isChild = ['son', 'daughter'].includes(node.relation);
             const isSpouse = ['wife', 'husband', 'spouse'].includes(node.relation);
 
-            let guideText = `[${node.name || '이름 미상'}]의 직접 입력된 후속 상속인이 없습니다.`;
+            let guideText = '';
 
             if (isPredeceased) {
               if (isChild) {
-                guideText = `[${node.name}]은(는) 선사망 상속인인데 하위상속인이 없습니다. 대습상속인(배우자 또는 직계비속) 누락 여부를 확인해 주세요.`;
+                const groupKey = parentNode?.personId || parentNode?.id || 'root';
+                const current = groupedPredeceasedMissingMap.get(groupKey) || {
+                  parentName: parentNode?.name || tree.name || '현재 계보',
+                  targetTabId: groupKey,
+                  names: [],
+                };
+                current.names.push(node.name || '이름 미상');
+                groupedPredeceasedMissingMap.set(groupKey, current);
+                guideText = '';
               } else if (isSpouse) {
                 guideText = '';
               }
             } else {
               const contextName = parentNode?.name || tree.name || '현재 계보';
-              if (isSpouse) {
-                guideText = `[${node.name}]의 후속 상속인이 직접 입력되지 않았습니다. 미입력 시 [${contextName}] 계보 기준으로 자동 분배될 수 있습니다.`;
-              } else {
-                guideText = `[${node.name}]의 후속 상속인이 직접 입력되지 않았습니다. 미입력 시 차순위 상속으로 자동 분배될 수 있습니다.`;
-              }
-            }
-
-            if (guideText) {
-              uniqueGuidesMap.set(`missing-successors-${node.personId}`, {
-                id: node.id, uniqueKey: `missing-successors-${node.personId}`, targetTabId: node.personId, type: 'mandatory', code: 'missing-successors',
-                text: guideText
-              });
+              const groupKey = `${parentNode?.personId || parentNode?.id || 'root'}:${isSpouse ? 'spouse' : 'general'}`;
+              const current = groupedDirectMissingMap.get(groupKey) || {
+                parentName: contextName,
+                targetTabId: parentNode?.personId || parentNode?.id || 'root',
+                names: [],
+                isSpouseGroup: isSpouse,
+              };
+              current.names.push(node.name || '이름 미상');
+              groupedDirectMissingMap.set(groupKey, current);
             }
           }
           if (node.id !== 'root' && node.isDeceased && !node.deathDate) {
@@ -209,6 +217,34 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
     checkIndependentExclusionGuide(tree, 0);
     checkDuplicateSpouseGuide(tree, 0);
     if (tree.heirs) { tree.heirs.forEach(h => checkGuideNode(h, tree.deathDate, 0)); }
+
+    groupedPredeceasedMissingMap.forEach((group, key) => {
+      const uniqueNames = Array.from(new Set(group.names));
+      if (uniqueNames.length === 0) return;
+      uniqueGuidesMap.set(`grouped-missing-substitution-${key}`, {
+        id: key,
+        uniqueKey: `grouped-missing-substitution-${key}`,
+        targetTabId: group.targetTabId,
+        type: 'mandatory',
+        code: 'grouped-missing-substitution',
+        text: `선사망 상속인 중 대습상속인이 입력되지 않은 사람이 있습니다: [${uniqueNames.join('], [')}]. 실제로 배우자 또는 직계비속이 있는 사람만 선택해 대습상속인을 입력해 주세요.`,
+      });
+    });
+
+    groupedDirectMissingMap.forEach((group, key) => {
+      const uniqueNames = Array.from(new Set(group.names));
+      if (uniqueNames.length === 0) return;
+      uniqueGuidesMap.set(`grouped-direct-missing-${key}`, {
+        id: group.targetTabId,
+        uniqueKey: `grouped-direct-missing-${key}`,
+        targetTabId: group.targetTabId,
+        type: 'mandatory',
+        code: 'grouped-direct-missing',
+        text: group.isSpouseGroup
+          ? `후속 상속인이 직접 입력되지 않은 배우자가 있습니다: [${uniqueNames.join('], [')}]. 필요한 경우 후속 상속인을 입력하고, 미입력 시 [${group.parentName}] 계보 기준 자동 분배 여부를 확인해 주세요.`
+          : `직접 입력된 후속 상속인이 없는 사람이 있습니다: [${uniqueNames.join('], [')}]. 필요한 경우 후속 상속인을 입력하고, 그렇지 않으면 자동 분배 결과를 확인해 주세요.`,
+      });
+    });
 
     if (!tree.heirs || tree.heirs.length === 0 || tree.heirs.every(h => h.isExcluded && (!h.heirs || h.heirs.length === 0))) {
       noSurvivors = true;

@@ -1,7 +1,7 @@
 ﻿import React from 'react';
 import { IconNetwork } from './Icons';
 import TreeReportNode from './TreeReportNode';
-import { formatKorDate, getRelStr, isBefore } from '../engine/utils';
+import { formatKorDate, getLawEra, getRelStr, isBefore } from '../engine/utils';
 
 const ViewModeButton = ({ active, children, onClick }) => (
   <button
@@ -50,7 +50,7 @@ const FlowTag = ({ children, tone = 'default' }) => {
   );
 };
 
-const FlowNode = ({ title, subtitle, value, accent = 'default' }) => {
+const FlowNode = ({ subtitle, value, accent = 'default', badges = [] }) => {
   const accentClass =
     accent === 'blue'
       ? 'border-[#d7e5f9] bg-[#f7fbff] dark:border-blue-900/40 dark:bg-blue-950/20'
@@ -58,9 +58,13 @@ const FlowNode = ({ title, subtitle, value, accent = 'default' }) => {
 
   return (
     <div className={`rounded-2xl border px-4 py-3 shadow-sm ${accentClass}`}>
-      <div className="text-[10px] font-black tracking-[0.06em] text-[#8a887f] dark:text-neutral-500">{title}</div>
-      <div className="mt-1 text-[18px] font-black text-[#37352f] dark:text-neutral-100">{subtitle}</div>
-      {value && <div className="mt-1 text-[12px] font-bold text-[#46648e] dark:text-blue-300">{value}</div>}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="text-[18px] font-black text-[#37352f] dark:text-neutral-100">{subtitle}</div>
+        {value && <div className="text-[13px] font-black text-[#46648e] dark:text-blue-300">{value}</div>}
+        {badges.map((badge, index) => (
+          <FlowTag key={`${badge}-${index}`} tone={badge === '호주' ? 'blue' : 'default'}>{badge}</FlowTag>
+        ))}
+      </div>
     </div>
   );
 };
@@ -84,7 +88,7 @@ const EventListItem = ({ step, active, onClick, index }) => (
     </div>
     <div className="mt-1 text-[14px] font-black text-[#37352f] dark:text-neutral-100">망 {step.dec?.name}</div>
     <div className="mt-2 flex flex-wrap gap-1.5">
-      <FlowTag tone="blue">원지분 {step.inN}/{step.inD}</FlowTag>
+      <FlowTag tone="blue">상속지분 {step.inN}/{step.inD}</FlowTag>
       <FlowTag>{step.dists?.length || 0}명 분배</FlowTag>
       {step.mergeSources?.length > 1 && <FlowTag tone="amber">복수 유입</FlowTag>}
     </div>
@@ -96,17 +100,35 @@ const RecipientCard = ({ dist, step, relatedStep, onNavigate, onOpenEvent }) => 
   const hasRelatedEvent = Boolean(relatedStep);
   const isReinheritance = hasRelatedEvent && dist.h?.deathDate && step.dec?.deathDate && !isBefore(dist.h.deathDate, step.dec.deathDate);
   const isSubstitutionBranch = hasRelatedEvent && dist.h?.deathDate && step.dec?.deathDate && isBefore(dist.h.deathDate, step.dec.deathDate);
-  const branchLabel = isReinheritance ? '재상속으로 이어짐' : isSubstitutionBranch ? '대습상속 가지' : '이번 사건에서 종결';
-  const branchTone = isReinheritance ? 'amber' : isSubstitutionBranch ? 'blue' : 'default';
+  const branchLabel = isReinheritance ? '재상속' : isSubstitutionBranch ? '대습상속' : null;
+  const innerShare = `${dist.sn}/${dist.sd}`;
+  const finalShare = `${dist.n}/${dist.d}`;
+  const registerLabel =
+    dist.h?.relation === 'daughter'
+      ? (dist.h?.isSameRegister === false ? '비동일가적' : '동일가적')
+      : null;
+  const hasHojuSuccession = typeof dist.mod === 'string' && dist.mod.includes('호주상속');
+  const isSpouseRelation = ['wife', 'husband', 'spouse'].includes(dist.h?.relation);
+  const modifierBadge = React.useMemo(() => {
+    if (typeof dist.mod !== 'string') return null;
+    const isReduction = dist.mod.includes('감산');
+    const isAddition = dist.mod.includes('가산');
+    if (!isReduction && !isAddition) return null;
+
+    let rate = '';
+    if (dist.mod.includes('1/4')) rate = '1/4';
+    else if (dist.mod.includes('1/2')) rate = '1/2';
+    else if (dist.mod.includes('5할')) rate = '5할';
+
+    return `${isReduction ? '감산' : '가산'}${rate ? ` ${rate}` : ''}`;
+  }, [dist.mod]);
+  const branchReason =
+    branchLabel && dist.h?.deathDate
+      ? `${formatKorDate(dist.h.deathDate)} 사망`
+      : null;
 
   return (
     <div className="rounded-2xl border border-[#ebeae7] bg-white px-4 py-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/50">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <FlowTag tone={branchTone}>{branchLabel}</FlowTag>
-        <div className="rounded-full border border-[#ecebe8] bg-[#fafaf9] px-2.5 py-1 text-[10px] font-bold text-[#787774] dark:border-neutral-800 dark:bg-neutral-950/30 dark:text-neutral-400">
-          {step.inN}/{step.inD} × {dist.sn}/{dist.sd}
-        </div>
-      </div>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <button
@@ -115,42 +137,40 @@ const RecipientCard = ({ dist, step, relatedStep, onNavigate, onOpenEvent }) => 
             title="입력 탭에서 이 사람 정보 수정"
             className="group inline-flex items-center gap-1.5 text-left text-[15px] font-black text-[#37352f] transition-colors hover:text-blue-700 dark:text-neutral-100 dark:hover:text-blue-300"
           >
+            <FlowTag>{relationLabel}</FlowTag>
             <span className="underline-offset-2 group-hover:underline">{dist.h?.name}</span>
+            {isSpouseRelation && <FlowTag>배우자</FlowTag>}
+            {hasHojuSuccession && <FlowTag tone="blue">호주상속</FlowTag>}
+            {registerLabel && <FlowTag>{registerLabel}</FlowTag>}
+            {modifierBadge && <FlowTag tone={modifierBadge.startsWith('가산') ? 'blue' : 'amber'}>{modifierBadge}</FlowTag>}
+            <FlowTag tone="blue">{innerShare}</FlowTag>
             <span className="hidden text-[10px] font-bold text-[#787774] group-hover:inline dark:text-neutral-500">수정</span>
           </button>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <FlowTag>{relationLabel}</FlowTag>
-            {dist.mod && <FlowTag tone="blue">{dist.mod}</FlowTag>}
-            {dist.ex && <FlowTag tone="rose">{dist.ex}</FlowTag>}
-          </div>
-        </div>
-        <div className="shrink-0 text-right">
-          <div className="text-[11px] font-bold text-[#8a887f] dark:text-neutral-500">이번 사건 귀속분</div>
-          <div className="mt-1 text-[18px] font-black text-[#3f5f8a] dark:text-blue-300">{dist.n}/{dist.d}</div>
         </div>
       </div>
 
-      {(isReinheritance || isSubstitutionBranch) && (
-        <div className="mt-4 rounded-xl border border-[#ecebe8] bg-[#fafaf9] px-3 py-3 dark:border-neutral-800 dark:bg-neutral-950/30">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="text-[11px] font-black text-[#5d5b57] dark:text-neutral-300">
-                {isReinheritance ? '재상속은 별도 사건으로 진행됩니다.' : '대습상속 가지는 별도 사건으로 확인합니다.'}
-              </div>
-              <div className="mt-1 text-[11px] text-[#787774] dark:text-neutral-400">
-                {isReinheritance
-                  ? `${dist.h?.name} 사망 단계에서 다시 지분이 분배됩니다. 이 카드에서는 여기까지만 표시합니다.`
-                  : `${dist.h?.name}는 선사망자이므로, 실제 대습상속 흐름은 별도 사건에서 확인합니다.`}
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => onOpenEvent && onOpenEvent(getStepKey(relatedStep))}
-              className="rounded-xl border border-[#d8d6d1] bg-white px-3 py-2 text-[11px] font-bold text-[#37352f] transition-colors hover:bg-[#f3f3f1] dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
-            >
-              관련 사건 보기
-            </button>
+      <div className="mt-3 rounded-xl border border-[#ecebe8] bg-[#fafaf9] px-3 py-3 dark:border-neutral-800 dark:bg-neutral-950/30">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="text-[11px] font-bold text-[#6d6b65] dark:text-neutral-400">
+            상속지분 {step.inN}/{step.inD} × {innerShare}
           </div>
+          <div className="text-[18px] font-black text-[#3f5f8a] dark:text-blue-300">{finalShare}</div>
+        </div>
+      </div>
+
+      {branchLabel && (
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <div className="text-[11px] font-bold text-[#6d6b65] dark:text-neutral-400">
+            {branchReason}
+          </div>
+          <button
+            type="button"
+            onClick={() => onOpenEvent && onOpenEvent(getStepKey(relatedStep))}
+            className="inline-flex items-center gap-2 rounded-full border border-[#ddd9cf] bg-[#fbf7ef] px-3 py-1.5 text-[11px] font-bold text-[#7a6544] transition-colors hover:bg-[#f4eedf] dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300 dark:hover:bg-amber-950/30"
+          >
+            <span>{branchLabel}</span>
+            <span className="opacity-60">→</span>
+          </button>
         </div>
       )}
     </div>
@@ -166,9 +186,8 @@ export default function TreePanel({
   calcSteps = [],
   handleNavigate,
 }) {
-  const [viewMode, setViewMode] = React.useState('tree');
+  const [viewMode, setViewMode] = React.useState('flow');
   const [selectedStepKey, setSelectedStepKey] = React.useState(null);
-  const [showRecipientSummary, setShowRecipientSummary] = React.useState(false);
 
   const steps = React.useMemo(
     () => (Array.isArray(calcSteps) ? calcSteps.filter((step) => step?.dec) : []),
@@ -196,14 +215,37 @@ export default function TreePanel({
     }
   }, [steps, selectedStepKey, stepMap]);
 
-  React.useEffect(() => {
-    setShowRecipientSummary(false);
-  }, [selectedStepKey]);
-
   const selectedStep = React.useMemo(() => {
     if (!steps.length) return null;
     return stepMap.get(selectedStepKey) || steps[0];
   }, [steps, selectedStepKey, stepMap]);
+  const selectedDecedentIsHoju = React.useMemo(() => {
+    if (!selectedStep?.dec) return false;
+    const isRootDecedent = selectedStep.dec.id === 'root' || selectedStep.dec.personId === 'root';
+    if (isRootDecedent) return tree?.isHoju !== false;
+    return selectedStep.dec?.isHoju === true;
+  }, [selectedStep, tree]);
+  const selectedLawEra = React.useMemo(
+    () => (selectedStep?.dec?.deathDate ? getLawEra(selectedStep.dec.deathDate) : ''),
+    [selectedStep]
+  );
+  const selectedLawLabel =
+    selectedLawEra === '1960'
+      ? '1960년 제정 민법 적용'
+      : selectedLawEra === '1979'
+          ? '1979년 개정 민법 적용'
+          : selectedLawEra === '1991'
+              ? '1991년 개정 민법 적용'
+              : '';
+
+  const spouseDists = React.useMemo(
+    () => (selectedStep?.dists || []).filter((dist) => ['wife', 'husband', 'spouse'].includes(dist.h?.relation)),
+    [selectedStep]
+  );
+  const childDists = React.useMemo(
+    () => (selectedStep?.dists || []).filter((dist) => !['wife', 'husband', 'spouse'].includes(dist.h?.relation)),
+    [selectedStep]
+  );
 
   return (
     <div className="flex h-full animate-in fade-in flex-col py-2 duration-300">
@@ -242,12 +284,9 @@ export default function TreePanel({
         </div>
       ) : steps.length > 0 && selectedStep ? (
         <div className="grid min-h-0 gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
-          <aside className="space-y-3 rounded-2xl border border-[#e9e9e7] bg-[#fbfbfa] p-4 dark:border-neutral-700 dark:bg-neutral-900/40">
+          <aside className="space-y-2 rounded-2xl border border-[#e9e9e7] bg-[#fbfbfa] p-3 dark:border-neutral-700 dark:bg-neutral-900/40">
             <div>
               <div className="text-[11px] font-black tracking-[0.06em] text-[#787774] dark:text-neutral-500">사건 목록</div>
-              <div className="mt-2 text-[13px] text-[#5d5b57] dark:text-neutral-300">
-                같은 사람이라도 사망 시점과 적용 법이 다르면 상속 흐름이 달라집니다. 사건을 하나씩 선택해 보세요.
-              </div>
             </div>
             <div className="space-y-2">
               {steps.map((step, index) => {
@@ -267,22 +306,27 @@ export default function TreePanel({
 
           <section className="min-h-0 rounded-2xl border border-[#e9e9e7] bg-white p-5 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/50">
             <div className="rounded-2xl border border-[#ecebe8] bg-[#fbfbfa] p-5 dark:border-neutral-800 dark:bg-neutral-950/30">
-              <div className="flex flex-wrap items-center gap-2 text-[11px] font-black tracking-[0.06em] text-[#8a887f] dark:text-neutral-500">
-                <span>사건 시뮬레이션</span>
-                <span className="h-1 w-1 rounded-full bg-current opacity-40" />
-                <span>{formatKorDate(selectedStep.dec?.deathDate)} 사망</span>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <div className="text-[14px] font-black text-[#6b6963] dark:text-neutral-400">피상속인</div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="text-[24px] font-black tracking-[-0.02em] text-[#37352f] dark:text-neutral-100">
+                    망 {selectedStep.dec?.name}
+                  </div>
+                  {selectedDecedentIsHoju && <FlowTag tone="blue">호주</FlowTag>}
+                </div>
+                <div className="text-[14px] font-bold text-[#6b6963] dark:text-neutral-400">
+                  {formatKorDate(selectedStep.dec?.deathDate)} 사망
+                </div>
               </div>
-              <div className="mt-2 text-[24px] font-black tracking-[-0.02em] text-[#37352f] dark:text-neutral-100">
-                망 {selectedStep.dec?.name}
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <SummaryPill label="원지분" value={`${selectedStep.inN}/${selectedStep.inD}`} accent="blue" />
-                <SummaryPill label="1차 분배대상" value={`${selectedStep.dists?.length || 0}명`} />
-                {selectedStep.mergeSources?.length > 1 && <SummaryPill label="유입경로" value={`${selectedStep.mergeSources.length}건`} accent="amber" />}
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <div className="text-[18px] font-black text-[#46648e] dark:text-blue-300">
+                  상속지분 {selectedStep.inN}/{selectedStep.inD}
+                </div>
+                {selectedLawLabel && <FlowTag tone="blue">{selectedLawLabel}</FlowTag>}
+                {selectedStep.mergeSources?.length > 1 && <FlowTag tone="amber">복수 유입</FlowTag>}
               </div>
               {selectedStep.mergeSources?.length > 1 && (
-                <div className="mt-4 rounded-xl border border-[#ecebe8] bg-white px-4 py-3 text-[12px] text-[#5d5b57] dark:border-neutral-800 dark:bg-neutral-900/70 dark:text-neutral-300">
-                  <div className="font-black text-[#37352f] dark:text-neutral-100">복수 유입 사건</div>
+                <div className="mt-3 rounded-xl border border-[#ecebe8] bg-white px-4 py-3 text-[12px] text-[#5d5b57] dark:border-neutral-800 dark:bg-neutral-900/70 dark:text-neutral-300">
                   <div className="mt-1 leading-6">
                     {selectedStep.mergeSources.map((src) => `${src.from} ${src.d}분의 ${src.n}`).join(' + ')}
                   </div>
@@ -290,30 +334,37 @@ export default function TreePanel({
               )}
             </div>
 
-            <div className="mt-5 rounded-2xl border border-dashed border-[#dddcd8] bg-[#fcfcfb] px-4 py-3 text-[12px] leading-6 text-[#6b6963] dark:border-neutral-700 dark:bg-neutral-950/20 dark:text-neutral-400">
-              이 화면은 <span className="font-bold text-[#37352f] dark:text-neutral-200">이번 사건의 1차 상속 흐름</span>만 보여줍니다.
-              재상속은 별도 사건으로 끊어서 보고, 대습상속 가지도 관련 사건으로 넘겨 확인합니다. 사람 이름을 누르면 입력 탭으로 돌아가 데이터를 점검할 수 있습니다.
-            </div>
-
             <div className="mt-6">
               <div className="overflow-hidden rounded-2xl border border-[#ecebe8] bg-[#fcfcfb] p-5 dark:border-neutral-800 dark:bg-neutral-950/20">
-                <div className="flex flex-col items-center">
-                  <FlowNode
-                    title="사건 시작"
-                    subtitle={`망 ${selectedStep.dec?.name}`}
-                    value={`원지분 ${selectedStep.inN}/${selectedStep.inD}`}
-                    accent="blue"
-                  />
-                  <div className="h-6 w-px bg-[#d9d7d1] dark:bg-neutral-700" />
-                  <div className="rounded-full border border-[#e7e5e1] bg-white px-3 py-1 text-[11px] font-bold text-[#6b6963] dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300">
-                    1차 상속 분배
+                <div className="space-y-5">
+                  {spouseDists.length > 0 && (
+                    <div className={`grid gap-3 ${spouseDists.length === 1 ? 'justify-center lg:grid-cols-[minmax(280px,340px)]' : 'lg:grid-cols-[minmax(280px,340px)_minmax(280px,340px)] lg:justify-center'}`}>
+                      {spouseDists.map((dist, distIndex) => {
+                        const relatedStep = stepMap.get(dist.h?.personId) || stepMap.get(dist.h?.id) || null;
+                        return (
+                          <RecipientCard
+                            key={`${getStepKey(selectedStep)}-${dist.h?.personId || dist.h?.id || distIndex}-spouse`}
+                            dist={dist}
+                            step={selectedStep}
+                            relatedStep={relatedStep}
+                            onNavigate={handleNavigate}
+                            onOpenEvent={setSelectedStepKey}
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <div className="flex justify-center">
+                    <div className="h-8 w-px bg-[#d9d7d1] dark:bg-neutral-700" />
                   </div>
-                  <div className="mt-3 grid w-full gap-3 md:grid-cols-2 xl:grid-cols-3">
-                    {selectedStep.dists.map((dist, distIndex) => {
+
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {childDists.map((dist, distIndex) => {
                       const relatedStep = stepMap.get(dist.h?.personId) || stepMap.get(dist.h?.id) || null;
                       return (
                         <RecipientCard
-                          key={`${getStepKey(selectedStep)}-${dist.h?.personId || dist.h?.id || distIndex}-graph`}
+                          key={`${getStepKey(selectedStep)}-${dist.h?.personId || dist.h?.id || distIndex}-child`}
                           dist={dist}
                           step={selectedStep}
                           relatedStep={relatedStep}
@@ -326,40 +377,6 @@ export default function TreePanel({
                 </div>
               </div>
 
-              <div className="mt-4 rounded-2xl border border-[#ecebe8] bg-white px-4 py-3 dark:border-neutral-800 dark:bg-neutral-900/40">
-                <button
-                  type="button"
-                  onClick={() => setShowRecipientSummary((prev) => !prev)}
-                  className="flex w-full items-center justify-between gap-3 text-left"
-                >
-                  <div>
-                    <div className="text-[12px] font-black tracking-[0.06em] text-[#787774] dark:text-neutral-500">상속인별 요약</div>
-                    <div className="mt-1 text-[11px] text-[#6d6b65] dark:text-neutral-400">
-                      계산식과 비고를 더 자세히 보려면 펼쳐서 확인하세요.
-                    </div>
-                  </div>
-                  <div className="rounded-full border border-[#dfddd7] bg-[#fafaf9] px-3 py-1 text-[11px] font-bold text-[#5d5b57] dark:border-neutral-700 dark:bg-neutral-950/30 dark:text-neutral-300">
-                    {showRecipientSummary ? '요약 접기' : '요약 펼치기'}
-                  </div>
-                </button>
-                {showRecipientSummary && (
-                  <div className="mt-4 grid gap-3 xl:grid-cols-2">
-                    {selectedStep.dists.map((dist, distIndex) => {
-                      const relatedStep = stepMap.get(dist.h?.personId) || stepMap.get(dist.h?.id) || null;
-                      return (
-                        <RecipientCard
-                          key={`${getStepKey(selectedStep)}-${dist.h?.personId || dist.h?.id || distIndex}`}
-                          dist={dist}
-                          step={selectedStep}
-                          relatedStep={relatedStep}
-                          onNavigate={handleNavigate}
-                          onOpenEvent={setSelectedStepKey}
-                        />
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
             </div>
           </section>
         </div>
