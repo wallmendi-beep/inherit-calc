@@ -1,7 +1,8 @@
 ﻿import { math, getLawEra, isBefore } from './utils.js';
 import { auditInheritanceResult } from './inheritanceAudit.js';
 
-export const calculateInheritance = (tree) => {
+export const calculateInheritance = (tree, _propertyValue, options = {}) => {
+  const includeCalcSteps = options.includeCalcSteps !== false;
   let results = [];
   let steps = [];
   let warnings = [];
@@ -363,7 +364,8 @@ export const calculateInheritance = (tree) => {
     if (
       hojuContext.nodeAllowsHoju &&
       (law === '1960' || law === '1979') &&
-      !hojuContext.primaryHojuSuccessor
+      !hojuContext.primaryHojuSuccessor &&
+      node.exclusionOption !== 'blocked_husband_substitution'
     ) {
       const warningKey = node.id || getPersonKey(node);
       if (warningKey && !hojuSelectionWarned.has(warningKey)) {
@@ -487,20 +489,20 @@ export const calculateInheritance = (tree) => {
     });
 
     if (total > 0) {
-      const step = { dec: node, inN, inD, dists: [], lawEra: law, parentDecName };
+      const step = includeCalcSteps ? { dec: node, inN, inD, dists: [], lawEra: law, parentDecName } : null;
       const childrenToTraverse = [];
 
       targetHeirs.forEach(h => {
         if (h.r === 0 || h.r === undefined) { 
-          step.dists.push({ h, n: 0, d: 1, sn: 0, sd: 1, ex: h.ex, mod: h.modifierReason }); 
+          if (step) step.dists.push({ h, n: 0, d: 1, sn: 0, sd: 1, ex: h.ex, mod: h.modifierReason }); 
         } else {
           const [sn, sd] = math.simplify(h.r * 100, total * 100);
           const [nn, nd] = math.multiply(inN, inD, sn, sd);
-          step.dists.push({ h, n: nn, d: nd, sn, sd, mod: h.modifierReason });
+          if (step) step.dists.push({ h, n: nn, d: nd, sn, sd, mod: h.modifierReason });
           childrenToTraverse.push({ h, nn, nd });
         }
       });
-      steps.push(step);
+      if (step) steps.push(step);
       childrenToTraverse.forEach(child => { 
         traverse(child.h, child.nn, child.nd, distributionDate, currentVisited, node.name || '피상속인'); 
       });
@@ -665,7 +667,7 @@ export const calculateInheritance = (tree) => {
     status,
     finalShares,
     transitShares,
-    calcSteps: steps,
+    calcSteps: includeCalcSteps ? steps : [],
     issues: integrity.issues,
     blockingIssues,
     repairHints,

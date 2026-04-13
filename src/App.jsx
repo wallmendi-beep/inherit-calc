@@ -36,6 +36,28 @@ import { SortableContext, verticalListSortingStrategy, sortableKeyboardCoordinat
 import { QRCodeSVG } from 'qrcode.react'; // ?뮕 v3.0 ?ㅽ봽?쇱씤 QR ?앹꽦湲?
 
 function App() {
+  const HISTORY_LIMIT = 10;
+  const CHANGELOG_LIMIT = 300;
+  const CHANGELOG_STORAGE_KEY = 'inheritance-calc-action-log-v1';
+  const cloneDeep = (value) => {
+    if (typeof globalThis.structuredClone === 'function') {
+      return globalThis.structuredClone(value);
+    }
+    return JSON.parse(JSON.stringify(value));
+  };
+
+  const buildImportIssueSignature = (issues = []) =>
+    issues
+      .map((issue) => [
+        issue.code || '',
+        issue.personId || '',
+        issue.nodeId || '',
+        issue.targetTabId || '',
+        issue.message || '',
+      ].join('|'))
+      .sort()
+      .join('||');
+
   const [activeTab, setActiveTab] = useState('input'); 
   const [isResetModalOpen, setIsResetModalOpen] = useState(false); 
   const [syncRequest, setSyncRequest] = useState(null);
@@ -53,6 +75,20 @@ function App() {
   const [contributions, setContributions] = useState({});
   const [isAmountActive, setIsAmountActive] = useState(false);
   const [importIssues, setImportIssues] = useState([]);
+  const [changeLog, setChangeLog] = useState([]);
+
+  const appendChangeLog = (entry) => {
+    setChangeLog((prev) => {
+      const next = [
+        ...prev,
+        {
+          at: new Date().toISOString(),
+          ...entry,
+        },
+      ];
+      return next.length > CHANGELOG_LIMIT ? next.slice(next.length - CHANGELOG_LIMIT) : next;
+    });
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -69,11 +105,11 @@ function App() {
   const setVault = (action) => {
     setVaultState(prev => {
       const currentVault = prev.history[prev.currentIndex];
-      const newVault = typeof action === 'function' ? action(JSON.parse(JSON.stringify(currentVault))) : action;
-      const parsedVault = JSON.parse(JSON.stringify(newVault)); 
+      const newVault = typeof action === 'function' ? action(cloneDeep(currentVault)) : action;
+      const parsedVault = cloneDeep(newVault); 
       const newHistory = prev.history.slice(0, prev.currentIndex + 1);
       newHistory.push(parsedVault);
-      if (newHistory.length > 50) newHistory.shift();
+      if (newHistory.length > HISTORY_LIMIT) newHistory.shift();
       return { history: newHistory, currentIndex: newHistory.length - 1 };
     });
   };
@@ -86,7 +122,7 @@ function App() {
       const newVault = migrateToVault(newTree); 
       const newHistory = prev.history.slice(0, prev.currentIndex + 1);
       newHistory.push(newVault);
-      if (newHistory.length > 50) newHistory.shift();
+      if (newHistory.length > HISTORY_LIMIT) newHistory.shift();
       return { history: newHistory, currentIndex: newHistory.length - 1 };
     });
   };
@@ -94,14 +130,26 @@ function App() {
   const tree = useMemo(() => buildTreeFromVault(rawVault) || getInitialTree(), [rawVault]);
 
   useEffect(() => {
-    if (importIssues.length === 0) return;
-    const refreshedIssues = collectImportValidationIssues(tree);
-    const prevJson = JSON.stringify(importIssues);
-    const nextJson = JSON.stringify(refreshedIssues);
-    if (prevJson !== nextJson) {
-      setImportIssues(refreshedIssues);
-    }
-  }, [tree, importIssues]);
+    // [v4.47 안정화] 입력 중 실시간 import 재검사는 메모리/CPU 부담이 커서 중단한다.
+    // importIssues는 파일/AI 불러오기 시점에 생성하고, 이후에는 명시적 재불러오기 전까지 유지한다.
+  }, [tree, importIssues, activeTab]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem(CHANGELOG_STORAGE_KEY, JSON.stringify({
+          updatedAt: new Date().toISOString(),
+          caseNo: tree.caseNo || '',
+          decedentName: tree.name || '',
+          changeLog,
+        }));
+      } catch (error) {
+        // localStorage quota can fail silently; keep app responsive.
+      }
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [changeLog, tree.caseNo, tree.name]);
 
   const deceasedTabs = useMemo(() => {
     const tabMap = new Map();
@@ -116,11 +164,12 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
       visitedNodes.add(node.id);
 
       const isTarget = node.isDeceased || (node.isExcluded && (node.exclusionOption === 'lost' || node.exclusionOption === 'disqualified'));
-      const isSpouseOfRoot = parentNode.id === 'root' && (node.relation === 'wife' || node.relation === 'husband' || node.relation === 'spouse');
-      const isDisqualifiedSpouse = isSpouseOfRoot && node.deathDate && tree.deathDate && isBefore(node.deathDate, tree.deathDate);
+      const isSpouseNode = node.relation === 'wife' || node.relation === 'husband' || node.relation === 'spouse';
+      const parentDeathDate = parentNode?.deathDate || tree.deathDate;
+      const isPredeceasedSpouse = isSpouseNode && node.deathDate && parentDeathDate && isBefore(node.deathDate, parentDeathDate);
       let currentBranchRootId = branchRootId;
       const pId = node.personId;
-      if (isTarget && !isDisqualifiedSpouse) {
+      if (isTarget && !isPredeceasedSpouse) {
         if (!registeredPersonIds.has(pId)) {
           tabMap.set(pId, { 
             id: pId, 
@@ -235,6 +284,7 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
 
   const handleQuickSubmit = (parentId, parentNode, value) => {
     if (!value.trim()) return;
+    appendChangeLog({ type: 'appendQuickHeirs', parentId, raw: value });
     setTree(prev => appendQuickHeirs(prev, parentId, value));
   };
 
@@ -339,6 +389,7 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
 
   const handlePersonAction = (action) => {
     if (!action || typeof action !== 'object') return;
+    appendChangeLog({ type: action.type || 'unknown', nodeId: action.nodeId || '', parentNodeId: action.parentNodeId || '' });
 
     setTree((prev) => {
       switch (action.type) {
@@ -424,6 +475,7 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
   const handleSyncConfirm = (shouldSync) => { if (!syncRequest) return; applyUpdate(syncRequest.id, syncRequest.field, syncRequest.value, shouldSync, syncRequest.name); setSyncRequest(null); };
 
   const handleRootUpdate = (field, value) => {
+    appendChangeLog({ type: 'updateRootField', field });
     setVault(prev => {
       const rootId = prev.meta.rootPersonId;
       if (['caseNo', 'shareN', 'shareD'].includes(field)) { if (field === 'caseNo') prev.meta.caseNo = value; if (field === 'shareN') prev.meta.targetShareN = value; if (field === 'shareD') prev.meta.targetShareD = value; }
@@ -433,6 +485,7 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
   };
 
   const addHeir = (parentId) => {
+    appendChangeLog({ type: 'addHeir', parentId });
     let parentPersonId = parentId; const findPId = (n) => { if (n.id === parentId) parentPersonId = n.personId; if (n.heirs) n.heirs.forEach(findPId); }; findPId(tree);
     setVault(prev => {
       const newPersonId = `p_${Math.random().toString(36).substr(2, 9)}`;
@@ -445,6 +498,7 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
   };
 
   const removeHeir = (id) => {
+    appendChangeLog({ type: 'removeHeir', nodeId: id });
     let targetPersonId = id; let parentPersonId = null;
     const findNode = (n, pId) => { if (n.id === id) { targetPersonId = n.personId; parentPersonId = pId; return true; } return (n.heirs || []).some(child => findNode(child, n.personId)); }; findNode(tree, null);
     if (!parentPersonId) return;
@@ -453,6 +507,7 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
 
   const appendResolvedHeirs = (parentId, heirsToAdd = []) => {
     if (!Array.isArray(heirsToAdd) || heirsToAdd.length === 0) return;
+    appendChangeLog({ type: 'appendResolvedHeirs', parentId, count: heirsToAdd.length });
 
     let parentPersonId = parentId;
     const findPId = (n) => {
@@ -466,7 +521,10 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
     findPId(tree);
 
     setVault(prev => {
-      const cloneHeirSubtreeIntoVault = (parentVaultPersonId, item) => {
+      const ensurePersonExists = (item) => {
+        const existingPersonId = item.personId && prev.persons[item.personId] ? item.personId : null;
+        if (existingPersonId) return existingPersonId;
+
         const newPersonId = `p_${Math.random().toString(36).substr(2, 9)}`;
         prev.persons[newPersonId] = {
           id: newPersonId,
@@ -479,25 +537,37 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
           restoreDate: item.restoreDate || '',
           gender: item.gender || '',
         };
+        return newPersonId;
+      };
 
+      const ensureLink = (parentVaultPersonId, item) => {
+        const targetId = ensurePersonExists(item);
         if (!prev.relationships[parentVaultPersonId]) prev.relationships[parentVaultPersonId] = [];
-        prev.relationships[parentVaultPersonId].push({
-          targetId: newPersonId,
-          relation: item.relation || 'son',
-          isExcluded: !!item.isExcluded,
-          exclusionOption: item.exclusionOption || '',
-          isHoju: !!item.isHoju,
-          isPrimaryHojuSuccessor: !!item.isPrimaryHojuSuccessor,
-          isSameRegister: item.isSameRegister !== false,
-        });
 
-        (item.heirs || []).forEach((child) => cloneHeirSubtreeIntoVault(newPersonId, child));
+        const alreadyLinked = prev.relationships[parentVaultPersonId].some((link) => link.targetId === targetId);
+        if (!alreadyLinked) {
+          prev.relationships[parentVaultPersonId].push({
+            targetId,
+            relation: item.relation || 'son',
+            isExcluded: !!item.isExcluded,
+            exclusionOption: item.exclusionOption || '',
+            isHoju: !!item.isHoju,
+            isPrimaryHojuSuccessor: !!item.isPrimaryHojuSuccessor,
+            isSameRegister: item.isSameRegister !== false,
+          });
+        }
+
+        // 기존 인물을 재사용하는 경우에는 이미 그 personId 아래 관계 그래프가 존재하므로
+        // 하위 서브트리를 다시 복제하지 않는다. 이게 메모리 폭증의 주 원인이었다.
+        if (!(item.personId && prev.persons[item.personId])) {
+          (item.heirs || []).forEach((child) => ensureLink(targetId, child));
+        }
       };
 
       if (!prev.relationships[parentPersonId]) prev.relationships[parentPersonId] = [];
 
       heirsToAdd.forEach((item) => {
-        cloneHeirSubtreeIntoVault(parentPersonId, item);
+        ensureLink(parentPersonId, item);
       });
 
       if (parentPersonId !== prev.meta.rootPersonId) {
@@ -515,6 +585,7 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
   };
 
   const removeAllHeirs = (parentId) => {
+    appendChangeLog({ type: 'removeAllHeirs', parentId });
     let parentPersonId = parentId;
     const findPId = (n) => {
       if (!n) return;
@@ -604,16 +675,20 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
       return clone;
     };
     const calcTree = preprocessTree(tree, tree.deathDate, null);
-    const result = calculateInheritance(calcTree, propertyValue);
-    const compareTree = stripHojuBonusInputs(calcTree);
-    const compareResult = calculateInheritance(compareTree, propertyValue);
+    const shouldBuildCalcSteps = ['calc', 'result', 'summary', 'amount'].includes(activeTab);
+    const result = calculateInheritance(calcTree, propertyValue, { includeCalcSteps: shouldBuildCalcSteps });
+    const shouldBuildCompare = ['calc', 'result', 'summary'].includes(activeTab);
+    const compareTree = shouldBuildCompare ? stripHojuBonusInputs(calcTree) : null;
+    const compareResult = shouldBuildCompare
+      ? calculateInheritance(compareTree, propertyValue, { includeCalcSteps: false })
+      : null;
     if (!result.warnings) result.warnings = [];
     return {
       ...result,
-      compareFinalShares: compareResult.finalShares || {},
-      hojuBonusDiffs: buildHojuBonusDiffs(result.finalShares || {}, compareResult.finalShares || {}),
+      compareFinalShares: compareResult?.finalShares || {},
+      hojuBonusDiffs: shouldBuildCompare ? buildHojuBonusDiffs(result.finalShares || {}, compareResult?.finalShares || {}) : [],
     };
-  }, [tree, propertyValue]);
+  }, [tree, propertyValue, activeTab]);
 
   const allFinalHeirs = useMemo(() => {
     if (!finalShares) return []; const list = []; if (finalShares.direct) list.push(...finalShares.direct);
@@ -648,7 +723,15 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
     if (matchIds.length > 0 && activeTab === 'summary') { const targetId = matchIds[currentMatchIdx]; const element = document.getElementById(targetId); if (element) element.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
   }, [currentMatchIdx, matchIds, activeTab]);
 
-  const guideInfo = useSmartGuide(tree, finalShares, activeTab, warnings, transitShares, importIssues);
+  const shouldComputeSmartGuide = showNavigator || activeTab === 'input';
+  const guideInfo = useSmartGuide(
+    shouldComputeSmartGuide ? tree : null,
+    shouldComputeSmartGuide ? finalShares : {},
+    activeTab,
+    shouldComputeSmartGuide ? warnings : [],
+    shouldComputeSmartGuide ? transitShares : [],
+    shouldComputeSmartGuide ? importIssues : [],
+  );
   const {
     showGlobalWarning,
     showAutoCalcNotice,
@@ -715,7 +798,7 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
   useEffect(() => { const tabIds = deceasedTabs.map(t => t.id); if (!tabIds.includes(activeDeceasedTab)) { const fallback = (activeTab === 'input' && deceasedTabs.length > 0) ? deceasedTabs[0].id : 'root'; setActiveDeceasedTab(fallback); } }, [deceasedTabs, activeTab]);
 
   const activeTabObj = useMemo(() => deceasedTabs.find(t => t.id === activeDeceasedTab) || null, [deceasedTabs, activeDeceasedTab]);
-  const handleDragEnd = (event) => { const { active, over } = event; if (over && active.id !== over.id) { setTree(prev => { const newTree = JSON.parse(JSON.stringify(prev)); const reorderList = (list) => { if (!list) return false; const activeIdx = list.findIndex(item => item.id === active.id); const overIdx = list.findIndex(item => item.id === over.id); if (activeIdx !== -1 && overIdx !== -1) { const [movedItem] = list.splice(activeIdx, 1); list.splice(overIdx, 0, movedItem); return true; } for (let item of list) { if (item.heirs && item.heirs.length > 0 && reorderList(item.heirs)) return true; } return false; }; reorderList(newTree.heirs); return newTree; }); } };
+  const handleDragEnd = (event) => { const { active, over } = event; if (over && active.id !== over.id) { setTree(prev => { const newTree = cloneDeep(prev); const reorderList = (list) => { if (!list) return false; const activeIdx = list.findIndex(item => item.id === active.id); const overIdx = list.findIndex(item => item.id === over.id); if (activeIdx !== -1 && overIdx !== -1) { const [movedItem] = list.splice(activeIdx, 1); list.splice(overIdx, 0, movedItem); return true; } for (let item of list) { if (item.heirs && item.heirs.length > 0 && reorderList(item.heirs)) return true; } return false; }; reorderList(newTree.heirs); return newTree; }); } };
 
   const handlePrint = () => printCurrentTab({ activeTab, tree });
   const saveFile = () => saveFactTreeToFile(tree);

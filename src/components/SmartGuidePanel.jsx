@@ -35,6 +35,9 @@ export default function SmartGuidePanel({
   showAutoCalcNotice,
   autoCalculatedNames,
 }) {
+  const resolveGuideTarget = (item) =>
+    item?.targetNodeId || item?.targetTabId || item?.personId || item?.id || null;
+
   const checkedSet = checkedGuideKeys || new Set();
   const visibleAuditActionItems = (auditActionItems || []).filter((item) =>
     (item.displayTargets || []).includes('guide'),
@@ -129,7 +132,7 @@ export default function SmartGuidePanel({
               {mandatoryGuides.map((guide, index) => (
                 <li key={`mandatory-${index}`}>
                   <button
-                    onClick={() => handleNavigate(guide.targetTabId || guide.id)}
+                    onClick={() => handleNavigate(resolveGuideTarget(guide))}
                     className="w-full rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-left shadow-sm transition-all hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800/50"
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -156,7 +159,7 @@ export default function SmartGuidePanel({
               {recommendedGuides.map((guide, index) => (
                 <li key={`recommended-${index}`} className="group relative">
                   <button
-                    onClick={() => handleNavigate(guide.targetTabId || guide.id)}
+                    onClick={() => handleNavigate(resolveGuideTarget(guide))}
                     className="w-full rounded-lg border border-neutral-200 bg-neutral-50 p-3 pr-10 text-left shadow-sm transition-all hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800/40"
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -239,7 +242,7 @@ export default function SmartGuidePanel({
                 {confirmedGuides.map((guide, index) => (
                   <li key={`confirmed-${guide.uniqueKey || index}`}>
                     <button
-                      onClick={() => handleNavigate(guide.targetTabId || guide.id)}
+                      onClick={() => handleNavigate(resolveGuideTarget(guide))}
                       className="w-full rounded-lg border border-neutral-200 bg-neutral-50/60 p-3 text-left transition-all hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800/30"
                     >
                       <div className="flex items-start justify-between gap-3">

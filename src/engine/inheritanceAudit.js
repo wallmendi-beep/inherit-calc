@@ -117,7 +117,7 @@ export const auditInheritanceResult = ({
       code: 'deceased-in-final-shares',
       severity: 'error',
       blocking: true,
-      text: '?щ쭩??吏遺꾩씠 理쒖쥌 洹??寃곌낵???⑥븘 ?덉뒿?덈떎. ?ъ긽???먮뒗 ??듭긽???꾨떖???앷퉴吏 泥섎━?섏? ?딆븯?????덉뒿?덈떎.',
+      text: '사망자의 지분이 최종 결과에 남아 있습니다. 해당 단계의 후속 상속인 입력 또는 자동 분배 검토가 아직 끝나지 않았습니다.',
       displayTargets: ['guide', 'calc', 'result', 'summary'],
     });
   }
@@ -134,7 +134,7 @@ export const auditInheritanceResult = ({
       shareN: share.n,
       shareD: share.d,
       targetTabId: share.personId || share.id || null,
-      text: `[${share.name || '?대쫫 誘몄긽'}]??吏遺?${share.d}遺꾩쓽 ${share.n}???ㅼ쓬 ?곸냽?몄뿉寃??꾩쭅 ?꾨떖?섏? ?딆븯?듬땲??`,
+      text: `[${share.name || '이름 미상'}]의 지분 ${share.d}분의 ${share.n}이(가) 다음 상속인에게 아직 전달되지 않았습니다.`,
       displayTargets: ['guide', 'calc', 'result', 'summary'],
     });
   });
@@ -145,7 +145,7 @@ export const auditInheritanceResult = ({
       code: 'unresolved-transit-shares-summary',
       severity: 'error',
       blocking: true,
-      text: `?щ쭩?먯쓽 以묎컙 洹??吏遺꾩씠 ?⑥븘 ?덉뒿?덈떎: ${names.join(', ') || '?대쫫 誘몄긽'}`,
+      text: `중간 단계 지분이 아직 남아 있습니다: ${names.join(', ') || '이름 미상'}`,
       displayTargets: ['guide', 'calc', 'result', 'summary'],
     });
   }
@@ -155,7 +155,7 @@ export const auditInheritanceResult = ({
       code: 'final-total-mismatch',
       severity: 'error',
       blocking: true,
-      text: `理쒖쥌 洹??吏遺??⑷퀎媛 ${expectedD}遺꾩쓽 ${expectedN}???꾨땲??${totalD}遺꾩쓽 ${totalN}?낅땲??`,
+      text: `최종 분배 지분의 합계가 ${expectedD}분의 ${expectedN}이 아니라 ${totalD}분의 ${totalN}입니다.`,
       displayTargets: ['guide', 'calc', 'result', 'summary'],
     });
   }
@@ -172,7 +172,7 @@ export const auditInheritanceResult = ({
       code: 'engine-warnings-present',
       severity: 'warning',
       blocking: false,
-      text: `怨꾩궛 ?붿쭊???뺤씤???꾩슂??寃쎄퀬 ${warnings.length}嫄댁쓣 媛먯??덉뒿?덈떎.`,
+      text: `계산 엔진에서 확인이 필요한 경고 ${warnings.length}건이 감지되었습니다.`,
       displayTargets: ['guide', 'input'],
     });
   }
@@ -184,22 +184,22 @@ export const auditInheritanceResult = ({
     // [v4.1] 臾몄젣 肄붾뱶蹂?留욎땄???닿껐 ?뚰듃 ?쒓났 (?⑥닚 ?꾩긽 諛섎났 諛⑹?)
     switch (issue.code) {
       case 'final-total-mismatch':
-        hintText = '?섏쐞 怨꾨낫 以?吏遺?諛곕텇???꾨씫??怨녹씠 ?덈뒗吏, ?뱀? ?곸냽?ш린/寃곌꺽?먯쓽 泥섎━媛 踰뺣졊??留욊쾶 ?꾧껐?섏뿀?붿? ?뺤씤??二쇱꽭??';
+        hintText = '하위 계보 중 지분 분배가 끝나지 않은 곳이 있는지, 또는 상속포기·결격·상실선고 처리가 올바른지 확인해 주세요.';
         break;
       case 'deceased-in-final-shares':
-        hintText = '?щ쭩?먯쓽 吏遺꾩씠 理쒖쥌 寃곌낵???⑥븘 ?덉뒿?덈떎. ?대떦 ?щ쭩?먯쓽 ?섏쐞 ?곸냽???낅젰 ??쑝濡??대룞?섏뿬 吏遺??꾨떖??留덈Т由ы빐 二쇱꽭??';
+        hintText = '사망자의 지분이 최종 결과에 남아 있습니다. 해당 인물 탭으로 이동해 후속 상속인 입력 또는 자동 분배 결과를 확인해 주세요.';
         break;
       case 'unresolved-transit-share':
-        hintText = `[${issue.name || '?대쫫 誘몄긽'}]???섏쐞 怨꾨낫瑜??앹꽦?섍굅???щ텇諛?泥섎━瑜??듯빐 ?붿뿬 吏遺?${issue.shareD}遺꾩쓽 ${issue.shareN}??諛곕텇??二쇱꽭??`;
+        hintText = `[${issue.name || '이름 미상'}]의 하위 상속인을 입력하거나 자동 분배 결과를 확인해 지분 ${issue.shareD}분의 ${issue.shareN}을 마무리해 주세요.`;
         break;
       case 'hierarchy-violation':
-        hintText = '?곸쐞/?섏쐞 怨꾨낫??遺紐??먯떇 愿怨??ㅼ젙??踰뺤쟻?쇰줈 ??뱁븳吏 ?뺤씤?섍퀬 ?몃Ъ???щ같移섑빐 二쇱꽭??';
+        hintText = '상위/하위 계보의 부모-자식 관계 설정이 법적으로 맞는지 확인하고, 잘못 배치된 사람은 위치를 바로잡아 주세요.';
         break;
       case 'inheritance-cycle':
         hintText = `[${issue.name || '해당 인물'}] 탭에서 본인이나 조상 계통이 다시 하위 상속인으로 연결된 부분이 있는지 확인해 주세요. 같은 사람이 상하위 단계에 중복 연결되면 지분 전이가 중단됩니다.`;
         break;
       default:
-        hintText = issue.personId ? `[${issue.name || '?대쫫 誘몄긽'}]???낅젰 ?곹깭瑜??뺤씤??二쇱꽭??` : issue.text;
+        hintText = issue.personId ? `[${issue.name || '이름 미상'}]의 입력 상태를 확인해 주세요.` : issue.text;
     }
 
     return {

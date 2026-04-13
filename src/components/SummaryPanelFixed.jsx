@@ -49,6 +49,48 @@ export default function SummaryPanelFixed({
     return missing;
   }, [tree]);
 
+  const missingHeirTargets = React.useMemo(() => {
+    const map = new Map();
+    const register = (name, target) => {
+      const safeName = name || '이름 미상';
+      if (!map.has(safeName)) {
+        map.set(safeName, { name: safeName, target: target || null });
+      } else if (!map.get(safeName).target && target) {
+        map.set(safeName, { name: safeName, target });
+      }
+    };
+
+    const collectFromTree = (node, inheritedDate = tree?.deathDate || '') => {
+      if (!node) return;
+      const isSpouse = ['wife', 'husband', 'spouse'].includes(node.relation);
+      const isPredeceased = !!(node.deathDate && inheritedDate && isBefore(node.deathDate, inheritedDate));
+      if (
+        node.id !== 'root' &&
+        node.isDeceased &&
+        node.isExcluded !== true &&
+        (!node.heirs || node.heirs.length === 0) &&
+        !(isSpouse && isPredeceased)
+      ) {
+        register(node.name, node.personId || node.id);
+      }
+      (node.heirs || []).forEach((child) => collectFromTree(child, node.deathDate || inheritedDate));
+    };
+
+    collectFromTree(tree, tree?.deathDate || '');
+
+    (issues || []).forEach((issue) => {
+      if (
+        issue?.code === 'missing-successors' ||
+        issue?.code === 'import-missing-descendants' ||
+        issue?.code === 'missing-descendants'
+      ) {
+        register(issue.personName || issue.name, issue.targetTabId || issue.personId || issue.nodeId || issue.id);
+      }
+    });
+
+    return Array.from(map.values());
+  }, [tree, issues]);
+
   const shareByPersonId = new Map();
   (finalShares.direct || []).forEach((share) => shareByPersonId.set(share.personId, share));
   (finalShares.subGroups || []).forEach((group) => group.shares.forEach((share) => shareByPersonId.set(share.personId, share)));
@@ -222,8 +264,22 @@ export default function SummaryPanelFixed({
       {hasMissingHeir && (
         <div className="mb-4 flex items-center rounded-lg border border-[#e9e9e7] border-l-4 border-l-neutral-300 bg-[#fbfbfb] p-3 shadow-sm transition-all duration-300 dark:border-neutral-700 dark:bg-neutral-800/40">
           <span className="text-[13px] font-bold text-[#37352f] dark:text-neutral-200">
-            사망자 중 하위 상속인 입력이 누락된 곳이 있어, 이 요약표는 계산 내역상 미완성 상태입니다.
+            직접 입력되지 않은 후속 상속인이 있는 상태입니다. 일부는 차순위 자동 분배로 처리될 수 있으므로 검토가 필요합니다.
           </span>
+          {missingHeirTargets.length > 0 && (
+            <div className="ml-3 flex flex-wrap gap-2">
+              {missingHeirTargets.map((item) => (
+                <button
+                  key={`missing-heir-${item.name}`}
+                  type="button"
+                  onClick={() => item.target && handleNavigate?.(item.target)}
+                  className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-bold text-[#504f4c] transition-colors hover:bg-neutral-100 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+                >
+                  {item.name}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

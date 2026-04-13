@@ -53,7 +53,14 @@ export default function HeirRow({
   const isAnyPredeceased = isPreDeceasedCondition;
   const isDaeseupContext = !!(rootDeathDate && inheritedDate && inheritedDate !== rootDeathDate && isBefore(inheritedDate, rootDeathDate));
   const isDaeseupSpouse = isSpouseType && isDaeseupContext;
-  const blocksHusbandSubstitution = node.relation === 'husband' && isDaeseupContext && lawEra !== '1991';
+  const isLegacyHusbandSubstitutionContext =
+    node.relation === 'husband' &&
+    lawEra !== '1991' &&
+    !!parentNode &&
+    parentNode.id !== 'root';
+  const blocksHusbandSubstitution =
+    (node.relation === 'husband' && isDaeseupContext && lawEra !== '1991') ||
+    isLegacyHusbandSubstitutionContext;
   const hasEnteredHeirs = !!(node.heirs && node.heirs.length > 0);
   const mustStayExcludedEvenWithHeirs = (
     isPredeceasedSpouse
@@ -281,6 +288,10 @@ export default function HeirRow({
                   <span className="text-[10.5px] font-normal text-neutral-500 dark:text-neutral-400">
                     {(node.heirs || []).length > 0 ? '대습상속 진행' : '상속권 없음 (선사망)'}
                   </span>
+                </div>
+              ) : (blocksHusbandSubstitution) ? (
+                <div className="flex h-[26px] w-[120px] shrink-0 items-center justify-center rounded-full border border-neutral-200 bg-neutral-100 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
+                  <span className="text-[11px] font-normal text-neutral-500 dark:text-neutral-400">사위(대습불가)</span>
                 </div>
               ) : (isToggleOff && isSpouseType && isPreDeceasedCondition && !isPredeceasedActive) ? (
                 <div className="flex h-[26px] w-[150px] shrink-0 items-center justify-center rounded-full border border-neutral-200 bg-neutral-100 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">

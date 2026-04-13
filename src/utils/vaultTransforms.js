@@ -141,9 +141,20 @@ export const buildTreeFromVault = (vault) => {
           childNode.exclusionOption = 'predeceased';
         }
       } else if (childNode.isDeceased && childNode.deathDate && effectiveDate && !isPreDeceased) {
-        // 후사망 상태는 과거 파생 predeceased 값을 남기지 않고 기본 ON으로 복원한다.
-        childNode.isExcluded = false;
-        childNode.exclusionOption = '';
+        const shouldBlockLegacyHusbandSubstitution =
+          childNode.relation === 'husband' &&
+          personId !== rootId &&
+          effectiveDate &&
+          isBefore(effectiveDate, '1991-01-01');
+
+        if (shouldBlockLegacyHusbandSubstitution) {
+          childNode.isExcluded = true;
+          childNode.exclusionOption = 'blocked_husband_substitution';
+        } else {
+          // 후사망 상태는 과거 파생 predeceased 값을 남기지 않고 기본 ON으로 복원한다.
+          childNode.isExcluded = false;
+          childNode.exclusionOption = '';
+        }
       }
 
       if (isDaughter && childNode.marriageDate && effectiveDate && isBefore(childNode.marriageDate, effectiveDate)) {

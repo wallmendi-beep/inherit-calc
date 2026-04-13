@@ -98,9 +98,17 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
       const parentTabId = parentNode ? parentNode.personId : 'root';
 
       const effectiveDate = node.deathDate || tree.deathDate;
+      const isBlockedHusbandSubstitution = node.exclusionOption === 'blocked_husband_substitution';
+      const isHardExcluded = node.isExcluded && [
+        'lost',
+        'disqualified',
+        'remarried',
+        'renounce',
+        'blocked_husband_substitution',
+      ].includes(node.exclusionOption || '');
 
       // ?슚 ?댁븘?덈뒗 ?щ엺? 蹂몄씤???섏쐞 ??씠 ?앹꽦?섏? ?딆쑝誘濡??섏쐞 媛怨꾨룄 寃?щ? ?앸왂??
-      if (node.isDeceased || node.id === 'root') {
+      if ((node.isDeceased || node.id === 'root') && !isHardExcluded) {
           const activeHeirs = (node.heirs || []).filter(h => !h.isExcluded);
           if (node.id !== 'root' && node.isDeceased && node.deathDate && activeHeirs.length === 0) {
             const compareDate = parentDate || tree.deathDate;
@@ -108,7 +116,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
             const isChild = ['son', 'daughter'].includes(node.relation);
             const isSpouse = ['wife', 'husband', 'spouse'].includes(node.relation);
 
-            let guideText = `[${node.name || '이름 미상'}]의 하위상속인이 없습니다. 확인해 주세요.`;
+            let guideText = `[${node.name || '이름 미상'}]의 직접 입력된 후속 상속인이 없습니다.`;
 
             if (isPredeceased) {
               if (isChild) {
@@ -119,15 +127,15 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
             } else {
               const contextName = parentNode?.name || tree.name || '현재 계보';
               if (isSpouse) {
-                guideText = `[${node.name}]의 하위상속인이 없습니다. 확인해 주세요. 미입력 시 [${contextName}] 계보 기준으로 자동 분배됩니다.`;
+                guideText = `[${node.name}]의 직접 입력된 후속 상속인이 없습니다. 미입력 시 [${contextName}] 계보 기준으로 자동 분배됩니다.`;
               } else {
-                guideText = `[${node.name}]의 하위상속인이 없습니다. 확인해 주세요. 미입력 시 차순위 상속인에게 자동 분배됩니다.`;
+                guideText = `[${node.name}]의 직접 입력된 후속 상속인이 없습니다. 미입력 시 차순위 상속인에게 자동 분배됩니다.`;
               }
             }
 
             if (guideText) {
               uniqueGuidesMap.set(`missing-successors-${node.personId}`, {
-                id: node.id, uniqueKey: `missing-successors-${node.personId}`, targetTabId: node.personId, type: 'mandatory',
+                id: node.id, uniqueKey: `missing-successors-${node.personId}`, targetTabId: node.personId, type: 'mandatory', code: 'missing-successors',
                 text: guideText
               });
             }
@@ -135,7 +143,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
           if (node.id !== 'root' && node.isDeceased && !node.deathDate) {
               uniqueGuidesMap.set(`missing-death-date-${node.personId}`, {
                   id: node.id, uniqueKey: `missing-death-date-${node.personId}`, targetTabId: parentTabId, type: 'mandatory',
-                  text: `[${node.name || '?대쫫 誘몄긽'}]? ?щ쭩?먮줈 ?쒖떆?섏뼱 ?덉쑝???щ쭩?쇱씠 ?놁뒿?덈떎.`
+                  text: `[${node.name || '이름 미상'}]은(는) 사망자로 표시되어 있으나 사망일이 없습니다.`
               });
           }
           // 1. 諛곗슦??以묐났 寃??
@@ -148,28 +156,28 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
           if (spouses.length > 1) {
               uniqueGuidesMap.set(`multi-spouse-${node.personId}`, {
                   id: node.id, uniqueKey: `multi-spouse-${node.personId}`, targetTabId: node.personId, type: 'mandatory',
-                  text: `[${node.name || '?대쫫?놁쓬'}] ?좏슚 諛곗슦?먭? 以묐났 ?낅젰?섏뿀?듬땲?? ?ㅼ젣 ?곸냽諛쏆쓣 1紐??몄뿉???쒖쇅 泥섎━??二쇱꽭??`
+                  text: `[${node.name || '이름 없음'}]에게 유효 배우자가 중복 입력되어 있습니다. 실제 상속받을 1명 외에는 제외 처리해 주세요.`
               });
           }
 
           // 2. 援щ쾿 ?몄＜ 吏??寃??
           const hasHoju = (node.heirs || []).some(h => h.isHoju && !h.isExcluded);
-          const needsHoju = getLawEra(effectiveDate) !== '1991' && (node.id === 'root' || ['son', '?꾨뱾'].includes(node.relation));
+          const needsHoju = getLawEra(effectiveDate) !== '1991' && (node.id === 'root' || ['son', '아들'].includes(node.relation));
           if (needsHoju && !hasHoju && node.heirs && node.heirs.length > 0) {
               uniqueGuidesMap.set(`missing-hoju-${node.personId}`, {
                   id: node.id, uniqueKey: `missing-hoju-${node.personId}`, targetTabId: node.personId, type: 'mandatory',
-                  text: `[${node.name || '?대쫫?놁쓬'}] 援щ쾿(${effectiveDate} ?щ쭩) ?곸슜 ??곸엯?덈떎. ?섏쐞 ?곸냽??以??몄＜?곸냽?몄쓣 吏?뺥빐 二쇱꽭??`
+                  text: `[${node.name || '이름 없음'}] 단계는 구법(${effectiveDate}년 사망) 적용 대상입니다. 1차 상속인 중 호주상속인을 확인해 주세요.`
               });
           }
 
           // 3. ?곗뇙 ?몄＜ ?밴퀎 ??(?λ궓/?μ넀)
-          if (getLawEra(effectiveDate) !== '1991' && node.isHoju && node.isDeceased) {
+          if (getLawEra(effectiveDate) !== '1991' && node.isHoju && node.isDeceased && !isBlockedHusbandSubstitution) {
               const hasHojuChild = node.heirs && node.heirs.some(h => h.isHoju);
               if (!hasHojuChild && node.heirs && node.heirs.length > 0) {
                   uniqueGuidesMap.set(`chained-hoju-${node.personId}`, {
                       id: node.id, uniqueKey: `chained-hoju-${node.personId}`, type: 'recommended',
                       targetTabId: node.personId,
-                      text: `[????? ?λ궓/?μ넀 ?곗뇙 ?몄＜ ?밴퀎 ?? ???щ엺 紐⑤몢 [?몄＜?곸냽] 耳??곹깭 ?좎?瑜?沅뚯옣?⑸땲??`,
+                      text: `[${node.name || '해당 인물'}] 단계는 대습 호주상속 검토 대상일 수 있습니다. 1차 상속인들의 호주상속/재산상속 토글을 확인해 주세요.`,
                       level, relation: node.relation
                   });
               }
@@ -181,7 +189,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
                   uniqueGuidesMap.set(`verify-marriage-${node.personId}`, {
                       id: node.id, uniqueKey: `verify-marriage-${node.personId}`, type: 'recommended',
                       targetTabId: parentTabId,
-                      text: `[${node.name || '?대쫫誘몄긽'}] 援щ쾿(1990???댁쟾) ?곸슜 ??곸엯?덈떎. 異쒓?(湲고샎) ?щ????곕씪 吏遺꾩씠 ?ш쾶 ?щ씪吏誘濡? 湲고샎??寃쎌슦 [?쇱씤?쇱옄]瑜??낅젰?섍굅??[?곸냽沅??ㅼ쐞移? ?놁쓽 [?숈씪媛??異쒓?)] ?ㅼ젙???뺤씤??二쇱꽭??`,
+                      text: `[${node.name || '이름 미상'}]은(는) 구법(1990년 이전) 적용 대상 딸입니다. 혼인 여부에 따라 지분이 달라지므로, 기혼이면 혼인일자를 입력하고 미혼 또는 복적 상태면 동일가적 여부를 확인해 주세요.`,
                       level, relation: node.relation
                   });
               }
@@ -230,6 +238,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings = [], trans
           uniqueKey: key,
           personId: issue.personId || '',
           targetTabId: issue.targetTabId || personKey,
+          targetNodeId: issue.nodeId || '',
           name: issue.personName || null,
           type: issue.severity === 'error' ? 'mandatory' : 'recommended',
           text: `${issue.message} 불러오기 직후 입력값을 확인하고 저장한 뒤 계속 진행해 주세요.`,
