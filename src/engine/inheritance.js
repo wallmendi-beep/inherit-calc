@@ -368,7 +368,7 @@ export const calculateInheritance = (tree) => {
           id: node.id || null,
           personId: getPersonKey(node) || null,
           targetTabId: node.id || null,
-          text: `[${node.name || '피상속인'}]은(는) 호주입니다. 1차 상속인 중 원호주상속인 1명을 지정하세요. 이미 사망한 사람도 선택할 수 있습니다.`,
+          text: `[${node.name || '피상속인'}]은(는) 호주입니다. 1차 상속인들의 호주 여부를 확인하세요.`,
         });
       }
     }

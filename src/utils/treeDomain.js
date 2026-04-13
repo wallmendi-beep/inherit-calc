@@ -100,7 +100,7 @@ const createNodeId = () => generateId('n');
 
 const shouldDefaultHojuOn = (relation, refDate, isRoot) => {
   if (isRoot) return false;
-  if (!['son', 'husband'].includes(relation)) return false;
+  if (relation !== 'husband') return false;
   if (!refDate) return true;
   const year = Number(String(refDate).slice(0, 4));
   return Number.isNaN(year) ? true : year < 1991;
@@ -131,9 +131,22 @@ export const normalizeImportedTree = (rawTree) => {
     const refDate = parentDate || deathDate;
     const relation = isRoot ? 'root' : normalizeRelation(base.relation);
     
-    const heirs = (Array.isArray(base.heirs) && !isDuplicate)
+    let heirs = (Array.isArray(base.heirs) && !isDuplicate)
       ? base.heirs.map((child) => sanitizeNode(child, deathDate || refDate, false))
       : [];
+
+    const hojuChildren = heirs.filter((child) => child?.isHoju);
+    if (hojuChildren.length > 1) {
+      let found = false;
+      heirs = heirs.map((child) => {
+        if (!child?.isHoju) return child;
+        if (!found) {
+          found = true;
+          return child;
+        }
+        return { ...child, isHoju: false };
+      });
+    }
 
     let exclusionOption = base.exclusionOption || '';
     let isExcluded = !!base.isExcluded;

@@ -32,7 +32,6 @@ export default function HeirRow({
   rootIsHoju,
   onTabClick,
   parentNode,
-  showPrimaryHojuSelector = false,
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: node.id });
 
@@ -121,7 +120,7 @@ export default function HeirRow({
   const isParentFemale = !isRootParent && ['wife', 'daughter', 'mother', 'sister'].includes(parentNode?.relation);
   const isParentMale = !isRootParent && ['husband', 'son', 'father', 'brother'].includes(parentNode?.relation);
   const isMaleNode = node.gender === 'male' || ['son', 'husband'].includes(node.relation);
-  const showHoju = isMaleNode && !!node.isDeceased && lawEra !== '1991' && rootIsHoju !== false && !isParentFemale;
+  const showHoju = isMaleNode && lawEra !== '1991' && rootIsHoju !== false && !isParentFemale;
   const showMarriedDaughter = node.relation === 'daughter' && lawEra !== '1991';
   const hasHistoryData = !!(node.divorceDate || node.remarriageDate || node.marriageDate || node.restoreDate);
 
@@ -271,27 +270,6 @@ export default function HeirRow({
             </div>
 
             <div className="ml-[10px] flex w-[180px] shrink-0 items-center gap-1.5">
-              {showPrimaryHojuSelector && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleUpdate({
-                      type: 'setPrimaryHojuSuccessor',
-                      parentNodeId: parentNode?.id,
-                      nodeId: node.id,
-                      isSelected: true,
-                    })
-                  }
-                  title="원호주상속인 지정"
-                  className={`flex h-[26px] w-[48px] shrink-0 items-center justify-center rounded-full border text-[10.5px] font-semibold shadow-sm transition-colors ${
-                    node.isPrimaryHojuSuccessor
-                      ? 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800/60 dark:bg-blue-900/30 dark:text-blue-300'
-                      : 'border-[#e9e9e7] bg-white text-[#787774] hover:border-blue-200 hover:bg-blue-50/50 hover:text-blue-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400'
-                  }`}
-                >
-                  원호
-                </button>
-              )}
               {(isEffectivePredeceased && isToggleOff && !isPredeceasedActive) ? (
                 <div className="flex h-[26px] w-[120px] shrink-0 items-center justify-center rounded-full border border-neutral-200 bg-neutral-100 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
                   <span className="text-[10.5px] font-normal text-neutral-500 dark:text-neutral-400">
@@ -331,7 +309,7 @@ export default function HeirRow({
                     if (blocksHusbandSubstitution) {
                       return (
                         <div className="flex shrink-0 items-center gap-1.5">
-                          <div className="flex h-[26px] w-[64px] shrink-0 items-center justify-center rounded-full border border-[#e9e9e7] bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
+                          <div className="flex h-[26px] w-[80px] shrink-0 items-center justify-center rounded-full border border-[#e9e9e7] bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
                             <span className="text-[11px] font-bold text-neutral-600 dark:text-neutral-300">{getRelStr(node.relation, inheritedDate || rootDeathDate)}</span>
                           </div>
                           <div className="flex h-[26px] shrink-0 items-center justify-center rounded-full border border-red-200 bg-red-50 px-2.5 shadow-sm dark:border-red-900/40 dark:bg-red-900/20">
@@ -343,7 +321,7 @@ export default function HeirRow({
 
                     return (
                       <div className="flex shrink-0 items-center gap-1.5">
-                        <div className="flex h-[26px] w-[64px] shrink-0 items-center justify-center rounded-full border border-[#e9e9e7] bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
+                        <div className="flex h-[26px] w-[80px] shrink-0 items-center justify-center rounded-full border border-[#e9e9e7] bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
                           <span className="text-[11px] font-bold text-neutral-600 dark:text-neutral-300">{getRelStr(node.relation, inheritedDate || rootDeathDate)}</span>
                         </div>
                         <MultiplierBadge multiplier={multiplier} />
@@ -358,17 +336,17 @@ export default function HeirRow({
                           <BadgeToggle
                             active={node.isHoju}
                             onToggle={(value) => handleUpdate({ type: 'setHojuStatus', nodeId: node.id, isHoju: value })}
-                            activeLabel="호주"
-                            inactiveLabel="일반"
+                            activeLabel="호주상속"
+                            inactiveLabel="재산상속"
                             hoverClassName="hover:bg-blue-50/50 hover:text-blue-600 hover:border-blue-200"
-                            className="w-[64px]"
+                            className="w-[80px]"
                           />
                           {node.isHoju && <MultiplierBadge multiplier="x 1.5" />}
                         </div>
                       )}
                       {showMarriedDaughter && (
                         <div className="flex items-center gap-1.5">
-                          <BadgeToggle active={node.isSameRegister !== false} onToggle={(value) => handleUpdate(node.id, 'isSameRegister', value ? true : false)} activeLabel="동일" inactiveLabel="출가" isInferred={node._isInferredRegister} inactiveClassName="border-neutral-400 bg-neutral-100 text-[#37352f]" hoverClassName="hover:bg-emerald-50/50 hover:text-emerald-600 hover:border-emerald-200" className="w-[64px]" />
+                          <BadgeToggle active={node.isSameRegister !== false} onToggle={(value) => handleUpdate(node.id, 'isSameRegister', value ? true : false)} activeLabel="동일가적" inactiveLabel="비동일가적" isInferred={node._isInferredRegister} inactiveClassName="border-neutral-400 bg-neutral-100 text-[#37352f]" hoverClassName="hover:bg-emerald-50/50 hover:text-emerald-600 hover:border-emerald-200" className="w-[80px]" />
                           {(() => {
                             let multiplier = '';
                             if (lawEra === '1960') multiplier = node.isSameRegister !== false ? 'x 1/2' : 'x 1/4';

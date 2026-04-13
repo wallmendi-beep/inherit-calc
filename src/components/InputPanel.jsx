@@ -15,6 +15,7 @@ export default function InputPanel({
   removeHeir,
   removeAllHeirs,
   addHeir,
+  appendResolvedHeirs,
   handleKeyDown,
   handleRootUpdate,
   handleDragEnd,
@@ -44,16 +45,83 @@ export default function InputPanel({
     !currentNode?.isHoju &&
     ['son', 'husband'].includes(currentNode?.relation) &&
     nodeHeirs.length > 0;
-  const showPrimaryHojuSelector = currentLawEra !== '1991' && currentNode?.isHoju === true;
-  const hasPrimaryHojuSuccessor =
-    showPrimaryHojuSelector &&
-    nodeHeirs.some((heir) => heir.isPrimaryHojuSuccessor || heir.isHoju);
   const requiresHojuReview =
     currentLawEra !== '1991' &&
     (isRootNode || ['son', 'husband'].includes(currentNode?.relation));
-  const hasPotentialHojuBonusHeirs = nodeHeirs.some((heir) => ['son', 'husband'].includes(heir.relation));
-  const showHojuReviewBanner = requiresHojuReview && (nodeHeirs.length === 0 || hasPotentialHojuBonusHeirs);
   const parentHeirsForGuide = activeTabObj?.parentNode?.heirs || [];
+
+  const getEmptyStateGuide = () => {
+    if (isRootNode && (!tree.name?.trim() || !tree.deathDate)) {
+      return {
+        title: '기본정보를 먼저 입력해 주세요.',
+        body: '사건번호, 피상속인 이름, 사망일자를 입력하면 다음 안내가 이어집니다.',
+      };
+    }
+
+    const isPre = currentNode?.deathDate && tree?.deathDate && isBefore(currentNode.deathDate, tree.deathDate);
+    if (isPre) {
+      return {
+        title: '선사망 상속인은 대습상속인 입력이 필요합니다.',
+        body: '배우자 또는 직계비속을 입력하지 않으면 계산에서 제외됩니다.',
+      };
+    }
+
+    if (
+      currentLawEra !== '1991' &&
+      ['son', 'husband'].includes(currentNode?.relation) &&
+      currentNode?.isHoju === false
+    ) {
+      return {
+        title: `${currentNode?.name || '현재 상속인'}은(는) 비호주로 설정되어 있습니다.`,
+        body: '특별한 사정이 없다면 호주 여부를 다시 확인한 뒤 1차 상속인을 입력해 주세요.',
+      };
+    }
+
+    if (requiresHojuReview) {
+      return {
+        title: '이 상속 단계는 호주상속 가산 검토가 필요합니다.',
+        body: '상속인 불러오기 또는 수동 입력을 먼저 진행한 뒤, 현재 탭에서 호주 여부를 확인하세요.',
+      };
+    }
+
+    const rootHeirs = tree.heirs || [];
+    const activeGuideHeirs = isRootNode ? rootHeirs : parentHeirsForGuide;
+    const parentNode = activeGuideHeirs.find((h) => ['wife', 'husband', 'spouse'].includes(h.relation) && !h.isExcluded);
+    const isParentAliveAtTargetDeath =
+      parentNode &&
+      (!parentNode.deathDate || !currentNode?.deathDate || !isBefore(parentNode.deathDate, currentNode.deathDate));
+
+    if (['wife', 'husband', 'spouse'].includes(currentNode?.relation)) {
+      const stepChildren = activeGuideHeirs
+        .filter((h) => ['son', 'daughter'].includes(h.relation))
+        .map((h) => h.name)
+        .filter(Boolean);
+      const childStr = stepChildren.length > 0 ? ` [${stepChildren.join('], [')}]` : '직계비속';
+      return {
+        title: `${childStr}에게 자동 분배될 수 있습니다.`,
+        body: '자동 분배를 차단하려면 상속인을 추가해 주세요.',
+      };
+    }
+
+    if (isParentAliveAtTargetDeath) {
+      return {
+        title: `별도의 상속인을 입력하지 않으면 직계존속 [${parentNode.name}]에게 상속지분이 분배됩니다.`,
+        body: '자동 분배를 차단하려면 상속인을 추가해 주세요.',
+      };
+    }
+
+    const siblings = activeGuideHeirs
+      .filter((h) => h.id !== currentNode?.id && ['son', 'daughter'].includes(h.relation))
+      .map((h) => h.name)
+      .filter(Boolean);
+    const siblingStr = siblings.length > 0 ? ` [${siblings.join('], [')}]` : '차순위 상속인';
+    return {
+      title: `별도의 상속인을 입력하지 않으면 형제자매 ${siblingStr}에게 상속지분이 분배됩니다.`,
+      body: '자동 분배를 차단하려면 상속인을 추가해 주세요.',
+    };
+  };
+
+  const emptyStateGuide = getEmptyStateGuide();
 
   const handleRemoveAllHeirs = () => {
     if (!nodeHeirs.length) return;
@@ -88,10 +156,7 @@ export default function InputPanel({
       return;
     }
 
-    handleUpdate(currentNode.id, {
-      heirs: [...(currentNode.heirs || []), ...baseAdd.map((item) => ({ ...item }))],
-      isExcluded: false,
-    });
+    appendResolvedHeirs(currentNode.id, baseAdd.map((item) => ({ ...item })));
   };
 
   return (
@@ -248,77 +313,19 @@ export default function InputPanel({
               </div>
             )}
 
-            {showPrimaryHojuSelector && !hasPrimaryHojuSuccessor && nodeHeirs.length > 0 && (
-              <div className="mb-4 flex items-start gap-3 rounded-lg border border-[#e9e9e7] bg-[#f8f8f7] px-4 py-3 text-[12.5px] text-[#37352f] dark:border-neutral-700 dark:bg-neutral-800/40 dark:text-neutral-200">
-                <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-neutral-400 dark:bg-neutral-500" />
-                <div className="leading-relaxed">
-                  <div className="font-bold">
-                    {`${currentNode?.name || '피상속인'}은(는) 호주입니다. 1차 상속인 중 원호주상속인 1명을 지정하세요.`}
-                  </div>
-                  <div className="mt-1 text-[12px] text-[#787774] dark:text-neutral-400">
-                    이미 사망한 사람도 선택할 수 있습니다.
-                  </div>
-                </div>
-              </div>
-            )}
-
             {nodeHeirs.length === 0 && (
               currentNode?.isDeceased && currentNode?.isExcluded !== true ? (
-                <div className="flex flex-col items-center justify-center p-8 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 rounded-lg text-center gap-2 m-2 mb-4">
-                  <span className="text-[#b45309] dark:text-amber-500 font-bold text-[14.5px] leading-relaxed whitespace-pre-wrap">
-                    {(() => {
-                      if (isRootNode && (!tree.name?.trim() || !tree.deathDate)) {
-                        return '사건번호와 피상속인의 기본정보를 입력해주세요.';
-                      }
-
-                      if (
-                        currentLawEra !== '1991' &&
-                        ['son', 'husband'].includes(currentNode?.relation) &&
-                        currentNode?.isHoju === false
-                      ) {
-                        return `${currentNode?.name || '현재 상속인'}은(는) 현재 비호주로 설정되어 있습니다.\n\n특별한 사정이 없다면 호주로 확인한 뒤 1차 상속인을 입력하세요.`;
-                      }
-
-                      if (requiresHojuReview) {
-                        return '이 상속 단계는 호주상속 가산 가능성이 있어 자동분배 전에 1차 상속인 확인이 필요합니다.\n\n상속인 불러오기 또는 수동 입력을 먼저 진행한 뒤, 현재 탭에서 호주 여부를 확인하세요.';
-                      }
-
-                      const isPre = currentNode.deathDate && tree.deathDate && isBefore(currentNode.deathDate, tree.deathDate);
-                      if (isPre) {
-                        return '선사망 자녀는 대습상속인(배우자 또는 직계비속)을 입력하지 않으면 상속계산에서 제외됩니다.';
-                      }
-
-                      const rootHeirs = tree.heirs || [];
-                      const activeGuideHeirs = isRootNode ? rootHeirs : parentHeirsForGuide;
-                      const parentNode = activeGuideHeirs.find((h) => ['wife', 'husband', 'spouse'].includes(h.relation) && !h.isExcluded);
-                      const isParentAliveAtTargetDeath = parentNode && (!parentNode.deathDate || !currentNode.deathDate || !isBefore(parentNode.deathDate, currentNode.deathDate));
-
-                      let autoDistText = '';
-                      if (['wife', 'husband', 'spouse'].includes(currentNode?.relation)) {
-                        const stepChildren = activeGuideHeirs
-                          .filter((h) => ['son', 'daughter'].includes(h.relation))
-                          .map((h) => h.name)
-                          .filter(Boolean);
-                        const childStr = stepChildren.length > 0 ? ` [${stepChildren.join('], [')}]` : '직계비속';
-                        autoDistText = `별도의 상속인을 입력하지 않으면 ${childStr}에게 상속지분이 분배됩니다.`;
-                      } else if (isParentAliveAtTargetDeath) {
-                        autoDistText = `별도의 상속인을 입력하지 않으면 직계존속 [${parentNode.name}]에게 상속지분이 분배됩니다.`;
-                      } else {
-                        const siblings = activeGuideHeirs
-                          .filter((h) => h.id !== currentNode.id && ['son', 'daughter'].includes(h.relation))
-                          .map((h) => h.name)
-                          .filter(Boolean);
-                        const siblingStr = siblings.length > 0 ? ` [${siblings.join('], [')}]` : '차순위 상속인';
-                        autoDistText = `별도의 상속인을 입력하지 않으면 형제자매 ${siblingStr}에게 상속지분이 분배됩니다.`;
-                      }
-
-                      return `${autoDistText}\n\n자동 분배를 차단하려면 상속인을 추가해 주세요.`;
-                    })()}
+                <div className="flex flex-col items-center justify-center p-8 bg-[#f8f8f7] dark:bg-neutral-800/40 border border-[#e9e9e7] dark:border-neutral-700 rounded-lg text-center gap-2 m-2 mb-4">
+                  <span className="text-[#37352f] dark:text-neutral-200 font-bold text-[14.5px] leading-relaxed whitespace-pre-wrap">
+                    {emptyStateGuide.title}
+                  </span>
+                  <span className="text-[#787774] dark:text-neutral-400 text-[12.5px] leading-relaxed whitespace-pre-wrap">
+                    {emptyStateGuide.body}
                   </span>
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center p-8 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 rounded-lg text-center gap-2 m-2 mb-4">
-                  <span className="text-[#b45309] dark:text-amber-500 font-bold text-[14px]">아직 하위 상속인 데이터가 없습니다.</span>
+                <div className="flex flex-col items-center justify-center p-8 bg-[#f8f8f7] dark:bg-neutral-800/40 border border-[#e9e9e7] dark:border-neutral-700 rounded-lg text-center gap-2 m-2 mb-4">
+                  <span className="text-[#37352f] dark:text-neutral-200 font-bold text-[14px]">아직 하위 상속인 데이터가 없습니다.</span>
                   <span className="text-[#787774] dark:text-neutral-400 text-[12.5px]">이 가지에 상속인이 없다면 법정 순위에 따라 다음 순위로 지분이 분배됩니다.</span>
                 </div>
               )
@@ -331,7 +338,7 @@ export default function InputPanel({
                 <div className="w-[72px] ml-[50px] shrink-0">성명</div>
                 <div className="w-[76px] ml-[30px] shrink-0">관계</div>
                 <div className="w-[150px] ml-[50px] shrink-0">생존/사망(사망일자)</div>
-                <div className="w-[180px] ml-[10px] shrink-0">{showPrimaryHojuSelector ? '원호/특수조건 및 가감산' : '특수조건 및 가감산'}</div>
+                <div className="w-[180px] ml-[10px] shrink-0">특수조건 및 가감산</div>
                 <div className="w-[88px] ml-[10px] shrink-0 text-center">재상속/지분</div>
                 <div className="ml-[20px] mr-[20px] w-12 shrink-0 flex justify-center">
                   <button
@@ -369,7 +376,6 @@ export default function InputPanel({
                       rootIsHoju={tree.isHoju !== false}
                       isRootChildren={activeDeceasedTab === 'root'}
                       parentNode={currentNode}
-                      showPrimaryHojuSelector={showPrimaryHojuSelector}
                       onTabClick={(id) => {
                         let targetPId = id;
                         const findPId = (n) => {

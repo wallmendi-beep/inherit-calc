@@ -9,10 +9,10 @@ import { DateInput } from './components/DateInput';
 import HeirRow from './components/HeirRow';
 import TreeReportNode from './components/TreeReportNode';
 import PrintReport from './components/PrintReport';
-import SummaryPanel from './components/SummaryPanel';
+import SummaryPanel from './components/SummaryPanelFixed';
 import AmountPanel from './components/AmountPanel';
-import CalcPanel from './components/CalcPanelFixed';
-import ResultPanel from './components/ResultPanel';
+import CalcPanel from './components/CalcPanelFinal';
+import ResultPanel from './components/ResultPanelFixed';
 import InputPanel from './components/InputPanel';
 import TreePanel from './components/TreePanel';
 import MetaHeader from './components/MetaHeader';
@@ -27,6 +27,7 @@ import { getInitialTree, getEmptyTree } from './utils/initialData';
 import { AI_PROMPT } from './utils/aiPromptUtf8';
 import { normalizeImportedTree, updateDeathInfo, updateHistoryInfo, updateRelationInfo, setHojuStatus, setPrimaryHojuSuccessor, applyNodeUpdates, appendQuickHeirs, serializeFactTree } from './utils/treeDomain';
 import { migrateToVault, buildTreeFromVault } from './utils/vaultTransforms';
+import { stripHojuBonusInputs, buildHojuBonusDiffs } from './utils/hojuBonusCompare';
 import { ingestAiJsonInput, loadTreeFromJsonFile, printAiPromptDocument, printCurrentTab, saveFactTreeToFile } from './utils/appActions';
 import { useSmartGuide } from './hooks/useSmartGuide';
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core';
@@ -49,7 +50,6 @@ function App() {
   const [propertyValue, setPropertyValue] = useState(''); 
   const [specialBenefits, setSpecialBenefits] = useState({}); 
   const [contributions, setContributions] = useState({});
-  const [interpretationMode, setInterpretationMode] = useState('practical');
   const [isAmountActive, setIsAmountActive] = useState(false);
 
   const sensors = useSensors(
@@ -431,6 +431,61 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
     setVault(prev => { if (prev.relationships[parentPersonId]) prev.relationships[parentPersonId] = prev.relationships[parentPersonId].filter(l => l.targetId !== targetPersonId); return prev; });
   };
 
+  const appendResolvedHeirs = (parentId, heirsToAdd = []) => {
+    if (!Array.isArray(heirsToAdd) || heirsToAdd.length === 0) return;
+
+    let parentPersonId = parentId;
+    const findPId = (n) => {
+      if (!n) return;
+      if (n.id === parentId || n.personId === parentId) {
+        parentPersonId = n.personId || n.id;
+        return;
+      }
+      (n.heirs || []).forEach(findPId);
+    };
+    findPId(tree);
+
+    setVault(prev => {
+      if (!prev.relationships[parentPersonId]) prev.relationships[parentPersonId] = [];
+
+      heirsToAdd.forEach((item) => {
+        const newPersonId = `p_${Math.random().toString(36).substr(2, 9)}`;
+        prev.persons[newPersonId] = {
+          id: newPersonId,
+          name: item.name || '',
+          isDeceased: !!item.isDeceased,
+          deathDate: item.deathDate || '',
+          marriageDate: item.marriageDate || '',
+          remarriageDate: item.remarriageDate || '',
+          divorceDate: item.divorceDate || '',
+          restoreDate: item.restoreDate || '',
+          gender: item.gender || '',
+        };
+        prev.relationships[parentPersonId].push({
+          targetId: newPersonId,
+          relation: item.relation || 'son',
+          isExcluded: !!item.isExcluded,
+          exclusionOption: item.exclusionOption || '',
+          isHoju: !!item.isHoju,
+          isPrimaryHojuSuccessor: !!item.isPrimaryHojuSuccessor,
+          isSameRegister: item.isSameRegister !== false,
+        });
+      });
+
+      if (parentPersonId !== prev.meta.rootPersonId) {
+        Object.values(prev.relationships).forEach((links) => {
+          const parentLink = links.find((link) => link.targetId === parentPersonId);
+          if (parentLink) {
+            parentLink.isExcluded = false;
+            parentLink.exclusionOption = '';
+          }
+        });
+      }
+
+      return prev;
+    });
+  };
+
   const removeAllHeirs = (parentId) => {
     let parentPersonId = parentId;
     const findPId = (n) => {
@@ -453,7 +508,7 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
 
   const [simpleTargetN, simpleTargetD] = math.simplify(tree.shareN || 1, tree.shareD || 1);
 
-  const { finalShares, calcSteps, warnings, transitShares, blockingIssues } = useMemo(() => {
+  const { finalShares, calcSteps, warnings, transitShares, blockingIssues, compareFinalShares, hojuBonusDiffs } = useMemo(() => {
     const preprocessTree = (n, parentDate, parentNode, visited = new Set()) => {
       const pId = n.personId || n.id;
       if (visited.has(pId)) return { ...n, heirs: [], _cycle: true };
@@ -520,8 +575,16 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
       }
       return clone;
     };
-    const calcTree = preprocessTree(tree, tree.deathDate, null); const result = calculateInheritance(calcTree, propertyValue);
-    if (!result.warnings) result.warnings = []; return result;
+    const calcTree = preprocessTree(tree, tree.deathDate, null);
+    const result = calculateInheritance(calcTree, propertyValue);
+    const compareTree = stripHojuBonusInputs(calcTree);
+    const compareResult = calculateInheritance(compareTree, propertyValue);
+    if (!result.warnings) result.warnings = [];
+    return {
+      ...result,
+      compareFinalShares: compareResult.finalShares || {},
+      hojuBonusDiffs: buildHojuBonusDiffs(result.finalShares || {}, compareResult.finalShares || {}),
+    };
   }, [tree, propertyValue]);
 
   const allFinalHeirs = useMemo(() => {
@@ -787,6 +850,7 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
                   removeHeir={removeHeir}
                   removeAllHeirs={removeAllHeirs}
                   addHeir={addHeir}
+                  appendResolvedHeirs={appendResolvedHeirs}
                   handleKeyDown={handleKeyDown}
                   handleRootUpdate={handleRootUpdate}
                   handleDragEnd={handleDragEnd}
@@ -812,8 +876,8 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
                 />
               )}
               {(activeTab === 'calc' || activeTab === 'result' || activeTab === 'summary' || activeTab === 'amount') && <MetaHeader tree={tree} />}
-              {activeTab === 'calc' && <CalcPanel calcSteps={calcSteps} issues={blockingIssues} handleNavigate={handleNavigate} interpretationMode={interpretationMode} setInterpretationMode={setInterpretationMode} />}
-              {activeTab === 'result' && <ResultPanel calcSteps={calcSteps} tree={tree} issues={blockingIssues} handleNavigate={handleNavigate} interpretationMode={interpretationMode} />}
+              {activeTab === 'calc' && <CalcPanel calcSteps={calcSteps} issues={blockingIssues} handleNavigate={handleNavigate} hojuBonusDiffs={hojuBonusDiffs} />}
+              {activeTab === 'result' && <ResultPanel calcSteps={calcSteps} tree={tree} issues={blockingIssues} handleNavigate={handleNavigate} hojuBonusDiffs={hojuBonusDiffs} compareFinalShares={compareFinalShares} />}
               {activeTab === 'summary' && (
                 <SummaryPanel
                   tree={tree}
@@ -826,7 +890,9 @@ tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속
                   setSearchQuery={setSearchQuery}
                   simpleTargetN={simpleTargetN}
                   simpleTargetD={simpleTargetD}
-                  interpretationMode={interpretationMode}
+                  calcSteps={calcSteps}
+                  hojuBonusDiffs={hojuBonusDiffs}
+                  compareFinalShares={compareFinalShares}
                 />
               )}
               {activeTab === 'amount' && (
