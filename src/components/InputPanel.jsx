@@ -34,7 +34,26 @@ export default function InputPanel({
   const isRootNode = currentNode && currentNode.id === 'root';
   const canAutoFill = !isRootNode && ['wife', 'husband', 'son', 'daughter'].includes(currentNode?.relation);
   const inheritedDate = currentNode?.deathDate || tree.deathDate;
-  const showPrimaryHojuSelector = getLawEra(inheritedDate) !== '1991' && currentNode?.isHoju === true;
+  const currentLawEra = getLawEra(inheritedDate);
+  const showCurrentHojuToggle =
+    currentLawEra !== '1991' &&
+    (isRootNode || ['son', 'husband'].includes(currentNode?.relation));
+  const suggestHojuSelection =
+    showCurrentHojuToggle &&
+    !isRootNode &&
+    !currentNode?.isHoju &&
+    ['son', 'husband'].includes(currentNode?.relation) &&
+    nodeHeirs.length > 0;
+  const showPrimaryHojuSelector = currentLawEra !== '1991' && currentNode?.isHoju === true;
+  const hasPrimaryHojuSuccessor =
+    showPrimaryHojuSelector &&
+    nodeHeirs.some((heir) => heir.isPrimaryHojuSuccessor || heir.isHoju);
+  const requiresHojuReview =
+    currentLawEra !== '1991' &&
+    (isRootNode || ['son', 'husband'].includes(currentNode?.relation));
+  const hasPotentialHojuBonusHeirs = nodeHeirs.some((heir) => ['son', 'husband'].includes(heir.relation));
+  const showHojuReviewBanner = requiresHojuReview && (nodeHeirs.length === 0 || hasPotentialHojuBonusHeirs);
+  const parentHeirsForGuide = activeTabObj?.parentNode?.heirs || [];
 
   const handleRemoveAllHeirs = () => {
     if (!nodeHeirs.length) return;
@@ -156,6 +175,34 @@ export default function InputPanel({
                   <span className="text-[10px] font-black tracking-tighter whitespace-nowrap">{getLawEra(currentNode?.deathDate || tree.deathDate)}년 기준</span>
                 </div>
               </div>
+              {showCurrentHojuToggle && (
+                <>
+                  <div className="w-px h-8 bg-[#e9e9e7] dark:bg-neutral-700 shrink-0"></div>
+                  <div className="flex items-center justify-center shrink-0 min-w-[52px]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextValue = !(currentNode?.isHoju !== false);
+                        if (isRootNode) {
+                          handleRootUpdate('isHoju', nextValue);
+                        } else {
+                          handleUpdate(currentNode.id, 'isHoju', nextValue);
+                        }
+                      }}
+                      title={currentNode?.isHoju === false ? '비호주로 지정됨' : '호주로 지정됨'}
+                      className={`inline-flex h-[24px] min-w-[48px] items-center justify-center rounded-full border px-2 text-[10px] font-semibold shadow-sm transition-colors ${
+                        currentNode?.isHoju === false
+                          ? 'border-[#e9e9e7] bg-white text-[#787774] hover:border-blue-200 hover:bg-blue-50/50 hover:text-blue-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400'
+                          : suggestHojuSelection
+                            ? 'border-amber-200 bg-amber-50 text-amber-700 hover:border-amber-300 hover:bg-amber-100 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-300'
+                            : 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800/60 dark:bg-blue-900/30 dark:text-blue-300'
+                      }`}
+                    >
+                      {currentNode?.isHoju === false ? '비호주' : '호주'}
+                    </button>
+                  </div>
+                </>
+              )}
               <div className="w-px h-8 bg-[#e9e9e7] dark:bg-neutral-700 shrink-0"></div>
               <div className="flex flex-col justify-center flex-1 min-w-0">
                 <div className="flex items-baseline gap-2"><span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 uppercase">지분</span><span className="text-[17px] font-black text-[#1e56a0] dark:text-blue-400 leading-none">{getBriefingInfo.shareStr}</span></div>
@@ -163,7 +210,6 @@ export default function InputPanel({
               <div className="flex items-center gap-1.5 ml-auto shrink-0">
                 {canAutoFill && <button type="button" onClick={handleAutoFill} className="text-[11.5px] text-[#37352f] dark:text-neutral-200 font-bold bg-white dark:bg-neutral-800 hover:bg-[#f7f7f5] dark:hover:bg-neutral-700 px-2.5 py-1.5 rounded transition-colors flex items-center border border-[#e9e9e7] dark:border-neutral-700 gap-1.5 shadow-sm"><IconUserGroup className="w-3.5 h-3.5 text-emerald-600" /> 불러오기</button>}
                 <button type="button" onClick={() => setIsMainQuickActive(!isMainQuickActive)} className="text-[11.5px] text-[#37352f] dark:text-neutral-200 font-bold bg-white dark:bg-neutral-800 hover:bg-[#f7f7f5] dark:hover:bg-neutral-700 px-2.5 py-1.5 rounded transition-colors flex items-center border border-[#e9e9e7] dark:border-neutral-700 gap-1.5 shadow-sm"><IconUserPlus className="w-3.5 h-3.5 text-[#2383e2]" /> 상속인 추가</button>
-                <button type="button" onClick={() => { setAiTargetId(activeDeceasedTab); setIsAiModalOpen(true); }} title="현재 상속인 기준으로 AI 입력" className="flex items-center justify-center w-7 h-7 shrink-0 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 rounded transition-all shadow-sm active:scale-95 ml-1"><span className="text-[14px] leading-none opacity-100 drop-shadow-sm mt-0.5">*</span></button>
               </div>
             </div>
           </div>
@@ -202,6 +248,20 @@ export default function InputPanel({
               </div>
             )}
 
+            {showPrimaryHojuSelector && !hasPrimaryHojuSuccessor && nodeHeirs.length > 0 && (
+              <div className="mb-4 flex items-start gap-3 rounded-lg border border-[#e9e9e7] bg-[#f8f8f7] px-4 py-3 text-[12.5px] text-[#37352f] dark:border-neutral-700 dark:bg-neutral-800/40 dark:text-neutral-200">
+                <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-neutral-400 dark:bg-neutral-500" />
+                <div className="leading-relaxed">
+                  <div className="font-bold">
+                    {`${currentNode?.name || '피상속인'}은(는) 호주입니다. 1차 상속인 중 원호주상속인 1명을 지정하세요.`}
+                  </div>
+                  <div className="mt-1 text-[12px] text-[#787774] dark:text-neutral-400">
+                    이미 사망한 사람도 선택할 수 있습니다.
+                  </div>
+                </div>
+              </div>
+            )}
+
             {nodeHeirs.length === 0 && (
               currentNode?.isDeceased && currentNode?.isExcluded !== true ? (
                 <div className="flex flex-col items-center justify-center p-8 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 rounded-lg text-center gap-2 m-2 mb-4">
@@ -211,20 +271,40 @@ export default function InputPanel({
                         return '사건번호와 피상속인의 기본정보를 입력해주세요.';
                       }
 
+                      if (
+                        currentLawEra !== '1991' &&
+                        ['son', 'husband'].includes(currentNode?.relation) &&
+                        currentNode?.isHoju === false
+                      ) {
+                        return `${currentNode?.name || '현재 상속인'}은(는) 현재 비호주로 설정되어 있습니다.\n\n특별한 사정이 없다면 호주로 확인한 뒤 1차 상속인을 입력하세요.`;
+                      }
+
+                      if (requiresHojuReview) {
+                        return '이 상속 단계는 호주상속 가산 가능성이 있어 자동분배 전에 1차 상속인 확인이 필요합니다.\n\n상속인 불러오기 또는 수동 입력을 먼저 진행한 뒤, 현재 탭에서 호주 여부를 확인하세요.';
+                      }
+
                       const isPre = currentNode.deathDate && tree.deathDate && isBefore(currentNode.deathDate, tree.deathDate);
                       if (isPre) {
                         return '선사망 자녀는 대습상속인(배우자 또는 직계비속)을 입력하지 않으면 상속계산에서 제외됩니다.';
                       }
 
                       const rootHeirs = tree.heirs || [];
-                      const parentNode = rootHeirs.find((h) => ['wife', 'husband', 'spouse'].includes(h.relation) && !h.isExcluded);
+                      const activeGuideHeirs = isRootNode ? rootHeirs : parentHeirsForGuide;
+                      const parentNode = activeGuideHeirs.find((h) => ['wife', 'husband', 'spouse'].includes(h.relation) && !h.isExcluded);
                       const isParentAliveAtTargetDeath = parentNode && (!parentNode.deathDate || !currentNode.deathDate || !isBefore(parentNode.deathDate, currentNode.deathDate));
 
                       let autoDistText = '';
-                      if (isParentAliveAtTargetDeath) {
+                      if (['wife', 'husband', 'spouse'].includes(currentNode?.relation)) {
+                        const stepChildren = activeGuideHeirs
+                          .filter((h) => ['son', 'daughter'].includes(h.relation))
+                          .map((h) => h.name)
+                          .filter(Boolean);
+                        const childStr = stepChildren.length > 0 ? ` [${stepChildren.join('], [')}]` : '직계비속';
+                        autoDistText = `별도의 상속인을 입력하지 않으면 ${childStr}에게 상속지분이 분배됩니다.`;
+                      } else if (isParentAliveAtTargetDeath) {
                         autoDistText = `별도의 상속인을 입력하지 않으면 직계존속 [${parentNode.name}]에게 상속지분이 분배됩니다.`;
                       } else {
-                        const siblings = rootHeirs
+                        const siblings = activeGuideHeirs
                           .filter((h) => h.id !== currentNode.id && ['son', 'daughter'].includes(h.relation))
                           .map((h) => h.name)
                           .filter(Boolean);

@@ -92,8 +92,6 @@ export default function CalcPanel({ calcSteps, issues = [], handleNavigate, inte
                   if (d.ex) memo.push(`상속권 없음(${d.ex})`);
                   if (d.h.isDeceased && !(d.ex && (d.ex.includes('사망') || d.ex.includes('선사망')))) memo.push('망인');
                   if (d.mod) memo.push(...d.mod.split(',').map((m) => m.trim()));
-                  const interpretationMemo = getInterpretationMemo(interpretationMode, d.mod);
-                  if (interpretationMemo) memo.push(interpretationMemo);
                   personIssues.forEach((issue) => memo.push(issue.text));
 
                   return (

@@ -6,6 +6,7 @@ export const calculateInheritance = (tree) => {
   let steps = [];
   let warnings = [];
   let appliedLaws = new Set();
+  const hojuSelectionWarned = new Set();
 
   const getPersonKey = (person) => {
     if (!person) return '';
@@ -102,6 +103,10 @@ export const calculateInheritance = (tree) => {
     const isFemaleDeceased = ['wife', 'daughter'].includes(relation);
     const isSpouseEstate = ['wife', 'husband', 'spouse'].includes(relation);
     const nodeAllowsHoju = isRootStage || !!node?.isHoju;
+    const primaryHojuSuccessor =
+      (node?.heirs || []).find((heir) => heir?.isPrimaryHojuSuccessor)
+      || (node?.heirs || []).find((heir) => heir?.isHoju)
+      || null;
 
     return {
       sourceName: parentDecName || '피상속인',
@@ -110,6 +115,7 @@ export const calculateInheritance = (tree) => {
       isFemaleDeceased,
       isSpouseEstate,
       nodeAllowsHoju,
+      primaryHojuSuccessor,
       // 여성 피상속인 본인 재산 단계에서는 자동 가산을 막고,
       // 배우자 경유 후 별도 재산 단계는 이후 판정 함수에서 다시 열어둘 수 있게 분리한다.
       blocksDirectFemaleEstateBonus: isFemaleDeceased && !isSubstitution,
@@ -117,11 +123,12 @@ export const calculateInheritance = (tree) => {
   };
 
   const canApplyHojuBonus = ({ heir, law, context }) => {
-    if (!heir || heir.relation !== 'son' || !heir.isHoju) return false;
+    if (!heir || heir.relation !== 'son') return false;
     if (!(law === '1960' || law === '1979')) return false;
     if (context.blocksDirectFemaleEstateBonus) return false;
     if (!context.nodeAllowsHoju) return false;
-    return true;
+    if (!context.primaryHojuSuccessor) return false;
+    return (context.primaryHojuSuccessor.personId || context.primaryHojuSuccessor.id) === (heir.personId || heir.id);
   };
 
   const getHojuBonusReason = ({ context }) => (
@@ -345,6 +352,27 @@ export const calculateInheritance = (tree) => {
     
     appliedLaws.add(law);
 
+    const hojuContext = getHojuBonusContext({ node, isSubstitution, parentDecName });
+    if (
+      hojuContext.nodeAllowsHoju &&
+      (law === '1960' || law === '1979') &&
+      !hojuContext.primaryHojuSuccessor
+    ) {
+      const warningKey = node.id || getPersonKey(node);
+      if (warningKey && !hojuSelectionWarned.has(warningKey)) {
+        hojuSelectionWarned.add(warningKey);
+        pushWarning({
+          code: 'missing-primary-hoju-successor',
+          severity: 'warning',
+          blocking: false,
+          id: node.id || null,
+          personId: getPersonKey(node) || null,
+          targetTabId: node.id || null,
+          text: `[${node.name || '피상속인'}]은(는) 호주입니다. 1차 상속인 중 원호주상속인 1명을 지정하세요. 이미 사망한 사람도 선택할 수 있습니다.`,
+        });
+      }
+    }
+
     let total = 0;
     
     let hasRank1 = false, hasRank2 = false, hasRank3 = false, hasSpouse = false;
@@ -364,7 +392,6 @@ export const calculateInheritance = (tree) => {
     targetHeirs.forEach(h => {
       const isSp = h.relation === 'wife' || h.relation === 'husband' || h.relation === 'spouse';
       const isPre = h.isDeceased && h.deathDate && isBefore(h.deathDate, distributionDate);
-      const hojuContext = getHojuBonusContext({ node, isSubstitution, parentDecName });
       let modifier = ''; 
 
       let skipped = false;

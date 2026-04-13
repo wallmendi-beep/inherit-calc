@@ -11,7 +11,7 @@ import TreeReportNode from './components/TreeReportNode';
 import PrintReport from './components/PrintReport';
 import SummaryPanel from './components/SummaryPanel';
 import AmountPanel from './components/AmountPanel';
-import CalcPanel from './components/CalcPanel';
+import CalcPanel from './components/CalcPanelFixed';
 import ResultPanel from './components/ResultPanel';
 import InputPanel from './components/InputPanel';
 import TreePanel from './components/TreePanel';

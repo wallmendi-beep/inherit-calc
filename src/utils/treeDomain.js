@@ -98,6 +98,14 @@ const toSafeName = (value) => (typeof value === 'string' ? value.trim() : '');
 const createPersonId = () => generateId('p');
 const createNodeId = () => generateId('n');
 
+const shouldDefaultHojuOn = (relation, refDate, isRoot) => {
+  if (isRoot) return false;
+  if (!['son', 'husband'].includes(relation)) return false;
+  if (!refDate) return true;
+  const year = Number(String(refDate).slice(0, 4));
+  return Number.isNaN(year) ? true : year < 1991;
+};
+
 export const normalizeImportedTree = (rawTree) => {
   const visitedPersonIds = new Set();
 
@@ -176,7 +184,7 @@ export const normalizeImportedTree = (rawTree) => {
       divorceDate,
       restoreDate,
       gender: base.gender || '',
-      isHoju: !!base.isHoju,
+      isHoju: base.isHoju === true ? true : shouldDefaultHojuOn(relation, refDate, isRoot),
       isPrimaryHojuSuccessor: !!base.isPrimaryHojuSuccessor,
       isExcluded: isDuplicate ? true : isExcluded,
       exclusionOption: isDuplicate ? 'duplicate' : exclusionOption,
