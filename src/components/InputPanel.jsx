@@ -1,10 +1,11 @@
-﻿import React from 'react';
+import React from 'react';
 import { DndContext, closestCenter } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { DateInput } from './DateInput';
 import HeirRow from './HeirRow';
 import { IconTrash2, IconUserGroup, IconUserPlus, IconX } from './Icons';
 import { getLawEra, formatKorDate, getRelStr, isBefore } from '../engine/utils';
+import { BadgeToggle } from './ui/InheritDesign';
 
 export default function InputPanel({
   tree,
@@ -324,27 +325,21 @@ export default function InputPanel({
                 <>
                   <div className="w-px h-8 bg-[#e9e9e7] dark:bg-neutral-700 shrink-0"></div>
                   <div className="flex items-center justify-center shrink-0 min-w-[52px]">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const nextValue = !(currentNode?.isHoju !== false);
+                    <BadgeToggle
+                      active={currentNode?.isHoju !== false}
+                      onToggle={(value) => {
                         if (isRootNode) {
-                          handleRootUpdate('isHoju', nextValue);
+                          handleRootUpdate('isHoju', value);
                         } else {
-                          handleUpdate(currentNode.id, 'isHoju', nextValue);
+                          handleUpdate(currentNode.id, 'isHoju', value);
                         }
                       }}
-                      title={currentNode?.isHoju === false ? '비호주로 지정됨' : '호주로 지정됨'}
-                      className={`inline-flex h-[24px] min-w-[48px] items-center justify-center rounded-full border px-2 text-[10px] font-semibold shadow-sm transition-colors ${
-                        currentNode?.isHoju === false
-                          ? 'border-[#e9e9e7] bg-white text-[#787774] hover:border-blue-200 hover:bg-blue-50/50 hover:text-blue-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400'
-                          : suggestHojuSelection
-                            ? 'border-amber-200 bg-amber-50 text-amber-700 hover:border-amber-300 hover:bg-amber-100 dark:border-amber-800/60 dark:bg-amber-900/20 dark:text-amber-300'
-                            : 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800/60 dark:bg-blue-900/30 dark:text-blue-300'
-                      }`}
-                    >
-                      {currentNode?.isHoju === false ? '비호주' : '호주'}
-                    </button>
+                      activeLabel="호주"
+                      inactiveLabel="비호주"
+                      activeClassName="border-blue-300 bg-blue-50 text-blue-700"
+                      hoverClassName="hover:bg-blue-50/50 hover:text-blue-600 hover:border-blue-200"
+                      className="w-[80px]"
+                    />
                   </div>
                 </>
               )}

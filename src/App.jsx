@@ -939,9 +939,25 @@ function App() {
   const handleDragEnd = (event) => { const { active, over } = event; if (over && active.id !== over.id) { setTree(prev => { const newTree = cloneDeep(prev); const reorderList = (list) => { if (!list) return false; const activeIdx = list.findIndex(item => item.id === active.id); const overIdx = list.findIndex(item => item.id === over.id); if (activeIdx !== -1 && overIdx !== -1) { const [movedItem] = list.splice(activeIdx, 1); list.splice(overIdx, 0, movedItem); return true; } for (let item of list) { if (item.heirs && item.heirs.length > 0 && reorderList(item.heirs)) return true; } return false; }; reorderList(newTree.heirs); return newTree; }); } };
 
   const handlePrint = () => printCurrentTab({ activeTab, tree });
-  const saveFile = () => saveFactTreeToFile(tree);
+  const saveFile = () => {
+    const scenarioData = {
+      propertyValue,
+      specialBenefits,
+      contributions,
+      isAmountActive
+    };
+    saveFactTreeToFile(tree, scenarioData);
+  };
   const loadFile = (e) => {
-    loadTreeFromJsonFile(e.target.files[0], { setTree, setActiveTab, setImportIssues });
+    loadTreeFromJsonFile(e.target.files[0], { 
+      setTree, 
+      setActiveTab, 
+      setImportIssues,
+      setPropertyValue,
+      setSpecialBenefits,
+      setContributions,
+      setIsAmountActive
+    });
     e.target.value = '';
   };
   const handlePrintPrompt = () => printAiPromptDocument();

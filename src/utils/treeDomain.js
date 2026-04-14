@@ -523,3 +523,18 @@ export const serializeFactTree = (tree) => {
 
   return JSON.parse(JSON.stringify(serializeNode(tree)));
 };
+
+/**
+ * [v4.60] 사건번호가 있는 경우 필터링 없이 모든 속성을 보존하여 직렬화합니다.
+ * Vault의 메타데이터 및 UI 상태 등을 모두 포함합니다.
+ */
+export const serializeFullTree = (tree) => {
+  const serializeNode = (node) => {
+    const serialized = { ...node };
+    if (node.heirs) {
+      serialized.heirs = node.heirs.map(serializeNode);
+    }
+    return serialized;
+  };
+  return JSON.parse(JSON.stringify(serializeNode(tree)));
+};
