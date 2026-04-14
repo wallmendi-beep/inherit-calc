@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import ContextualDrawer from './ui/ContextualDrawer';
 
 const GuideCheckButton = ({ label, onClick }) => (
@@ -40,9 +40,12 @@ export default function SmartGuidePanel({
     item?.targetNodeId || item?.targetTabId || item?.personId || item?.id || null;
 
   const checkedSet = checkedGuideKeys || new Set();
-  const visibleAuditActionItems = (auditActionItems || []).filter((item) =>
-    (item?.displayTargets || []).includes('guide'),
-  );
+  const visibleAuditActionItems = (auditActionItems || []).filter((item) => {
+    if (item.code === 'hierarchy-violation') {
+      return activeTab === 'input';
+    }
+    return (item?.displayTargets || []).includes('guide');
+  });
 
   const mandatoryGuides = (smartGuides || []).filter(
     (guide) => guide?.type === 'mandatory' && !checkedSet.has(guide?.uniqueKey),

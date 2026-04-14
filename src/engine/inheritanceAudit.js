@@ -1,4 +1,4 @@
-﻿import { math } from './utils.js';
+import { math } from './utils.js';
 
 const flattenGroupShares = (groups = [], bucket = []) => {
   groups.forEach((group) => {
@@ -90,6 +90,7 @@ export const auditInheritanceResult = ({
   const issues = [];
 
   // [v3.0.13] 가계도 관계 입력의 유효성 검사
+  const auditRelationHierarchy = (node, path = []) => {
   const auditRelationHierarchy = (node, path = []) => {
     if (!node || !node.heirs) return;
     const isDescendant = ['son', 'daughter'].includes(node.relation);
