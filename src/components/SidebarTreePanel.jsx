@@ -28,6 +28,7 @@ export default function SidebarTreePanel({
   handleNavigate = () => {},
   guideStatusMap = {},
   handleResizeMouseDown = () => {},
+  removeHeir = () => {},
 }) {
   if (!sidebarOpen) return null;
 
@@ -94,6 +95,7 @@ export default function SidebarTreePanel({
               matchIds={sidebarMatchIds}
               currentMatchId={sidebarMatchIds[sidebarCurrentMatchIdx]}
               guideStatusMap={guideStatusMap}
+              removeHeir={removeHeir}
             />
           )}
         </div>

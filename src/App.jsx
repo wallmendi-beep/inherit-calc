@@ -548,6 +548,7 @@ function App() {
           handleSidebarPrevMatch={handleSidebarPrevMatch} handleSidebarNextMatch={handleSidebarNextMatch}
           sidebarToggleSignal={sidebarToggleSignal} setSidebarToggleSignal={setSidebarToggleSignal}
           handleResizeMouseDown={handleResizeMouseDown}
+          removeHeir={removeHeir}
         />
         <main className={`flex-1 flex w-full transition-all duration-300 ${sidebarOpen ? 'justify-start' : 'justify-center'}`} style={{ paddingLeft: sidebarOpen ? (sidebarWidth + 10) : 0, paddingRight: showNavigator ? (navigatorWidth + 10) : 0 }}>
           <div style={{ zoom: zoomLevel, width: '100%', display: 'flex', justifyContent: (sidebarOpen || showNavigator) ? 'flex-start' : 'center' }}>
