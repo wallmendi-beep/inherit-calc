@@ -110,21 +110,27 @@ const shouldDefaultHojuOn = (relation, refDate, isRoot) => {
 
 export const normalizeImportedTree = (rawTree) => {
   const visitedPersonIds = new Set();
+  const isSnapshot = !!(rawTree?.caseNo || rawTree?.type === 'inheritance-case-snapshot');
 
   const sanitizeNode = (inputNode, parentDate = '', isRoot = false) => {
-    // 화이트리스트 기반 필드 추출 (불필요한 데이터 제거)
-    const base = {};
-    Object.entries(inputNode || {}).forEach(([key, value]) => {
-      if (ALLOWED_KEYS.has(key)) base[key] = value;
-    });
+    if (!inputNode) return null;
+    
+    // [v4.60] 스냅샷인 경우 화이트리스트 필터링을 바이패스하여 모든 데이터 보존
+    const base = isSnapshot ? { ...inputNode } : {};
+    if (!isSnapshot) {
+      Object.entries(inputNode || {}).forEach(([key, value]) => {
+        if (ALLOWED_KEYS.has(key)) base[key] = value;
+      });
+    }
 
+    // personId 절대 보존: 파일에 있으면 그대로 쓰고, 없으면 새로 생성
     const personId = base.personId || (isRoot ? 'root' : generateId('p'));
     
-    // [v3.0.13 중복 방지] 이미 처리된 ID가 또 나오면 (루트 제외) 자식 목록만 비우거나 처리 제외
-    const isDuplicate = !isRoot && personId && visitedPersonIds.has(personId);
+    // [v4.60 중복 방지] 이미 처리된 ID가 또 나오면 (루트 제외) 자식 목록 생성을 중단
+    const isDuplicate = !isRoot && visitedPersonIds.has(personId);
     if (personId) visitedPersonIds.add(personId);
 
-    const nodeId = isRoot ? 'root' : (base.id || ('n_' + personId));
+    const nodeId = isRoot ? 'root' : (base.id || ('n_' + personId + '_' + Math.random().toString(36).substr(2, 4)));
     const deathDate = normalizeDateField(base.deathDate);
     const marriageDate = normalizeDateField(base.marriageDate);
     const remarriageDate = normalizeDateField(base.remarriageDate);
@@ -133,8 +139,9 @@ export const normalizeImportedTree = (rawTree) => {
     const refDate = parentDate || deathDate;
     const relation = isRoot ? 'root' : normalizeRelation(base.relation);
     
+    // 중복 노드인 경우 heirs를 비워둠으로써 Vault 엔진이 기존 personId의 하위 구조를 재사용하게 함
     let heirs = (Array.isArray(base.heirs) && !isDuplicate)
-      ? base.heirs.map((child) => sanitizeNode(child, deathDate || refDate, false))
+      ? base.heirs.map((child) => sanitizeNode(child, deathDate || refDate, false)).filter(Boolean)
       : [];
 
     const hojuChildren = heirs.filter((child) => child?.isHoju);
@@ -163,17 +170,12 @@ export const normalizeImportedTree = (rawTree) => {
       refDate &&
       !isBefore(deathDate, refDate)
     ) {
-      // Imported JSON can carry stale manual exclusions from a prior UI state.
-      // A spouse who dies on/after the inherited reference date is a post-deceased
-      // spouse estate, not a renouncing heir, so clear the stale exclusion here.
       isExcluded = false;
       exclusionOption = '';
     } else if (isPredeceased && isSpouseType) {
       isExcluded = true;
       exclusionOption = 'predeceased';
     } else if (isPredeceased && !isSpouseType) {
-      // 선사망 자녀/형제자매는 하위 상속인이 없을 때만 OFF로 유지한다.
-      // 하위 상속인이 있으면 대습상속 경로가 살아 있으므로 기본 ON으로 복구한다.
       if (heirs.length > 0) {
         isExcluded = false;
         exclusionOption = '';
@@ -182,12 +184,12 @@ export const normalizeImportedTree = (rawTree) => {
         exclusionOption = 'predeceased';
       }
     } else if (!!base.isDeceased && deathDate && refDate && !isPredeceased) {
-      // 후사망(재상속): 강제 포함(ON) - JSON에 isExcluded:true로 저장되어 있어도 덮어씀
       isExcluded = false;
       exclusionOption = '';
     }
 
     const normalized = {
+      ...base,
       id: nodeId,
       personId,
       name: base.name || '',
