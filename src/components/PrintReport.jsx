@@ -320,12 +320,12 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
             <tfoot className="break-inside-avoid">
               <tr className="bg-gray-50 font-bold">
                 <td colSpan="4" className="border border-black py-2 px-2 text-right">분배액 합계:</td>
-                <td className="border border-black py-2 px-2 text-right text-blue-800">{amountCalculations.totalDistributed.toLocaleString()}</td>
+                <td className="border border-black py-2 px-2 text-right text-blue-800">{(amountCalculations.totalDistributed || 0).toLocaleString()}</td>
               </tr>
-              {amountCalculations.remainder > 0 && (
+              {(amountCalculations.remainder || 0) > 0 && (
                 <tr className="font-bold">
                   <td colSpan="4" className="border border-black py-1.5 px-2 text-right text-gray-600">미분배 잔여금 (소수점 단수):</td>
-                  <td className="border border-black py-1.5 px-2 text-right text-red-600">{amountCalculations.remainder.toLocaleString()}</td>
+                  <td className="border border-black py-1.5 px-2 text-right text-red-600">{(amountCalculations.remainder || 0).toLocaleString()}</td>
                 </tr>
               )}
             </tfoot>

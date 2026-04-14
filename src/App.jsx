@@ -394,9 +394,9 @@ function App() {
       return clone;
     };
     const calcTree = preprocessTree(tree, tree.deathDate, null);
-    const shouldBuildCalcSteps = ['tree', 'calc', 'result', 'summary', 'amount'].includes(activeTab);
+    const shouldBuildCalcSteps = ['tree', 'calc', 'summary', 'amount'].includes(activeTab);
     const result = calculateInheritance(calcTree, propertyValue, { includeCalcSteps: shouldBuildCalcSteps });
-    const shouldBuildCompare = ['calc', 'result', 'summary'].includes(activeTab);
+    const shouldBuildCompare = ['calc', 'summary'].includes(activeTab);
     const compareTree = shouldBuildCompare ? stripHojuBonusInputs(calcTree) : null;
     const compareResult = shouldBuildCompare ? calculateInheritance(compareTree, propertyValue, { includeCalcSteps: false }) : null;
     return {
@@ -419,7 +419,9 @@ function App() {
       const finalAmount = Math.max(0, statutoryAmount - sVal) + cVal;
       return { ...share, statutoryAmount, specialBenefit: sVal, contribution: cVal, finalAmount };
     });
-    return { estateVal, deemedEstate, results };
+    const totalDistributed = results.reduce((acc, r) => acc + (r.finalAmount || 0), 0);
+    const remainder = Math.max(0, estateVal - totalDistributed);
+    return { estateVal, deemedEstate, results, totalDistributed, remainder };
   }, [finalShares, propertyValue, specialBenefits, contributions]);
 
   const [checkedGuideKeys, setCheckedGuideKeys] = useState(new Set());
@@ -572,9 +574,9 @@ function App() {
           <div style={{ zoom: zoomLevel, width: '100%', display: 'flex', justifyContent: (sidebarOpen || showNavigator) ? 'flex-start' : 'center' }}>
             <div className={`flex flex-col shrink-0 mt-6 print-compact relative z-10 transition-all duration-300 ${activeTab === 'tree' ? 'w-[1480px] min-w-[1480px] px-3' : 'w-[1080px] min-w-[1080px] px-6'}`}>
               <div className="flex items-end pl-[48px] gap-1 no-print relative z-20">
-                {['input', 'tree', 'calc', 'result', 'summary', 'amount'].map(id => (
+                {['input', 'tree', 'calc', 'summary', 'amount'].map(id => (
                   <button key={id} onClick={() => setActiveTab(id)} className={`px-6 py-2.5 rounded-t-xl font-bold text-[14px] border-2 border-b-0 transition-all ${activeTab === id ? 'bg-white dark:bg-neutral-800 border-[#37352f] text-[#37352f]' : 'bg-transparent border-transparent text-[#9b9a97]'}`}>
-                    {id === 'input' ? '데이터 입력' : id === 'tree' ? '시뮬레이션' : id === 'calc' ? '계산 상세' : id === 'result' ? '결과 리포트' : id === 'summary' ? '법정 상속분' : '구체적 상속분'}
+                    {id === 'input' ? '데이터 입력' : id === 'tree' ? '사건 검토' : id === 'calc' ? '계산 상세' : id === 'summary' ? '지분 요약' : '구체적 상속분'}
                   </button>
                 ))}
               </div>
@@ -604,7 +606,7 @@ function App() {
                   />
                 )}
                 {activeTab === 'calc' && <CalcPanel calcSteps={calcSteps} issues={blockingIssues} handleNavigate={handleNavigate} />}
-                {activeTab === 'summary' && <SummaryPanel tree={tree} finalShares={finalShares} issues={blockingIssues} handleNavigate={handleNavigate} />}
+                {activeTab === 'summary' && <SummaryPanel tree={tree} finalShares={finalShares} calcSteps={calcSteps} issues={blockingIssues} handleNavigate={handleNavigate} matchIds={matchIds} currentMatchIdx={currentMatchIdx} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />}
                 {activeTab === 'amount' && <AmountPanel tree={tree} finalShares={finalShares} amountCalculations={amountCalculations} propertyValue={propertyValue} setPropertyValue={setPropertyValue} />}
               </div>
             </div>
