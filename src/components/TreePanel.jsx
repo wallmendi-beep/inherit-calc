@@ -306,24 +306,30 @@ export default function TreePanel({
 
           <section className="min-h-0 rounded-2xl border border-[#e9e9e7] bg-white p-5 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/50">
             <div className="rounded-2xl border border-[#ecebe8] bg-[#fbfbfa] p-5 dark:border-neutral-800 dark:bg-neutral-950/30">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                <div className="text-[14px] font-black text-[#6b6963] dark:text-neutral-400">피상속인</div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="text-[24px] font-black tracking-[-0.02em] text-[#37352f] dark:text-neutral-100">
-                    망 {selectedStep.dec?.name}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <div className="flex items-center gap-3">
+                  <div className="text-[14px] font-black text-[#6b6963] dark:text-neutral-400">피상속인</div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-[24px] font-black tracking-[-0.02em] text-[#37352f] dark:text-neutral-100">
+                      망 {selectedStep.dec?.name}
+                    </div>
+                    {selectedDecedentIsHoju && <FlowTag tone="blue">호주</FlowTag>}
                   </div>
-                  {selectedDecedentIsHoju && <FlowTag tone="blue">호주</FlowTag>}
+                  <div className="text-[14px] font-bold text-[#6b6963] dark:text-neutral-400">
+                    {formatKorDate(selectedStep.dec?.deathDate)} 사망
+                  </div>
                 </div>
-                <div className="text-[14px] font-bold text-[#6b6963] dark:text-neutral-400">
-                  {formatKorDate(selectedStep.dec?.deathDate)} 사망
+
+                {/* 구분선 */}
+                <div className="hidden h-4 w-px bg-[#d9d7d1] dark:bg-neutral-700 sm:block" />
+
+                <div className="flex flex-wrap items-center gap-3">
+                  {selectedLawLabel && <FlowTag tone="blue">{selectedLawLabel}</FlowTag>}
+                  <div className="text-[18px] font-black text-[#46648e] dark:text-blue-300">
+                    상속지분 {selectedStep.inN}/{selectedStep.inD}
+                  </div>
+                  {selectedStep.mergeSources?.length > 1 && <FlowTag tone="amber">복수 유입</FlowTag>}
                 </div>
-              </div>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <div className="text-[18px] font-black text-[#46648e] dark:text-blue-300">
-                  상속지분 {selectedStep.inN}/{selectedStep.inD}
-                </div>
-                {selectedLawLabel && <FlowTag tone="blue">{selectedLawLabel}</FlowTag>}
-                {selectedStep.mergeSources?.length > 1 && <FlowTag tone="amber">복수 유입</FlowTag>}
               </div>
               {selectedStep.mergeSources?.length > 1 && (
                 <div className="mt-3 rounded-xl border border-[#ecebe8] bg-white px-4 py-3 text-[12px] text-[#5d5b57] dark:border-neutral-800 dark:bg-neutral-900/70 dark:text-neutral-300">
