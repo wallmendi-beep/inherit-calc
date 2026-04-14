@@ -34,6 +34,7 @@ export const BadgeToggle = ({
   activeLabel, 
   inactiveLabel, 
   isInferred = false,
+  activeClassName = "",
   inactiveClassName = "",
   hoverClassName = "",
   className = "" 
@@ -43,7 +44,7 @@ export const BadgeToggle = ({
   // 자동 판별 시 블루톤 스타일 (Rule 70)
   const inferredClass = "border-blue-400 bg-blue-50/50 text-blue-700";
   const standardClass = active
-    ? "border-neutral-400 bg-neutral-100 text-[#37352f]"
+    ? (activeClassName || "border-neutral-400 bg-neutral-100 text-[#37352f]")
     : (inactiveClassName || "border-[#e5e5e5] bg-[#f8f8f7] text-[#a3a3a3]");
 
   return (

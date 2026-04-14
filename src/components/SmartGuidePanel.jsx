@@ -117,7 +117,7 @@ export default function SmartGuidePanel({
           </section>
         )}
 
-        {warnings.length > 0 && (
+        {activeTab !== 'input' && warnings.length > 0 && (
           <section className="space-y-3">
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">💡 참고사항</h3>
             <ul className="space-y-2">

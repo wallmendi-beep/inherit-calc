@@ -4,7 +4,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { IconMenu, IconTrash2 } from './Icons';
 import { DateInput } from './DateInput';
 import { getLawEra, getRelStr, isBefore } from '../engine/utils';
-import { MultiplierBadge, BadgeToggle } from './ui/InheritDesign';
+import { BadgeToggle } from './ui/InheritDesign';
 
 const RELATION_OPTIONS = {
   wife: { modern: '배우자', legacy: '처' },
@@ -114,7 +114,7 @@ export default function HeirRow({
     return () => clearTimeout(timer);
   }, [isPredeceasedActive, node.id]);
 
-  const isToggleVisuallyOn = isPredeceasedActive || !isToggleOff;
+  const isToggleVisuallyOn = isPredeceasedActive || !isToggleOff || blocksHusbandSubstitution;
   const displayN = isEffectivePredeceased && isToggleOff && (!node.heirs || node.heirs.length === 0)
     ? 0
     : (calcShare ? calcShare.n : (node.shareN || 0));
@@ -135,20 +135,39 @@ export default function HeirRow({
   const isMaleNode = node.gender === 'male' || ['son', 'husband'].includes(node.relation);
   const showHoju = isMaleNode && lawEra !== '1991' && rootIsHoju !== false && !isParentFemale;
   const showMarriedDaughter = node.relation === 'daughter' && lawEra !== '1991';
-  const hasHistoryData = !!(node.divorceDate || node.remarriageDate || node.marriageDate || node.restoreDate);
+  const hasMeaningfulHistoryData = isSpouseType
+    ? !!(node.divorceDate || node.remarriageDate)
+    : showMarriedDaughter
+      ? !!(node.marriageDate || node.restoreDate)
+      : false;
+  const spouseStatusLabel = node.remarriageDate
+    ? '재혼'
+    : node.divorceDate
+      ? '이혼'
+      : getRelStr(node.relation, inheritedDate || rootDeathDate);
 
   let shouldShowTabBtn = false;
   let tabBtnText = '재상속 >>';
   let tabBtnClass = 'bg-transparent text-[#787774] border border-[#e9e9e7] hover:bg-blue-50/50 hover:text-blue-600 hover:border-blue-200 dark:border-neutral-700';
+  const canConfirmNoSubstituteHeirs =
+    isEffectivePredeceased &&
+    !blocksHusbandSubstitution &&
+    !isSpouseType &&
+    (!node.heirs || node.heirs.length === 0);
+  const isNoSubstituteConfirmed = node.successorStatus === 'confirmed_no_substitute_heirs';
 
-  if (isPredeceasedSpouse || blocksHusbandSubstitution) {
+  if (isPredeceasedSpouse) {
     shouldShowTabBtn = false;
+  } else if (blocksHusbandSubstitution && node.isDeceased) {
+    shouldShowTabBtn = true;
+    tabBtnText = '재상속 >>';
+    tabBtnClass = 'bg-transparent text-[#787774] border border-[#e9e9e7] hover:bg-blue-50/50 hover:text-blue-600 hover:border-blue-200 dark:border-neutral-700';
   } else if (isToggleOff) {
     if (['lost', 'disqualified', 'remarried'].includes(effectiveExclusionOption)) {
       shouldShowTabBtn = true;
       tabBtnText = '대습상속 >>';
       tabBtnClass = 'bg-transparent text-[#787774] border border-[#e9e9e7] hover:bg-emerald-50/50 hover:text-emerald-600 hover:border-emerald-200 dark:border-neutral-700';
-    } else if (isEffectivePredeceased && ['son', 'daughter', 'sibling'].includes(node.relation)) {
+    } else if (isEffectivePredeceased && ['son', 'daughter', 'sibling'].includes(node.relation) && !isNoSubstituteConfirmed) {
       shouldShowTabBtn = true;
       tabBtnText = '대습상속 >>';
       tabBtnClass = 'bg-transparent text-neutral-400 border border-neutral-300 border-dashed hover:bg-emerald-50/50 hover:text-emerald-600 hover:border-emerald-200 hover:border-solid dark:border-neutral-700';
@@ -284,20 +303,34 @@ export default function HeirRow({
 
             <div className="ml-[10px] flex w-[180px] shrink-0 items-center gap-1.5">
               {(isEffectivePredeceased && isToggleOff && !isPredeceasedActive) ? (
-                <div className="flex h-[26px] w-[120px] shrink-0 items-center justify-center rounded-full border border-neutral-200 bg-neutral-100 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
-                  <span className="text-[10.5px] font-normal text-neutral-500 dark:text-neutral-400">
-                    {(node.heirs || []).length > 0 ? '대습상속 진행' : '상속권 없음 (선사망)'}
-                  </span>
-                </div>
-              ) : (blocksHusbandSubstitution) ? (
-                <div className="flex h-[26px] w-[120px] shrink-0 items-center justify-center rounded-full border border-neutral-200 bg-neutral-100 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
-                  <span className="text-[11px] font-normal text-neutral-500 dark:text-neutral-400">사위(대습불가)</span>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <div className="flex h-[26px] w-[68px] shrink-0 items-center justify-center rounded-full border border-neutral-200 bg-neutral-100 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
+                    <span className="text-[10.5px] font-normal text-neutral-500 dark:text-neutral-400">
+                      {(node.heirs || []).length > 0 ? '선사망' : '선사망'}
+                    </span>
+                  </div>
+                  {canConfirmNoSubstituteHeirs && (
+                    <button
+                      type="button"
+                      onClick={() => handleUpdate(node.id, 'successorStatus', isNoSubstituteConfirmed ? '' : 'confirmed_no_substitute_heirs')}
+                      className={`flex h-[26px] shrink-0 items-center justify-center rounded-md border px-2.5 shadow-sm transition-all ${
+                        isNoSubstituteConfirmed
+                          ? 'border-[#8a7c69] bg-[#5f564b] text-[#f5f1ea] hover:bg-[#564d43] dark:border-[#6f6457] dark:bg-[#4e463d] dark:text-[#f3eee6]'
+                          : 'border-[#e9e9e7] bg-white text-[#787774] hover:bg-emerald-50/60 hover:text-emerald-700 hover:border-emerald-200 dark:border-neutral-700 dark:bg-neutral-800'
+                      }`}
+                      title={isNoSubstituteConfirmed ? '확정 해제' : '대습상속인 없음 확정'}
+                    >
+                      <span className="text-[10.5px] font-normal">
+                        {isNoSubstituteConfirmed ? '대습없음 확정' : '대습상속인 없음'}
+                      </span>
+                    </button>
+                  )}
                 </div>
               ) : (isToggleOff && isSpouseType && isPreDeceasedCondition && !isPredeceasedActive) ? (
                 <div className="flex h-[26px] w-[150px] shrink-0 items-center justify-center rounded-full border border-neutral-200 bg-neutral-100 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
                   <span className="text-[11px] font-normal text-neutral-500 dark:text-neutral-400">배우자 선사망 (상속권 없음)</span>
                 </div>
-              ) : (isToggleOff && !isPredeceasedActive) ? (
+              ) : (isToggleOff && !isPredeceasedActive && !blocksHusbandSubstitution) ? (
                 <div className="group/select relative w-[120px] rounded border border-[#e5e5e5] bg-[#f8f8f7] px-2.5 py-1 transition-colors hover:border-neutral-300 dark:border-neutral-700 dark:bg-neutral-800">
                   <select
                     value={effectiveExclusionOption || 'renounce'}
@@ -318,30 +351,11 @@ export default function HeirRow({
               ) : (
                 <>
                   {isSpouseType && (() => {
-                    let multiplier = '';
-                    if (lawEra === '1960' && node.relation === 'wife') multiplier = 'x 1/2';
-                    else if (lawEra === '1979' && node.relation === 'wife') multiplier = 'x 1.5';
-                    else if (lawEra === '1991') multiplier = 'x 1.5';
-
-                    if (blocksHusbandSubstitution) {
-                      return (
-                        <div className="flex shrink-0 items-center gap-1.5">
-                          <div className="flex h-[26px] w-[80px] shrink-0 items-center justify-center rounded-full border border-[#e9e9e7] bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
-                            <span className="text-[11px] font-bold text-neutral-600 dark:text-neutral-300">{getRelStr(node.relation, inheritedDate || rootDeathDate)}</span>
-                          </div>
-                          <div className="flex h-[26px] shrink-0 items-center justify-center rounded-full border border-red-200 bg-red-50 px-2.5 shadow-sm dark:border-red-900/40 dark:bg-red-900/20">
-                            <span className="text-[10.5px] font-semibold text-red-600 dark:text-red-300">사위(대습상속 불가)</span>
-                          </div>
-                        </div>
-                      );
-                    }
-
                     return (
-                      <div className="flex shrink-0 items-center gap-1.5">
+                      <div className="flex shrink-0 items-center">
                         <div className="flex h-[26px] w-[80px] shrink-0 items-center justify-center rounded-full border border-[#e9e9e7] bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
-                          <span className="text-[11px] font-bold text-neutral-600 dark:text-neutral-300">{getRelStr(node.relation, inheritedDate || rootDeathDate)}</span>
+                          <span className="text-[11px] font-bold text-neutral-600 dark:text-neutral-300">{spouseStatusLabel}</span>
                         </div>
-                        <MultiplierBadge multiplier={multiplier} />
                       </div>
                     );
                   })()}
@@ -349,27 +363,21 @@ export default function HeirRow({
                   {!isSpouseType && (
                     <div className="flex shrink-0 items-center gap-1.5">
                       {showHoju && (
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center">
                           <BadgeToggle
                             active={node.isHoju}
                             onToggle={(value) => handleUpdate({ type: 'setHojuStatus', nodeId: node.id, isHoju: value })}
                             activeLabel="호주상속"
                             inactiveLabel="재산상속"
+                            activeClassName="border-blue-300 bg-blue-50 text-blue-700"
                             hoverClassName="hover:bg-blue-50/50 hover:text-blue-600 hover:border-blue-200"
                             className="w-[80px]"
                           />
-                          {node.isHoju && <MultiplierBadge multiplier="x 1.5" />}
                         </div>
                       )}
                       {showMarriedDaughter && (
-                        <div className="flex items-center gap-1.5">
-                          <BadgeToggle active={node.isSameRegister !== false} onToggle={(value) => handleUpdate(node.id, 'isSameRegister', value ? true : false)} activeLabel="동일가적" inactiveLabel="비동일가적" isInferred={node._isInferredRegister} inactiveClassName="border-neutral-400 bg-neutral-100 text-[#37352f]" hoverClassName="hover:bg-emerald-50/50 hover:text-emerald-600 hover:border-emerald-200" className="w-[80px]" />
-                          {(() => {
-                            let multiplier = '';
-                            if (lawEra === '1960') multiplier = node.isSameRegister !== false ? 'x 1/2' : 'x 1/4';
-                            else if (lawEra === '1979' && node.isSameRegister === false) multiplier = 'x 1/4';
-                            return multiplier ? <MultiplierBadge multiplier={multiplier} /> : null;
-                          })()}
+                        <div className="flex items-center">
+                          <BadgeToggle active={node.isSameRegister !== false} onToggle={(value) => handleUpdate(node.id, 'isSameRegister', value ? true : false)} activeLabel="동일가적" inactiveLabel="비동일가적" isInferred={node._isInferredRegister} activeClassName="border-emerald-300 bg-emerald-50 text-emerald-700" inactiveClassName="border-neutral-400 bg-neutral-100 text-[#37352f]" hoverClassName="hover:bg-emerald-50/50 hover:text-emerald-600 hover:border-emerald-200" className="w-[80px]" />
                         </div>
                       )}
                     </div>
@@ -380,7 +388,7 @@ export default function HeirRow({
               {((isSpouseType && inheritedDate !== rootDeathDate && !isPreDeceasedCondition) || node.relation === 'daughter') && (
                 <button
                   onClick={() => setIsHistoryModalOpen(true)}
-                  className={`flex h-[26px] w-[32px] shrink-0 items-center justify-center rounded-md border shadow-sm transition-colors ${hasHistoryData ? 'border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:border-blue-800/50 dark:bg-blue-900/30 dark:text-blue-400' : 'border-[#e9e9e7] bg-white text-neutral-400 hover:bg-[#f7f7f5] dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-500'}`}
+                  className={`flex h-[26px] w-[32px] shrink-0 items-center justify-center rounded-md border shadow-sm transition-colors ${hasMeaningfulHistoryData ? 'border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:border-blue-800/50 dark:bg-blue-900/30 dark:text-blue-400' : 'border-[#e9e9e7] bg-white text-neutral-400 hover:bg-[#f7f7f5] dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-500'}`}
                   title="상세 인적 사항 입력"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="h-4 w-4"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" /></svg>

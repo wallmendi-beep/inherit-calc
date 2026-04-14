@@ -1,4 +1,4 @@
-import { isBefore } from '../engine/utils';
+﻿import { isBefore } from '../engine/utils';
 
 const SPOUSE_RELATIONS = new Set(['wife', 'husband', 'spouse']);
 const VALID_RELATIONS = new Set(['wife', 'husband', 'spouse', 'son', 'daughter', 'parent', 'sibling']);
@@ -14,7 +14,6 @@ const buildIssue = (node, issue) => ({
 
 export const collectImportValidationIssues = (tree) => {
   const issues = [];
-  const seenPersonIds = new Set();
 
   const walk = (node, inheritedDate = tree?.deathDate || '') => {
     if (!node) return;
@@ -35,17 +34,6 @@ export const collectImportValidationIssues = (tree) => {
       }
     }
 
-    if (node.personId) {
-      if (seenPersonIds.has(node.personId)) {
-        issues.push(buildIssue(node, {
-          code: 'duplicate-person-id',
-          message: `[${node.name || '이름 미상'}]의 personId가 중복되어 있습니다.`,
-        }));
-      } else {
-        seenPersonIds.add(node.personId);
-      }
-    }
-
     if (node.isDeceased && !node.deathDate) {
       issues.push(buildIssue(node, {
         code: 'missing-death-date',
@@ -57,7 +45,7 @@ export const collectImportValidationIssues = (tree) => {
     const isSpouse = SPOUSE_RELATIONS.has(node.relation);
     const hasHeirs = (node.heirs || []).length > 0;
 
-    if (node.id !== 'root' && node.isDeceased && !hasHeirs && !(isSpouse && isPredeceased)) {
+    if (node.id !== 'root' && node.isDeceased && !hasHeirs && !node.successorStatus && !(isSpouse && isPredeceased)) {
       issues.push(buildIssue(node, {
         code: 'missing-descendants',
         message: `[${node.name || '이름 미상'}]은(는) 사망자인데 하위상속인이 비어 있습니다.`,
@@ -74,7 +62,7 @@ export const collectImportValidationIssues = (tree) => {
     if (activeSpouses.length > 1) {
       issues.push(buildIssue(node, {
         code: 'multiple-spouses',
-        message: `[${node.name || '이름 미상'}] 아래에 유효한 배우자가 둘 이상 있습니다.`,
+        message: `[${node.name || '이름 미상'}] 아래에 유효 배우자가 둘 이상 있습니다.`,
       }));
     }
 
@@ -87,4 +75,3 @@ export const collectImportValidationIssues = (tree) => {
   walk(tree, tree?.deathDate || '');
   return issues;
 };
-

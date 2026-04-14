@@ -135,6 +135,20 @@ function App() {
   }, [tree, importIssues, activeTab]);
 
   useEffect(() => {
+    if (activeTab !== 'input') return undefined;
+    if (!importIssues || importIssues.length === 0) return undefined;
+
+    const timer = setTimeout(() => {
+      const refreshedIssues = collectImportValidationIssues(tree);
+      if (buildImportIssueSignature(refreshedIssues) !== buildImportIssueSignature(importIssues)) {
+        setImportIssues(refreshedIssues);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [tree, activeTab, importIssues]);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       try {
         localStorage.setItem(CHANGELOG_STORAGE_KEY, JSON.stringify({

@@ -21,6 +21,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
     if (!tree) {
       return EMPTY_GUIDE_STATE;
     }
+    const isInputMode = activeTab === 'input';
 
     // [v4.32] 초기 상태(기초 정보 미입력) 최우선 가이드
     if (!tree.name?.trim() || !tree.deathDate) {
@@ -48,6 +49,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
     const uniqueGuidesMap = new Map();
     const groupedPredeceasedMissingMap = new Map();
     const groupedDirectMissingMap = new Map();
+    const groupedNextOrderFemaleMap = new Map();
     let noSurvivors = false;
 
     const findParentNodeInHook = (root, targetId) => {
@@ -57,6 +59,16 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
           const p = findParentNodeInHook(h, targetId);
           if (p) return p;
         }
+      }
+      return null;
+    };
+
+    const findNodeInHook = (root, targetPersonId, targetNodeId) => {
+      if (!root) return null;
+      if ((targetPersonId && root.personId === targetPersonId) || (targetNodeId && root.id === targetNodeId)) return root;
+      for (const child of root.heirs || []) {
+        const found = findNodeInHook(child, targetPersonId, targetNodeId);
+        if (found) return found;
       }
       return null;
     };
@@ -113,6 +125,29 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
         'blocked_husband_substitution',
       ].includes(node.exclusionOption || '');
       const hasConfirmedNoSuccessors = !!node.successorStatus;
+      const isLegacyFemale = getLawEra(effectiveDate) !== '1991' && node.relation === 'daughter';
+
+      if (hasConfirmedNoSuccessors && parentNode && getLawEra(effectiveDate) !== '1991') {
+        const siblingCandidates = (parentNode.heirs || []).filter((h) => h.id !== node.id && ['son', 'daughter'].includes(h.relation));
+        const femaleCandidatesNeedingReview = siblingCandidates.filter((h) => {
+          if (h.relation !== 'daughter') return false;
+          if (h.isExcluded) return false;
+          if (h.marriageDate || h.divorceDate || h.restoreDate) return false;
+          if (h.isSameRegister === false) return false;
+          return true;
+        });
+
+        if (femaleCandidatesNeedingReview.length > 0) {
+          const groupKey = `next-order-female:${node.personId || node.id}`;
+          const current = groupedNextOrderFemaleMap.get(groupKey) || {
+            decedentName: node.name || '해당 사건',
+            targetTabId: node.personId || node.id,
+            names: [],
+          };
+          femaleCandidatesNeedingReview.forEach((candidate) => current.names.push(candidate.name || '이름 미상'));
+          groupedNextOrderFemaleMap.set(groupKey, current);
+        }
+      }
 
       // 아래 단계에서는 본인 하위 탭이 따로 생성되므로, 하위 가계도 중복 검사는 생략한다.
       if ((node.isDeceased || node.id === 'root') && !isHardExcluded) {
@@ -174,7 +209,9 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
 
           // 2. 구법 호주상속 여부 검사
           const hasHoju = (node.heirs || []).some(h => h.isHoju && !h.isExcluded);
-          const needsHoju = getLawEra(effectiveDate) !== '1991' && (node.id === 'root' || ['son', '아들'].includes(node.relation));
+          const needsHoju =
+            getLawEra(effectiveDate) !== '1991' &&
+            (node.id === 'root' || ['son', '아들', 'husband'].includes(node.relation));
           if (needsHoju && !hasHoju && node.heirs && node.heirs.length > 0) {
               uniqueGuidesMap.set(`missing-hoju-${node.personId}`, {
                   id: node.id, uniqueKey: `missing-hoju-${node.personId}`, targetTabId: node.personId, type: 'mandatory',
@@ -196,7 +233,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
           }
 
           // 4. 구법 딸의 혼인/동일가적 정보가 비어 있을 때 확인 요청
-          if (getLawEra(effectiveDate) !== '1991' && node.relation === 'daughter') {
+          if (isLegacyFemale && !hasConfirmedNoSuccessors) {
               if (!node.marriageDate && node.isSameRegister !== false) {
                   uniqueGuidesMap.set(`verify-marriage-${node.personId}`, {
                       id: node.id, uniqueKey: `verify-marriage-${node.personId}`, type: 'recommended',
@@ -246,30 +283,40 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       });
     });
 
+    groupedNextOrderFemaleMap.forEach((group, key) => {
+      const uniqueNames = Array.from(new Set(group.names));
+      if (uniqueNames.length === 0) return;
+      uniqueGuidesMap.set(`next-order-female-${key}`, {
+        id: group.targetTabId,
+        uniqueKey: `next-order-female-${key}`,
+        targetTabId: group.targetTabId,
+        type: 'recommended',
+        code: 'next-order-female-review',
+        text: `[${group.decedentName}] 사건은 차순위 상속으로 진행됩니다. 여성 형제자매 중 동일가적 여부 확인이 필요한 사람이 있습니다: [${uniqueNames.join('], [')}]. 이미 미혼이 확실하면 동일가적으로 두고, 그렇지 않으면 혼인·이혼·복적 정보를 입력해 주세요.`,
+      });
+    });
+
     if (!tree.heirs || tree.heirs.length === 0 || tree.heirs.every(h => h.isExcluded && (!h.heirs || h.heirs.length === 0))) {
       noSurvivors = true;
     }
 
-    // [v3.1.4] 감사 엔진 이슈를 스마트 가이드에 통합
-    (audit.entityIssues || []).forEach((issue) => {
-      const personId = issue.personId || issue.id;
-      const key = `audit-${issue.code}-${personId}`;
-      if (!uniqueGuidesMap.has(key)) {
-        uniqueGuidesMap.set(key, {
-          id: issue.id || personId,
-          uniqueKey: key,
-          personId: personId,
-          targetTabId: issue.targetTabId || personId || 'root',
-          name: issue.name || null,
-          type: issue.severity === 'error' ? 'mandatory' : 'recommended',
-          text: issue.text,
-          code: issue.code,
-          displayTargets: issue.displayTargets || ['guide'],
-        });
-      }
-    });
-
     (importIssues || []).forEach((issue) => {
+      const linkedNode = findNodeInHook(tree, issue.personId, issue.nodeId);
+      if (
+        issue.code === 'missing-descendants' &&
+        linkedNode &&
+        (((linkedNode.heirs || []).length > 0) || !!linkedNode.successorStatus)
+      ) {
+        return;
+      }
+
+      const isLegacyHojuInputCase =
+        issue.code === 'missing-descendants' &&
+        linkedNode &&
+        !linkedNode.successorStatus &&
+        getLawEra(linkedNode.deathDate || tree.deathDate) !== '1991' &&
+        ['son', 'husband'].includes(linkedNode.relation);
+
       const personKey = issue.personId || issue.nodeId || 'root';
       const key = `import-${issue.code}-${personKey}`;
       if (!uniqueGuidesMap.has(key)) {
@@ -281,7 +328,9 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
           targetNodeId: issue.nodeId || '',
           name: issue.personName || null,
           type: issue.severity === 'error' ? 'mandatory' : 'recommended',
-          text: `${issue.message} 불러오기 직후 입력값을 확인하고 저장한 뒤 계속 진행해 주세요.`,
+          text: isLegacyHojuInputCase
+            ? `[${issue.personName || linkedNode?.name || '이름 미상'}] 단계는 호주상속 판단이 필요합니다. 불러오기를 눌러 상속인을 확인하고, 호주상속인을 지정해 주세요.`
+            : `${issue.message} 불러오기 직후 입력값을 확인하고 저장한 뒤 계속 진행해 주세요.`,
           code: `import-${issue.code}`,
           displayTargets: ['guide'],
         });
@@ -290,25 +339,21 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
 
     const smartGuides = Array.from(uniqueGuidesMap.values());
     
-    // UI 표시용으로 필터링된 리스트 생성
-    const mandatoryGuides = smartGuides.filter(g => g.type === 'mandatory');
-    const recommendedGuides = smartGuides.filter(g => g.type === 'recommended');
-
     const globalMismatchReasons = audit.issues.map((issue) => ({
       id: issue.targetTabId || issue.personId || issue.id || 'root',
       text: issue.text,
     }));
 
     return {
-      showGlobalWarning: audit.issues.length > 0, 
+      showGlobalWarning: !isInputMode && audit.issues.length > 0,
       showAutoCalcNotice: false, 
       globalMismatchReasons, 
       autoCalculatedNames: [],
       smartGuides, // 전체 리스트(SmartGuidePanel에서 추가 필터링)
       noSurvivors,
-      hasActionItems: smartGuides.length > 0 || audit.issues.length > 0,
-      auditActionItems: [], // smartGuides로 통합했으므로 빈 배열 반환
-      repairHints: audit.repairHints || [],
+      hasActionItems: smartGuides.length > 0 || (!isInputMode && audit.issues.length > 0),
+      auditActionItems: !isInputMode ? (audit.entityIssues || []) : [],
+      repairHints: !isInputMode ? (audit.repairHints || []) : [],
     };
   }, [tree, finalShares, activeTab, warnings, transitShares, importIssues]);
 };

@@ -96,9 +96,15 @@ export default function InputPanel({
 
   const getEmptyStateGuide = () => {
     if (currentNode?.successorStatus) {
+      const confirmedLabel =
+        currentNode.successorStatus === 'confirmed_no_substitute_heirs'
+          ? '대습상속인 없음 확정'
+          : currentNode.successorStatus === 'confirmed_no_spouse_descendants'
+            ? '직계비속·배우자 없음 확정'
+            : '추가 상속인 없음 확정';
       return {
-        title: '후속 상속인 없음이 확정되었습니다.',
-        body: '이 단계는 추가 상속인 없이 진행하도록 확인된 상태입니다. 필요하면 상속인을 추가하거나 아래에서 확정을 해제할 수 있습니다.',
+        title: `${confirmedLabel} 상태입니다.`,
+        body: '이 단계는 추가 상속인 없이 진행하도록 확인된 상태입니다. 후속 상속인이 필요해지면 상속인 추가 또는 불러오기를 사용하면 됩니다.',
       };
     }
 
@@ -384,7 +390,7 @@ export default function InputPanel({
             )}
 
             {nodeHeirs.length === 0 && (
-              currentNode?.isDeceased && currentNode?.isExcluded !== true ? (
+              currentNode?.isDeceased && (currentNode?.isExcluded !== true || !!emptyStateConfirm || !!currentNode?.successorStatus) ? (
                 <div className="flex flex-col items-center justify-center p-8 bg-[#f8f8f7] dark:bg-neutral-800/40 border border-[#e9e9e7] dark:border-neutral-700 rounded-lg text-center gap-2 m-2 mb-4">
                   <span className="text-[#37352f] dark:text-neutral-200 font-bold text-[14.5px] leading-relaxed whitespace-pre-wrap">
                     {emptyStateGuide.title}
@@ -408,15 +414,15 @@ export default function InputPanel({
                   )}
                   {currentNode?.successorStatus && (
                     <div className="mt-3 flex flex-col items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleUpdate(currentNode.id, 'successorStatus', '')}
-                        className="inline-flex items-center rounded-md border border-neutral-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-700 shadow-sm transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200"
-                      >
-                        확정 해제
-                      </button>
+                      <div className="inline-flex items-center rounded-md border border-[#8a7c69] bg-[#5f564b] px-3 py-1.5 text-[12px] font-bold text-[#f5f1ea] shadow-sm dark:border-[#6f6457] dark:bg-[#4e463d] dark:text-[#f3eee6]">
+                        {currentNode.successorStatus === 'confirmed_no_substitute_heirs'
+                          ? '대습상속인 없음 확정'
+                          : currentNode.successorStatus === 'confirmed_no_spouse_descendants'
+                            ? '직계비속·배우자 없음 확정'
+                            : '추가 상속인 없음 확정'}
+                      </div>
                       <span className="text-[11.5px] text-[#787774] dark:text-neutral-400">
-                        후속 상속인을 추가해야 하면 확정을 해제한 뒤 입력하세요.
+                        상속인을 추가하거나 불러오기 하면 이 확정 상태는 자동으로 해제됩니다.
                       </span>
                     </div>
                   )}
@@ -436,7 +442,7 @@ export default function InputPanel({
                 <div className="w-[72px] ml-[50px] shrink-0">성명</div>
                 <div className="w-[76px] ml-[30px] shrink-0">관계</div>
                 <div className="w-[150px] ml-[50px] shrink-0">생존/사망(사망일자)</div>
-                <div className="w-[180px] ml-[10px] shrink-0">특수조건 및 가감산</div>
+                <div className="w-[180px] ml-[10px] shrink-0">특수조건/가감산 요소</div>
                 <div className="w-[98px] ml-[10px] shrink-0 text-center">재상속/대습상속</div>
                 <div className="ml-[15px] mr-[20px] w-12 shrink-0 flex justify-center">
                   <button
