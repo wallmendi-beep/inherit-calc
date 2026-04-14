@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import MiniTreeView from './MiniTreeView';
 
 function PanelActionButton({ children, onClick, title }) {
@@ -14,22 +14,24 @@ function PanelActionButton({ children, onClick, title }) {
 }
 
 export default function SidebarTreePanel({
-  sidebarOpen,
-  sidebarWidth,
-  sidebarSearchQuery,
-  setSidebarSearchQuery,
-  sidebarMatchIds,
-  sidebarCurrentMatchIdx,
-  handleSidebarPrevMatch,
-  handleSidebarNextMatch,
-  setSidebarToggleSignal,
-  sidebarToggleSignal,
-  tree,
-  handleNavigate,
-  guideStatusMap,
-  handleResizeMouseDown,
+  sidebarOpen = false,
+  sidebarWidth = 240,
+  sidebarSearchQuery = '',
+  setSidebarSearchQuery = () => {},
+  sidebarMatchIds = [],
+  sidebarCurrentMatchIdx = 0,
+  handleSidebarPrevMatch = () => {},
+  handleSidebarNextMatch = () => {},
+  setSidebarToggleSignal = () => {},
+  sidebarToggleSignal = 0,
+  tree = null,
+  handleNavigate = () => {},
+  guideStatusMap = {},
+  handleResizeMouseDown = () => {},
 }) {
   if (!sidebarOpen) return null;
+
+  const matchCount = (sidebarMatchIds || []).length;
 
   return (
     <aside className="fixed left-0 top-[60px] z-30 flex h-[calc(100vh-60px)] items-stretch no-print" style={{ width: sidebarWidth + 10 }}>
@@ -61,10 +63,10 @@ export default function SidebarTreePanel({
               onChange={(e) => setSidebarSearchQuery(e.target.value)}
               className="min-w-0 flex-1 bg-transparent text-[12px] text-[#37352f] outline-none placeholder:text-neutral-400 dark:text-neutral-200"
             />
-            {sidebarMatchIds.length > 0 && (
+            {matchCount > 0 && (
               <div className="flex shrink-0 items-center gap-1">
                 <span className="text-[10px] font-medium text-neutral-400">
-                  {sidebarCurrentMatchIdx + 1}/{sidebarMatchIds.length}
+                  {sidebarCurrentMatchIdx + 1}/{matchCount}
                 </span>
                 <button onClick={handleSidebarPrevMatch} className="rounded p-0.5 text-neutral-400 transition-colors hover:bg-[#f0f0ee] hover:text-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200" title="이전 결과">
                   <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">

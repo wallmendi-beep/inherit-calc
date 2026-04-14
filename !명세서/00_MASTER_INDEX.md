@@ -1,4 +1,4 @@
-﻿# 🏛️ 상속지분 계산기 PRO - Master Index
+# 🏛️ 상속지분 계산기 PRO - Master Index
 
 본 문서는 상속지분 계산기 프로젝트의 모든 명세, 디자인 가이드, 그리고 개발 정책의 통합 진입점입니다. AI 비서(Antigravity) 및 개발자는 모든 작업 시작 전 본 인덱스를 통해 최신 SSOT(Single Source of Truth)를 참조해야 합니다.
 
@@ -56,7 +56,7 @@
 ---
 
 ## 🚀 프로젝트 현황
-- **현재 버전**: v4.59
+- **현재 버전**: v4.61
 - **개발 환경**: Vite + React + TailwindCSS (Vanilla CSS 지향)
 - **주요 철학**: Notion-inspired Professional Minimalist / Vault-based Inheritance Tracking
 

@@ -13,49 +13,49 @@ const GuideCheckButton = ({ label, onClick }) => (
 );
 
 export default function SmartGuidePanel({
-  showNavigator,
-  setShowNavigator,
-  hasActionItems,
-  noSurvivors,
-  activeTab,
-  warnings,
-  smartGuides,
-  hiddenGuideKeys,
-  dismissGuide,
-  checkedGuideKeys,
-  toggleGuideChecked,
-  confirmedGuides,
-  confirmedGuidesOpen,
-  setConfirmedGuidesOpen,
-  showGlobalWarning,
-  globalMismatchReasons,
-  auditActionItems,
-  repairHints,
-  handleNavigate,
-  showAutoCalcNotice,
-  autoCalculatedNames,
-  removeHeir, // 노드 삭제 함수 추가
+  showNavigator = false,
+  setShowNavigator = () => {},
+  hasActionItems = false,
+  noSurvivors = false,
+  activeTab = 'input',
+  warnings = [],
+  smartGuides = [],
+  hiddenGuideKeys = new Set(),
+  dismissGuide = () => {},
+  checkedGuideKeys = new Set(),
+  toggleGuideChecked = () => {},
+  confirmedGuides = [],
+  confirmedGuidesOpen = false,
+  setConfirmedGuidesOpen = () => {},
+  showGlobalWarning = false,
+  globalMismatchReasons = [],
+  auditActionItems = [],
+  repairHints = [],
+  handleNavigate = () => {},
+  showAutoCalcNotice = false,
+  autoCalculatedNames = [],
+  removeHeir = () => {},
 }) {
   const resolveGuideTarget = (item) =>
     item?.targetNodeId || item?.targetTabId || item?.personId || item?.id || null;
 
   const checkedSet = checkedGuideKeys || new Set();
   const visibleAuditActionItems = (auditActionItems || []).filter((item) =>
-    (item.displayTargets || []).includes('guide'),
+    (item?.displayTargets || []).includes('guide'),
   );
 
   const mandatoryGuides = (smartGuides || []).filter(
-    (guide) => guide.type === 'mandatory' && !checkedSet.has(guide.uniqueKey),
+    (guide) => guide?.type === 'mandatory' && !checkedSet.has(guide?.uniqueKey),
   );
   const recommendedGuides = (smartGuides || []).filter(
     (guide) =>
-      guide.type === 'recommended' &&
-      !hiddenGuideKeys.has(guide.uniqueKey) &&
-      !checkedSet.has(guide.uniqueKey),
+      guide?.type === 'recommended' &&
+      !(hiddenGuideKeys || new Set()).has(guide?.uniqueKey) &&
+      !checkedSet.has(guide?.uniqueKey),
   );
   const hasUrgentSignals =
-    mandatoryGuides.length > 0 ||
-    visibleAuditActionItems.length > 0 ||
+    (mandatoryGuides || []).length > 0 ||
+    (visibleAuditActionItems || []).length > 0 ||
     !!showGlobalWarning;
 
   return (

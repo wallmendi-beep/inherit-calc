@@ -1,10 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { IconChevronRight } from './Icons';
 import { getRelStr, getLawEra, isBefore } from '../engine/utils';
 
-const TreeReportNode = ({ node, level, treeToggleSignal, rootDeathDate, onDelete }) => {
+const TreeReportNode = ({ node, level, treeToggleSignal, rootDeathDate, onDelete, navigationSignal }) => {
   const hasHeirs = node.heirs && node.heirs.length > 0;
   const [isExpanded, setIsExpanded] = useState(level === 0);
+
+  // [v4.61] 네비게이션 신호에 따른 자동 펼치기 로직
+  useEffect(() => {
+    if (!navigationSignal?.targetId || !hasHeirs) return;
+    
+    const targetId = navigationSignal.targetId;
+    
+    // 현재 노드의 하위에 타겟이 있는지 확인하는 헬퍼 함수
+    const isAncestorOfTarget = (n, tid) => {
+      if (!n.heirs) return false;
+      for (const h of n.heirs) {
+        if (h.id === tid || h.personId === tid) return true;
+        if (isAncestorOfTarget(h, tid)) return true;
+      }
+      return false;
+    };
+
+    if (isAncestorOfTarget(node, targetId)) {
+      setIsExpanded(true);
+    }
+  }, [navigationSignal, node, hasHeirs]);
 
   // 구조적 오류 여부 판단 (자식 위치에 부모/형제가 들어온 경우)
   const isStructuralError = ['parent', 'sibling'].includes(node.relation);
@@ -47,7 +68,10 @@ const TreeReportNode = ({ node, level, treeToggleSignal, rootDeathDate, onDelete
   const itemStyleClass = getStatusStyle(node, hasHeirs, isExpanded);
 
   return (
-    <div className={`relative ${level > 0 ? 'ml-5 pl-3.5 border-l border-[#e5e5e5] dark:border-neutral-700' : ''} py-0.5 transition-colors`}>
+    <div 
+      className={`relative ${level > 0 ? 'ml-5 pl-3.5 border-l border-[#e5e5e5] dark:border-neutral-700' : ''} py-0.5 transition-colors ${isStructuralError ? 'ring-2 ring-rose-500/50 bg-rose-50/30 rounded-lg' : ''}`}
+      data-node-id={node.id}
+    >
       <div 
         onClick={() => { if (hasHeirs) setIsExpanded(!isExpanded); }}
         className={`flex items-center gap-1.5 w-fit py-1 px-1.5 rounded-md transition-all select-none ${hasHeirs ? 'cursor-pointer hover:bg-[#f8f8f7] dark:hover:bg-neutral-800' : ''}`}
@@ -154,6 +178,7 @@ const TreeReportNode = ({ node, level, treeToggleSignal, rootDeathDate, onDelete
               treeToggleSignal={treeToggleSignal} 
               rootDeathDate={rootDeathDate || node.deathDate} 
               onDelete={onDelete}
+              navigationSignal={navigationSignal}
             />
           ))}
         </div>

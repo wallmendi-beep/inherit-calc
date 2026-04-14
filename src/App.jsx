@@ -32,7 +32,7 @@ import { collectImportValidationIssues } from './utils/importValidationV2';
 import { ingestAiJsonInput, loadTreeFromJsonFile, printAiPromptDocument, printCurrentTab, saveFactTreeToFile } from './utils/appActions';
 import { useSmartGuide } from './hooks/useSmartGuide';
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import { SortableContext, verticalListSortingStrategy, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { QRCodeSVG } from 'qrcode.react'; // 메모: v3.0 브리핑 출력용 QR 코드 생성
 
 function App() {
@@ -59,6 +59,10 @@ function App() {
       .join('||');
 
   const [activeTab, setActiveTab] = useState('input'); 
+  const [activeDeceasedTab, setActiveDeceasedTab] = useState('root');
+  const [treeViewMode, setTreeViewMode] = useState('flow'); // 시뮬레이션 탭 내부 뷰 모드
+  const [navigationSignal, setNavigationSignal] = useState(null); // [v4.61] 트리 펼치기용 신호
+  const [isFolderFocused, setIsFolderFocused] = useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false); 
   const [syncRequest, setSyncRequest] = useState(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -76,6 +80,9 @@ function App() {
   const [isAmountActive, setIsAmountActive] = useState(false);
   const [importIssues, setImportIssues] = useState([]);
   const [changeLog, setChangeLog] = useState([]);
+
+  const [isMainQuickActive, setIsMainQuickActive] = useState(false);
+  const [mainQuickVal, setMainQuickVal] = useState('');
 
   const appendChangeLog = (entry) => {
     setChangeLog((prev) => {
@@ -143,6 +150,15 @@ function App() {
     return () => clearTimeout(timer);
   }, [tree, activeTab, importIssues]);
 
+  // [v4.61] 탭 전환 시 사이드바 자동 제어 (Reactive UI)
+  useEffect(() => {
+    if (activeTab === 'tree') {
+      setSidebarOpen(false); // 시뮬레이션 진입 시 패널 닫기
+    } else if (activeTab === 'input') {
+      setSidebarOpen(true); // 입력 탭 복귀 시 패널 열기
+    }
+  }, [activeTab]);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       try {
@@ -200,6 +216,19 @@ function App() {
     return Array.from(tabMap.values());
   }, [tree]);
 
+  useEffect(() => {
+    if (!deceasedTabs.find(t => t.id === activeDeceasedTab)) {
+      setActiveDeceasedTab('root');
+    }
+  }, [deceasedTabs, activeDeceasedTab]);
+
+  const activeTabObj = useMemo(() => deceasedTabs.find(t => t.id === activeDeceasedTab) || null, [deceasedTabs, activeDeceasedTab]);
+  const getBriefingInfo = useMemo(() => {
+    if (activeDeceasedTab === 'root') return { name: tree.name || '피상속인', relation: '피상속인', deathDate: tree.deathDate };
+    const tab = deceasedTabs.find(t => t.id === activeDeceasedTab);
+    return { name: tab?.name || '(상속인)', relation: tab?.relation, deathDate: tab?.node?.deathDate };
+  }, [tree, deceasedTabs, activeDeceasedTab]);
+
   const undoTree = () => setVaultState(prev => prev.currentIndex > 0 ? { ...prev, currentIndex: prev.currentIndex - 1 } : prev);
   const redoTree = () => setVaultState(prev => prev.currentIndex < prev.history.length - 1 ? { ...prev, currentIndex: prev.currentIndex + 1 } : prev);
 
@@ -220,14 +249,18 @@ function App() {
 
   const handleNavigate = (nodeId) => {
     if (!nodeId) return;
-    if (nodeId === 'tree') { setActiveTab('tree'); return; }
-    setActiveTab('input');
-    if (typeof nodeId === 'string' && nodeId.startsWith('tab:')) {
-      const targetTabId = nodeId.split(':')[1];
-      setActiveDeceasedTab(targetTabId);
-      setIsFolderFocused(true);
+    
+    // 1. 단순 탭 이동 처리
+    const specialTabs = ['summary', 'result', 'calc', 'history', 'amount'];
+    if (specialTabs.includes(nodeId)) {
+      setActiveTab(nodeId);
       return;
     }
+
+    // 2. 가계도/시뮬레이션 관련 타겟 판단
+    const isStructuralErrorNode = typeof nodeId === 'string' && nodeId.includes('struct-err');
+    const isTreeRequest = nodeId === 'tree';
+
     let resolvedNodeId = null;
     const findTabIdForNode = (currentNode, currentTabId, visited = new Set()) => {
       if (!currentNode || visited.has(currentNode.id)) return null;
@@ -243,8 +276,28 @@ function App() {
       }
       return null;
     };
+
     const foundTabId = findTabIdForNode(tree, 'root');
-    if (foundTabId) setActiveDeceasedTab(foundTabId);
+
+    // 3. 목적지에 따른 탭 전환 (단일 상태 업데이트로 번쩍임 차단)
+    if (isStructuralErrorNode || isTreeRequest) {
+      if (activeTab !== 'tree') {
+        setActiveTab('tree');
+        // setSidebarOpen(false); // useEffect에서 공통 처리됨
+      }
+      setTreeViewMode('tree');
+      setNavigationSignal({ targetId: nodeId, at: Date.now() });
+    } else {
+      // 일반 인물/데이터 수정 목적
+      if (activeTab !== 'input') {
+        setActiveTab('input');
+      }
+      if (foundTabId) {
+        setActiveDeceasedTab(foundTabId);
+      }
+    }
+
+    // 4. 스크롤 및 하이라이트 효과
     setTimeout(() => {
       const targetDomId = resolvedNodeId || nodeId;
       const element = document.querySelector(`[data-node-id="${targetDomId}"]`);
@@ -262,6 +315,32 @@ function App() {
   const [sidebarSearchQuery, setSidebarSearchQuery] = useState('');
   const [sidebarMatchIds, setSidebarMatchIds] = useState([]);
   const [sidebarCurrentMatchIdx, setSidebarCurrentMatchIdx] = useState(0);
+  const [sidebarToggleSignal, setSidebarToggleSignal] = useState(0);
+
+  const handleSidebarPrevMatch = () => {
+    if (sidebarMatchIds.length === 0) return;
+    setSidebarCurrentMatchIdx((prev) => (prev - 1 + sidebarMatchIds.length) % sidebarMatchIds.length);
+  };
+  const handleSidebarNextMatch = () => {
+    if (sidebarMatchIds.length === 0) return;
+    setSidebarCurrentMatchIdx((prev) => (prev + 1) % sidebarMatchIds.length);
+  };
+
+  const handleResizeMouseDown = (e) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = sidebarWidth;
+    const handleMouseMove = (moveE) => {
+      const deltaX = moveE.clientX - startX;
+      setSidebarWidth(Math.max(180, Math.min(600, startWidth + deltaX)));
+    };
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
 
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -325,15 +404,41 @@ function App() {
     return { estateVal, deemedEstate, results };
   }, [finalShares, propertyValue, specialBenefits, contributions]);
 
+  const [checkedGuideKeys, setCheckedGuideKeys] = useState(new Set());
+  const [hiddenGuideKeys, setHiddenGuideKeys] = useState(new Set());
+  const [confirmedGuidesOpen, setConfirmedGuidesOpen] = useState(false);
+
+  const toggleGuideChecked = (key) => {
+    setCheckedGuideKeys(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+  const dismissGuide = (key) => {
+    setHiddenGuideKeys(prev => {
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
+  };
+
   const guideInfo = useSmartGuide(tree, finalShares, activeTab, warnings, transitShares, importIssues);
   const smartGuides = useMemo(() => {
     const uniqueMap = new Map();
     (guideInfo?.smartGuides || []).forEach(g => {
       const key = `${g.type}:${g.text}`;
-      if (!uniqueMap.has(key)) uniqueMap.set(key, g);
+      if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, { ...g, uniqueKey: key });
+      }
     });
     return Array.from(uniqueMap.values());
   }, [guideInfo?.smartGuides]);
+
+  const confirmedGuides = useMemo(() => {
+    return smartGuides.filter(g => checkedGuideKeys.has(g.uniqueKey));
+  }, [smartGuides, checkedGuideKeys]);
 
   const removeHeir = (id) => {
     appendChangeLog({ type: 'removeHeir', nodeId: id });
@@ -343,13 +448,70 @@ function App() {
     setVault(prev => { if (prev.relationships[parentPersonId]) prev.relationships[parentPersonId] = prev.relationships[parentPersonId].filter(l => l.targetId !== targetPersonId); return prev; });
   };
 
+  const removeAllHeirs = (parentId) => {
+    appendChangeLog({ type: 'removeAllHeirs', parentId });
+    setVault(prev => {
+      let targetPersonId = parentId;
+      const findNode = (n) => { if (n.id === parentId) { targetPersonId = n.personId; return true; } return (n.heirs || []).some(findNode); }; findNode(tree);
+      if (prev.relationships[targetPersonId]) prev.relationships[targetPersonId] = [];
+      return prev;
+    });
+  };
+
   const handleUpdate = (id, changes, value) => {
     const updates = typeof changes === 'object' ? changes : { [changes]: value };
     setVault(prev => {
       let targetPersonId = id;
       const findNode = (n) => { if (n.id === id) { targetPersonId = n.personId; return true; } return (n.heirs || []).some(findNode); }; findNode(tree);
-      const personalKeys = ['name', 'isDeceased', 'deathDate', 'marriageDate', 'remarriageDate', 'divorceDate', 'restoreDate', 'gender', 'successorStatus'];
+      const personalKeys = ['name', 'isDeceased', 'deathDate', 'marriageDate', 'remarriageDate', 'divorceDate', 'restoreDate', 'gender', 'successorStatus', 'isHoju', 'exclusionOption'];
       personalKeys.forEach(k => { if (updates[k] !== undefined) prev.persons[targetPersonId][k] = updates[k]; });
+      return prev;
+    });
+  };
+
+  const handleRootUpdate = (key, val) => {
+    setVault(prev => {
+      prev.persons['root'][key] = val;
+      return prev;
+    });
+  };
+
+  const handleQuickSubmit = (targetTabId, currentNode, val) => {
+    if (!val.trim()) return;
+    const names = val.split(',').map(n => n.trim()).filter(n => n);
+    if (names.length === 0) return;
+    setTree(prev => appendQuickHeirs(prev, targetTabId === 'root' ? 'root' : currentNode.id, names));
+  };
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setTree(prev => {
+        const findAndMove = (node) => {
+          if (node.heirs && node.heirs.some(h => h.id === active.id)) {
+            const oldIdx = node.heirs.findIndex(h => h.id === active.id);
+            const newIdx = node.heirs.findIndex(h => h.id === over.id);
+            node.heirs = arrayMove(node.heirs, oldIdx, newIdx);
+            return true;
+          }
+          return (node.heirs || []).some(findAndMove);
+        };
+        findAndMove(prev);
+        return prev;
+      });
+    }
+  };
+
+  const appendResolvedHeirs = (parentId, heirsToAdd) => {
+    setTree(prev => {
+      const findAndAdd = (node) => {
+        if (node.id === parentId) {
+          node.heirs = [...(node.heirs || []), ...heirsToAdd];
+          return true;
+        }
+        return (node.heirs || []).some(findAndAdd);
+      };
+      findAndAdd(prev);
       return prev;
     });
   };
@@ -361,7 +523,15 @@ function App() {
         <SmartGuidePanel
           showNavigator={showNavigator} setShowNavigator={setShowNavigator} navigatorWidth={navigatorWidth}
           activeTab={activeTab} tree={tree} smartGuides={smartGuides}
-          handleNavigate={handleNavigate} removeHeir={removeHeir}
+          hasActionItems={guideInfo?.hasActionItems} noSurvivors={guideInfo?.noSurvivors}
+          warnings={warnings} hiddenGuideKeys={hiddenGuideKeys} dismissGuide={dismissGuide}
+          checkedGuideKeys={checkedGuideKeys} toggleGuideChecked={toggleGuideChecked}
+          confirmedGuides={confirmedGuides} confirmedGuidesOpen={confirmedGuidesOpen}
+          setConfirmedGuidesOpen={setConfirmedGuidesOpen} showGlobalWarning={guideInfo?.showGlobalWarning}
+          globalMismatchReasons={guideInfo?.globalMismatchReasons} auditActionItems={guideInfo?.auditActionItems}
+          repairHints={guideInfo?.repairHints} handleNavigate={handleNavigate}
+          showAutoCalcNotice={guideInfo?.showAutoCalcNotice} autoCalculatedNames={guideInfo?.autoCalculatedNames}
+          removeHeir={removeHeir}
         />
         <TopToolbar
           sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} tree={tree}
@@ -371,7 +541,14 @@ function App() {
           handlePrint={() => printCurrentTab({ activeTab, tree })}
           zoomLevel={zoomLevel} setZoomLevel={setZoomLevel} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode}
         />
-        <SidebarTreePanel sidebarOpen={sidebarOpen} sidebarWidth={sidebarWidth} tree={tree} handleNavigate={handleNavigate} />
+        <SidebarTreePanel
+          sidebarOpen={sidebarOpen} sidebarWidth={sidebarWidth} tree={tree} handleNavigate={handleNavigate}
+          sidebarSearchQuery={sidebarSearchQuery} setSidebarSearchQuery={setSidebarSearchQuery}
+          sidebarMatchIds={sidebarMatchIds} sidebarCurrentMatchIdx={sidebarCurrentMatchIdx}
+          handleSidebarPrevMatch={handleSidebarPrevMatch} handleSidebarNextMatch={handleSidebarNextMatch}
+          sidebarToggleSignal={sidebarToggleSignal} setSidebarToggleSignal={setSidebarToggleSignal}
+          handleResizeMouseDown={handleResizeMouseDown}
+        />
         <main className={`flex-1 flex w-full transition-all duration-300 ${sidebarOpen ? 'justify-start' : 'justify-center'}`} style={{ paddingLeft: sidebarOpen ? (sidebarWidth + 10) : 0, paddingRight: showNavigator ? (navigatorWidth + 10) : 0 }}>
           <div style={{ zoom: zoomLevel, width: '100%', display: 'flex', justifyContent: (sidebarOpen || showNavigator) ? 'flex-start' : 'center' }}>
             <div className={`flex flex-col shrink-0 mt-6 print-compact relative z-10 transition-all duration-300 ${activeTab === 'tree' ? 'w-[1480px] min-w-[1480px] px-3' : 'w-[1080px] min-w-[1080px] px-6'}`}>
@@ -383,8 +560,30 @@ function App() {
                 ))}
               </div>
               <div className="border border-[#e9e9e7] dark:border-neutral-700 rounded-xl shadow-sm min-h-[600px] bg-white dark:bg-neutral-800 flex flex-col p-10 relative z-0">
-                {activeTab === 'input' && <InputPanel tree={tree} activeDeceasedTab={activeDeceasedTab} handleUpdate={handleUpdate} removeHeir={removeHeir} addHeir={() => {}} />}
-                {activeTab === 'tree' && <TreePanel tree={tree} treeToggleSignal={treeToggleSignal} calcSteps={calcSteps} handleNavigate={handleNavigate} removeHeir={removeHeir} />}
+                {activeTab === 'input' && (
+                  <InputPanel
+                    tree={tree} activeDeceasedTab={activeDeceasedTab} activeTabObj={activeTabObj} getBriefingInfo={getBriefingInfo}
+                    finalShares={finalShares} issues={blockingIssues} handleUpdate={handleUpdate} removeHeir={removeHeir}
+                    removeAllHeirs={removeAllHeirs} addHeir={() => {}} appendResolvedHeirs={appendResolvedHeirs}
+                    handleKeyDown={handleKeyDown} handleRootUpdate={handleRootUpdate} handleDragEnd={handleDragEnd}
+                    sensors={sensors} setAiTargetId={setAiTargetId} setIsAiModalOpen={setIsAiModalOpen}
+                    isMainQuickActive={isMainQuickActive} setIsMainQuickActive={setIsMainQuickActive}
+                    mainQuickVal={mainQuickVal} setMainQuickVal={setMainQuickVal}
+                    handleQuickSubmit={handleQuickSubmit} setActiveDeceasedTab={setActiveDeceasedTab}
+                  />
+                )}
+                {activeTab === 'tree' && (
+                  <TreePanel 
+                    tree={tree} 
+                    treeToggleSignal={treeToggleSignal} 
+                    calcSteps={calcSteps} 
+                    handleNavigate={handleNavigate} 
+                    removeHeir={removeHeir}
+                    viewMode={treeViewMode}
+                    setViewMode={setTreeViewMode}
+                    navigationSignal={navigationSignal}
+                  />
+                )}
                 {activeTab === 'calc' && <CalcPanel calcSteps={calcSteps} issues={blockingIssues} handleNavigate={handleNavigate} />}
                 {activeTab === 'summary' && <SummaryPanel tree={tree} finalShares={finalShares} issues={blockingIssues} handleNavigate={handleNavigate} />}
                 {activeTab === 'amount' && <AmountPanel tree={tree} finalShares={finalShares} amountCalculations={amountCalculations} propertyValue={propertyValue} setPropertyValue={setPropertyValue} />}

@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { IconNetwork } from './Icons';
 import TreeReportNode from './TreeReportNode';
 import { formatKorDate, getLawEra, getRelStr, isBefore } from '../engine/utils';
@@ -185,9 +185,11 @@ export default function TreePanel({
   setIsAllExpanded,
   calcSteps = [],
   handleNavigate,
-  removeHeir, // 삭제 함수 추가
+  removeHeir,
+  viewMode,     // props로 받음
+  setViewMode,  // props로 받음
+  navigationSignal, // [v4.61] 자동 펼치기 신호
 }) {
-  const [viewMode, setViewMode] = React.useState('flow');
   const [selectedStepKey, setSelectedStepKey] = React.useState(null);
 
   const steps = React.useMemo(
@@ -252,14 +254,6 @@ export default function TreePanel({
     <div className="flex h-full animate-in fade-in flex-col py-2 duration-300">
       <div className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-[#e5e5e5] bg-[#f8f8f7] p-4 text-[13px] font-semibold text-[#787774] shadow-none dark:border-neutral-700 dark:bg-neutral-800/50 dark:text-neutral-300 no-print">
         <div className="flex items-center gap-2">
-          <IconNetwork className="h-5 w-5 shrink-0 opacity-50" />
-          <span>
-            {viewMode === 'tree'
-              ? '이름을 클릭하면 하위 관계도를 펼치거나 접을 수 있습니다.'
-              : '사망 사건을 하나씩 선택해, 그 사건의 1차 상속 흐름만 시뮬레이션합니다. 재상속은 별도 사건으로 이어집니다.'}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
           <div className="flex items-center gap-1 rounded-full border border-[#dcdcd9] bg-[#f1f1ef] px-1.5 py-1 dark:border-neutral-700 dark:bg-neutral-800">
             <ViewModeButton active={viewMode === 'tree'} onClick={() => setViewMode('tree')}>트리 보기</ViewModeButton>
             <ViewModeButton active={viewMode === 'flow'} onClick={() => setViewMode('flow')}>사건 시뮬레이션</ViewModeButton>
@@ -277,11 +271,19 @@ export default function TreePanel({
             </button>
           )}
         </div>
+        <div className="flex items-center gap-2 text-right">
+          <span>
+            {viewMode === 'tree'
+              ? '이름을 클릭하면 하위 관계도를 펼치거나 접을 수 있습니다.'
+              : '사망 사건을 하나씩 선택해, 그 사건의 1차 상속 흐름만 시뮬레이션합니다. 재상속은 별도 사건으로 이어집니다.'}
+          </span>
+          <IconNetwork className="h-5 w-5 shrink-0 opacity-50" />
+        </div>
       </div>
 
       {viewMode === 'tree' ? (
         <div className="overflow-hidden rounded-xl border border-[#e9e9e7] bg-white p-8 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/50">
-          <TreeReportNode node={tree} level={0} treeToggleSignal={treeToggleSignal} onDelete={removeHeir} />
+          <TreeReportNode node={tree} level={0} treeToggleSignal={treeToggleSignal} onDelete={removeHeir} navigationSignal={navigationSignal} />
         </div>
       ) : steps.length > 0 && selectedStep ? (
         <div className="grid min-h-0 gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">

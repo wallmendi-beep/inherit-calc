@@ -310,7 +310,7 @@ export default function InputPanel({
                 </span>
                 <div className="flex items-center overflow-hidden">
                   <span className="text-[16px] font-black text-neutral-800 dark:text-neutral-100 truncate">
-                    {getBriefingInfo.name}
+                    {getBriefingInfo?.name || (activeDeceasedTab === 'root' ? (tree.name || '피상속인') : '(상속인)')}
                   </span>
                 </div>
               </div>
