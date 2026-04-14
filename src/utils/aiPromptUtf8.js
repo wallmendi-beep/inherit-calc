@@ -25,10 +25,10 @@ export const AI_PROMPT = `
 
 ### [가계도 구조 규칙]
 1. **계층 구조 제약**:
-   - `heirs` 배열 안에는 오직 **배우자(wife, husband, spouse)**와 **비속(son, daughter)**만 넣으십시오.
-   - **주의**: 부모(parent)나 형제자매(sibling)를 `heirs`에 넣는 것은 심각한 구조적 오류입니다. 이런 경우 반드시 질문하십시오.
+   - \`heirs\` 배열 안에는 오직 **배우자(wife, husband, spouse)**와 **비속(son, daughter)**만 넣으십시오.
+   - **주의**: 부모(parent)나 형제자매(sibling)를 \`heirs\`에 넣는 것은 심각한 구조적 오류입니다. 이런 경우 반드시 질문하십시오.
 2. **필드 제한 (AI 추론 금지)**:
-   - `isExcluded`, `exclusionOption`, `n`, `d`, `r`, `ex`, `modifierReason` 등 계산/판단 관련 필드는 절대 생성하지 마십시오.
+   - \`isExcluded\`, \`exclusionOption\`, \`n\`, \`d\`, \`r\`, \`ex\`, \`modifierReason\` 등 계산/판단 관련 필드는 절대 생성하지 마십시오.
    - AI는 오직 성명, 관계, 날짜, 성별, 호주여부, 동일가적여부만 기록합니다.
 
 ### [허용 필드 및 값]
