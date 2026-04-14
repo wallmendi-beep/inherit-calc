@@ -73,7 +73,26 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       return null;
     };
 
-    const checkIndependentExclusionGuide = (node, level = 0) => {
+    const checkStructuralError = (node, level = 0) => {
+      const invalidHeirs = (node.heirs || []).filter(h => ['parent', 'sibling'].includes(h.relation));
+      
+      invalidHeirs.forEach(h => {
+        uniqueGuidesMap.set(`struct-err-${h.id}`, {
+          id: h.id,
+          uniqueKey: `struct-err-${h.id}`,
+          type: 'mandatory',
+          text: `[${h.name || '이름 미상'}]이(가) [${node.name || '부모'}]의 하위 위치에 '부모/형제' 관계로 잘못 입력되었습니다. 가계도에서 확인 후 삭제해 주세요.`,
+          targetTabId: 'tree', // 가계도 보기 모드로 유도
+          targetNodeId: h.id,
+          parentNodeId: node.id
+        });
+      });
+
+      if (node.heirs) node.heirs.forEach(h => checkStructuralError(h, level + 1));
+    };
+
+    checkStructuralError(tree, 0);
+    checkIndependentExclusionGuide(tree, 0);
       const isPredeceased = node.deathDate && tree.deathDate && isBefore(node.deathDate, tree.deathDate);
       
       if (node.id !== 'root' && node.isExcluded && ['renounce', 'disqualified'].includes(node.exclusionOption) && !isPredeceased) {

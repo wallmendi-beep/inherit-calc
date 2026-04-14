@@ -232,6 +232,16 @@ function App() {
   const [showNavigator, setShowNavigator] = useState(true);
 
   const handleNavigate = (nodeId) => {
+    if (!nodeId) return;
+
+    // [v4.60] 가계도 보기 모드로의 직접 이동 지원
+    if (nodeId === 'tree') {
+      setActiveTab('tree');
+      // TreePanel의 초기 viewMode가 'flow'일 수 있으므로 주의가 필요합니다.
+      // 하지만 사용자 요구사항에 따라 탭을 전환합니다.
+      return;
+    }
+
     setActiveTab('input');
     if (typeof nodeId === 'string' && nodeId.startsWith('tab:')) {
       const targetTabId = nodeId.split(':')[1];
@@ -1044,19 +1054,20 @@ function App() {
           tree={tree}
           smartGuides={smartGuides}
           hiddenGuideKeys={hiddenGuideKeys}
-        dismissGuide={dismissGuide}
-        checkedGuideKeys={checkedGuideKeys}
-        toggleGuideChecked={toggleGuideChecked}
-        confirmedGuides={confirmedGuides}
-        confirmedGuidesOpen={confirmedGuidesOpen}
-        setConfirmedGuidesOpen={setConfirmedGuidesOpen}
-        showGlobalWarning={showGlobalWarning}
-        globalMismatchReasons={globalMismatchReasons}
-        auditActionItems={auditActionItems}
+          dismissGuide={dismissGuide}
+          checkedGuideKeys={checkedGuideKeys}
+          toggleGuideChecked={toggleGuideChecked}
+          confirmedGuides={confirmedGuides}
+          confirmedGuidesOpen={confirmedGuidesOpen}
+          setConfirmedGuidesOpen={setConfirmedGuidesOpen}
+          showGlobalWarning={showGlobalWarning}
+          globalMismatchReasons={globalMismatchReasons}
+          auditActionItems={auditActionItems}
           repairHints={repairHints}
           handleNavigate={handleNavigate}
           showAutoCalcNotice={showAutoCalcNotice}
           autoCalculatedNames={autoCalculatedNames}
+          removeHeir={removeHeir} // 삭제 기능 연동
         />
       <TopToolbar
         sidebarOpen={sidebarOpen}
@@ -1142,6 +1153,7 @@ function App() {
                   setIsAllExpanded={setIsAllExpanded}
                   calcSteps={calcSteps}
                   handleNavigate={handleNavigate}
+                  removeHeir={removeHeir} // 삭제 기능 전달
                 />
               )}
               {(activeTab === 'calc' || activeTab === 'result' || activeTab === 'summary' || activeTab === 'amount') && <MetaHeader tree={tree} />}

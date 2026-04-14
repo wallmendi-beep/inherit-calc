@@ -185,6 +185,7 @@ export default function TreePanel({
   setIsAllExpanded,
   calcSteps = [],
   handleNavigate,
+  removeHeir, // 삭제 함수 추가
 }) {
   const [viewMode, setViewMode] = React.useState('flow');
   const [selectedStepKey, setSelectedStepKey] = React.useState(null);
@@ -280,7 +281,7 @@ export default function TreePanel({
 
       {viewMode === 'tree' ? (
         <div className="overflow-hidden rounded-xl border border-[#e9e9e7] bg-white p-8 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/50">
-          <TreeReportNode node={tree} level={0} treeToggleSignal={treeToggleSignal} />
+          <TreeReportNode node={tree} level={0} treeToggleSignal={treeToggleSignal} onDelete={removeHeir} />
         </div>
       ) : steps.length > 0 && selectedStep ? (
         <div className="grid min-h-0 gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">

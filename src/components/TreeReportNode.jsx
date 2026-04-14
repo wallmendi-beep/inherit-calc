@@ -2,9 +2,12 @@ import React, { useState } from 'react';
 import { IconChevronRight } from './Icons';
 import { getRelStr, getLawEra, isBefore } from '../engine/utils';
 
-const TreeReportNode = ({ node, level, treeToggleSignal, rootDeathDate }) => {
+const TreeReportNode = ({ node, level, treeToggleSignal, rootDeathDate, onDelete }) => {
   const hasHeirs = node.heirs && node.heirs.length > 0;
   const [isExpanded, setIsExpanded] = useState(level === 0);
+
+  // 구조적 오류 여부 판단 (자식 위치에 부모/형제가 들어온 경우)
+  const isStructuralError = ['parent', 'sibling'].includes(node.relation);
 
   const [prevSignal, setPrevSignal] = useState(treeToggleSignal);
   if (treeToggleSignal !== prevSignal) {
@@ -120,11 +123,39 @@ const TreeReportNode = ({ node, level, treeToggleSignal, rootDeathDate }) => {
              상속인 {node.heirs.length}명 보기
            </span>
         )}
+
+        {/* 🗑️ 구조적 오류 긴급 삭제 버튼 */}
+        {isStructuralError && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (window.confirm(`[경고] 잘못 입력된 관계(${node.relation})입니다.\n'${node.name}' 노드를 가계도에서 삭제하시겠습니까?`)) {
+                onDelete && onDelete(node.id);
+              }
+            }}
+            className="ml-2 flex items-center justify-center w-6 h-6 rounded-full bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors print:hidden"
+            title="잘못된 관계 노드 삭제"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+              <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75V4H5a2 2 0 0 0-2 2v.092c0 .51.102 1.012.29 1.482l.848 2.12a.5.5 0 0 0 .462.306h10.8a.5.5 0 0 0 .462-.306l.848-2.12c.188-.47.29-.972.29-1.482V6a2 2 0 0 0-2-2h-1V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM8 3.75V4h4v-.25a1.25 1.25 0 0 0-1.25-1.25h-1.5A1.25 1.25 0 0 0 8 3.75ZM3.5 10.5V17a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-6.5h-13Z" clipRule="evenodd" />
+            </svg>
+          </button>
+        )}
       </div>
       
       <div className={`grid transition-all duration-300 ease-in-out print:grid-rows-[1fr] print:opacity-100 print:mt-0 ${isExpanded ? 'grid-rows-[1fr] opacity-100 mt-0' : 'grid-rows-[0fr] opacity-0'}`}>
         <div className="overflow-hidden print:overflow-visible">
-          {node.heirs && node.heirs.map(h => <TreeReportNode key={h.id} node={h} level={level + 1} treeToggleSignal={treeToggleSignal} rootDeathDate={rootDeathDate || node.deathDate} />)}
+          {node.heirs && node.heirs.map(h => (
+            <TreeReportNode 
+              key={h.id} 
+              node={h} 
+              level={level + 1} 
+              treeToggleSignal={treeToggleSignal} 
+              rootDeathDate={rootDeathDate || node.deathDate} 
+              onDelete={onDelete}
+            />
+          ))}
         </div>
       </div>
     </div>
