@@ -33,21 +33,6 @@ export function printCurrentTab({ activeTab, tree }) {
 }
 
 export function saveFactTreeToFile(tree, scenarioData = null) {
-  // 5단계 조기 발견: 사망자이나 하위 상속인이 누락된 경우 경고
-  let hasMissingHeir = false;
-  const checkMissing = (node) => {
-    if (node.isDeceased && node.isExcluded !== true && (!node.heirs || node.heirs.length === 0)) {
-      hasMissingHeir = true;
-    }
-    if (node.heirs) node.heirs.forEach(checkMissing);
-  };
-  checkMissing(tree);
-
-  if (hasMissingHeir) {
-    const proceed = window.confirm("⚠️ [경고] 사망자이나 하위 상속인이 입력되지 않은 미완성 노드가 존재합니다.\n올바른 계산이 불가능할 수 있습니다. 그래도 임시 저장용으로 내보내시겠습니까?");
-    if (!proceed) return;
-  }
-
   const isCaseSnapshot = !!tree.caseNo && scenarioData;
   let exportData;
 
