@@ -58,34 +58,7 @@ const Tag = ({ children, tone = 'default' }) => {
   );
 };
 
-// 상속 방향 배너
-const DirectionBanner = ({ step }) => {
-  const dists = step.dists || [];
-  const hasSpouse = dists.some((d) => ['wife', 'husband', 'spouse'].includes(d.h?.relation) && !d.ex && d.n > 0);
-  const hasChild = dists.some((d) => ['son', 'daughter', 'child'].includes(d.h?.relation) && !d.ex && d.n > 0);
-  const hasParent = dists.some((d) => ['father', 'mother', 'parent'].includes(d.h?.relation) && !d.ex && d.n > 0);
-  const hasSibling = dists.some((d) => ['brother', 'sister', 'sibling'].includes(d.h?.relation) && !d.ex && d.n > 0);
 
-  let rankLabel = '';
-  let rankTone = 'blue';
-  if (hasChild) { rankLabel = '1순위: 직계비속'; }
-  else if (hasParent) { rankLabel = '2순위: 직계존속'; rankTone = 'amber'; }
-  else if (hasSibling) { rankLabel = '3순위: 형제자매'; rankTone = 'amber'; }
-
-  const era = step.dec?.deathDate ? getLawEra(step.dec.deathDate) : '';
-  const eraLabel = lawEraLabel(era);
-
-  return (
-    <div className="mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-[#e4e2de] bg-[#f7f6f3] px-4 py-3 dark:border-neutral-700 dark:bg-neutral-800/40">
-      {eraLabel && <Tag tone="blue">{eraLabel}</Tag>}
-      {hasSpouse && <Tag tone="blue">배우자 동순위</Tag>}
-      {rankLabel && <Tag tone={rankTone}>{rankLabel}</Tag>}
-      <span className="text-[11px] text-[#787774] dark:text-neutral-500">
-        상속지분 {step.inN}/{step.inD}
-      </span>
-    </div>
-  );
-};
 
 // 제외된 상속인 목록
 const ExcludedSection = ({ dists }) => {
@@ -184,6 +157,20 @@ const EventDetail = ({ step, stepMap, onNavigate, onOpenEvent }) => {
   const spouseDists = activeDists.filter((d) => ['wife', 'husband', 'spouse'].includes(d.h?.relation));
   const otherDists = activeDists.filter((d) => !['wife', 'husband', 'spouse'].includes(d.h?.relation));
 
+  const hasSpouse = dists.some((d) => ['wife', 'husband', 'spouse'].includes(d.h?.relation) && !d.ex && d.n > 0);
+  const hasChild = dists.some((d) => ['son', 'daughter', 'child'].includes(d.h?.relation) && !d.ex && d.n > 0);
+  const hasParent = dists.some((d) => ['father', 'mother', 'parent'].includes(d.h?.relation) && !d.ex && d.n > 0);
+  const hasSibling = dists.some((d) => ['brother', 'sister', 'sibling'].includes(d.h?.relation) && !d.ex && d.n > 0);
+
+  let rankLabel = '';
+  let rankTone = 'blue';
+  if (hasChild) { rankLabel = '1순위: 직계비속'; }
+  else if (hasParent) { rankLabel = '2순위: 직계존속'; rankTone = 'amber'; }
+  else if (hasSibling) { rankLabel = '3순위: 형제자매'; rankTone = 'amber'; }
+
+  const era = step.dec?.deathDate ? getLawEra(step.dec.deathDate) : '';
+  const eraLabel = lawEraLabel(era);
+
   const otherLabel =
     otherDists.some((d) => ['son', 'daughter', 'child'].includes(d.h?.relation)) ? '직계비속' :
     otherDists.some((d) => ['father', 'mother', 'parent'].includes(d.h?.relation)) ? '직계존속' :
@@ -191,19 +178,30 @@ const EventDetail = ({ step, stepMap, onNavigate, onOpenEvent }) => {
 
   return (
     <div>
-      {/* 피상속인 헤더 */}
+      {/* 피상속인 헤더 + 상속 방향 정보 통합 */}
       <div className="mb-4 rounded-xl border border-[#e4e2de] bg-[#f7f6f3] px-5 py-4 dark:border-neutral-700 dark:bg-neutral-800/40">
-        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-          <div className="text-[22px] font-black tracking-tight text-[#37352f] dark:text-neutral-100">
-            망 {step.dec?.name}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+          <div className="flex items-baseline gap-x-3">
+            <div className="text-[22px] font-black tracking-tight text-[#37352f] dark:text-neutral-100">
+              망 {step.dec?.name}
+            </div>
+            <div className="text-[13px] font-bold text-[#787774] dark:text-neutral-400">
+              {formatKorDate(step.dec?.deathDate)} 사망
+            </div>
           </div>
-          <div className="text-[13px] font-bold text-[#787774] dark:text-neutral-400">
-            {formatKorDate(step.dec?.deathDate)} 사망
+          
+          <div className="hidden h-5 w-px bg-[#d9d7d1] dark:bg-neutral-600 sm:block" />
+
+          <div className="flex flex-wrap items-center gap-2">
+            {eraLabel && <Tag tone="blue">{eraLabel}</Tag>}
+            {hasSpouse && <Tag tone="blue">배우자 동순위</Tag>}
+            {rankLabel && <Tag tone={rankTone}>{rankLabel}</Tag>}
+            <span className="text-[11px] ml-1 font-bold text-[#787774] dark:text-neutral-500">
+              상속지분 {step.inN}/{step.inD}
+            </span>
           </div>
         </div>
       </div>
-
-      <DirectionBanner step={step} />
       <ExcludedSection dists={dists} />
 
       {spouseDists.length > 0 && (
