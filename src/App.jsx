@@ -187,7 +187,8 @@ function App() {
       if (!node || visitedNodes.has(node.id)) continue;
       visitedNodes.add(node.id);
 
-      const isTarget = node.isDeceased || (node.isExcluded && (node.exclusionOption === 'lost' || node.exclusionOption === 'disqualified'));
+      const hasEnteredHeirs = node.heirs && node.heirs.length > 0;
+      const isTarget = node.isDeceased || (node.isExcluded && (node.exclusionOption === 'lost' || node.exclusionOption === 'disqualified')) || hasEnteredHeirs;
       const isSpouseNode = node.relation === 'wife' || node.relation === 'husband' || node.relation === 'spouse';
       const parentDeathDate = parentNode?.deathDate || tree.deathDate;
       const isPredeceasedSpouse = isSpouseNode && node.deathDate && parentDeathDate && isBefore(node.deathDate, parentDeathDate);
@@ -268,7 +269,8 @@ function App() {
       if (currentNode.id === nodeId || currentNode.personId === nodeId) { resolvedNodeId = currentNode.id; return currentTabId; }
       if (currentNode.heirs) {
         for (const h of currentNode.heirs) {
-          const isTabOwner = h.isDeceased || (h.isExcluded && ['lost', 'disqualified'].includes(h.exclusionOption));
+          const hasEnteredHeirs = h.heirs && h.heirs.length > 0;
+          const isTabOwner = h.isDeceased || (h.isExcluded && ['lost', 'disqualified'].includes(h.exclusionOption)) || hasEnteredHeirs;
           const nextTabId = isTabOwner ? h.personId : currentTabId;
           const found = findTabIdForNode(h, nextTabId, visited);
           if (found) return found;
@@ -303,8 +305,24 @@ function App() {
       const element = document.querySelector(`[data-node-id="${targetDomId}"]`);
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        element.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2', 'bg-blue-50/50');
-        setTimeout(() => element.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2', 'bg-blue-50/50'), 2000);
+        
+        // Tailwind 우선순위에 밀리지 않도록 인라인 스타일로 매우 강렬한 시각적 피드백 제공
+        const originalBg = element.style.backgroundColor;
+        const originalBoxShadow = element.style.boxShadow;
+        const originalTransform = element.style.transform;
+        
+        element.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+        element.style.backgroundColor = '#eff6ff'; // Tailwind blue-50 
+        element.style.boxShadow = '0 0 0 3px #1d4ed8, 0 8px 25px -5px rgba(29, 78, 216, 0.5)'; // 매우 굵은 파란 링 + 그림자
+        element.style.transform = 'scale(1.02)'; // 살짝 튀어나옴
+        element.style.zIndex = '50';
+        
+        setTimeout(() => {
+          element.style.backgroundColor = originalBg;
+          element.style.boxShadow = originalBoxShadow;
+          element.style.transform = originalTransform;
+          element.style.zIndex = '';
+        }, 1800);
       }
     }, 150);
   };

@@ -304,9 +304,9 @@ export default function HeirRow({
             <div className="ml-[10px] flex w-[180px] shrink-0 items-center gap-1.5">
               {(isEffectivePredeceased && isToggleOff && !isPredeceasedActive) ? (
                 <div className="flex shrink-0 items-center gap-1.5">
-                  <div className="flex h-[26px] w-[68px] shrink-0 items-center justify-center rounded-full border border-neutral-200 bg-neutral-100 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
-                    <span className="text-[10.5px] font-normal text-neutral-500 dark:text-neutral-400">
-                      {(node.heirs || []).length > 0 ? '선사망' : '선사망'}
+                  <div className="flex h-[26px] w-[80px] shrink-0 items-center justify-center rounded-full border border-[#e5e5e5] bg-[#f8f8f7] shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
+                    <span className="text-[11px] font-normal text-[#a3a3a3] dark:text-neutral-400">
+                      선사망
                     </span>
                   </div>
                   {canConfirmNoSubstituteHeirs && (

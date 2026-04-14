@@ -34,3 +34,10 @@ release_v*/
 
 # User Samples
 inherit_source/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
