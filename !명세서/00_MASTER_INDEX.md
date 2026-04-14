@@ -29,7 +29,7 @@
 | **스마트가이드 호주 예외룰** | **SMARTGUIDE_HOJU_EXCLUSION_RULES_2026-04-13_UTF8.md** | `!명세서/specs/SMARTGUIDE_HOJU_EXCLUSION_RULES_2026-04-13_UTF8.md` | 법리상 배제된 사람에게 호주 관련 가이드를 띄우지 않는 예외 규칙 | 2순위 (가이드 정합성) |
 | **불러오기 재링크 우선룰** | **AUTOFILL_RELINK_INSTEAD_OF_SUBTREE_CLONE_RULES_2026-04-13_UTF8.md** | `!명세서/specs/AUTOFILL_RELINK_INSTEAD_OF_SUBTREE_CLONE_RULES_2026-04-13_UTF8.md` | 상속인 불러오기 시 기존 personId를 재사용하고 하위 서브트리 재복제를 막는 규칙 | 2순위 (성능/구조 안정성) |
 | **메모리누수 원인분석(참조안정성)** | **MEMORY_LEAK_ROOT_CAUSE_SMARTGUIDE_REFERENTIAL_STABILITY_2026-04-13_UTF8.md** | `!명세서/specs/MEMORY_LEAK_ROOT_CAUSE_SMARTGUIDE_REFERENTIAL_STABILITY_2026-04-13_UTF8.md` | smartGuides/useEffect/Set 참조 불안정으로 생긴 무한 리렌더 메모리 누수 원인과 재발 방지 규칙 | 2순위 (성능/회귀 방지) |
-| **탭 역할 정의/가계도 시뮬레이션 초안** | **TAB_ROLE_DEFINITION_AND_TREE_SIMULATION_DRAFT_2026-04-13_UTF8.md** | `!명세서/specs/TAB_ROLE_DEFINITION_AND_TREE_SIMULATION_DRAFT_2026-04-13_UTF8.md` | 데이터 입력, 가계도, 계산 상세, 결과 탭의 역할 정의와 가계도 시뮬레이션 UI 초안 | 2순위 (정보구조/탭 UX) |
+| **탭 역할 정의/사건 검토 뷰 설계** | **TAB_ROLE_DEFINITION_AND_TREE_SIMULATION_DRAFT_2026-04-13_UTF8.md** | `!명세서/specs/TAB_ROLE_DEFINITION_AND_TREE_SIMULATION_DRAFT_2026-04-13_UTF8.md` | 5개 탭 역할 SSOT, 사건 검토 뷰 설계 철학(사건 분리, 캐스케이드 구조), 지분 요약 통합 근거 (v4.62 업데이트) | 2순위 (정보구조/탭 UX) |
 | **가이드/후속상속인확정 룰** | **GUIDE_LOGIC_AND_SUCCESSOR_CONFIRM_RULES_2026-04-14_UTF8.md** | `!명세서/specs/GUIDE_LOGIC_AND_SUCCESSOR_CONFIRM_RULES_2026-04-14_UTF8.md` | 가이드 우선순위, 호주상속 판단을 위한 불러오기 필요 조건, 후속 상속인 없음 확정 버튼 규칙 | 2순위 (가이드 UX/입력 마감) |
 | **대습/재상속 경우의 수 룰** | **SUBSTITUTION_AND_REINHERITANCE_CASE_MATRIX_2026-04-14_UTF8.md** | `!명세서/specs/SUBSTITUTION_AND_REINHERITANCE_CASE_MATRIX_2026-04-14_UTF8.md` | 대습상속과 재상속을 선사망/후사망 기준으로 나누고, 없음 확정·호주상속 가이드·차순위 여성 검토 조건을 정리한 경우의 수 문서 | 2순위 (가이드 UX/사건 분기) |
 | **입력 특수조건 최소구성 룰** | **INPUT_SPECIAL_CONDITION_MINIMAL_RULES_2026-04-14_UTF8.md** | `!명세서/specs/INPUT_SPECIAL_CONDITION_MINIMAL_RULES_2026-04-14_UTF8.md` | 데이터 입력 탭 특수조건 칸에 남길 요소와 제거할 요소, 선사망자 확정 버튼 원칙 | 2순위 (입력 UX/역할 분리) |
@@ -56,7 +56,7 @@
 ---
 
 ## 🚀 프로젝트 현황
-- **현재 버전**: v4.61
+- **현재 버전**: v4.62
 - **개발 환경**: Vite + React + TailwindCSS (Vanilla CSS 지향)
 - **주요 철학**: Notion-inspired Professional Minimalist / Vault-based Inheritance Tracking
 
