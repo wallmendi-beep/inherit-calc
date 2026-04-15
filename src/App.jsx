@@ -168,6 +168,7 @@ function App() {
   }, [isDarkMode]);
 
   const handleTabChange = (tabId) => {
+    if (tabId === activeTab) return;
     setProposedTab(tabId);
   };
 
@@ -192,7 +193,7 @@ function App() {
 
   useEffect(() => {
     if (activeTab !== 'input') return undefined;
-    if (!importIssues || importIssues.length === 0) return undefined;
+    if (!importIssues) return undefined;
 
     const timer = setTimeout(() => {
       const refreshedIssues = collectImportValidationIssues(tree);
@@ -671,6 +672,9 @@ function App() {
                   <TreePanel 
                     tree={tree} 
                     treeToggleSignal={treeToggleSignal} 
+                    isAllExpanded={isAllExpanded}
+                    setTreeToggleSignal={setTreeToggleSignal}
+                    setIsAllExpanded={setIsAllExpanded}
                     calcSteps={calcSteps} 
                     handleNavigate={handleNavigate} 
                     removeHeir={removeHeir}
