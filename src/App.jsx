@@ -189,6 +189,7 @@ function App() {
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
+
   useEffect(() => {
     if (activeTab !== 'input') return undefined;
     if (!importIssues || importIssues.length === 0) return undefined;
@@ -202,15 +203,6 @@ function App() {
 
     return () => clearTimeout(timer);
   }, [tree, activeTab, importIssues]);
-
-  // [v4.61] 탭 전환 시 사이드바 자동 제어 (Reactive UI)
-  useEffect(() => {
-    if (activeTab === 'tree') {
-      setSidebarOpen(false); // 시뮬레이션 진입 시 패널 닫기
-    } else if (activeTab === 'input') {
-      setSidebarOpen(true); // 입력 탭 복귀 시 패널 열기
-    }
-  }, [activeTab]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -654,7 +646,7 @@ function App() {
         />
         <main className={`flex-1 flex w-full transition-all duration-300 ${sidebarOpen ? 'justify-start' : 'justify-center'}`} style={{ paddingLeft: sidebarOpen ? (sidebarWidth + 10) : 0, paddingRight: showNavigator ? (navigatorWidth + 10) : 0 }}>
           <div style={{ zoom: zoomLevel, width: '100%', display: 'flex', justifyContent: (sidebarOpen || showNavigator) ? 'flex-start' : 'center' }}>
-            <div className={`flex flex-col shrink-0 mt-6 print-compact relative z-10 transition-all duration-300 ${activeTab === 'tree' ? 'w-[1480px] min-w-[1480px] px-3' : 'w-[1080px] min-w-[1080px] px-6'}`}>
+            <div className="flex flex-col shrink-0 mt-6 print-compact relative z-10 transition-all duration-300 w-[1080px] min-w-[1080px] px-6">
               <div className="flex items-end pl-[48px] gap-1 no-print relative z-20">
                 {['input', 'tree', 'calc', 'summary', 'amount'].map(id => (
                   <button key={id} onClick={() => handleTabChange(id)} className={`px-6 py-2.5 rounded-t-xl font-bold text-[14px] border-2 border-b-0 transition-all ${activeTab === id ? 'bg-white dark:bg-neutral-800 border-[#37352f] text-[#37352f]' : 'bg-transparent border-transparent text-[#9b9a97]'}`}>
