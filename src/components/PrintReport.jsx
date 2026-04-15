@@ -293,8 +293,8 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
       {activeTab === 'amount' && amountCalculations && (
         <div className="mb-8">
           <div className="mb-2 font-bold text-[13px]">
-            ■ 총 상속재산가액: {amountCalculations.estateVal.toLocaleString()} 원 
-            (간주상속재산: {amountCalculations.deemedEstate.toLocaleString()} 원)
+            ■ 총 상속재산가액: {(amountCalculations?.estateVal ?? 0).toLocaleString()} 원 
+            (간주상속재산: {(amountCalculations?.deemedEstate ?? 0).toLocaleString()} 원)
           </div>
           <table className="w-full border-collapse border border-black text-[12px]">
             <thead className="bg-gray-100 text-center font-bold">
@@ -307,13 +307,13 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
               </tr>
             </thead>
             <tbody>
-              {amountCalculations.results.map((r, idx) => (
+              {(amountCalculations?.results || []).map((r, idx) => (
                 <tr key={idx} className="break-inside-avoid">
                   <td className="border border-black py-2 px-2 text-center font-bold">{r.name}</td>
                   <td className="border border-black py-2 px-2 text-center">{r.un} / {r.ud}</td>
                   <td className="border border-black py-2 px-2 text-right text-red-700">{r.specialBenefit > 0 ? r.specialBenefit.toLocaleString() : '0'}</td>
                   <td className="border border-black py-2 px-2 text-right text-green-700">{r.contribution > 0 ? r.contribution.toLocaleString() : '0'}</td>
-                  <td className="border border-black py-2 px-2 text-right font-bold">{r.finalAmount.toLocaleString()}</td>
+                  <td className="border border-black py-2 px-2 text-right font-bold">{(r?.finalAmount ?? 0).toLocaleString()}</td>
                 </tr>
               ))}
             </tbody>

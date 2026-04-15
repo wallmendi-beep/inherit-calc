@@ -69,7 +69,7 @@ export default function AmountPanel({
           <span className="text-[13px] text-neutral-500 font-medium">원</span>
           {amountCalculations && (
             <span className="text-[12px] text-[#787774] dark:text-neutral-400 ml-2">
-              간주상속재산: <span className="font-bold text-[#37352f] dark:text-neutral-200 font-mono">{amountCalculations.deemedEstate.toLocaleString()}</span> 원
+              간주상속재산: <span className="font-bold text-[#37352f] dark:text-neutral-200 font-mono">{(amountCalculations?.deemedEstate ?? 0).toLocaleString()}</span> 원
             </span>
           )}
         </div>
@@ -109,7 +109,7 @@ export default function AmountPanel({
                     <td className="px-3 py-2">{renderAmtInput(res.personId, specialBenefits, setSpecialBenefits, 'text-neutral-600 dark:text-neutral-400', 'focus:ring-neutral-300')}</td>
                     <td className="px-3 py-2">{renderAmtInput(res.personId, contributions, setContributions, 'text-neutral-600 dark:text-neutral-400', 'focus:ring-neutral-300')}</td>
                     <td className="px-4 py-2.5 text-right font-mono font-bold text-[15px] text-neutral-900 dark:text-neutral-100">
-                      {res.finalAmount.toLocaleString()} <span className="text-[12px] font-normal text-neutral-400">원</span>
+                      {(res?.finalAmount ?? 0).toLocaleString()} <span className="text-[12px] font-normal text-neutral-400">원</span>
                     </td>
                   </tr>
                 );
