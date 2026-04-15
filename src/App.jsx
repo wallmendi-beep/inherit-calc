@@ -58,50 +58,7 @@ function App() {
       .sort()
       .join('||');
 
-  const [activeTab, setActiveTab] = useState('input'); 
-  const [activeDeceasedTab, setActiveDeceasedTab] = useState('root');
-  const [treeViewMode, setTreeViewMode] = useState('flow'); // 시뮬레이션 탭 내부 뷰 모드
-  const [navigationSignal, setNavigationSignal] = useState(null); // [v4.61] 트리 펼치기용 신호
-  const [isFolderFocused, setIsFolderFocused] = useState(false);
-  const [isResetModalOpen, setIsResetModalOpen] = useState(false); 
-  const [syncRequest, setSyncRequest] = useState(null);
-  const [showScrollTop, setShowScrollTop] = useState(false);
-  const [zoomLevel, setZoomLevel] = useState(1.0);
-  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
-  const [aiInputText, setAiInputText] = useState("");
-  const [aiTargetId, setAiTargetId] = useState('root');
-  const [showQrCode, setShowQrCode] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [matchIds, setMatchIds] = useState([]);
-  const [currentMatchIdx, setCurrentMatchIdx] = useState(0);
-  const [propertyValue, setPropertyValue] = useState(''); 
-  const [specialBenefits, setSpecialBenefits] = useState({}); 
-  const [contributions, setContributions] = useState({});
-  const [isAmountActive, setIsAmountActive] = useState(false);
-  const [importIssues, setImportIssues] = useState([]);
-  const [changeLog, setChangeLog] = useState([]);
-
-  const [isMainQuickActive, setIsMainQuickActive] = useState(false);
-  const [mainQuickVal, setMainQuickVal] = useState('');
-
-  const appendChangeLog = (entry) => {
-    setChangeLog((prev) => {
-      const next = [
-        ...prev,
-        {
-          at: new Date().toISOString(),
-          ...entry,
-        },
-      ];
-      return next.length > CHANGELOG_LIMIT ? next.slice(next.length - CHANGELOG_LIMIT) : next;
-    });
-  };
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
-  
+  // [v4.64] 데이터 핵심 상태 선언 (초기화 순서 문제 해결을 위해 최상단 이동)
   const [vaultState, setVaultState] = useState({
     history: [ migrateToVault(getInitialTree()) ],
     currentIndex: 0
@@ -136,6 +93,102 @@ function App() {
 
   const tree = useMemo(() => buildTreeFromVault(rawVault) || getInitialTree(), [rawVault]);
 
+  // [v4.64] 모든 상태 변수 선언을 최상단으로 통합하여 초기화 순서 문제 해결
+  const [activeTab, setActiveTab] = useState('input'); 
+  const [proposedTab, setProposedTab] = useState(null);
+  const [isDirty, setIsDirty] = useState(false);
+  const [changeLog, setChangeLog] = useState([]);
+  const [activeDeceasedTab, setActiveDeceasedTab] = useState('root');
+  const [treeViewMode, setTreeViewMode] = useState('flow');
+  const [navigationSignal, setNavigationSignal] = useState(null);
+  const [isFolderFocused, setIsFolderFocused] = useState(false);
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false); 
+  const [syncRequest, setSyncRequest] = useState(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1.0);
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [aiInputText, setAiInputText] = useState("");
+  const [aiTargetId, setAiTargetId] = useState('root');
+  const [showQrCode, setShowQrCode] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [matchIds, setMatchIds] = useState([]);
+  const [currentMatchIdx, setCurrentMatchIdx] = useState(0);
+  const [propertyValue, setPropertyValue] = useState(''); 
+  const [specialBenefits, setSpecialBenefits] = useState({}); 
+  const [contributions, setContributions] = useState({});
+  const [isAmountActive, setIsAmountActive] = useState(false);
+  const [importIssues, setImportIssues] = useState([]);
+  const [isMainQuickActive, setIsMainQuickActive] = useState(false);
+  const [mainQuickVal, setMainQuickVal] = useState('');
+
+  // [v4.64] 사이드바 및 레이아웃 상태
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarWidth, setSidebarWidth] = useState(240);
+  const [navigatorWidth, setNavigatorWidth] = useState(310);
+  const [sidebarSearchQuery, setSidebarSearchQuery] = useState('');
+  const [sidebarMatchIds, setSidebarMatchIds] = useState([]);
+  const [sidebarCurrentMatchIdx, setSidebarCurrentMatchIdx] = useState(0);
+  const [sidebarToggleSignal, setSidebarToggleSignal] = useState(0);
+
+  // [v4.64] 테마 및 가이드 상태
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('darkMode');
+      if (saved !== null) return saved === 'true';
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return false;
+  });
+  const [checkedGuideKeys, setCheckedGuideKeys] = useState(new Set());
+  const [hiddenGuideKeys, setHiddenGuideKeys] = useState(new Set());
+  const [confirmedGuidesOpen, setConfirmedGuidesOpen] = useState(false);
+
+  // [v4.64] 스마트 저장 팝업 제어
+  useEffect(() => {
+    if (!proposedTab) return;
+
+    if (activeTab === 'input' && isDirty) {
+      const confirmSave = window.confirm("수정된 내용이 있습니다. 파일로 저장하시겠습니까?\n\n[확인]을 누르면 저장 후 이동하며, [취소]를 누르면 저장 없이 이동합니다.");
+      if (confirmSave) {
+        saveFactTreeToFile(tree, { propertyValue, specialBenefits, contributions, isAmountActive });
+        setIsDirty(false);
+      } else {
+        setIsDirty(false); 
+      }
+    }
+
+    setActiveTab(proposedTab);
+    setProposedTab(null);
+  }, [proposedTab, activeTab, isDirty, tree, propertyValue, specialBenefits, contributions, isAmountActive]);
+
+  useEffect(() => {
+    if (isDarkMode) document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
+    localStorage.setItem('darkMode', isDarkMode);
+  }, [isDarkMode]);
+
+  const handleTabChange = (tabId) => {
+    setProposedTab(tabId);
+  };
+
+  const appendChangeLog = (entry) => {
+    setIsDirty(true);
+    setChangeLog((prev) => {
+      const next = [
+        ...prev,
+        {
+          at: new Date().toISOString(),
+          ...entry,
+        },
+      ];
+      return next.length > CHANGELOG_LIMIT ? next.slice(next.length - CHANGELOG_LIMIT) : next;
+    });
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
   useEffect(() => {
     if (activeTab !== 'input') return undefined;
     if (!importIssues || importIssues.length === 0) return undefined;
@@ -327,14 +380,6 @@ function App() {
     }, 150);
   };
 
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [sidebarWidth, setSidebarWidth] = useState(240);
-  const [navigatorWidth, setNavigatorWidth] = useState(310);
-  const [sidebarSearchQuery, setSidebarSearchQuery] = useState('');
-  const [sidebarMatchIds, setSidebarMatchIds] = useState([]);
-  const [sidebarCurrentMatchIdx, setSidebarCurrentMatchIdx] = useState(0);
-  const [sidebarToggleSignal, setSidebarToggleSignal] = useState(0);
-
   const handleSidebarPrevMatch = () => {
     if (sidebarMatchIds.length === 0) return;
     setSidebarCurrentMatchIdx((prev) => (prev - 1 + sidebarMatchIds.length) % sidebarMatchIds.length);
@@ -359,21 +404,6 @@ function App() {
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
   };
-
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('darkMode');
-      if (saved !== null) return saved === 'true';
-      return window.matchMedia('(prefers-color-scheme: dark)').matches;
-    }
-    return false;
-  });
-
-  useEffect(() => {
-    if (isDarkMode) document.documentElement.classList.add('dark');
-    else document.documentElement.classList.remove('dark');
-    localStorage.setItem('darkMode', isDarkMode);
-  }, [isDarkMode]);
 
   const { finalShares, calcSteps, warnings, transitShares, blockingIssues, compareFinalShares, hojuBonusDiffs } = useMemo(() => {
     const preprocessTree = (n, parentDate, parentNode, visited = new Set()) => {
@@ -423,10 +453,6 @@ function App() {
     const remainder = Math.max(0, estateVal - totalDistributed);
     return { estateVal, deemedEstate, results, totalDistributed, remainder };
   }, [finalShares, propertyValue, specialBenefits, contributions]);
-
-  const [checkedGuideKeys, setCheckedGuideKeys] = useState(new Set());
-  const [hiddenGuideKeys, setHiddenGuideKeys] = useState(new Set());
-  const [confirmedGuidesOpen, setConfirmedGuidesOpen] = useState(false);
 
   const toggleGuideChecked = (key) => {
     setCheckedGuideKeys(prev => {
@@ -479,17 +505,67 @@ function App() {
   };
 
   const handleUpdate = (id, changes, value) => {
+    // [v4.64] 객체 기반 Dispatch 호출 지원 (HeirRow 등에서 사용)
+    if (typeof id === 'object' && id.type) {
+      const action = id;
+      setIsDirty(true);
+      if (action.type === 'updateDeathInfo') {
+        setTree(prev => updateDeathInfo(prev, action.nodeId, action));
+      } else if (action.type === 'updateHistoryInfo') {
+        setTree(prev => updateHistoryInfo(prev, action.nodeId, action.changes));
+      } else if (action.type === 'updateRelationInfo') {
+        setTree(prev => updateRelationInfo(prev, action.nodeId, action.relation));
+      } else if (action.type === 'setHojuStatus') {
+        setTree(prev => setHojuStatus(prev, action.nodeId, action.isHoju));
+      } else if (action.type === 'setPrimaryHojuSuccessor') {
+        setTree(prev => setPrimaryHojuSuccessor(prev, action.parentNodeId, action.nodeId, action.isSelected));
+      } else if (action.type === 'applyNodeUpdates') {
+        setTree(prev => applyNodeUpdates(prev, action.nodeId, action.updates));
+      }
+      return;
+    }
+
+    // 표준 필드 기반 업데이트 (InputPanel 등에서 사용)
     const updates = typeof changes === 'object' ? changes : { [changes]: value };
+    setIsDirty(true);
     setVault(prev => {
-      let targetPersonId = id;
-      const findNode = (n) => { if (n.id === id) { targetPersonId = n.personId; return true; } return (n.heirs || []).some(findNode); }; findNode(tree);
-      const personalKeys = ['name', 'isDeceased', 'deathDate', 'marriageDate', 'remarriageDate', 'divorceDate', 'restoreDate', 'gender', 'successorStatus', 'isHoju', 'exclusionOption'];
-      personalKeys.forEach(k => { if (updates[k] !== undefined) prev.persons[targetPersonId][k] = updates[k]; });
+      let targetPersonId = null;
+      let parentPersonId = null;
+      
+      const findInfo = (n, pId) => {
+        if (n.id === id) {
+          targetPersonId = n.personId;
+          parentPersonId = pId;
+          return true;
+        }
+        return (n.heirs || []).some(child => findInfo(child, n.personId));
+      };
+      findInfo(tree, null);
+
+      if (!targetPersonId || !prev.persons[targetPersonId]) return prev;
+
+      // 1. 개인 정보 업데이트 (persons 테이블)
+      const personalKeys = ['name', 'isDeceased', 'deathDate', 'marriageDate', 'remarriageDate', 'divorceDate', 'restoreDate', 'gender', 'successorStatus'];
+      personalKeys.forEach(k => {
+        if (updates[k] !== undefined) prev.persons[targetPersonId][k] = updates[k];
+      });
+
+      // 2. 관계 정보 업데이트 (relationships 테이블)
+      const relationshipKeys = ['relation', 'isExcluded', 'exclusionOption', 'isHoju', 'isPrimaryHojuSuccessor', 'isSameRegister'];
+      if (parentPersonId && prev.relationships[parentPersonId]) {
+        const link = prev.relationships[parentPersonId].find(l => l.targetId === targetPersonId);
+        if (link) {
+          relationshipKeys.forEach(k => {
+            if (updates[k] !== undefined) link[k] = updates[k];
+          });
+        }
+      }
       return prev;
     });
   };
 
   const handleRootUpdate = (key, val) => {
+    setIsDirty(true);
     setVault(prev => {
       prev.persons['root'][key] = val;
       return prev;
@@ -556,8 +632,14 @@ function App() {
         <TopToolbar
           sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} tree={tree}
           undoTree={undoTree} redoTree={redoTree} canUndo={vaultState.currentIndex > 0} canRedo={vaultState.currentIndex < vaultState.history.length - 1}
-          loadFile={(e) => loadTreeFromJsonFile(e.target.files[0], { setTree, setActiveTab, setImportIssues, setPropertyValue, setSpecialBenefits, setContributions, setIsAmountActive })}
-          saveFile={() => saveFactTreeToFile(tree, { propertyValue, specialBenefits, contributions, isAmountActive })}
+          loadFile={(e) => {
+            loadTreeFromJsonFile(e.target.files[0], { setTree, setActiveTab, setImportIssues, setPropertyValue, setSpecialBenefits, setContributions, setIsAmountActive });
+            setIsDirty(false); // 새 파일 로드 시 수정 상태 초기화
+          }}
+          saveFile={() => {
+            saveFactTreeToFile(tree, { propertyValue, specialBenefits, contributions, isAmountActive });
+            setIsDirty(false); // 저장 완료 시 수정 상태 초기화
+          }}
           handlePrint={() => printCurrentTab({ activeTab, tree })}
           zoomLevel={zoomLevel} setZoomLevel={setZoomLevel} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode}
         />
@@ -575,7 +657,7 @@ function App() {
             <div className={`flex flex-col shrink-0 mt-6 print-compact relative z-10 transition-all duration-300 ${activeTab === 'tree' ? 'w-[1480px] min-w-[1480px] px-3' : 'w-[1080px] min-w-[1080px] px-6'}`}>
               <div className="flex items-end pl-[48px] gap-1 no-print relative z-20">
                 {['input', 'tree', 'calc', 'summary', 'amount'].map(id => (
-                  <button key={id} onClick={() => setActiveTab(id)} className={`px-6 py-2.5 rounded-t-xl font-bold text-[14px] border-2 border-b-0 transition-all ${activeTab === id ? 'bg-white dark:bg-neutral-800 border-[#37352f] text-[#37352f]' : 'bg-transparent border-transparent text-[#9b9a97]'}`}>
+                  <button key={id} onClick={() => handleTabChange(id)} className={`px-6 py-2.5 rounded-t-xl font-bold text-[14px] border-2 border-b-0 transition-all ${activeTab === id ? 'bg-white dark:bg-neutral-800 border-[#37352f] text-[#37352f]' : 'bg-transparent border-transparent text-[#9b9a97]'}`}>
                     {id === 'input' ? '데이터 입력' : id === 'tree' ? '사건 검토' : id === 'calc' ? '계산 상세' : id === 'summary' ? '지분 요약' : '구체적 상속분'}
                   </button>
                 ))}

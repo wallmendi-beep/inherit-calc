@@ -137,8 +137,9 @@ const HeirCard = ({ dist, step, relatedStep, onNavigate, onOpenEvent, commonD })
 
   return (
     <div className={`rounded-xl border border-[#ebeae7] bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900/50 ${accentLeft}`}>
-      <div className="px-4 py-3">
-        <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
+        {/* 1구역: 기본정보 */}
+        <div className="flex min-w-[200px] flex-1 items-center gap-1.5">
           <Tag tone={isSpouse ? 'blue' : 'default'}>{relationLabel}</Tag>
           <button
             type="button"
@@ -151,22 +152,24 @@ const HeirCard = ({ dist, step, relatedStep, onNavigate, onOpenEvent, commonD })
           {simpleBadges.map((b, i) => <Tag key={i} tone={b.tone}>{b.label}</Tag>)}
         </div>
 
-        <div className="mt-2.5 flex items-center justify-between rounded-lg border border-[#ecebe8] bg-[#fafaf9] px-3 py-2 dark:border-neutral-800 dark:bg-neutral-950/30">
+        {/* 2구역: 지분계산 */}
+        <div className="flex flex-1 items-center justify-between gap-4 rounded-lg border border-[#ecebe8] bg-[#fafaf9] px-3 py-1.5 sm:justify-end dark:border-neutral-800 dark:bg-neutral-950/30">
           <span className="text-[11px] text-[#787774] dark:text-neutral-400">
             {step.inN}/{step.inD} × {displayInnerShare} {shortMod ? `(${shortMod})` : ''}
           </span>
           <span className="text-[17px] font-black text-[#3f5f8a] dark:text-blue-300">{finalShare}</span>
         </div>
 
+        {/* 3구역: 재상속/대습상속 정보 */}
         {branchLabel && (
-          <div className="mt-2.5 flex items-center justify-between">
-            <span className="text-[11px] text-[#9b9a97] dark:text-neutral-500">
+          <div className="flex shrink-0 flex-row items-center justify-between border-[#e4e2de] sm:flex-col sm:items-end sm:border-l sm:pl-4 dark:border-neutral-700">
+            <span className="mb-0 text-[10px] text-[#9b9a97] sm:mb-1 dark:text-neutral-500">
               {formatKorDate(dist.h?.deathDate)} 사망
             </span>
             <button
               type="button"
               onClick={() => onOpenEvent && onOpenEvent(getStepKey(relatedStep))}
-              className="inline-flex items-center gap-1.5 rounded-full border border-[#ddd9cf] bg-[#fbf7ef] px-3 py-1 text-[11px] font-bold text-[#7a6544] transition-colors hover:bg-[#f4eedf] dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300"
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#ddd9cf] bg-[#fbf7ef] px-3 py-1 text-[10px] font-bold text-[#7a6544] transition-colors hover:bg-[#f4eedf] dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300"
             >
               {branchLabel} 사건으로 →
             </button>
