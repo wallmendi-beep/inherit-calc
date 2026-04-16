@@ -33,7 +33,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
           id: 'initial-step',
           uniqueKey: 'initial-step',
           type: 'mandatory',
-          text: '사건번호와 피상속인의 기본정보를 먼저 입력해 주세요.',
+          text: '피상속인의 이름과 사망일자를 먼저 입력해 주세요.',
           targetTabId: 'root'
         }],
         noSurvivors: false,
@@ -87,7 +87,8 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
           id: h.id,
           uniqueKey: `struct-err-${h.id}`,
           type: 'mandatory',
-          text: `[${h.name || '이름 미상'}]이(가) [${node.name || '부모'}]의 하위 위치에 '부모/형제' 관계로 잘못 입력되었습니다. 가계도에서 확인 후 삭제해 주세요.`,
+          action: 'delete',
+          text: `[${h.name || '이름 미상'}]이(가) [${node.name || '부모'}]의 하위 위치에 '부모/형제' 관계로 잘못 입력되었습니다. 아래 [삭제] 버튼으로 제거해 주세요.`,
           targetTabId: 'tree',
           targetNodeId: h.id,
           parentNodeId: node.id
@@ -155,7 +156,8 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
           const groupKey = `next-order-female:${node.personId || node.id}`;
           const current = groupedNextOrderFemaleMap.get(groupKey) || {
             decedentName: node.name || '해당 사건',
-            targetTabId: node.personId || node.id,
+            // 여성 형제자매는 parentNode의 자식이므로 parentNode 탭에서 수정
+            targetTabId: parentTabId,
             names: [],
           };
           femaleCandidatesNeedingReview.forEach((candidate) => current.names.push(candidate.name || '이름 미상'));
@@ -177,6 +179,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
               const current = groupedPredeceasedMissingMap.get(groupKey) || {
                 parentName: parentNode?.name || tree.name || '현재 계보',
                 targetTabId: groupKey,
+                firstTargetTabId: node.personId || node.id,
                 names: [],
               };
               current.names.push(node.name || '이름 미상');
@@ -188,6 +191,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
             const current = groupedDirectMissingMap.get(groupKey) || {
               parentName: contextName,
               targetTabId: parentNode?.personId || parentNode?.id || 'root',
+              firstTargetTabId: node.personId || node.id,
               names: [],
               isSpouseGroup: isSpouse,
             };
@@ -205,9 +209,10 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
         const hasHoju = (node.heirs || []).some(h => h.isHoju && !h.isExcluded);
         const needsHoju = getLawEra(effectiveDate) !== '1991' && (node.id === 'root' || ['son', '아들', 'husband'].includes(node.relation));
         if (needsHoju && !hasHoju && node.heirs && node.heirs.length > 0) {
+          const deathYear = (effectiveDate || '').slice(0, 4);
           uniqueGuidesMap.set(`missing-hoju-${node.personId}`, {
             id: node.id, uniqueKey: `missing-hoju-${node.personId}`, targetTabId: node.personId, type: 'mandatory',
-            text: `[${node.name || '이름 없음'}] 단계는 구법(${effectiveDate}년 사망) 적용 대상입니다. 1차 상속인 중 호주상속인을 확인해 주세요.`
+            text: `[${node.name || '이름 없음'}] 단계는 구법(${deathYear}년 사망) 적용 대상입니다. 1차 상속인 중 호주상속인을 지정해 주세요.`
           });
         }
 
@@ -249,8 +254,10 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
     groupedPredeceasedMissingMap.forEach((group, key) => {
       const uniqueNames = Array.from(new Set(group.names));
       if (uniqueNames.length === 0) return;
+      // 1명이면 해당 사망자 본인 탭으로, 여러 명이면 부모 탭으로 이동
+      const navTarget = uniqueNames.length === 1 ? group.firstTargetTabId : group.targetTabId;
       uniqueGuidesMap.set(`grouped-missing-substitution-${key}`, {
-        id: key, uniqueKey: `grouped-missing-substitution-${key}`, targetTabId: group.targetTabId, type: 'mandatory',
+        id: key, uniqueKey: `grouped-missing-substitution-${key}`, targetTabId: navTarget, type: 'mandatory',
         text: `선사망 상속인 중 대습상속인이 입력되지 않은 사람이 있습니다: [${uniqueNames.join('], [')}]. 실제로 배우자 또는 직계비속이 있는 사람만 선택해 대습상속인을 입력해 주세요.`,
       });
     });
@@ -258,11 +265,13 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
     groupedDirectMissingMap.forEach((group, key) => {
       const uniqueNames = Array.from(new Set(group.names));
       if (uniqueNames.length === 0) return;
+      // 1명이면 해당 사망자 본인 탭으로, 여러 명이면 부모 탭으로 이동
+      const navTarget = uniqueNames.length === 1 ? group.firstTargetTabId : group.targetTabId;
       uniqueGuidesMap.set(`grouped-direct-missing-${key}`, {
-        id: group.targetTabId, uniqueKey: `grouped-direct-missing-${key}`, targetTabId: group.targetTabId, type: 'mandatory',
+        id: navTarget, uniqueKey: `grouped-direct-missing-${key}`, targetTabId: navTarget, type: 'mandatory',
         text: group.isSpouseGroup
-          ? `후속 상속인이 직접 입력되지 않은 배우자가 있습니다: [${uniqueNames.join('], [')}]. 필요한 경우 후속 상속인을 입력하고, 미입력 시 [${group.parentName}] 계보 기준 자동 분배 여부를 확인해 주세요.`
-          : `직접 입력된 후속 상속인이 없는 사람이 있습니다: [${uniqueNames.join('], [')}]. 필요한 경우 후속 상속인을 입력하고, 그렇지 않으면 자동 분배 결과를 확인해 주세요.`,
+          ? `후속 상속인이 직접 입력되지 않은 배우자가 있습니다: [${uniqueNames.join('], [')}]. 후속 상속인을 입력하거나, 없으면 '후속 상속인 없음' 확정 버튼을 눌러 주세요.`
+          : `직접 입력된 후속 상속인이 없는 사람이 있습니다: [${uniqueNames.join('], [')}]. 후속 상속인을 입력하거나, 없으면 '후속 상속인 없음' 확정 버튼을 눌러 주세요.`,
       });
     });
 
@@ -293,8 +302,8 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
           id: issue.nodeId || personKey, uniqueKey: key, personId: issue.personId || '', targetTabId: issue.targetTabId || personKey, targetNodeId: issue.nodeId || '', name: issue.personName || null,
           type: issue.severity === 'error' ? 'mandatory' : 'recommended',
           text: isLegacyHojuInputCase
-            ? `[${issue.personName || linkedNode?.name || '이름 미상'}] 단계는 호주상속 판단이 필요합니다. 불러오기를 눌러 상속인을 확인하고, 호주상속인을 지정해 주세요.`
-            : `${issue.message} 불러오기 직후 입력값을 확인하고 저장한 뒤 계속 진행해 주세요.`,
+            ? `[${issue.personName || linkedNode?.name || '이름 미상'}] 단계는 호주상속 판단이 필요합니다. 데이터 입력 탭에서 상속인을 확인하고, 호주상속인을 지정해 주세요.`
+            : `${issue.message} 입력값을 확인하고 저장한 뒤 계속 진행해 주세요.`,
         });
       }
     });
