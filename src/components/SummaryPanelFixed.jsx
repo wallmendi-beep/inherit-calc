@@ -168,8 +168,9 @@ export default function SummaryPanelFixed({
   simpleTargetN,
   simpleTargetD,
   calcSteps = [],
+  viewMode = 'structure',
+  setViewMode,
 }) {
-  const [viewMode, setViewMode] = React.useState('structure'); // 'structure' | 'path'
   const issueMap = buildIssueMap(issues);
   const hojuBonusNotices = extractHojuBonusNotices(calcSteps);
   const hojuBonusMap = buildHojuBonusPersonMap(calcSteps);

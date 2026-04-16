@@ -58,8 +58,6 @@ const Tag = ({ children, tone = 'default' }) => {
   );
 };
 
-
-
 // 제외된 상속인 목록
 const ExcludedSection = ({ dists }) => {
   const excluded = dists.filter((d) => d.ex);
@@ -82,19 +80,24 @@ const ExcludedSection = ({ dists }) => {
 };
 
 // 상속인 카드
-const HeirCard = ({ dist, step, relatedStep, onNavigate, onOpenEvent, commonD }) => {
+const HeirCard = ({ dist, step, relatedStep, onNavigate, onOpenEvent, commonD, innerCommonD }) => {
   const relation = dist.h?.relation;
   const isSpouse = ['wife', 'husband', 'spouse'].includes(relation);
   const relationLabel = getRelStr(relation, step.dec?.deathDate) || '상속인';
   
-  const innerShare = `${dist.sn}/${dist.sd}`;
   let finalShare = `${dist.n}/${dist.d}`;
-  let displayInnerShare = innerShare;
+  let displayInnerShare = `${dist.sn}/${dist.sd}`;
   
+  // 1. 내부 수식 비율 통분 (가족 내 LCM 적용)
+  if (innerCommonD && dist.sd && innerCommonD !== dist.sd) {
+    const scale = innerCommonD / dist.sd;
+    displayInnerShare = `${dist.sn * scale}/${innerCommonD}`;
+  }
+
+  // 2. 최종 결과 지분 통분 (전체 LCM 적용)
   if (commonD && dist.d && commonD !== dist.d) {
     const scale = commonD / dist.d;
     finalShare = `${dist.n * scale}/${commonD}`;
-    displayInnerShare = `${dist.sn * scale}/${commonD}`;
   }
 
   const hasRelated = Boolean(relatedStep);
@@ -121,14 +124,13 @@ const HeirCard = ({ dist, step, relatedStep, onNavigate, onOpenEvent, commonD })
 
   const simpleBadges = [];
   if (relation === 'daughter') {
-    // 엔진에서 친가복적/혼인일자 등을 고려해 '출가녀' 문구가 모디파이어에 들어갔다면 비동일가적으로 판단
     const isMarriedOut = dist.mod && dist.mod.includes('출가녀');
     const isSame = !isMarriedOut && dist.h?.isSameRegister !== false;
     simpleBadges.push({ label: isSame ? '동일가적' : '비동일가적', tone: isSame ? 'blue' : 'amber' });
   } else if (relation === 'son' && typeof dist.mod === 'string' && dist.mod.includes('호주')) {
     simpleBadges.push({ label: '호주상속', tone: 'blue' });
   } else if (isSpouse && shortMod) {
-    simpleBadges.push({ label: `${relationLabel} ${shortMod}`, tone: shortMod.includes('가산') ? 'blue' : 'amber' });
+    simpleBadges.push({ label: shortMod, tone: shortMod.includes('가산') ? 'blue' : 'amber' });
   }
 
   const accentLeft = isSpouse
@@ -136,44 +138,47 @@ const HeirCard = ({ dist, step, relatedStep, onNavigate, onOpenEvent, commonD })
     : 'border-l-[3px] border-l-[#d9d7d1] dark:border-l-neutral-600';
 
   return (
-    <div className={`rounded-xl border border-[#ebeae7] bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900/50 ${accentLeft}`}>
-      <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
-        {/* 1구역: 기본정보 */}
-        <div className="flex min-w-[200px] flex-1 items-center gap-1.5">
+    <div className={`rounded-xl border border-[#ebeae7] bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900/50 ${accentLeft} overflow-hidden`}>
+      <div className="flex flex-col sm:flex-row sm:items-stretch gap-0 sm:min-h-[72px]">
+        {/* [구역 1] 상속인 기본 정보 (200px 고정) */}
+        <div className="sm:w-[200px] sm:shrink-0 sm:border-r border-[#ecebe8] dark:border-neutral-800 p-2.5 flex items-center gap-2 overflow-hidden bg-white dark:bg-neutral-900/20">
           <Tag tone={isSpouse ? 'blue' : 'default'}>{relationLabel}</Tag>
           <button
             type="button"
             onClick={() => onNavigate && onNavigate(dist.h?.personId || dist.h?.id)}
-            className="group text-[14px] font-black text-[#37352f] transition-colors hover:text-blue-700 dark:text-neutral-100 dark:hover:text-blue-300"
+            className="group min-w-0 flex-1 text-left text-[14px] font-black text-[#37352f] transition-colors hover:text-blue-700 dark:text-neutral-100 dark:hover:text-blue-300"
           >
-            <span className="underline-offset-2 group-hover:underline">{dist.h?.name}</span>
-            <span className="ml-1 hidden text-[10px] font-bold text-[#9b9a97] group-hover:inline">수정</span>
+            <div className="truncate underline-offset-4 group-hover:underline decoration-blue-500/30">{dist.h?.name}</div>
           </button>
-          {simpleBadges.map((b, i) => <Tag key={i} tone={b.tone}>{b.label}</Tag>)}
+          <div className="flex shrink-0 gap-1">
+            {simpleBadges.map((b, i) => <Tag key={i} tone={b.tone}>{b.label}</Tag>)}
+          </div>
         </div>
 
-        {/* 2구역: 지분계산 */}
-        <div className="flex flex-1 items-center justify-between gap-4 rounded-lg border border-[#ecebe8] bg-[#fafaf9] px-3 py-1.5 sm:justify-end dark:border-neutral-800 dark:bg-neutral-950/30">
-          <span className="text-[11px] text-[#787774] dark:text-neutral-400">
+        {/* [구역 2] 지분 산출 내역 (330px 고정, 배경색으로 강조) */}
+        <div className="sm:w-[330px] sm:shrink-0 bg-[#fafaf9]/60 dark:bg-neutral-950/30 p-2.5 flex items-center justify-between gap-4">
+          <span className="text-[11px] text-[#787774] dark:text-neutral-400 font-mono tracking-tight truncate">
             {step.inN}/{step.inD} × {displayInnerShare} {shortMod ? `(${shortMod})` : ''}
           </span>
-          <span className="text-[17px] font-black text-[#3f5f8a] dark:text-blue-300">{finalShare}</span>
+          <span className="text-[18px] font-black text-[#3f5f8a] dark:text-blue-300 whitespace-nowrap drop-shadow-sm">{finalShare}</span>
         </div>
 
-        {/* 3구역: 재상속/대습상속 정보 */}
-        {branchLabel && (
-          <div className="flex shrink-0 flex-row items-center justify-between border-[#e4e2de] sm:flex-col sm:items-end sm:border-l sm:pl-4 dark:border-neutral-700">
-            <span className="mb-0 text-[10px] text-[#9b9a97] sm:mb-1 dark:text-neutral-500">
+        {/* [구역 3] 대습/재상속 정보 (가변 폭, 우측 정렬, 선택적 수직 구분선) */}
+        {branchLabel ? (
+          <div className="flex-1 sm:border-l border-[#ecebe8] dark:border-neutral-800 p-2.5 flex flex-col items-end justify-center gap-1 bg-white dark:bg-neutral-900/10">
+            <span className="text-[10px] text-[#9b9a97] dark:text-neutral-500 font-bold uppercase tracking-wider">
               {formatKorDate(dist.h?.deathDate)} 사망
             </span>
             <button
               type="button"
               onClick={() => onOpenEvent && onOpenEvent(getStepKey(relatedStep))}
-              className="inline-flex items-center gap-1.5 rounded-full border border-[#ddd9cf] bg-[#fbf7ef] px-3 py-1 text-[10px] font-bold text-[#7a6544] transition-colors hover:bg-[#f4eedf] dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300"
+              className="inline-flex items-center gap-1.5 rounded-full border border-[#ddd9cf] bg-[#fbf7ef] px-3 py-0.5 text-[10px] font-bold text-[#7a6544] transition-all hover:bg-[#f4eedf] hover:shadow-sm active:scale-95 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300"
             >
-              {branchLabel} 사건으로 →
+              {branchLabel} 사건 {'>'}
             </button>
           </div>
+        ) : (
+          <div className="flex-1" />
         )}
       </div>
     </div>
@@ -202,6 +207,7 @@ const EventDetail = ({ step, stepMap, onNavigate, onOpenEvent }) => {
   const eraLabel = lawEraLabel(era);
 
   const commonD = activeDists.reduce((lcm, d) => math.lcm(lcm, d.d || 1), 1);
+  const innerCommonD = activeDists.reduce((lcm, d) => math.lcm(lcm, d.sd || 1), 1);
   const totalRatio = activeDists.reduce((sum, d) => sum + (d.h?.r || 0), 0);
 
   const otherLabel =
@@ -243,7 +249,7 @@ const EventDetail = ({ step, stepMap, onNavigate, onOpenEvent }) => {
           <div className="space-y-2">
             {spouseDists.map((dist, i) => {
               const related = stepMap.get(dist.h?.personId) || stepMap.get(dist.h?.id) || null;
-              return <HeirCard key={i} dist={dist} step={step} relatedStep={related} onNavigate={onNavigate} onOpenEvent={onOpenEvent} commonD={commonD} />;
+              return <HeirCard key={i} dist={dist} step={step} relatedStep={related} onNavigate={onNavigate} onOpenEvent={onOpenEvent} commonD={commonD} innerCommonD={innerCommonD} />;
             })}
           </div>
         </div>
@@ -265,7 +271,7 @@ const EventDetail = ({ step, stepMap, onNavigate, onOpenEvent }) => {
           <div className="space-y-2">
             {otherDists.map((dist, i) => {
               const related = stepMap.get(dist.h?.personId) || stepMap.get(dist.h?.id) || null;
-              return <HeirCard key={i} dist={dist} step={step} relatedStep={related} onNavigate={onNavigate} onOpenEvent={onOpenEvent} commonD={commonD} totalRatio={totalRatio} />;
+              return <HeirCard key={i} dist={dist} step={step} relatedStep={related} onNavigate={onNavigate} onOpenEvent={onOpenEvent} commonD={commonD} innerCommonD={innerCommonD} totalRatio={totalRatio} />;
             })}
           </div>
         </div>

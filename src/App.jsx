@@ -100,6 +100,7 @@ function App() {
   const [changeLog, setChangeLog] = useState([]);
   const [activeDeceasedTab, setActiveDeceasedTab] = useState('root');
   const [treeViewMode, setTreeViewMode] = useState('flow');
+  const [summaryViewMode, setSummaryViewMode] = useState('structure'); // 'structure' | 'path'
   const [navigationSignal, setNavigationSignal] = useState(null);
   const [isFolderFocused, setIsFolderFocused] = useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false); 
@@ -607,7 +608,7 @@ function App() {
 
   return (
     <>
-      <PrintReport tree={tree} activeTab={activeTab} activeDeceasedTab={activeDeceasedTab} finalShares={finalShares} calcSteps={calcSteps} amountCalculations={amountCalculations} propertyValue={propertyValue} />
+      <PrintReport tree={tree} activeTab={activeTab} activeDeceasedTab={activeDeceasedTab} finalShares={finalShares} calcSteps={calcSteps} amountCalculations={amountCalculations} propertyValue={propertyValue} summaryViewMode={summaryViewMode} />
       <div className="w-full min-h-screen relative flex flex-col items-start pb-24 transition-colors duration-200 bg-[#f7f7f5] dark:bg-neutral-900 min-w-[1280px] print:hidden">
         <SmartGuidePanel
           showNavigator={showNavigator} setShowNavigator={setShowNavigator} navigatorWidth={navigatorWidth}
@@ -624,6 +625,7 @@ function App() {
         />
         <TopToolbar
           sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} tree={tree}
+          setAiTargetId={setAiTargetId} setIsAiModalOpen={setIsAiModalOpen}
           undoTree={undoTree} redoTree={redoTree} canUndo={vaultState.currentIndex > 0} canRedo={vaultState.currentIndex < vaultState.history.length - 1}
           loadFile={(e) => {
             loadTreeFromJsonFile(e.target.files[0], { setTree, setActiveTab, setImportIssues, setPropertyValue, setSpecialBenefits, setContributions, setIsAmountActive });
@@ -633,7 +635,7 @@ function App() {
             saveFactTreeToFile(tree, { propertyValue, specialBenefits, contributions, isAmountActive });
             setIsDirty(false); // 저장 완료 시 수정 상태 초기화
           }}
-          handlePrint={() => printCurrentTab({ activeTab, tree })}
+          handlePrint={() => printCurrentTab({ activeTab, tree, summaryViewMode })}
           zoomLevel={zoomLevel} setZoomLevel={setZoomLevel} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode}
         />
         <SidebarTreePanel
@@ -684,14 +686,24 @@ function App() {
                   />
                 )}
                 {activeTab === 'calc' && <CalcPanel calcSteps={calcSteps} issues={blockingIssues} handleNavigate={handleNavigate} />}
-                {activeTab === 'summary' && <SummaryPanel tree={tree} finalShares={finalShares} calcSteps={calcSteps} issues={blockingIssues} handleNavigate={handleNavigate} matchIds={matchIds} currentMatchIdx={currentMatchIdx} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />}
-                {activeTab === 'amount' && <AmountPanel tree={tree} finalShares={finalShares} amountCalculations={amountCalculations} propertyValue={propertyValue} setPropertyValue={setPropertyValue} />}
+                {activeTab === 'summary' && <SummaryPanel tree={tree} finalShares={finalShares} calcSteps={calcSteps} issues={blockingIssues} handleNavigate={handleNavigate} matchIds={matchIds} currentMatchIdx={currentMatchIdx} searchQuery={searchQuery} setSearchQuery={setSearchQuery} viewMode={summaryViewMode} setViewMode={setSummaryViewMode} />}
+                {activeTab === 'amount' && <AmountPanel tree={tree} finalShares={finalShares} amountCalculations={amountCalculations} propertyValue={propertyValue} setPropertyValue={setPropertyValue} specialBenefits={specialBenefits} setSpecialBenefits={setSpecialBenefits} contributions={contributions} setContributions={setContributions} />}
               </div>
             </div>
           </div>
         </main>
       </div>
-      <AiImportModal isOpen={isAiModalOpen} onClose={() => setIsAiModalOpen(false)} onSubmit={() => {}} />
+      <AiImportModal
+        isOpen={isAiModalOpen}
+        targetName={aiTargetId === 'root' ? (tree.name || '피상속인') : aiTargetId}
+        aiInputText={aiInputText}
+        setAiInputText={setAiInputText}
+        onClose={() => setIsAiModalOpen(false)}
+        onCopyPrompt={() => navigator.clipboard.writeText(AI_PROMPT).then(() => alert('AI 안내문이 복사되었습니다.'))}
+        onPrintPrompt={() => printAiPromptDocument()}
+        onSubmit={(text) => ingestAiJsonInput({ input: text, aiTargetId, tree, setTree, setActiveTab, setIsAiModalOpen, setAiInputText })}
+        onTextareaAutoSubmit={(text) => ingestAiJsonInput({ input: text, aiTargetId, tree, setTree, setActiveTab, setIsAiModalOpen, setAiInputText })}
+      />
       <ResetConfirmModal isOpen={isResetModalOpen} onClose={() => setIsResetModalOpen(false)} onConfirm={() => {}} />
     </>
   );

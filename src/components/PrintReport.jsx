@@ -1,14 +1,21 @@
 import React, { useMemo } from 'react';
 import { getLawEra, getRelStr, formatKorDate, math } from '../engine/utils';
 
-const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculations }) => {
+const lawLabel = (era) => {
+  if (era === '1960') return '구민법';
+  if (era === '1979') return '1979 개정민법';
+  if (era === '1991') return '현행민법';
+  return `${era} 기준`;
+};
+
+const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculations, summaryViewMode = 'structure' }) => {
   // 1. 공통 헤더 제목 매핑
   const reportTitle = {
     input: '상속인 명부 및 가계 연혁',
     tree: '상속인 명부 및 가계 연혁',
     calc: '상속지분 산출 내역서 (단계별)',
     result: '상속지분 취득 경로 및 최종 결과표',
-    summary: '법정 상속분 요약표',
+    summary: summaryViewMode === 'path' ? '법정 상속분 취득 경로표' : '법정 상속분 요약표',
     amount: '구체적 상속분 (금액) 정산서'
   }[activeTab] || '상속지분 계산 보고서';
 
@@ -23,16 +30,23 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
   const translateExclusion = (val) => exclusionDict[val] || val;
 
   // 🌟 6단계 추가: 출력물에 불완전거리가 있는지 내부 검증
-  const hasMissingHeir = useMemo(() => {
-    if (!tree) return false;
-    let missing = false;
+  const missingHeirNames = useMemo(() => {
+    if (!tree) return [];
+    const names = [];
     const check = (node) => {
-      if (node.isDeceased && node.isExcluded !== true && (!node.heirs || node.heirs.length === 0)) missing = true;
+      if (
+        node.id !== 'root' &&
+        node.isDeceased &&
+        node.isExcluded !== true &&
+        node.successorStatus !== 'confirmed_no_substitute_heirs' &&
+        (!node.heirs || node.heirs.length === 0)
+      ) names.push(node.name || '이름미상');
       if (node.heirs) node.heirs.forEach(check);
     };
     check(tree);
-    return missing;
+    return names;
   }, [tree]);
+  const hasMissingHeir = missingHeirNames.length > 0;
 
   // 최종 결과표 명칭도 불완전할 경우 변경 처리
   const dynamicReportTitle = hasMissingHeir && (activeTab === 'calc' || activeTab === 'result' || activeTab === 'summary' || activeTab === 'amount')
@@ -79,10 +93,13 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
         <h1 className="text-[24px] font-bold border-b-2 border-black pb-2 inline-block mb-4 px-4">{dynamicReportTitle}</h1>
       </div>
 
-      {/* 🌟 6단계 추가: 출력물 강제 경고 배너 */}
+      {/* 출력물 강제 경고 배너 */}
       {hasMissingHeir && (
         <div className="mb-4 border-2 border-red-600 bg-red-50 p-2 text-center text-red-800 font-bold" style={{ WebkitPrintColorAdjust: 'exact', colorAdjust: 'exact' }}>
           [경고] 하위 상속인(대습/재상속인)이 누락된 사망자가 존재합니다. 본 문서는 미완성된 임시 계산 결과이므로 실무 반영에 주의하십시오.
+          <div className="mt-1 font-normal text-[11px]">
+            확정 필요: {missingHeirNames.map((n, i) => <span key={i} className="font-bold">{i > 0 ? ', ' : ''}{n}</span>)}의 하위 상속인 정보를 확정해 주세요.
+          </div>
         </div>
       )}
 
@@ -246,9 +263,9 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
       )}
 
       {/* ========================================== */}
-      {/* 탭 4: 법정 상속분 요약 */}
+      {/* 탭 4-A: 법정 상속분 요약 (지분 구조) */}
       {/* ========================================== */}
-      {activeTab === 'summary' && finalShares && (
+      {activeTab === 'summary' && summaryViewMode === 'structure' && finalShares && (
         <div className="mb-8">
           <table className="w-full border-collapse border border-black text-[12px]">
             <thead className="bg-gray-100 text-center font-bold">
@@ -286,6 +303,59 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
           </table>
         </div>
       )}
+
+      {/* ========================================== */}
+      {/* 탭 4-B: 법정 상속분 요약 (취득 경로) */}
+      {/* ========================================== */}
+      {activeTab === 'summary' && summaryViewMode === 'path' && resultGroups.length > 0 && (() => {
+        const commonD = resultGroups.reduce((acc, r) => {
+          const total = r.sources.reduce((s, src) => { const [nn, nd] = math.add(s.n, s.d, src.n, src.d); return { n: nn, d: nd }; }, { n: 0, d: 1 });
+          return total.n > 0 ? math.lcm(acc, total.d) : acc;
+        }, 1);
+        return (
+          <div className="mb-8">
+            <table className="w-full border-collapse border border-black text-[12px]">
+              <thead className="bg-gray-100 text-center font-bold">
+                <tr>
+                  <th className="border border-black py-2 px-2 w-[18%]">최종 상속인</th>
+                  <th className="border border-black py-2 px-2 w-[52%]">지분 취득 경로</th>
+                  <th className="border border-black py-2 px-2 w-[15%]">{hasMissingHeir ? '가계산 합계' : '최종 합계'}</th>
+                  <th className="border border-black py-2 px-2 w-[15%]">통분 지분</th>
+                </tr>
+              </thead>
+              <tbody>
+                {resultGroups.map((r, i) => {
+                  const total = r.sources.reduce((acc, s) => { const [nn, nd] = math.add(acc.n, acc.d, s.n, s.d); return { n: nn, d: nd }; }, { n: 0, d: 1 });
+                  const unifiedN = total.n * (commonD / total.d);
+                  return (
+                    <tr key={i} className="align-top break-inside-avoid">
+                      <td className="border border-black py-2 px-2 text-center">
+                        <span className="font-bold">{r.name}</span><br />
+                        <span className="text-gray-600">[{getRelStr(r.relation, tree.deathDate)}]</span>
+                      </td>
+                      <td className="border border-black py-2 px-2 text-left">
+                        {r.sources.map((src, si) => (
+                          <div key={si} className={si > 0 ? 'mt-1 pt-1 border-t border-dashed border-gray-300' : ''}>
+                            • 망 {src.decName}의 {getRelStr(src.relation, src.decDeathDate)}로서 {src.n}/{src.d}
+                            <span className="text-gray-500 ml-1">({lawLabel(src.lawEra)} 적용{src.mod ? `, ${src.mod}` : ''})</span>
+                          </div>
+                        ))}
+                        {r.sources.length > 1 && (
+                          <div className="mt-1 pt-1 border-t border-gray-400 font-bold">
+                            = {r.sources.map(s => `${s.n}/${s.d}`).join(' + ')} = {total.n}/{total.d}
+                          </div>
+                        )}
+                      </td>
+                      <td className="border border-black py-2 px-2 text-center font-bold">{total.n} / {total.d}</td>
+                      <td className="border border-black py-2 px-2 text-center font-bold">{unifiedN} / {commonD}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        );
+      })()}
 
       {/* ========================================== */}
       {/* 탭 5: 구체적 상속분 (금액 계산) */}

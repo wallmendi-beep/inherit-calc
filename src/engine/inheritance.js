@@ -493,12 +493,13 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
       const childrenToTraverse = [];
 
       targetHeirs.forEach(h => {
-        if (h.r === 0 || h.r === undefined) { 
-          if (step) step.dists.push({ h, n: 0, d: 1, sn: 0, sd: 1, ex: h.ex, mod: h.modifierReason }); 
+        if (h.r === 0 || h.r === undefined) {
+          if (step) step.dists.push({ h, n: 0, d: 1, sn: 0, sd: 1, rSnap: 0, ex: h.ex, mod: h.modifierReason });
         } else {
           const [sn, sd] = math.simplify(h.r * 100, total * 100);
           const [nn, nd] = math.multiply(inN, inD, sn, sd);
-          if (step) step.dists.push({ h, n: nn, d: nd, sn, sd, mod: h.modifierReason });
+          // rSnap: 계산 시점의 h.r 스냅샷 보존 (이후 traverse가 h.r을 덮어써도 merge에서 올바른 값 사용)
+          if (step) step.dists.push({ h, n: nn, d: nd, sn, sd, rSnap: h.r, mod: h.modifierReason });
           childrenToTraverse.push({ h, nn, nd });
         }
       });
@@ -538,11 +539,14 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
       existing.inN = newN;
       existing.inD = newD;
       
-      const total = existing.dists.reduce((sum, d) => sum + (d.h?.r || 0), 0);
+      // rSnap 사용: merge 시점에 d.h.r은 이후 traverse에 의해 덮어써질 수 있으므로
+      // 계산 시점에 저장한 rSnap 스냅샷으로 sn/sd를 재계산한다.
+      const total = existing.dists.reduce((sum, d) => sum + (d.rSnap ?? d.h?.r ?? 0), 0);
       if (total > 0) {
         existing.dists = existing.dists.map(d => {
-          if (d.h?.r === 0 || d.h?.r === undefined) return { ...d, n: 0, d: 1, sn: 0, sd: 1 };
-          const [sn, sd] = math.simplify(d.h.r * 100, total * 100);
+          const r = d.rSnap ?? d.h?.r ?? 0;
+          if (r === 0) return { ...d, n: 0, d: 1, sn: 0, sd: 1 };
+          const [sn, sd] = math.simplify(r * 100, total * 100);
           const [nn, nd] = math.multiply(newN, newD, sn, sd);
           return { ...d, n: nn, d: nd, sn, sd };
         });
