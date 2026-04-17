@@ -150,7 +150,7 @@ export default function HeirRow({
   let tabBtnText = '재상속 >>';
   let tabBtnClass = 'bg-transparent text-[#787774] border border-[#e9e9e7] hover:bg-blue-50/50 hover:text-blue-600 hover:border-blue-200 dark:border-neutral-700';
   const canConfirmNoSubstituteHeirs =
-    isEffectivePredeceased &&
+    !!node.isDeceased &&
     !blocksHusbandSubstitution &&
     !isSpouseType &&
     (!node.heirs || node.heirs.length === 0);

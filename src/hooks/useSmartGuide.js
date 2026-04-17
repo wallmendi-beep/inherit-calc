@@ -308,6 +308,22 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       }
     });
 
+    // 엔진 경고 → SmartGuide 통합 (auto-sibling-redistribution 등)
+    (warnings || []).forEach((warning) => {
+      if (warning.code !== 'auto-sibling-redistribution') return;
+      const key = `engine-${warning.code}-${warning.personId || warning.targetTabId || 'root'}`;
+      if (!uniqueGuidesMap.has(key)) {
+        uniqueGuidesMap.set(key, {
+          id: warning.personId || warning.id,
+          uniqueKey: key,
+          type: 'recommended',
+          text: warning.text,
+          targetTabId: warning.targetTabId || warning.personId,
+          personId: warning.personId || '',
+        });
+      }
+    });
+
     const smartGuides = Array.from(uniqueGuidesMap.values());
     const globalMismatchReasons = audit.issues.map((issue) => ({
       id: issue.targetTabId || issue.personId || issue.id || 'root',

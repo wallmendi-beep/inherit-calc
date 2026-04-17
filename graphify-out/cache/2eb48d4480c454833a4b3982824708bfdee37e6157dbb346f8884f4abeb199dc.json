@@ -1,0 +1,1 @@
+{"nodes": [{"id": "test_app3_mjs", "label": "test_app3.mjs", "file_type": "code", "source_file": "test_app3.mjs", "source_location": "L1"}], "edges": [{"source": "test_app3_mjs", "target": "playwright", "relation": "imports_from", "confidence": "EXTRACTED", "source_file": "test_app3.mjs", "source_location": "L1", "weight": 1.0}], "raw_calls": []}

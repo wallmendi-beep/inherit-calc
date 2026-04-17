@@ -40,6 +40,7 @@ export default function SmartGuidePanel({
     item?.targetNodeId || item?.targetTabId || item?.personId || item?.id || null;
 
   const checkedSet = checkedGuideKeys || new Set();
+  const warningsToShow = (warnings || []).filter((w) => w.code !== 'auto-sibling-redistribution');
   const visibleAuditActionItems = (auditActionItems || []).filter((item) => {
     if (item.code === 'hierarchy-violation') {
       return activeTab === 'input';
@@ -121,11 +122,11 @@ export default function SmartGuidePanel({
           </section>
         )}
 
-        {activeTab !== 'input' && warnings.length > 0 && (
+        {activeTab !== 'input' && warningsToShow.length > 0 && (
           <section className="space-y-3">
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">💡 참고사항</h3>
             <ul className="space-y-2">
-              {warnings.map((warning, index) => (
+              {warningsToShow.map((warning, index) => (
                 <li key={`warning-${index}`}>
                   <button
                     type="button"

@@ -198,11 +198,14 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
       if (survivingSpouse.length > 0) return survivingSpouse;
 
       // 3순위: 형제자매 (부모의 다른 자녀 중 생존자 또는 대습상속 유발자)
-      const siblings = (pNode.heirs || []).filter(h => 
-        h.id !== targetNode.id && 
+      // ※ relation을 'sibling'으로 변환: 원래 son/daughter 그대로 반환하면 이 단계에서
+      //   1979·1960년 법의 출가녀 감산(h.r=0.25) 등 직계비속 비율 로직이 잘못 적용되기 때문.
+      //   형제자매 차순위 상속에서는 법정 균분(h.r=1.0)이 원칙이므로 반드시 'sibling'으로 넘긴다.
+      const siblings = (pNode.heirs || []).filter(h =>
+        h.id !== targetNode.id &&
         (['son', 'daughter'].includes(h.relation)) &&
         (!h.isExcluded || (h.exclusionOption === 'predeceased' || h.exclusionOption === 'disqualified' || h.exclusionOption === 'lost'))
-      );
+      ).map(h => ({ ...h, relation: 'sibling' }));
       return siblings;
     };
 
@@ -341,8 +344,22 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
     }
 
     // [v4.12] 전역 계보 추적 엔진: 여전히 상속인이 없다면 법정 순위(부모/형제)로 자동 이전
-    if (targetHeirs.length === 0 && !isSubstitution && node.id !== 'root' && !isRenounced(node, inheritedDate)) {
-      targetHeirs = findGlobalSuccessors(node).filter(h => !isRenounced(h, distributionDate));
+    // ※ successorStatus === 'confirmed_no_substitute_heirs': 사용자가 명시적으로 "후속 상속인 없음"을
+    //   확정한 경우 자동 탐색을 건너뜀. 이를 무시하면 엔진이 형제자매를 자동 배분하여 의도치 않은 결과 발생.
+    if (targetHeirs.length === 0 && !isSubstitution && node.id !== 'root' && !isRenounced(node, inheritedDate) && node.successorStatus !== 'confirmed_no_substitute_heirs') {
+      const globalSuccessors = findGlobalSuccessors(node).filter(h => !isRenounced(h, distributionDate));
+      if (globalSuccessors.length > 0) {
+        pushWarning({
+          code: 'auto-sibling-redistribution',
+          severity: 'info',
+          blocking: false,
+          id: node.id,
+          personId: node.personId || node.id,
+          targetTabId: node.personId || node.id,
+          text: `[${node.name || '이름 미상'}]의 후속 상속인이 없어 형제자매(차순위)에게 자동 분배되었습니다. 실제 상속인과 다를 경우 해당 탭에서 후속 상속인을 직접 입력해 주세요.`,
+        });
+      }
+      targetHeirs = globalSuccessors;
     }
 
     if (targetHeirs.length === 0) {

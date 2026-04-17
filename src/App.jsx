@@ -18,6 +18,7 @@ import TreePanel from './components/TreePanel';
 import MetaHeader from './components/MetaHeader';
 import AiImportModal from './components/AiImportModal';
 import ResetConfirmModal from './components/ResetConfirmModal';
+import PersonEditModal from './components/PersonEditModal';
 import SmartGuidePanel from './components/SmartGuidePanel';
 import SidebarTreePanel from './components/SidebarTreePanel';
 import TopToolbar from './components/TopToolbarBalanced';
@@ -108,6 +109,20 @@ function App() {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1.0);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [personEditModal, setPersonEditModal] = useState(null); // null | { nodeId, foundTabId }
+  const personEditModalData = useMemo(() => {
+    if (!personEditModal?.nodeId || !tree) return null;
+    const find = (n, parent) => {
+      if (n.id === personEditModal.nodeId || n.personId === personEditModal.nodeId)
+        return { node: n, parentNode: parent };
+      for (const h of n.heirs || []) {
+        const r = find(h, n);
+        if (r) return r;
+      }
+      return null;
+    };
+    return find(tree, null);
+  }, [personEditModal?.nodeId, tree]);
   const [aiInputText, setAiInputText] = useState("");
   const [aiTargetId, setAiTargetId] = useState('root');
   const [showQrCode, setShowQrCode] = useState(false);
@@ -338,6 +353,11 @@ function App() {
       setNavigationSignal({ targetId: nodeId, at: Date.now() });
     } else {
       // 일반 인물/데이터 수정 목적
+      // input 탭이 아닌 경우 탭 전환 대신 편집 모달 오픈
+      if (activeTab !== 'input' && nodeId !== 'root') {
+        setPersonEditModal({ nodeId, foundTabId });
+        return;
+      }
       if (activeTab !== 'input') {
         setActiveTab('input');
       }
@@ -705,6 +725,22 @@ function App() {
         onTextareaAutoSubmit={(text) => ingestAiJsonInput({ input: text, aiTargetId, tree, setTree, setActiveTab, setIsAiModalOpen, setAiInputText })}
       />
       <ResetConfirmModal isOpen={isResetModalOpen} onClose={() => setIsResetModalOpen(false)} onConfirm={() => {}} />
+      <PersonEditModal
+        isOpen={!!personEditModal}
+        onClose={() => setPersonEditModal(null)}
+        onOpenInInputTab={() => {
+          const { foundTabId } = personEditModal || {};
+          setPersonEditModal(null);
+          setActiveTab('input');
+          if (foundTabId) setActiveDeceasedTab(foundTabId);
+        }}
+        node={personEditModalData?.node ?? null}
+        parentNode={personEditModalData?.parentNode ?? null}
+        inheritedDate={personEditModalData?.parentNode?.deathDate || tree.deathDate}
+        rootDeathDate={tree.deathDate}
+        rootIsHoju={tree.isHoju !== false}
+        handleUpdate={handleUpdate}
+      />
     </>
   );
 }

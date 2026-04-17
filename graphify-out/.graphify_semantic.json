@@ -1,0 +1,80 @@
+{
+  "nodes": [
+    {
+      "id": "app_jsx",
+      "label": "App.jsx (Main Controller)",
+      "file_type": "code",
+      "source_file": "src/App.jsx"
+    },
+    {
+      "id": "inheritance_js",
+      "label": "Inheritance Engine",
+      "file_type": "code",
+      "source_file": "src/engine/inheritance.js"
+    },
+    {
+      "id": "vault_transforms",
+      "label": "Vault Lifecycle",
+      "file_type": "code",
+      "source_file": "src/utils/vaultTransforms.js"
+    },
+    {
+      "id": "smart_guide",
+      "label": "Smart Guide Logic",
+      "file_type": "code",
+      "source_file": "src/hooks/useSmartGuide.js"
+    },
+    {
+      "id": "core_logic_specs",
+      "label": "Core Logic Specs",
+      "file_type": "document",
+      "source_file": "!\uba85\uc138\uc11c/specs/CORE_LOGIC_SPECS.md"
+    },
+    {
+      "id": "tauri_main",
+      "label": "Tauri Backend",
+      "file_type": "code",
+      "source_file": "src-tauri/src/main.rs"
+    }
+  ],
+  "edges": [
+    {
+      "source": "app_jsx",
+      "target": "inheritance_js",
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0
+    },
+    {
+      "source": "app_jsx",
+      "target": "vault_transforms",
+      "relation": "uses",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0
+    },
+    {
+      "source": "app_jsx",
+      "target": "smart_guide",
+      "relation": "uses",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0
+    },
+    {
+      "source": "inheritance_js",
+      "target": "core_logic_specs",
+      "relation": "implements",
+      "confidence": "INFERRED",
+      "confidence_score": 0.9
+    },
+    {
+      "source": "app_jsx",
+      "target": "tauri_main",
+      "relation": "bridged_by",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8
+    }
+  ],
+  "hyperedges": [],
+  "input_tokens": 1000,
+  "output_tokens": 500
+}
