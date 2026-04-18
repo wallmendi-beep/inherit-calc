@@ -59,6 +59,7 @@ export default function TopToolbarBalanced({
 }) {
   const [openMenu, setOpenMenu] = useState(null);
   const menuRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     const onPointerDown = (event) => {
@@ -131,12 +132,18 @@ export default function TopToolbarBalanced({
               <button onClick={() => toggleMenu('file')} className={`flex h-7 items-center gap-1 rounded-lg border px-2 text-[11px] font-bold transition-colors ${openMenu === 'file' ? 'border-[#d4d4d4] bg-white text-[#37352f] dark:border-neutral-600 dark:bg-neutral-700 dark:text-neutral-100' : 'border-transparent text-[#787774] hover:border-[#d4d4d4] hover:bg-[#efefed] hover:text-[#37352f] dark:text-neutral-400 dark:hover:border-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200'}`}>
                 <IconFolderOpen className="h-3 w-3" /> 파일
               </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json"
+                onChange={(e) => { closeMenus(); loadFile(e); e.target.value = ''; }}
+                className="hidden"
+              />
               {openMenu === 'file' && (
                 <div className="absolute right-0 top-11 z-[120] flex w-40 flex-col gap-1 rounded-2xl border border-[#e9e9e7] bg-white p-1.5 shadow-xl dark:border-neutral-700 dark:bg-neutral-800">
-                  <label className="flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-[12px] font-bold text-[#37352f] hover:bg-[#f7f7f5] dark:text-neutral-200 dark:hover:bg-neutral-700">
+                  <button onClick={() => { closeMenus(); fileInputRef.current?.click(); }} className="flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-[12px] font-bold text-[#37352f] hover:bg-[#f7f7f5] dark:text-neutral-200 dark:hover:bg-neutral-700">
                     <IconFolderOpen className="h-3.5 w-3.5" /> 불러오기
-                    <input type="file" accept=".json" onChange={(e) => { closeMenus(); loadFile(e); }} className="hidden" />
-                  </label>
+                  </button>
                   <button onClick={() => { closeMenus(); saveFile(); }} className="flex items-center gap-2 rounded-xl px-3 py-2 text-[12px] font-bold text-[#37352f] hover:bg-[#f7f7f5] dark:text-neutral-200 dark:hover:bg-neutral-700">
                     <IconSave className="h-3.5 w-3.5" /> 저장
                   </button>
