@@ -373,12 +373,12 @@ function App() {
       // 일반 인물/데이터 수정 목적
       // input 탭이 아닌 경우 탭 전환 대신 편집 모달 오픈
       if (activeTab !== 'input' && nodeId !== 'root') {
-        setPersonEditModal({
-          nodeId,
-          foundTabId,
-          sourceTabId: activeDeceasedTab,
-          sourceEventName:
-            activeDeceasedTab === 'root'
+          setPersonEditModal({
+            nodeId,
+            foundTabId,
+            sourceTabId: activeDeceasedTab,
+            sourceEventName:
+              activeDeceasedTab === 'root'
               ? (tree.name || '피상속인')
               : (activeTabObj?.name || tree.name || '피상속인'),
           sourceEventDate:
@@ -699,7 +699,11 @@ function App() {
         />
         <main className={`flex-1 flex w-full transition-all duration-300 ${sidebarOpen ? 'justify-start' : 'justify-center'}`} style={{ paddingLeft: sidebarOpen ? (sidebarWidth + 10) : 0, paddingRight: showNavigator ? (navigatorWidth + 10) : 0 }}>
           <div style={{ zoom: zoomLevel, width: '100%', display: 'flex', justifyContent: (sidebarOpen || showNavigator) ? 'flex-start' : 'center' }}>
-            <div className="flex flex-col shrink-0 mt-6 print-compact relative z-10 transition-all duration-300 w-[1080px] min-w-[1080px] px-6">
+            <div
+                className={`flex flex-col shrink-0 mt-6 print-compact relative z-10 transition-all duration-300 ${
+                activeTab === 'tree' ? 'w-full px-2' : 'w-[1080px] min-w-[1080px] px-6'
+                }`}
+            >
               <div className="flex items-end pl-[48px] gap-1 no-print relative z-20">
                 {['input', 'tree', 'calc', 'summary', 'amount'].map(id => (
                   <button key={id} onClick={() => handleTabChange(id)} className={`px-6 py-2.5 rounded-t-xl font-bold text-[14px] border-2 border-b-0 transition-all ${activeTab === id ? 'bg-white dark:bg-neutral-800 border-[#37352f] text-[#37352f]' : 'bg-transparent border-transparent text-[#9b9a97]'}`}>
@@ -707,7 +711,7 @@ function App() {
                   </button>
                 ))}
               </div>
-              <div className="border border-[#e9e9e7] dark:border-neutral-700 rounded-xl shadow-sm min-h-[600px] bg-white dark:bg-neutral-800 flex flex-col p-10 relative z-0">
+              <div className={`border border-[#e9e9e7] dark:border-neutral-700 rounded-xl shadow-sm min-h-[600px] bg-white dark:bg-neutral-800 flex flex-col relative z-0 ${activeTab === 'tree' ? 'p-5' : 'p-10'}`}>
                 {activeTab === 'input' && (
                   <InputPanel
                     tree={tree} activeDeceasedTab={activeDeceasedTab} activeTabObj={activeTabObj} getBriefingInfo={getBriefingInfo}
@@ -720,21 +724,23 @@ function App() {
                     handleQuickSubmit={handleQuickSubmit} setActiveDeceasedTab={setActiveDeceasedTab}
                   />
                 )}
-                {activeTab === 'tree' && (
-                  <TreePanel 
-                    tree={tree} 
-                    treeToggleSignal={treeToggleSignal} 
-                    isAllExpanded={isAllExpanded}
-                    setTreeToggleSignal={setTreeToggleSignal}
-                    setIsAllExpanded={setIsAllExpanded}
-                    calcSteps={calcSteps} 
-                    handleNavigate={handleNavigate} 
-                    removeHeir={removeHeir}
-                    viewMode={treeViewMode}
-                    setViewMode={setTreeViewMode}
-                    navigationSignal={navigationSignal}
-                  />
-                )}
+                  {activeTab === 'tree' && (
+                    <div className="flex-1 min-h-0">
+                      <TreePanel 
+                        tree={tree} 
+                        treeToggleSignal={treeToggleSignal} 
+                        isAllExpanded={isAllExpanded}
+                        setTreeToggleSignal={setTreeToggleSignal}
+                        setIsAllExpanded={setIsAllExpanded}
+                        calcSteps={calcSteps} 
+                        handleNavigate={handleNavigate} 
+                        removeHeir={removeHeir}
+                        viewMode={treeViewMode}
+                        setViewMode={setTreeViewMode}
+                        navigationSignal={navigationSignal}
+                      />
+                    </div>
+                  )}
                 {activeTab === 'calc' && <CalcPanel calcSteps={calcSteps} issues={blockingIssues} handleNavigate={handleNavigate} />}
                 {activeTab === 'summary' && <SummaryPanel tree={tree} finalShares={finalShares} calcSteps={calcSteps} issues={blockingIssues} handleNavigate={handleNavigate} matchIds={matchIds} currentMatchIdx={currentMatchIdx} searchQuery={searchQuery} setSearchQuery={setSearchQuery} viewMode={summaryViewMode} setViewMode={setSummaryViewMode} />}
                 {activeTab === 'amount' && <AmountPanel tree={tree} finalShares={finalShares} amountCalculations={amountCalculations} propertyValue={propertyValue} setPropertyValue={setPropertyValue} specialBenefits={specialBenefits} setSpecialBenefits={setSpecialBenefits} contributions={contributions} setContributions={setContributions} />}
@@ -758,9 +764,9 @@ function App() {
         <PersonEditModal
           isOpen={!!personEditModal}
           onClose={() => setPersonEditModal(null)}
-        onOpenInInputTab={() => {
-          const { foundTabId } = personEditModal || {};
-          setPersonEditModal(null);
+          onOpenInInputTab={() => {
+            const { foundTabId } = personEditModal || {};
+            setPersonEditModal(null);
           setActiveTab('input');
           if (foundTabId) setActiveDeceasedTab(foundTabId);
           }}
@@ -773,10 +779,10 @@ function App() {
           }
           rootDeathDate={tree.deathDate}
           rootIsHoju={tree.isHoju !== false}
-        sourceEventName={personEditModal?.sourceEventName || ''}
-        sourceEventDate={personEditModal?.sourceEventDate || ''}
-        handleUpdate={handleUpdate}
-      />
+          sourceEventName={personEditModal?.sourceEventName || ''}
+          sourceEventDate={personEditModal?.sourceEventDate || ''}
+          handleUpdate={handleUpdate}
+        />
     </>
   );
 }

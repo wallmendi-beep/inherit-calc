@@ -2,21 +2,17 @@ import React from 'react';
 import TreeReportNode from './TreeReportNode';
 import { formatKorDate, getLawEra, getRelStr, isBefore, math } from '../engine/utils';
 
-// ─── 유틸 ────────────────────────────────────────────────────────────────────
-
 const getStepKey = (step, index) => step?.dec?.personId || step?.dec?.id || `step-${index}`;
 
 const lawEraLabel = (era) => {
-  if (era === '1960') return '구민법 (1960년 제정)';
-  if (era === '1979') return '1979년 개정 민법';
-  if (era === '1991') return '현행 민법 (1991년 개정)';
-  return '';
+  if (era === '1960') return '1960년 제정 민법 적용';
+  if (era === '1979') return '1979년 개정 민법 적용';
+  if (era === '1991') return '1991년 개정 민법 적용';
+  return '적용 법 확인 필요';
 };
 
-// 사건들 간 부모-자식 관계 맵 빌드
 const buildStepTree = (steps) => {
   const parentOf = new Map();
-  const childrenOf = new Map();
 
   steps.forEach((step, i) => {
     const childKey = getStepKey(step, i);
@@ -27,266 +23,34 @@ const buildStepTree = (steps) => {
         const pid = d.h?.personId || d.h?.id;
         return pid === step.dec?.personId || pid === step.dec?.id;
       });
-      if (isChild && !parentOf.has(childKey)) {
-        parentOf.set(childKey, parentKey);
-        if (!childrenOf.has(parentKey)) childrenOf.set(parentKey, []);
-        childrenOf.get(parentKey).push(childKey);
-      }
+      if (isChild && !parentOf.has(childKey)) parentOf.set(childKey, parentKey);
     });
   });
 
-  return { parentOf, childrenOf };
+  return { parentOf };
 };
 
-// ─── 서브 컴포넌트들 ─────────────────────────────────────────────────────────
+const relationTone = (relation) => {
+  if (['wife', 'husband', 'spouse'].includes(relation)) return 'blue';
+  if (['father', 'mother', 'parent'].includes(relation)) return 'amber';
+  return 'default';
+};
 
-const Tag = ({ children, tone = 'default' }) => {
+const Tag = ({ children, tone = 'default', className = '' }) => {
   const cls =
     tone === 'blue'
       ? 'border-[#d7e5f9] bg-[#f0f6ff] text-[#3b5f8a] dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-300'
       : tone === 'amber'
-      ? 'border-[#e8dfc8] bg-[#fdf8ef] text-[#7a6240] dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300'
-      : tone === 'rose'
-      ? 'border-[#efd9db] bg-[#fdf4f5] text-[#8a5a5f] dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-300'
+      ? 'border-[#eadfcb] bg-[#fbf6ed] text-[#7a6240] dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300'
       : tone === 'green'
-      ? 'border-[#c9e8d5] bg-[#f0faf4] text-[#2e6e4a] dark:border-green-900/40 dark:bg-green-950/20 dark:text-green-300'
+      ? 'border-[#cfe5d7] bg-[#f1faf4] text-[#2f6f4d] dark:border-green-900/40 dark:bg-green-950/20 dark:text-green-300'
+      : tone === 'rose'
+      ? 'border-[#ead7da] bg-[#fcf4f5] text-[#8a5a5f] dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-300'
       : 'border-[#e4e2de] bg-[#f7f6f3] text-[#5d5b57] dark:border-neutral-700 dark:bg-neutral-800/60 dark:text-neutral-300';
-  return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold ${cls}`}>
-      {children}
-    </span>
-  );
+
+  return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold ${cls} ${className}`}>{children}</span>;
 };
 
-// 제외된 상속인 목록
-const ExcludedSection = ({ dists }) => {
-  const excluded = dists.filter((d) => d.ex);
-  if (!excluded.length) return null;
-  return (
-    <div className="mb-4 rounded-xl border border-dashed border-[#e4e2de] bg-[#fafaf9] px-4 py-3 dark:border-neutral-700 dark:bg-neutral-900/30">
-      <div className="mb-2 text-[10px] font-black tracking-[0.06em] text-[#9b9a97] dark:text-neutral-500">상속권 없음</div>
-      <div className="flex flex-wrap gap-2">
-        {excluded.map((d, i) => (
-          <div key={i} className="flex items-center gap-1.5">
-            <span className="text-[12px] font-bold text-[#9b9a97] line-through dark:text-neutral-500">
-              {d.h?.name}
-            </span>
-            <Tag tone="rose">{d.ex}</Tag>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// 상속인 카드
-const HeirCard = ({ dist, step, relatedStep, onNavigate, onOpenEvent, commonD, innerCommonD }) => {
-  const relation = dist.h?.relation;
-  const isSpouse = ['wife', 'husband', 'spouse'].includes(relation);
-  const relationLabel = getRelStr(relation, step.dec?.deathDate) || '상속인';
-  
-  let finalShare = `${dist.n}/${dist.d}`;
-  let displayInnerShare = `${dist.sn}/${dist.sd}`;
-  
-  // 1. 내부 수식 비율 통분 (가족 내 LCM 적용)
-  if (innerCommonD && dist.sd && innerCommonD !== dist.sd) {
-    const scale = innerCommonD / dist.sd;
-    displayInnerShare = `${dist.sn * scale}/${innerCommonD}`;
-  }
-
-  // 2. 최종 결과 지분 통분 (전체 LCM 적용)
-  if (commonD && dist.d && commonD !== dist.d) {
-    const scale = commonD / dist.d;
-    finalShare = `${dist.n * scale}/${commonD}`;
-  }
-
-  const hasRelated = Boolean(relatedStep);
-  const isReinherit = hasRelated && dist.h?.deathDate && !isBefore(dist.h.deathDate, step.dec?.deathDate);
-  const isSubst = hasRelated && dist.h?.deathDate && isBefore(dist.h.deathDate, step.dec?.deathDate);
-  const branchLabel = isReinherit ? '재상속' : isSubst ? '대습상속' : null;
-
-  let shortMod = '';
-  if (typeof dist.mod === 'string' && dist.mod) {
-    const isAdd = dist.mod.includes('가산');
-    const isSub = dist.mod.includes('감산');
-    
-    if (isAdd) {
-      if (dist.mod.includes('5할')) shortMod = '5할 가산';
-      else if (dist.mod.includes('1/2')) shortMod = '1/2 가산';
-      else shortMod = '가산';
-    } else if (isSub) {
-      if (dist.mod.includes('5할')) shortMod = '5할 감산';
-      else if (dist.mod.includes('1/2')) shortMod = '1/2 감산';
-      else if (dist.mod.includes('1/4')) shortMod = '1/4 감산';
-      else shortMod = '감산';
-    }
-  }
-
-  const simpleBadges = [];
-  if (relation === 'daughter') {
-    const isMarriedOut = dist.mod && dist.mod.includes('출가녀');
-    const isSame = !isMarriedOut && dist.h?.isSameRegister !== false;
-    simpleBadges.push({ label: isSame ? '동일가적' : '비동일가적', tone: isSame ? 'blue' : 'amber' });
-  } else if (relation === 'son' && typeof dist.mod === 'string' && dist.mod.includes('호주')) {
-    simpleBadges.push({ label: '호주상속', tone: 'blue' });
-  } else if (isSpouse && shortMod) {
-    simpleBadges.push({ label: shortMod, tone: shortMod.includes('가산') ? 'blue' : 'amber' });
-  }
-
-  const accentLeft = isSpouse
-    ? 'border-l-[3px] border-l-blue-300 dark:border-l-blue-700'
-    : 'border-l-[3px] border-l-[#d9d7d1] dark:border-l-neutral-600';
-
-  return (
-    <div className={`rounded-xl border border-[#ebeae7] bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900/50 ${accentLeft} overflow-hidden`}>
-      <div className="flex flex-col sm:flex-row sm:items-stretch gap-0 sm:min-h-[72px]">
-        {/* [구역 1] 상속인 기본 정보 (200px 고정) */}
-        <div className="sm:w-[200px] sm:shrink-0 sm:border-r border-[#ecebe8] dark:border-neutral-800 p-2.5 flex items-center gap-2 overflow-hidden bg-white dark:bg-neutral-900/20">
-          <Tag tone={isSpouse ? 'blue' : 'default'}>{relationLabel}</Tag>
-          <button
-            type="button"
-            onClick={() => onNavigate && onNavigate(dist.h?.personId || dist.h?.id)}
-            className="group min-w-0 flex-1 text-left text-[14px] font-black text-[#37352f] transition-colors hover:text-blue-700 dark:text-neutral-100 dark:hover:text-blue-300"
-          >
-            <div className="truncate underline-offset-4 group-hover:underline decoration-blue-500/30">{dist.h?.name}</div>
-          </button>
-          <div className="flex shrink-0 gap-1">
-            {simpleBadges.map((b, i) => <Tag key={i} tone={b.tone}>{b.label}</Tag>)}
-          </div>
-        </div>
-
-        {/* [구역 2] 지분 산출 내역 (330px 고정, 배경색으로 강조) */}
-        <div className="sm:w-[330px] sm:shrink-0 bg-[#fafaf9]/60 dark:bg-neutral-950/30 p-2.5 flex items-center justify-between gap-4">
-          <span className="text-[11px] text-[#787774] dark:text-neutral-400 font-mono tracking-tight truncate">
-            {step.inN}/{step.inD} × {displayInnerShare} {shortMod ? `(${shortMod})` : ''}
-          </span>
-          <span className="text-[18px] font-black text-[#3f5f8a] dark:text-blue-300 whitespace-nowrap drop-shadow-sm">{finalShare}</span>
-        </div>
-
-        {/* [구역 3] 대습/재상속 정보 (가변 폭, 우측 정렬, 선택적 수직 구분선) */}
-        {branchLabel ? (
-          <div className="flex-1 sm:border-l border-[#ecebe8] dark:border-neutral-800 p-2.5 flex flex-col items-end justify-center gap-1 bg-white dark:bg-neutral-900/10">
-            <span className="text-[10px] text-[#9b9a97] dark:text-neutral-500 font-bold uppercase tracking-wider">
-              {formatKorDate(dist.h?.deathDate)} 사망
-            </span>
-            <button
-              type="button"
-              onClick={() => onOpenEvent && onOpenEvent(getStepKey(relatedStep))}
-              className="inline-flex items-center gap-1.5 rounded-full border border-[#ddd9cf] bg-[#fbf7ef] px-3 py-0.5 text-[10px] font-bold text-[#7a6544] transition-all hover:bg-[#f4eedf] hover:shadow-sm active:scale-95 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300"
-            >
-              {branchLabel} 사건 {'>'}
-            </button>
-          </div>
-        ) : (
-          <div className="flex-1" />
-        )}
-      </div>
-    </div>
-  );
-};
-
-// 사건 상세 (우측 캐스케이드 뷰)
-const EventDetail = ({ step, stepMap, onNavigate, onOpenEvent }) => {
-  const dists = step.dists || [];
-  const activeDists = dists.filter((d) => !d.ex && d.n > 0);
-  const spouseDists = activeDists.filter((d) => ['wife', 'husband', 'spouse'].includes(d.h?.relation));
-  const otherDists = activeDists.filter((d) => !['wife', 'husband', 'spouse'].includes(d.h?.relation));
-
-  const hasSpouse = dists.some((d) => ['wife', 'husband', 'spouse'].includes(d.h?.relation) && !d.ex && d.n > 0);
-  const hasChild = dists.some((d) => ['son', 'daughter', 'child'].includes(d.h?.relation) && !d.ex && d.n > 0);
-  const hasParent = dists.some((d) => ['father', 'mother', 'parent'].includes(d.h?.relation) && !d.ex && d.n > 0);
-  const hasSibling = dists.some((d) => ['brother', 'sister', 'sibling'].includes(d.h?.relation) && !d.ex && d.n > 0);
-
-  let rankLabel = '';
-  let rankTone = 'blue';
-  if (hasChild) { rankLabel = '1순위: 직계비속'; }
-  else if (hasParent) { rankLabel = '2순위: 직계존속'; rankTone = 'amber'; }
-  else if (hasSibling) { rankLabel = '3순위: 형제자매'; rankTone = 'amber'; }
-
-  const era = step.dec?.deathDate ? getLawEra(step.dec.deathDate) : '';
-  const eraLabel = lawEraLabel(era);
-
-  const commonD = activeDists.reduce((lcm, d) => math.lcm(lcm, d.d || 1), 1);
-  const innerCommonD = activeDists.reduce((lcm, d) => math.lcm(lcm, d.sd || 1), 1);
-  const totalRatio = activeDists.reduce((sum, d) => sum + (d.h?.r || 0), 0);
-
-  const otherLabel =
-    otherDists.some((d) => ['son', 'daughter', 'child'].includes(d.h?.relation)) ? '직계비속' :
-    otherDists.some((d) => ['father', 'mother', 'parent'].includes(d.h?.relation)) ? '직계존속' :
-    otherDists.length > 0 ? '형제자매 / 기타' : '';
-
-  return (
-    <div>
-      {/* 피상속인 헤더 + 상속 방향 정보 통합 */}
-      <div className="mb-4 rounded-xl border border-[#e4e2de] bg-[#f7f6f3] px-5 py-4 dark:border-neutral-700 dark:bg-neutral-800/40">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-          <div className="flex items-baseline gap-x-3">
-            <div className="text-[22px] font-black tracking-tight text-[#37352f] dark:text-neutral-100">
-              망 {step.dec?.name}
-            </div>
-            <div className="text-[13px] font-bold text-[#787774] dark:text-neutral-400">
-              {formatKorDate(step.dec?.deathDate)} 사망
-            </div>
-          </div>
-          
-          <div className="hidden h-5 w-px bg-[#d9d7d1] dark:bg-neutral-600 sm:block" />
-
-          <div className="flex flex-wrap items-center gap-2">
-            {eraLabel && <Tag tone="blue">{eraLabel}</Tag>}
-            {rankLabel && <Tag tone={rankTone}>{rankLabel}</Tag>}
-            {hasSpouse && <Tag tone="blue">배우자 동순위</Tag>}
-            <span className="text-[17px] ml-2 font-black text-[#3f5f8a] dark:text-blue-300">
-              상속지분 {step.inN}/{step.inD}
-            </span>
-          </div>
-        </div>
-      </div>
-      <ExcludedSection dists={dists} />
-
-      {spouseDists.length > 0 && (
-        <div className="mb-3">
-          <div className="mb-2 text-[10px] font-black tracking-[0.06em] text-[#9b9a97] dark:text-neutral-500">배우자</div>
-          <div className="space-y-2">
-            {spouseDists.map((dist, i) => {
-              const related = stepMap.get(dist.h?.personId) || stepMap.get(dist.h?.id) || null;
-              return <HeirCard key={i} dist={dist} step={step} relatedStep={related} onNavigate={onNavigate} onOpenEvent={onOpenEvent} commonD={commonD} innerCommonD={innerCommonD} />;
-            })}
-          </div>
-        </div>
-      )}
-
-      {spouseDists.length > 0 && otherDists.length > 0 && (
-        <div className="mb-3 flex justify-center">
-          <div className="h-6 w-px bg-[#d9d7d1] dark:bg-neutral-600" />
-        </div>
-      )}
-
-      {otherDists.length > 0 && (
-        <div>
-          {otherLabel && (
-            <div className="mb-2 text-[10px] font-black tracking-[0.06em] text-[#9b9a97] dark:text-neutral-500">
-              {otherLabel}
-            </div>
-          )}
-          <div className="space-y-2">
-            {otherDists.map((dist, i) => {
-              const related = stepMap.get(dist.h?.personId) || stepMap.get(dist.h?.id) || null;
-              return <HeirCard key={i} dist={dist} step={step} relatedStep={related} onNavigate={onNavigate} onOpenEvent={onOpenEvent} commonD={commonD} innerCommonD={innerCommonD} totalRatio={totalRatio} />;
-            })}
-          </div>
-        </div>
-      )}
-
-      {activeDists.length === 0 && (
-        <div className="rounded-xl border border-dashed border-[#e4e2de] px-5 py-8 text-center text-[13px] text-[#9b9a97] dark:border-neutral-700 dark:text-neutral-500">
-          이 사건의 상속인이 없습니다.
-        </div>
-      )}
-    </div>
-  );
-};
-
-// 뷰 모드 전환 버튼
 const ViewModeBtn = ({ active, children, onClick }) => (
   <button
     type="button"
@@ -301,38 +65,465 @@ const ViewModeBtn = ({ active, children, onClick }) => (
   </button>
 );
 
-// 사건 네비게이터 아이템
-const NavItem = ({ step, index, active, depth, hasChildren, onClick }) => (
+const EventNavItem = ({ step, index, active, onClick }) => (
   <button
     type="button"
     onClick={onClick}
-    className={`w-full rounded-xl border px-3 py-2.5 text-left transition-colors ${
+    className={`w-full rounded-2xl border px-3 py-3 text-left transition-colors ${
       active
         ? 'border-[#cfd9e8] bg-[#f0f6ff] dark:border-blue-900/40 dark:bg-blue-950/20'
-        : 'border-transparent hover:border-[#e4e2de] hover:bg-[#fafaf9] dark:hover:border-neutral-700 dark:hover:bg-neutral-900/40'
+        : 'border-transparent bg-transparent hover:border-[#e4e2de] hover:bg-[#fafaf9] dark:hover:border-neutral-700 dark:hover:bg-neutral-900/40'
     }`}
-    style={{ paddingLeft: `${12 + depth * 14}px` }}
   >
-    <div className="flex items-center gap-2">
-      <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-black ${
+    <div className="flex items-start gap-3">
+      <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-black ${
         active ? 'bg-[#3b5f8a] text-white dark:bg-blue-600' : 'bg-[#e4e2de] text-[#787774] dark:bg-neutral-700 dark:text-neutral-400'
       }`}>
         {index + 1}
       </span>
       <div className="min-w-0 flex-1">
-        <div className={`truncate text-[12px] font-black ${active ? 'text-[#2d4a6e] dark:text-blue-200' : 'text-[#37352f] dark:text-neutral-200'}`}>
+        <div className={`truncate text-[13px] font-black ${active ? 'text-[#2d4a6e] dark:text-blue-200' : 'text-[#37352f] dark:text-neutral-200'}`}>
           망 {step.dec?.name}
         </div>
-        <div className="text-[10px] text-[#9b9a97] dark:text-neutral-500">
-          {formatKorDate(step.dec?.deathDate)}
+        <div className="mt-0.5 text-[11px] text-[#9b9a97] dark:text-neutral-500">{formatKorDate(step.dec?.deathDate)}</div>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          <Tag tone="blue">상속지분 {step.inN}/{step.inD}</Tag>
+          <Tag>{(step.dists || []).filter((d) => !d.ex && d.n > 0).length}명 분배</Tag>
         </div>
       </div>
-      {hasChildren && <span className="shrink-0 text-[10px] text-[#9b9a97] dark:text-neutral-600">↓</span>}
     </div>
   </button>
 );
 
-// ─── 메인 컴포넌트 ────────────────────────────────────────────────────────────
+const buildShareInfo = (step, dist, innerCommonD, commonD) => {
+  const innerScale = innerCommonD && dist.sd && innerCommonD !== dist.sd ? innerCommonD / dist.sd : 1;
+  const outerScale = commonD && dist.d && commonD !== dist.d ? commonD / dist.d : 1;
+  const innerShare = `${(dist.sn || 0) * innerScale}/${innerCommonD || dist.sd || 1}`;
+  const finalShare = `${(dist.n || 0) * outerScale}/${commonD || dist.d || 1}`;
+  return {
+    innerShare,
+    finalShare,
+    formula: `${step.inN}/${step.inD} × ${innerShare}`,
+  };
+};
+
+const getNodeBadges = (dist) => {
+  const badges = [];
+  if (typeof dist.h?.isHoju === 'boolean' && dist.h.isHoju) badges.push({ label: '호주상속', tone: 'blue' });
+  if (dist.h?.relation === 'daughter') {
+    badges.push({
+      label: dist.h?.isSameRegister === false ? '비동일가적' : '동일가적',
+      tone: dist.h?.isSameRegister === false ? 'amber' : 'green',
+    });
+  }
+  if (typeof dist.mod === 'string') {
+    if (dist.mod.includes('5할') && dist.mod.includes('가산')) badges.push({ label: '가산 5할', tone: 'blue' });
+    else if (dist.mod.includes('1/2') && dist.mod.includes('감산')) badges.push({ label: '감산 1/2', tone: 'amber' });
+    else if (dist.mod.includes('1/4') && dist.mod.includes('감산')) badges.push({ label: '감산 1/4', tone: 'amber' });
+    else if (dist.mod.includes('가산')) badges.push({ label: '가산', tone: 'blue' });
+    else if (dist.mod.includes('감산')) badges.push({ label: '감산', tone: 'amber' });
+  }
+  return badges;
+};
+
+const getReviewNotes = (step, activeDists) => {
+  const notes = [];
+  const hasMultipleRoutes = Array.isArray(step.inflows) && step.inflows.length > 1;
+  if (hasMultipleRoutes) {
+    const sources = step.inflows.map((flow) => `${flow.from} ${flow.n}/${flow.d}`).join(' + ');
+    notes.push(`복수 경로 유입: ${sources}`);
+  }
+  if (activeDists.some((d) => typeof d.mod === 'string' && d.mod.includes('호주'))) {
+    notes.push('이번 사건에는 호주상속 판단이 반영된 상속인이 있습니다.');
+  }
+  if (activeDists.some((d) => d.h?.relation === 'daughter')) {
+    notes.push('여성 상속인의 동일가적/비동일가적 상태가 결과를 바꿀 수 있습니다.');
+  }
+  if (activeDists.some((d) => d.h?.deathDate && isBefore(d.h.deathDate, step.dec?.deathDate))) {
+    notes.push('선사망 상속인이 있어 대습상속 검토가 함께 필요합니다.');
+  }
+  if (activeDists.some((d) => d.h?.deathDate && !isBefore(d.h.deathDate, step.dec?.deathDate))) {
+    notes.push('지분을 받은 뒤 다시 사망한 상속인이 있어 재상속 검토가 이어집니다.');
+  }
+  return notes;
+};
+
+const createGraphNode = ({ key, x, y, width, height, title, subtitle, dateLabel = '', tags = [], share = null, dist = null, relatedStep = null, branchLabel = '', eventDateNote = '', isRoot = false }) => ({
+  key,
+  x,
+  y,
+  width,
+  height,
+  title,
+  subtitle,
+  dateLabel,
+  tags,
+  share,
+  dist,
+  relatedStep,
+  branchLabel,
+  eventDateNote,
+  isRoot,
+});
+
+const buildEventLayout = (step, stepMap, commonD, innerCommonD) => {
+  const activeDists = (step.dists || []).filter((d) => !d.ex && d.n > 0);
+  const spouseDists = activeDists.filter((d) => ['wife', 'husband', 'spouse'].includes(d.h?.relation));
+  const heirDists = activeDists.filter((d) => !['wife', 'husband', 'spouse'].includes(d.h?.relation));
+
+  const rootW = 250;
+  const rootH = 110;
+  const cardW = 260;
+  const cardH = 155;
+  const leftColX = 70;
+  const topY = 76;
+  const verticalGap = 28;
+  const heirsX = 520;
+  const heirGap = 20;
+
+  const root = createGraphNode({
+    key: 'root',
+    x: leftColX,
+    y: topY,
+    width: rootW,
+    height: rootH,
+    title: `망 ${step.dec?.name}`,
+    subtitle: '피상속인',
+    dateLabel: `${formatKorDate(step.dec?.deathDate)} 사망`,
+    tags: [
+      { label: `상속지분 ${step.inN}/${step.inD}`, tone: 'blue' },
+      ...(step.dec?.isHoju ? [{ label: '호주', tone: 'blue' }] : []),
+    ],
+    isRoot: true,
+  });
+
+  const spouseNodes = spouseDists.map((dist, index) => {
+    const share = buildShareInfo(step, dist, innerCommonD, commonD);
+    return createGraphNode({
+      key: dist.h?.personId || dist.h?.id || `spouse-${index}`,
+      x: leftColX,
+      y: topY + rootH + verticalGap + index * (cardH + verticalGap),
+      width: cardW,
+      height: cardH,
+      title: dist.h?.name,
+      subtitle: getRelStr(dist.h?.relation, step.dec?.deathDate) || '배우자',
+      tags: getNodeBadges(dist),
+      share,
+      dist,
+      relatedStep: stepMap.get(dist.h?.personId) || stepMap.get(dist.h?.id) || null,
+      branchLabel: dist.h?.deathDate ? (isBefore(dist.h.deathDate, step.dec?.deathDate) ? '대습상속 ->' : '재상속 ->') : '',
+      eventDateNote: dist.h?.deathDate ? `${formatKorDate(dist.h.deathDate)} 사망` : '',
+    });
+  });
+
+  const heirNodes = heirDists.map((dist, index) => {
+    const share = buildShareInfo(step, dist, innerCommonD, commonD);
+    return createGraphNode({
+      key: dist.h?.personId || dist.h?.id || `heir-${index}`,
+      x: heirsX,
+      y: topY + index * (cardH + heirGap),
+      width: cardW,
+      height: cardH,
+      title: dist.h?.name,
+      subtitle: getRelStr(dist.h?.relation, step.dec?.deathDate) || '상속인',
+      tags: getNodeBadges(dist),
+      share,
+      dist,
+      relatedStep: stepMap.get(dist.h?.personId) || stepMap.get(dist.h?.id) || null,
+      branchLabel: dist.h?.deathDate ? (isBefore(dist.h.deathDate, step.dec?.deathDate) ? '대습상속 ->' : '재상속 ->') : '',
+      eventDateNote: dist.h?.deathDate ? `${formatKorDate(dist.h.deathDate)} 사망` : '',
+    });
+  });
+
+  const leftColBottom = spouseNodes.length > 0 ? spouseNodes[spouseNodes.length - 1].y + cardH : root.y + rootH;
+  const heirsBottom = heirNodes.length > 0 ? heirNodes[heirNodes.length - 1].y + cardH : root.y + rootH;
+
+  const graphWidth = Math.max(1040, heirsX + cardW + 100);
+  const graphHeight = Math.max(leftColBottom, heirsBottom) + 80;
+  return { root, spouseNodes, heirNodes, graphWidth, graphHeight };
+};
+
+const EdgeLabel = ({ x, y, text }) => (
+  <g>
+    <rect x={x - 28} y={y - 11} width="56" height="22" rx="11" fill="#f7f6f3" stroke="#e4e2de" />
+    <text x={x} y={y + 4} textAnchor="middle" fontSize="11" fontWeight="700" fill="#6b6964">{text}</text>
+  </g>
+);
+
+const OrthogonalEdges = ({ layout }) => {
+  const rootRightX = layout.root.x + layout.root.width;
+  const rootCenterY = layout.root.y + layout.root.height / 2;
+  const spouseRightX = layout.spouseNodes.length > 0 ? layout.spouseNodes[0].x + layout.spouseNodes[0].width : rootRightX;
+  const busX = 430;
+  const heirsLeftX = layout.heirNodes.length > 0 ? layout.heirNodes[0].x : 0;
+
+  return (
+    <svg className="absolute inset-0 h-full w-full" viewBox={`0 0 ${layout.graphWidth} ${layout.graphHeight}`} preserveAspectRatio="xMinYMin meet">
+      {layout.heirNodes.length > 0 && (
+        <>
+          <path d={`M ${rootRightX} ${rootCenterY} L ${busX} ${rootCenterY}`} fill="none" stroke="#cfd6de" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          <path d={`M ${busX} ${rootCenterY} L ${busX} ${layout.heirNodes[layout.heirNodes.length - 1].y + layout.heirNodes[layout.heirNodes.length - 1].height / 2}`} fill="none" stroke="#cfd6de" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        </>
+      )}
+
+      {layout.heirNodes.map((node) => {
+        const centerY = node.y + node.height / 2;
+        const labelX = (busX + heirsLeftX) / 2;
+        return (
+          <g key={`heir-edge-${node.key}`}>
+            <path d={`M ${busX} ${centerY} L ${node.x} ${centerY}`} fill="none" stroke="#cfd6de" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            <EdgeLabel x={labelX} y={centerY - 16} text={node.share.innerShare} />
+          </g>
+        );
+      })}
+
+      {layout.spouseNodes.map((node) => {
+        const startX = spouseRightX;
+        const startY = node.y + node.height / 2;
+        const targetX = heirsLeftX ? busX : node.x + node.width + 100;
+        return (
+          <g key={`spouse-edge-${node.key}`}>
+            {layout.heirNodes.length > 0 && (
+              <>
+                <path d={`M ${startX} ${startY} L ${busX} ${startY}`} fill="none" stroke="#cfd6de" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                <EdgeLabel x={(startX + busX) / 2} y={startY - 16} text={node.share.innerShare} />
+              </>
+            )}
+          </g>
+        );
+      })}
+    </svg>
+  );
+};
+
+const PersonNodeCard = ({ node, stepDate, onNavigate, onOpenEvent }) => {
+  const relationLabel = node.subtitle || getRelStr(node.dist?.h?.relation, stepDate) || '상속인';
+  const hasBranch = Boolean(node.relatedStep && node.branchLabel);
+
+  return (
+    <div
+      className="absolute rounded-2xl border border-[#ebeae7] bg-white px-4 py-3 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/95"
+      style={{ left: `${node.x}px`, top: `${node.y}px`, width: `${node.width}px`, minHeight: `${node.height}px` }}
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <Tag tone={relationTone(node.dist?.h?.relation)}>{relationLabel}</Tag>
+        {node.isRoot ? (
+          <div className="text-[16px] font-black text-[#37352f] dark:text-neutral-100">{node.title}</div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onNavigate && onNavigate(node.dist?.h?.personId || node.dist?.h?.id)}
+            className="text-[15px] font-black text-[#37352f] transition-colors hover:text-blue-700 dark:text-neutral-100 dark:hover:text-blue-300"
+          >
+            {node.title}
+          </button>
+        )}
+        {node.tags.map((tag) => (
+          <Tag key={`${node.key}-${tag.label}`} tone={tag.tone}>{tag.label}</Tag>
+        ))}
+      </div>
+
+      {node.dateLabel && <div className="mt-2 text-[11px] font-bold text-[#7c7a76] dark:text-neutral-400">{node.dateLabel}</div>}
+      {node.share && (
+        <div className="mt-3 rounded-xl bg-[#fafaf9] px-3 py-2 dark:bg-neutral-950/30">
+          <div className="font-mono text-[11px] text-[#787774] dark:text-neutral-400">{node.share.formula}</div>
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <div className="text-[11px] text-[#8a8884] dark:text-neutral-400">이 사건 계산</div>
+            <div className="text-[17px] font-black text-[#3f5f8a] dark:text-blue-300">{node.share.finalShare}</div>
+          </div>
+        </div>
+      )}
+
+      {hasBranch && (
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <div className="text-[10px] text-[#8a8884] dark:text-neutral-400">{node.eventDateNote}</div>
+          <button
+            type="button"
+            onClick={() => onOpenEvent && onOpenEvent(getStepKey(node.relatedStep))}
+            className="inline-flex items-center gap-1 rounded-full border border-[#ddd9cf] bg-[#fbf7ef] px-2.5 py-1 text-[10px] font-bold text-[#7a6544] hover:bg-[#f4eedf] dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300"
+          >
+            {node.branchLabel}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const useDragPan = () => {
+  const ref = React.useRef(null);
+  const dragState = React.useRef({ dragging: false, startX: 0, startY: 0, scrollLeft: 0, scrollTop: 0 });
+
+  const onMouseDown = React.useCallback((event) => {
+    const el = ref.current;
+    if (!el) return;
+    dragState.current = {
+      dragging: true,
+      startX: event.clientX,
+      startY: event.clientY,
+      scrollLeft: el.scrollLeft,
+      scrollTop: el.scrollTop,
+    };
+    el.style.cursor = 'grabbing';
+  }, []);
+
+  const onMouseMove = React.useCallback((event) => {
+    const el = ref.current;
+    if (!el || !dragState.current.dragging) return;
+    el.scrollLeft = dragState.current.scrollLeft - (event.clientX - dragState.current.startX);
+    el.scrollTop = dragState.current.scrollTop - (event.clientY - dragState.current.startY);
+  }, []);
+
+  const stopDragging = React.useCallback(() => {
+    const el = ref.current;
+    dragState.current.dragging = false;
+    if (el) el.style.cursor = 'grab';
+  }, []);
+
+  return { ref, onMouseDown, onMouseMove, onMouseUp: stopDragging, onMouseLeave: stopDragging };
+};
+
+const EventGraphView = ({ step, stepMap, onNavigate, onOpenEvent }) => {
+  const activeDists = (step.dists || []).filter((d) => !d.ex && d.n > 0);
+  const commonD = activeDists.reduce((lcm, d) => math.lcm(lcm, d.d || 1), 1);
+  const innerCommonD = activeDists.reduce((lcm, d) => math.lcm(lcm, d.sd || 1), 1);
+  const notes = getReviewNotes(step, activeDists);
+  const era = step.dec?.deathDate ? getLawEra(step.dec.deathDate) : '';
+  const layout = React.useMemo(() => buildEventLayout(step, stepMap, commonD, innerCommonD), [step, stepMap, commonD, innerCommonD]);
+  const pan = useDragPan();
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-2xl border border-[#e4e2de] bg-[#f7f6f3] px-5 py-4 dark:border-neutral-700 dark:bg-neutral-800/40">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-[12px] font-black tracking-[0.08em] text-[#9b9a97] dark:text-neutral-500">사건 그래프</span>
+          <div className="text-[22px] font-black tracking-tight text-[#37352f] dark:text-neutral-100">피상속인 망 {step.dec?.name}</div>
+          <div className="text-[13px] font-bold text-[#787774] dark:text-neutral-400">{formatKorDate(step.dec?.deathDate)} 사망</div>
+          {step.dec?.isHoju && <Tag tone="blue">호주</Tag>}
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Tag tone="blue">상속지분 {step.inN}/{step.inD}</Tag>
+          <Tag>{lawEraLabel(era)}</Tag>
+          <Tag>{activeDists.length}명 분배</Tag>
+          <Tag>드래그로 이동</Tag>
+        </div>
+      </div>
+
+      {notes.length > 0 && (
+        <div className="rounded-2xl border border-[#ece8de] bg-[#fcfaf5] px-5 py-4 dark:border-neutral-700 dark:bg-neutral-900/30">
+          <div className="mb-2 text-[12px] font-black text-[#6b5c45] dark:text-amber-200">이번 사건에서 먼저 볼 것</div>
+          <ul className="space-y-1.5 text-[13px] leading-6 text-[#6a6964] dark:text-neutral-300">
+            {notes.map((note, index) => (
+              <li key={`${note}-${index}`} className="flex gap-2">
+                <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-[#c8ae7f] dark:bg-amber-400" />
+                <span>{note}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="rounded-2xl border border-[#e9e9e7] bg-white p-5 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/50">
+        <div
+          ref={pan.ref}
+          onMouseDown={pan.onMouseDown}
+          onMouseMove={pan.onMouseMove}
+          onMouseUp={pan.onMouseUp}
+          onMouseLeave={pan.onMouseLeave}
+          className="w-full cursor-grab select-none rounded-xl bg-[#fcfcfb] dark:bg-neutral-950/20"
+        >
+          <div className="relative" style={{ width: `${layout.graphWidth}px`, height: `${layout.graphHeight}px` }}>
+            <OrthogonalEdges layout={layout} />
+            <PersonNodeCard node={layout.root} stepDate={step.dec?.deathDate} onNavigate={onNavigate} onOpenEvent={onOpenEvent} />
+            {layout.spouseNodes.map((node) => (
+              <PersonNodeCard key={node.key} node={node} stepDate={step.dec?.deathDate} onNavigate={onNavigate} onOpenEvent={onOpenEvent} />
+            ))}
+            {layout.heirNodes.map((node) => (
+              <PersonNodeCard key={node.key} node={node} stepDate={step.dec?.deathDate} onNavigate={onNavigate} onOpenEvent={onOpenEvent} />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const DialScrubber = ({ listRef, steps, selectedKey, onSelect }) => {
+  const trackRef = React.useRef(null);
+  const dragging = React.useRef(false);
+  const [scrollRatio, setScrollRatio] = React.useState(0);
+  const [thumbRatio, setThumbRatio] = React.useState(1);
+
+  React.useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const max = el.scrollHeight - el.clientHeight;
+      setScrollRatio(max > 0 ? el.scrollTop / max : 0);
+      setThumbRatio(el.clientHeight / el.scrollHeight);
+    };
+    onScroll();
+    el.addEventListener('scroll', onScroll);
+    const ro = new ResizeObserver(onScroll);
+    ro.observe(el);
+    return () => { el.removeEventListener('scroll', onScroll); ro.disconnect(); };
+  }, [listRef, steps.length]);
+
+  const seek = React.useCallback((clientY) => {
+    const el = listRef.current;
+    const track = trackRef.current;
+    if (!el || !track) return;
+    const rect = track.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+    el.scrollTop = ratio * (el.scrollHeight - el.clientHeight);
+  }, [listRef]);
+
+  React.useEffect(() => {
+    const onMove = (e) => { if (dragging.current) seek(e.clientY); };
+    const onUp = () => { dragging.current = false; };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+  }, [seek]);
+
+  const total = steps.length;
+  const thumbH = Math.max(thumbRatio * 100, 6);
+  const thumbTop = scrollRatio * (100 - thumbH);
+
+  return (
+    <div
+      ref={trackRef}
+      className="flex w-5 shrink-0 cursor-ns-resize select-none items-stretch py-3"
+      onMouseDown={(e) => { dragging.current = true; seek(e.clientY); e.preventDefault(); }}
+    >
+      <div className="relative mx-auto w-[3px] flex-1 rounded-full bg-[#e4e2de] dark:bg-neutral-700">
+        <div
+          className="absolute left-0 w-full rounded-full bg-[#a8a39a] dark:bg-neutral-500 pointer-events-none"
+          style={{ top: `${thumbTop}%`, height: `${thumbH}%` }}
+        />
+        {total > 1 && steps.map((step, i) => {
+          const key = getStepKey(step, i);
+          const pct = (i / (total - 1)) * 100;
+          const isActive = key === selectedKey;
+          return (
+            <button
+              key={key}
+              type="button"
+              title={`망 ${step.dec?.name || ''}`}
+              onClick={(e) => { e.stopPropagation(); onSelect(key); }}
+              className={`absolute left-1/2 -translate-x-1/2 rounded-full transition-all ${
+                isActive
+                  ? 'h-3 w-3 bg-blue-500 ring-2 ring-blue-200 dark:ring-blue-800'
+                  : 'h-1.5 w-1.5 bg-[#c8c4be] hover:bg-[#6b6964] dark:bg-neutral-600 dark:hover:bg-neutral-400'
+              }`}
+              style={{ top: `calc(${pct}% - ${isActive ? 6 : 3}px)` }}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+};
 
 export default function TreePanel({
   tree,
@@ -348,11 +539,9 @@ export default function TreePanel({
   navigationSignal,
 }) {
   const [selectedStepKey, setSelectedStepKey] = React.useState(null);
+  const asideListRef = React.useRef(null);
 
-  const steps = React.useMemo(
-    () => (Array.isArray(calcSteps) ? calcSteps.filter((s) => s?.dec) : []),
-    [calcSteps]
-  );
+  const steps = React.useMemo(() => (Array.isArray(calcSteps) ? calcSteps.filter((s) => s?.dec) : []), [calcSteps]);
 
   const stepMap = React.useMemo(() => {
     const map = new Map();
@@ -365,7 +554,7 @@ export default function TreePanel({
     return map;
   }, [steps]);
 
-  const { childrenOf, parentOf } = React.useMemo(() => buildStepTree(steps), [steps]);
+  const { parentOf } = React.useMemo(() => buildStepTree(steps), [steps]);
 
   const stepDepths = React.useMemo(() => {
     const depths = new Map();
@@ -373,30 +562,33 @@ export default function TreePanel({
       const key = getStepKey(step, i);
       let depth = 0;
       let cur = key;
-      while (parentOf.has(cur)) { depth++; cur = parentOf.get(cur); }
+      while (parentOf.has(cur)) {
+        depth += 1;
+        cur = parentOf.get(cur);
+      }
       depths.set(key, depth);
     });
     return depths;
   }, [steps, parentOf]);
 
   React.useEffect(() => {
-    if (!steps.length) { setSelectedStepKey(null); return; }
+    if (!steps.length) {
+      setSelectedStepKey(null);
+      return;
+    }
     if (!selectedStepKey || !stepMap.has(selectedStepKey)) {
       setSelectedStepKey(getStepKey(steps[0], 0));
     }
   }, [steps, selectedStepKey, stepMap]);
 
-  const selectedStep = React.useMemo(
-    () => (steps.length ? stepMap.get(selectedStepKey) || steps[0] : null),
-    [steps, selectedStepKey, stepMap]
-  );
+  const selectedStep = React.useMemo(() => (steps.length ? stepMap.get(selectedStepKey) || steps[0] : null), [steps, selectedStepKey, stepMap]);
 
   const modeBar = (
     <div className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-[#e5e5e5] bg-[#f8f8f7] p-4 text-[13px] text-[#787774] dark:border-neutral-700 dark:bg-neutral-800/50 dark:text-neutral-300 no-print">
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-1 rounded-full border border-[#dcdcd9] bg-[#f1f1ef] px-1.5 py-1 dark:border-neutral-700 dark:bg-neutral-800">
-          <ViewModeBtn active={viewMode === 'tree'} onClick={() => setViewMode('tree')}>트리 보기</ViewModeBtn>
-          <ViewModeBtn active={viewMode === 'flow'} onClick={() => setViewMode('flow')}>사건 검토</ViewModeBtn>
+          <ViewModeBtn active={viewMode === 'flow'} onClick={() => setViewMode('flow')}>사건 그래프</ViewModeBtn>
+          <ViewModeBtn active={viewMode === 'tree'} onClick={() => setViewMode('tree')}>관계 트리</ViewModeBtn>
         </div>
         {viewMode === 'tree' && (
           <button
@@ -413,15 +605,15 @@ export default function TreePanel({
       </div>
       <span className="text-[12px]">
         {viewMode === 'tree'
-          ? '이름을 클릭하면 하위 관계도를 펼치거나 접을 수 있습니다.'
-          : '사망 사건별로 상속 방향과 지분 분배를 독립적으로 점검합니다.'}
+          ? '관계 트리는 가족 구조를 확인하는 화면입니다.'
+          : '사건 그래프는 선택한 사건의 지분 이동과 다음 검토 포인트를 사각형 노드와 직각 연결선으로 보여줍니다.'}
       </span>
     </div>
   );
 
   if (viewMode === 'tree') {
     return (
-      <div className="flex h-full animate-in fade-in flex-col py-2 duration-300">
+      <div className="flex h-full min-h-0 animate-in fade-in flex-col py-2 duration-300">
         {modeBar}
         <div className="overflow-hidden rounded-xl border border-[#e9e9e7] bg-white p-8 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/50">
           <TreeReportNode node={tree} level={0} treeToggleSignal={treeToggleSignal} onDelete={removeHeir} navigationSignal={navigationSignal} />
@@ -431,39 +623,47 @@ export default function TreePanel({
   }
 
   return (
-    <div className="flex h-full animate-in fade-in flex-col py-2 duration-300">
+    <div className="flex h-full min-h-0 animate-in fade-in flex-col py-2 duration-300">
       {modeBar}
 
       {steps.length === 0 || !selectedStep ? (
         <div className="rounded-2xl border border-dashed border-[#d9d9d5] bg-white px-5 py-8 text-center text-[13px] text-[#787774] dark:border-neutral-700 dark:bg-neutral-900/30 dark:text-neutral-400">
-          계산 결과가 없습니다. 데이터 입력 후 다시 확인해 주세요.
+          아직 시뮬레이션할 사건이 없습니다. 입력 정보를 확인한 뒤 계산 상세 탭에서 결과를 만든 후 다시 확인해 주세요.
         </div>
       ) : (
-        <div className="grid min-h-0 gap-4 lg:grid-cols-[200px_minmax(0,1fr)]">
-          {/* 좌측: 사건 네비게이터 */}
-          <aside className="space-y-1 rounded-2xl border border-[#e9e9e7] bg-[#fbfbfa] p-2 dark:border-neutral-700 dark:bg-neutral-900/40">
-            <div className="mb-2 px-2 pt-1 text-[10px] font-black tracking-[0.07em] text-[#9b9a97] dark:text-neutral-500">
-              사건 목록 ({steps.length})
+        <div className="grid flex-1 min-h-0 gap-4 xl:grid-cols-[280px_minmax(0,1fr)]">
+          <aside className="sticky top-[70px] self-start flex gap-1 max-h-[calc(100vh-96px)]">
+            <DialScrubber
+              listRef={asideListRef}
+              steps={steps}
+              selectedKey={selectedStepKey}
+              onSelect={setSelectedStepKey}
+            />
+            <div
+              ref={asideListRef}
+              className="flex-1 overflow-y-auto rounded-2xl border border-[#e9e9e7] bg-[#fbfbfa] p-2 dark:border-neutral-700 dark:bg-neutral-900/40 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+            >
+              <div className="mb-2 px-2 pt-1 text-[10px] font-black tracking-[0.07em] text-[#9b9a97] dark:text-neutral-500">
+                사건 목록 ({steps.length})
+              </div>
+              {steps.map((step, i) => {
+                const key = getStepKey(step, i);
+                return (
+                  <div key={key} style={{ marginLeft: `${(stepDepths.get(key) || 0) * 8}px` }}>
+                    <EventNavItem
+                      step={step}
+                      index={i}
+                      active={selectedStep && getStepKey(selectedStep) === key}
+                      onClick={() => setSelectedStepKey(key)}
+                    />
+                  </div>
+                );
+              })}
             </div>
-            {steps.map((step, i) => {
-              const key = getStepKey(step, i);
-              return (
-                <NavItem
-                  key={key}
-                  step={step}
-                  index={i}
-                  active={selectedStep && getStepKey(selectedStep) === key}
-                  depth={stepDepths.get(key) || 0}
-                  hasChildren={childrenOf.has(key)}
-                  onClick={() => setSelectedStepKey(key)}
-                />
-              );
-            })}
           </aside>
 
-          {/* 우측: 캐스케이드 뷰 */}
-          <section className="min-h-0 overflow-y-auto rounded-2xl border border-[#e9e9e7] bg-white p-6 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/50">
-            <EventDetail
+          <section className="rounded-2xl border border-[#e9e9e7] bg-white p-6 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/50">
+            <EventGraphView
               step={selectedStep}
               stepMap={stepMap}
               onNavigate={handleNavigate}
