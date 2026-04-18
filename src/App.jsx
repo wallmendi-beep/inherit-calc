@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+﻿import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   IconCalculator, IconUserPlus, IconSave, IconFolderOpen,
   IconPrinter, IconNetwork, IconTable, IconList,
@@ -109,12 +109,66 @@ function App() {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1.0);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const deceasedTabs = useMemo(() => {
+    const tabMap = new Map();
+    const registeredPersonIds = new Set();
+    const visitedNodes = new Set();
+    tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속인', node: tree, parentName: null, level: 0, branchRootId: null });
+    const queue = [];
+    if (tree.heirs) tree.heirs.forEach(h => queue.push({ node: h, parentNode: tree, level: 1, branchRootId: h.personId }));
+    while (queue.length > 0) {
+      const { node, parentNode, level, branchRootId } = queue.shift();
+      if (!node || visitedNodes.has(node.id)) continue;
+      visitedNodes.add(node.id);
+
+      const hasEnteredHeirs = node.heirs && node.heirs.length > 0;
+      const isTarget = node.isDeceased || (node.isExcluded && (node.exclusionOption === 'lost' || node.exclusionOption === 'disqualified')) || hasEnteredHeirs;
+      const isSpouseNode = node.relation === 'wife' || node.relation === 'husband' || node.relation === 'spouse';
+      const parentDeathDate = parentNode?.deathDate || tree.deathDate;
+      const isPredeceasedSpouse = isSpouseNode && node.deathDate && parentDeathDate && isBefore(node.deathDate, parentDeathDate);
+      let currentBranchRootId = branchRootId;
+      const pId = node.personId;
+      if (isTarget && !isPredeceasedSpouse) {
+        if (!registeredPersonIds.has(pId)) {
+          tabMap.set(pId, { 
+            id: pId, personId: pId, name: node.name || '(상속인)', node: node, parentNode: parentNode, 
+            parentName: parentNode.id === 'root' ? (tree.name || '피상속인') : parentNode.name, 
+            parentTabId: parentNode.id === 'root' ? 'root' : parentNode.personId,
+            inheritanceType: node.isDeceased ? 'deceased' : 'excluded',
+            relation: node.relation, level: level, branchRootId: currentBranchRootId 
+          });
+          registeredPersonIds.add(pId);
+        } else {
+          const existingTab = tabMap.get(pId);
+          if (existingTab) currentBranchRootId = existingTab.branchRootId;
+        }
+      } else if (!isTarget && registeredPersonIds.has(pId)) {
+          const existingTab = tabMap.get(pId);
+          if (existingTab) currentBranchRootId = existingTab.branchRootId;
+      }
+      if (node.heirs && node.heirs.length > 0) node.heirs.forEach(h => queue.push({ node: h, parentNode: node, level: level + 1, branchRootId: currentBranchRootId }));
+    }
+    return Array.from(tabMap.values());
+  }, [tree]);
+
   const [personEditModal, setPersonEditModal] = useState(null); // null | { nodeId, foundTabId }
   const personEditModalData = useMemo(() => {
     if (!personEditModal?.nodeId || !tree) return null;
+
+    // 사건 검토에서 연 모달은 "현재 사건 탭의 노드"를 우선 사용해야 한다.
+    // 그렇지 않으면 전체 트리에서 같은 personId의 첫 노드를 집어 와서
+    // 이전 사건의 제외 상태를 잘못 보여줄 수 있다.
+    if (personEditModal?.foundTabId) {
+      const tabMatch = deceasedTabs.find((tab) => tab.id === personEditModal.foundTabId);
+      if (tabMatch?.node) {
+        return { node: tabMatch.node, parentNode: tabMatch.parentNode ?? null };
+      }
+    }
+
     const find = (n, parent) => {
-      if (n.id === personEditModal.nodeId || n.personId === personEditModal.nodeId)
+      if (n.id === personEditModal.nodeId || n.personId === personEditModal.nodeId) {
         return { node: n, parentNode: parent };
+      }
       for (const h of n.heirs || []) {
         const r = find(h, n);
         if (r) return r;
@@ -122,7 +176,7 @@ function App() {
       return null;
     };
     return find(tree, null);
-  }, [personEditModal?.nodeId, tree]);
+  }, [personEditModal?.nodeId, personEditModal?.foundTabId, tree, deceasedTabs]);
   const [aiInputText, setAiInputText] = useState("");
   const [aiTargetId, setAiTargetId] = useState('root');
   const [showQrCode, setShowQrCode] = useState(false);
@@ -355,7 +409,19 @@ function App() {
       // 일반 인물/데이터 수정 목적
       // input 탭이 아닌 경우 탭 전환 대신 편집 모달 오픈
       if (activeTab !== 'input' && nodeId !== 'root') {
-        setPersonEditModal({ nodeId, foundTabId });
+        setPersonEditModal({
+          nodeId,
+          foundTabId,
+          sourceTabId: activeDeceasedTab,
+          sourceEventName:
+            activeDeceasedTab === 'root'
+              ? (tree.name || '피상속인')
+              : (activeTabObj?.name || tree.name || '피상속인'),
+          sourceEventDate:
+            activeDeceasedTab === 'root'
+              ? tree.deathDate
+              : (activeTabObj?.node?.deathDate || tree.deathDate),
+        });
         return;
       }
       if (activeTab !== 'input') {
@@ -725,20 +791,26 @@ function App() {
         onTextareaAutoSubmit={(text) => ingestAiJsonInput({ input: text, aiTargetId, tree, setTree, setActiveTab, setIsAiModalOpen, setAiInputText })}
       />
       <ResetConfirmModal isOpen={isResetModalOpen} onClose={() => setIsResetModalOpen(false)} onConfirm={() => {}} />
-      <PersonEditModal
-        isOpen={!!personEditModal}
-        onClose={() => setPersonEditModal(null)}
+        <PersonEditModal
+          isOpen={!!personEditModal}
+          onClose={() => setPersonEditModal(null)}
         onOpenInInputTab={() => {
           const { foundTabId } = personEditModal || {};
           setPersonEditModal(null);
           setActiveTab('input');
           if (foundTabId) setActiveDeceasedTab(foundTabId);
-        }}
-        node={personEditModalData?.node ?? null}
-        parentNode={personEditModalData?.parentNode ?? null}
-        inheritedDate={personEditModalData?.parentNode?.deathDate || tree.deathDate}
-        rootDeathDate={tree.deathDate}
-        rootIsHoju={tree.isHoju !== false}
+          }}
+          node={personEditModalData?.node ?? null}
+          parentNode={personEditModalData?.parentNode ?? null}
+          inheritedDate={
+            personEditModal?.sourceEventDate ||
+            personEditModalData?.parentNode?.deathDate ||
+            tree.deathDate
+          }
+          rootDeathDate={tree.deathDate}
+          rootIsHoju={tree.isHoju !== false}
+        sourceEventName={personEditModal?.sourceEventName || ''}
+        sourceEventDate={personEditModal?.sourceEventDate || ''}
         handleUpdate={handleUpdate}
       />
     </>
@@ -746,3 +818,4 @@ function App() {
 }
 
 export default App;
+

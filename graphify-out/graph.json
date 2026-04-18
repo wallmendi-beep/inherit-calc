@@ -27,7 +27,7 @@
       "source_file": "eslint.config.js",
       "source_location": "L1",
       "id": "eslint_config_js",
-      "community": 46,
+      "community": 45,
       "norm_label": "eslint.config.js"
     },
     {
@@ -36,7 +36,7 @@
       "source_file": "playwright.config.js",
       "source_location": "L1",
       "id": "playwright_config_js",
-      "community": 47,
+      "community": 46,
       "norm_label": "playwright.config.js"
     },
     {
@@ -45,7 +45,7 @@
       "source_file": "postcss.config.js",
       "source_location": "L1",
       "id": "postcss_config_js",
-      "community": 48,
+      "community": 47,
       "norm_label": "postcss.config.js"
     },
     {
@@ -54,7 +54,7 @@
       "source_file": "tailwind.config.js",
       "source_location": "L1",
       "id": "tailwind_config_js",
-      "community": 49,
+      "community": 48,
       "norm_label": "tailwind.config.js"
     },
     {
@@ -63,7 +63,7 @@
       "source_file": "test_app.mjs",
       "source_location": "L1",
       "id": "test_app_mjs",
-      "community": 50,
+      "community": 49,
       "norm_label": "test_app.mjs"
     },
     {
@@ -72,7 +72,7 @@
       "source_file": "test_app2.mjs",
       "source_location": "L1",
       "id": "test_app2_mjs",
-      "community": 51,
+      "community": 50,
       "norm_label": "test_app2.mjs"
     },
     {
@@ -81,7 +81,7 @@
       "source_file": "test_app3.mjs",
       "source_location": "L1",
       "id": "test_app3_mjs",
-      "community": 52,
+      "community": 51,
       "norm_label": "test_app3.mjs"
     },
     {
@@ -90,7 +90,7 @@
       "source_file": "vite.config.js",
       "source_location": "L1",
       "id": "vite_config_js",
-      "community": 53,
+      "community": 52,
       "norm_label": "vite.config.js"
     },
     {
@@ -99,7 +99,7 @@
       "source_file": "backups\\App_v2.x_backup.jsx",
       "source_location": "L1",
       "id": "backups_app_v2_x_backup_jsx",
-      "community": 29,
+      "community": 28,
       "norm_label": "app_v2.x_backup.jsx"
     },
     {
@@ -108,7 +108,7 @@
       "source_file": "backups\\App_v2.x_backup.jsx",
       "source_location": "L720",
       "id": "app_v2_x_backup_f",
-      "community": 29,
+      "community": 28,
       "norm_label": "f()"
     },
     {
@@ -117,7 +117,7 @@
       "source_file": "backups\\HeirRow_v2.x_backup.jsx",
       "source_location": "L1",
       "id": "backups_heirrow_v2_x_backup_jsx",
-      "community": 54,
+      "community": 53,
       "norm_label": "heirrow_v2.x_backup.jsx"
     },
     {
@@ -126,7 +126,7 @@
       "source_file": "backups\\old_app.js",
       "source_location": "L1",
       "id": "backups_old_app_js",
-      "community": 55,
+      "community": 54,
       "norm_label": "old_app.js"
     },
     {
@@ -135,7 +135,7 @@
       "source_file": "backups\\old_app2.js",
       "source_location": "L1",
       "id": "backups_old_app2_js",
-      "community": 4,
+      "community": 2,
       "norm_label": "old_app2.js"
     },
     {
@@ -144,7 +144,7 @@
       "source_file": "backups\\old_app2.js",
       "source_location": "L18",
       "id": "old_app2_getwarningstate",
-      "community": 1,
+      "community": 0,
       "norm_label": "getwarningstate()"
     },
     {
@@ -153,7 +153,7 @@
       "source_file": "backups\\old_app2.js",
       "source_location": "L92",
       "id": "old_app2_getstatusstyle",
-      "community": 4,
+      "community": 2,
       "norm_label": "getstatusstyle()"
     },
     {
@@ -162,7 +162,7 @@
       "source_file": "backups\\old_app2.js",
       "source_location": "L213",
       "id": "old_app2_handlemousemove",
-      "community": 4,
+      "community": 2,
       "norm_label": "handlemousemove()"
     },
     {
@@ -171,7 +171,7 @@
       "source_file": "backups\\old_app2.js",
       "source_location": "L223",
       "id": "old_app2_handlemouseup",
-      "community": 4,
+      "community": 2,
       "norm_label": "handlemouseup()"
     },
     {
@@ -180,7 +180,7 @@
       "source_file": "backups\\old_app2.js",
       "source_location": "L260",
       "id": "old_app2_sanitize",
-      "community": 4,
+      "community": 2,
       "norm_label": "sanitize()"
     },
     {
@@ -189,7 +189,7 @@
       "source_file": "backups\\old_app2.js",
       "source_location": "L288",
       "id": "old_app2_synccloneheirs",
-      "community": 4,
+      "community": 2,
       "norm_label": "synccloneheirs()"
     },
     {
@@ -198,7 +198,7 @@
       "source_file": "backups\\old_app2.js",
       "source_location": "L424",
       "id": "old_app2_findtabidfornode",
-      "community": 4,
+      "community": 2,
       "norm_label": "findtabidfornode()"
     },
     {
@@ -207,7 +207,7 @@
       "source_file": "backups\\old_app2.js",
       "source_location": "L460",
       "id": "old_app2_genid",
-      "community": 4,
+      "community": 2,
       "norm_label": "genid()"
     },
     {
@@ -216,7 +216,7 @@
       "source_file": "backups\\old_app2.js",
       "source_location": "L525",
       "id": "old_app2_findpid",
-      "community": 4,
+      "community": 2,
       "norm_label": "findpid()"
     },
     {
@@ -225,7 +225,7 @@
       "source_file": "backups\\old_app2.js",
       "source_location": "L561",
       "id": "old_app2_syncallclones",
-      "community": 4,
+      "community": 2,
       "norm_label": "syncallclones()"
     },
     {
@@ -234,7 +234,7 @@
       "source_file": "backups\\old_app2.js",
       "source_location": "L605",
       "id": "old_app2_scan",
-      "community": 4,
+      "community": 2,
       "norm_label": "scan()"
     },
     {
@@ -243,7 +243,7 @@
       "source_file": "backups\\old_app2.js",
       "source_location": "L641",
       "id": "old_app2_onmousemove",
-      "community": 4,
+      "community": 2,
       "norm_label": "onmousemove()"
     },
     {
@@ -252,7 +252,7 @@
       "source_file": "backups\\old_app2.js",
       "source_location": "L647",
       "id": "old_app2_onmouseup",
-      "community": 4,
+      "community": 2,
       "norm_label": "onmouseup()"
     },
     {
@@ -261,7 +261,7 @@
       "source_file": "backups\\old_app2.js",
       "source_location": "L693",
       "id": "old_app2_handleglobalkeydown",
-      "community": 4,
+      "community": 2,
       "norm_label": "handleglobalkeydown()"
     },
     {
@@ -270,7 +270,7 @@
       "source_file": "backups\\old_app2.js",
       "source_location": "L714",
       "id": "old_app2_handlescroll",
-      "community": 4,
+      "community": 2,
       "norm_label": "handlescroll()"
     },
     {
@@ -279,7 +279,7 @@
       "source_file": "backups\\old_app2.js",
       "source_location": "L762",
       "id": "old_app2_if",
-      "community": 0,
+      "community": 1,
       "norm_label": "if()"
     },
     {
@@ -297,7 +297,7 @@
       "source_file": "backups\\old_app2.js",
       "source_location": "L975",
       "id": "old_app2_addfn",
-      "community": 4,
+      "community": 2,
       "norm_label": "addfn()"
     },
     {
@@ -306,7 +306,7 @@
       "source_file": "backups\\old_app2.js",
       "source_location": "L1014",
       "id": "old_app2_applyautoexclusion",
-      "community": 1,
+      "community": 0,
       "norm_label": "applyautoexclusion()"
     },
     {
@@ -315,7 +315,7 @@
       "source_file": "backups\\old_app2.js",
       "source_location": "L1126",
       "id": "old_app2_findpath",
-      "community": 4,
+      "community": 2,
       "norm_label": "findpath()"
     },
     {
@@ -324,7 +324,7 @@
       "source_file": "backups\\old_app2.js",
       "source_location": "L1243",
       "id": "old_app2_reorderlist",
-      "community": 4,
+      "community": 2,
       "norm_label": "reorderlist()"
     },
     {
@@ -333,7 +333,7 @@
       "source_file": "backups\\old_app2.js",
       "source_location": "L1331",
       "id": "old_app2_syncpersonidrec",
-      "community": 4,
+      "community": 2,
       "norm_label": "syncpersonidrec()"
     },
     {
@@ -342,7 +342,7 @@
       "source_file": "backups\\old_app2.js",
       "source_location": "L1691",
       "id": "old_app2_getancestorpath",
-      "community": 4,
+      "community": 2,
       "norm_label": "getancestorpath()"
     },
     {
@@ -351,7 +351,7 @@
       "source_file": "backups\\old_app2.js",
       "source_location": "L2009",
       "id": "old_app2_handletoggleconfirm",
-      "community": 4,
+      "community": 2,
       "norm_label": "handletoggleconfirm()"
     },
     {
@@ -360,7 +360,7 @@
       "source_file": "backups\\old_app2.js",
       "source_location": "L2215",
       "id": "old_app2_handleautofill",
-      "community": 4,
+      "community": 2,
       "norm_label": "handleautofill()"
     },
     {
@@ -369,7 +369,7 @@
       "source_file": "backups\\old_app2.js",
       "source_location": "L2302",
       "id": "old_app2_getlevelstyle",
-      "community": 4,
+      "community": 2,
       "norm_label": "getlevelstyle()"
     },
     {
@@ -378,7 +378,7 @@
       "source_file": "backups\\old_app2.js",
       "source_location": "L2952",
       "id": "old_app2_rendersharerow",
-      "community": 1,
+      "community": 0,
       "norm_label": "rendersharerow()"
     },
     {
@@ -387,7 +387,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L1",
       "id": "backups_old_app_v2_js",
-      "community": 0,
+      "community": 1,
       "norm_label": "old_app_v2.js"
     },
     {
@@ -396,7 +396,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L22",
       "id": "old_app_v2_migratetovault",
-      "community": 0,
+      "community": 1,
       "norm_label": "migratetovault()"
     },
     {
@@ -405,7 +405,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L76",
       "id": "old_app_v2_buildtreefromvault",
-      "community": 7,
+      "community": 1,
       "norm_label": "buildtreefromvault()"
     },
     {
@@ -414,7 +414,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L145",
       "id": "old_app_v2_getwarningstate",
-      "community": 1,
+      "community": 0,
       "norm_label": "getwarningstate()"
     },
     {
@@ -423,7 +423,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L177",
       "id": "old_app_v2_minitreeview",
-      "community": 7,
+      "community": 1,
       "norm_label": "minitreeview()"
     },
     {
@@ -432,7 +432,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L544",
       "id": "old_app_v2_applywizard",
-      "community": 4,
+      "community": 2,
       "norm_label": "applywizard()"
     },
     {
@@ -441,7 +441,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L579",
       "id": "old_app_v2_findduplicates",
-      "community": 0,
+      "community": 1,
       "norm_label": "findduplicates()"
     },
     {
@@ -450,7 +450,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L589",
       "id": "old_app_v2_findparentnode",
-      "community": 0,
+      "community": 1,
       "norm_label": "findparentnode()"
     },
     {
@@ -459,7 +459,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L610",
       "id": "old_app_v2_findpid",
-      "community": 0,
+      "community": 1,
       "norm_label": "findpid()"
     },
     {
@@ -468,7 +468,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L646",
       "id": "old_app_v2_syncallclones",
-      "community": 0,
+      "community": 1,
       "norm_label": "syncallclones()"
     },
     {
@@ -477,7 +477,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L690",
       "id": "old_app_v2_scan",
-      "community": 0,
+      "community": 1,
       "norm_label": "scan()"
     },
     {
@@ -486,7 +486,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L711",
       "id": "old_app_v2_handlesidebarprevmatch",
-      "community": 0,
+      "community": 1,
       "norm_label": "handlesidebarprevmatch()"
     },
     {
@@ -495,7 +495,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L712",
       "id": "old_app_v2_handlesidebarnextmatch",
-      "community": 0,
+      "community": 1,
       "norm_label": "handlesidebarnextmatch()"
     },
     {
@@ -504,7 +504,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L718",
       "id": "old_app_v2_handleresizemousedown",
-      "community": 0,
+      "community": 1,
       "norm_label": "handleresizemousedown()"
     },
     {
@@ -513,7 +513,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L726",
       "id": "old_app_v2_onmousemove",
-      "community": 0,
+      "community": 1,
       "norm_label": "onmousemove()"
     },
     {
@@ -522,7 +522,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L732",
       "id": "old_app_v2_onmouseup",
-      "community": 0,
+      "community": 1,
       "norm_label": "onmouseup()"
     },
     {
@@ -531,7 +531,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L778",
       "id": "old_app_v2_handleglobalkeydown",
-      "community": 0,
+      "community": 1,
       "norm_label": "handleglobalkeydown()"
     },
     {
@@ -540,7 +540,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L799",
       "id": "old_app_v2_handlescroll",
-      "community": 0,
+      "community": 1,
       "norm_label": "handlescroll()"
     },
     {
@@ -549,7 +549,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L846",
       "id": "old_app_v2_handleupdate",
-      "community": 0,
+      "community": 1,
       "norm_label": "handleupdate()"
     },
     {
@@ -558,7 +558,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L1016",
       "id": "old_app_v2_applyupdate",
-      "community": 0,
+      "community": 1,
       "norm_label": "applyupdate()"
     },
     {
@@ -567,7 +567,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L1061",
       "id": "old_app_v2_handlesyncconfirm",
-      "community": 0,
+      "community": 1,
       "norm_label": "handlesyncconfirm()"
     },
     {
@@ -576,7 +576,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L1068",
       "id": "old_app_v2_handlerootupdate",
-      "community": 0,
+      "community": 1,
       "norm_label": "handlerootupdate()"
     },
     {
@@ -585,7 +585,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L1083",
       "id": "old_app_v2_addheir",
-      "community": 0,
+      "community": 1,
       "norm_label": "addheir()"
     },
     {
@@ -603,7 +603,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L1379",
       "id": "old_app_v2_dismissguide",
-      "community": 0,
+      "community": 1,
       "norm_label": "dismissguide()"
     },
     {
@@ -612,7 +612,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L1511",
       "id": "old_app_v2_findnodebyid",
-      "community": 0,
+      "community": 1,
       "norm_label": "findnodebyid()"
     },
     {
@@ -621,7 +621,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L1526",
       "id": "old_app_v2_moveheir",
-      "community": 0,
+      "community": 1,
       "norm_label": "moveheir()"
     },
     {
@@ -630,7 +630,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L1550",
       "id": "old_app_v2_handledragend",
-      "community": 0,
+      "community": 1,
       "norm_label": "handledragend()"
     },
     {
@@ -639,7 +639,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L1559",
       "id": "old_app_v2_handleprint",
-      "community": 0,
+      "community": 1,
       "norm_label": "handleprint()"
     },
     {
@@ -648,7 +648,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L1595",
       "id": "old_app_v2_savefile",
-      "community": 0,
+      "community": 1,
       "norm_label": "savefile()"
     },
     {
@@ -657,7 +657,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L1607",
       "id": "old_app_v2_loadfile",
-      "community": 0,
+      "community": 1,
       "norm_label": "loadfile()"
     },
     {
@@ -666,7 +666,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L1786",
       "id": "old_app_v2_findparenttab",
-      "community": 0,
+      "community": 1,
       "norm_label": "findparenttab()"
     },
     {
@@ -675,7 +675,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L2020",
       "id": "old_app_v2_getancestorpath",
-      "community": 0,
+      "community": 1,
       "norm_label": "getancestorpath()"
     },
     {
@@ -684,7 +684,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L2338",
       "id": "old_app_v2_handletoggleconfirm",
-      "community": 0,
+      "community": 1,
       "norm_label": "handletoggleconfirm()"
     },
     {
@@ -693,7 +693,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L2550",
       "id": "old_app_v2_handleautofill",
-      "community": 0,
+      "community": 1,
       "norm_label": "handleautofill()"
     },
     {
@@ -702,7 +702,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L2637",
       "id": "old_app_v2_getlevelstyle",
-      "community": 0,
+      "community": 1,
       "norm_label": "getlevelstyle()"
     },
     {
@@ -711,7 +711,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L3313",
       "id": "old_app_v2_rendersharerow",
-      "community": 1,
+      "community": 0,
       "norm_label": "rendersharerow()"
     },
     {
@@ -720,7 +720,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L3604",
       "id": "old_app_v2_processaidata",
-      "community": 0,
+      "community": 1,
       "norm_label": "processaidata()"
     },
     {
@@ -738,7 +738,7 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L3634",
       "id": "old_app_v2_injectheirs",
-      "community": 0,
+      "community": 1,
       "norm_label": "injectheirs()"
     },
     {
@@ -747,7 +747,7 @@
       "source_file": "scratch\\App_bc.jsx",
       "source_location": "L1",
       "id": "scratch_app_bc_jsx",
-      "community": 2,
+      "community": 3,
       "norm_label": "app_bc.jsx"
     },
     {
@@ -756,7 +756,7 @@
       "source_file": "scratch\\App_bc.jsx",
       "source_location": "L50",
       "id": "app_bc_getstatusstyle",
-      "community": 7,
+      "community": 3,
       "norm_label": "getstatusstyle()"
     },
     {
@@ -765,7 +765,7 @@
       "source_file": "scratch\\App_bc.jsx",
       "source_location": "L224",
       "id": "app_bc_findtabidfornode",
-      "community": 2,
+      "community": 3,
       "norm_label": "findtabidfornode()"
     },
     {
@@ -774,7 +774,7 @@
       "source_file": "scratch\\App_bc.jsx",
       "source_location": "L250",
       "id": "app_bc_if",
-      "community": 2,
+      "community": 3,
       "norm_label": "if()"
     },
     {
@@ -783,7 +783,7 @@
       "source_file": "scratch\\App_bc.jsx",
       "source_location": "L294",
       "id": "app_bc_findpid",
-      "community": 2,
+      "community": 3,
       "norm_label": "findpid()"
     },
     {
@@ -792,7 +792,7 @@
       "source_file": "scratch\\App_bc.jsx",
       "source_location": "L306",
       "id": "app_bc_syncallclones",
-      "community": 2,
+      "community": 3,
       "norm_label": "syncallclones()"
     },
     {
@@ -801,7 +801,7 @@
       "source_file": "scratch\\App_bc.jsx",
       "source_location": "L359",
       "id": "app_bc_onmousemove",
-      "community": 2,
+      "community": 3,
       "norm_label": "onmousemove()"
     },
     {
@@ -810,7 +810,7 @@
       "source_file": "scratch\\App_bc.jsx",
       "source_location": "L360",
       "id": "app_bc_onmouseup",
-      "community": 2,
+      "community": 3,
       "norm_label": "onmouseup()"
     },
     {
@@ -819,7 +819,7 @@
       "source_file": "scratch\\App_bc.jsx",
       "source_location": "L405",
       "id": "app_bc_syncrelation",
-      "community": 2,
+      "community": 3,
       "norm_label": "syncrelation()"
     },
     {
@@ -828,7 +828,7 @@
       "source_file": "scratch\\App_bc.jsx",
       "source_location": "L408",
       "id": "app_bc_updatesinglehoju",
-      "community": 2,
+      "community": 3,
       "norm_label": "updatesinglehoju()"
     },
     {
@@ -846,7 +846,7 @@
       "source_file": "scratch\\App_bc.jsx",
       "source_location": "L423",
       "id": "app_bc_findpersonid",
-      "community": 0,
+      "community": 1,
       "norm_label": "findpersonid()"
     },
     {
@@ -855,7 +855,7 @@
       "source_file": "scratch\\App_bc.jsx",
       "source_location": "L428",
       "id": "app_bc_updatenode",
-      "community": 2,
+      "community": 3,
       "norm_label": "updatenode()"
     },
     {
@@ -864,7 +864,7 @@
       "source_file": "scratch\\App_bc.jsx",
       "source_location": "L473",
       "id": "app_bc_preparecalctree",
-      "community": 1,
+      "community": 0,
       "norm_label": "preparecalctree()"
     },
     {
@@ -873,7 +873,7 @@
       "source_file": "scratch\\App_bc.jsx",
       "source_location": "L496",
       "id": "app_bc_scan",
-      "community": 2,
+      "community": 3,
       "norm_label": "scan()"
     },
     {
@@ -882,7 +882,7 @@
       "source_file": "scratch\\App_bc.jsx",
       "source_location": "L543",
       "id": "app_bc_setstatus",
-      "community": 2,
+      "community": 3,
       "norm_label": "setstatus()"
     },
     {
@@ -891,7 +891,7 @@
       "source_file": "scratch\\App_bc.jsx",
       "source_location": "L545",
       "id": "app_bc_propagate",
-      "community": 2,
+      "community": 3,
       "norm_label": "propagate()"
     },
     {
@@ -900,7 +900,7 @@
       "source_file": "scratch\\App_bc.jsx",
       "source_location": "L553",
       "id": "app_bc_findpath",
-      "community": 2,
+      "community": 3,
       "norm_label": "findpath()"
     },
     {
@@ -909,7 +909,7 @@
       "source_file": "scratch\\App_bc.jsx",
       "source_location": "L574",
       "id": "app_bc_reorderlist",
-      "community": 2,
+      "community": 3,
       "norm_label": "reorderlist()"
     },
     {
@@ -918,7 +918,7 @@
       "source_file": "scratch\\App_bc.jsx",
       "source_location": "L579",
       "id": "app_bc_cleanforexport",
-      "community": 1,
+      "community": 0,
       "norm_label": "cleanforexport()"
     },
     {
@@ -927,7 +927,7 @@
       "source_file": "scratch\\App_bc.jsx",
       "source_location": "L611",
       "id": "app_bc_sanitizenode",
-      "community": 6,
+      "community": 0,
       "norm_label": "sanitizenode()"
     },
     {
@@ -936,7 +936,7 @@
       "source_file": "scratch\\App_bc.jsx",
       "source_location": "L692",
       "id": "app_bc_handlescroll",
-      "community": 2,
+      "community": 3,
       "norm_label": "handlescroll()"
     },
     {
@@ -945,7 +945,7 @@
       "source_file": "scratch\\App_bc.jsx",
       "source_location": "L693",
       "id": "app_bc_handleglobalkeydown",
-      "community": 2,
+      "community": 3,
       "norm_label": "handleglobalkeydown()"
     },
     {
@@ -954,7 +954,7 @@
       "source_file": "scratch\\App_bc.jsx",
       "source_location": "L789",
       "id": "app_bc_handleautofill",
-      "community": 2,
+      "community": 3,
       "norm_label": "handleautofill()"
     },
     {
@@ -963,7 +963,7 @@
       "source_file": "scratch\\App_bc.jsx",
       "source_location": "L849",
       "id": "app_bc_lawlabel",
-      "community": 2,
+      "community": 3,
       "norm_label": "lawlabel()"
     },
     {
@@ -972,7 +972,7 @@
       "source_file": "scratch\\App_bc.jsx",
       "source_location": "L863",
       "id": "app_bc_buildgroups",
-      "community": 2,
+      "community": 3,
       "norm_label": "buildgroups()"
     },
     {
@@ -981,7 +981,7 @@
       "source_file": "scratch\\App_bc.jsx",
       "source_location": "L866",
       "id": "app_bc_rendersharerow",
-      "community": 1,
+      "community": 0,
       "norm_label": "rendersharerow()"
     },
     {
@@ -990,7 +990,7 @@
       "source_file": "scratch\\App_bc.jsx",
       "source_location": "L877",
       "id": "app_bc_pushamtrow",
-      "community": 2,
+      "community": 3,
       "norm_label": "pushamtrow()"
     },
     {
@@ -999,7 +999,7 @@
       "source_file": "scratch\\App_bc.jsx",
       "source_location": "L879",
       "id": "app_bc_renderamtinput",
-      "community": 2,
+      "community": 3,
       "norm_label": "renderamtinput()"
     },
     {
@@ -1008,7 +1008,7 @@
       "source_file": "scratch\\App_bc.jsx",
       "source_location": "L966",
       "id": "app_bc_injectheirs",
-      "community": 2,
+      "community": 3,
       "norm_label": "injectheirs()"
     },
     {
@@ -1017,7 +1017,7 @@
       "source_file": "scratch\\check_yuryang.js",
       "source_location": "L1",
       "id": "scratch_check_yuryang_js",
-      "community": 30,
+      "community": 29,
       "norm_label": "check_yuryang.js"
     },
     {
@@ -1026,7 +1026,7 @@
       "source_file": "scratch\\check_yuryang.js",
       "source_location": "L9",
       "id": "check_yuryang_logshares",
-      "community": 30,
+      "community": 29,
       "norm_label": "logshares()"
     },
     {
@@ -1035,7 +1035,7 @@
       "source_file": "scratch\\HeirRow_410.jsx",
       "source_location": "L1",
       "id": "scratch_heirrow_410_jsx",
-      "community": 31,
+      "community": 30,
       "norm_label": "heirrow_410.jsx"
     },
     {
@@ -1044,7 +1044,7 @@
       "source_file": "scratch\\HeirRow_410.jsx",
       "source_location": "L47",
       "id": "heirrow_410_onbtnclick",
-      "community": 31,
+      "community": 30,
       "norm_label": "onbtnclick()"
     },
     {
@@ -1053,7 +1053,7 @@
       "source_file": "scratch\\HeirRow_bc.jsx",
       "source_location": "L1",
       "id": "scratch_heirrow_bc_jsx",
-      "community": 32,
+      "community": 31,
       "norm_label": "heirrow_bc.jsx"
     },
     {
@@ -1062,7 +1062,7 @@
       "source_file": "scratch\\HeirRow_bc.jsx",
       "source_location": "L50",
       "id": "heirrow_bc_onbtnclick",
-      "community": 32,
+      "community": 31,
       "norm_label": "onbtnclick()"
     },
     {
@@ -1071,7 +1071,7 @@
       "source_file": "scratch\\InputPanel_410.jsx",
       "source_location": "L1",
       "id": "scratch_inputpanel_410_jsx",
-      "community": 0,
+      "community": 1,
       "norm_label": "inputpanel_410.jsx"
     },
     {
@@ -1080,7 +1080,7 @@
       "source_file": "scratch\\InputPanel_410.jsx",
       "source_location": "L36",
       "id": "inputpanel_410_handleautofill",
-      "community": 0,
+      "community": 1,
       "norm_label": "handleautofill()"
     },
     {
@@ -1089,7 +1089,7 @@
       "source_file": "scratch\\InputPanel_410.jsx",
       "source_location": "L203",
       "id": "inputpanel_410_findpid",
-      "community": 0,
+      "community": 1,
       "norm_label": "findpid()"
     },
     {
@@ -1098,7 +1098,7 @@
       "source_file": "scratch\\InputPanel_bbb.jsx",
       "source_location": "L1",
       "id": "scratch_inputpanel_bbb_jsx",
-      "community": 56,
+      "community": 55,
       "norm_label": "inputpanel_bbb.jsx"
     },
     {
@@ -1107,7 +1107,7 @@
       "source_file": "scripts\\inspect_kimilsang_branch.js",
       "source_location": "L1",
       "id": "scripts_inspect_kimilsang_branch_js",
-      "community": 8,
+      "community": 7,
       "norm_label": "inspect_kimilsang_branch.js"
     },
     {
@@ -1116,25 +1116,25 @@
       "source_file": "scripts\\inspect_kimilsang_branch.js",
       "source_location": "L4",
       "id": "inspect_kimilsang_branch_main",
-      "community": 8,
+      "community": 7,
       "norm_label": "main()"
     },
     {
       "label": "App.jsx",
       "file_type": "code",
-      "source_file": "src\\App.jsx",
+      "source_file": "C:\\VS_CODE\\\uc0c1\uc18d\uc9c0\ubd84 \uacc4\uc0b0\uae30\\src\\App.jsx",
       "source_location": "L1",
-      "id": "src_app_jsx",
-      "community": 7,
+      "id": "c_vs_code_src_app_jsx",
+      "community": 8,
       "norm_label": "app.jsx"
     },
     {
       "label": "App()",
       "file_type": "code",
-      "source_file": "src\\App.jsx",
-      "source_location": "L38",
+      "source_file": "C:\\VS_CODE\\\uc0c1\uc18d\uc9c0\ubd84 \uacc4\uc0b0\uae30\\src\\App.jsx",
+      "source_location": "L39",
       "id": "app_app",
-      "community": 7,
+      "community": 8,
       "norm_label": "app()"
     },
     {
@@ -1143,7 +1143,7 @@
       "source_file": "src\\main.jsx",
       "source_location": "L1",
       "id": "src_main_jsx",
-      "community": 57,
+      "community": 56,
       "norm_label": "main.jsx"
     },
     {
@@ -1152,7 +1152,7 @@
       "source_file": "src\\components\\AiImportModal.jsx",
       "source_location": "L1",
       "id": "src_components_aiimportmodal_jsx",
-      "community": 33,
+      "community": 32,
       "norm_label": "aiimportmodal.jsx"
     },
     {
@@ -1161,7 +1161,7 @@
       "source_file": "src\\components\\AiImportModal.jsx",
       "source_location": "L4",
       "id": "aiimportmodal_aiimportmodal",
-      "community": 33,
+      "community": 32,
       "norm_label": "aiimportmodal()"
     },
     {
@@ -1170,7 +1170,7 @@
       "source_file": "src\\components\\AmountPanel.jsx",
       "source_location": "L1",
       "id": "src_components_amountpanel_jsx",
-      "community": 34,
+      "community": 33,
       "norm_label": "amountpanel.jsx"
     },
     {
@@ -1179,7 +1179,7 @@
       "source_file": "src\\components\\AmountPanel.jsx",
       "source_location": "L4",
       "id": "amountpanel_amountpanel",
-      "community": 34,
+      "community": 33,
       "norm_label": "amountpanel()"
     },
     {
@@ -1188,7 +1188,7 @@
       "source_file": "src\\components\\CalcPanel.jsx",
       "source_location": "L1",
       "id": "src_components_calcpanel_jsx",
-      "community": 15,
+      "community": 14,
       "norm_label": "calcpanel.jsx"
     },
     {
@@ -1197,7 +1197,7 @@
       "source_file": "src\\components\\CalcPanel.jsx",
       "source_location": "L4",
       "id": "calcpanel_buildissuemap",
-      "community": 15,
+      "community": 14,
       "norm_label": "buildissuemap()"
     },
     {
@@ -1206,7 +1206,7 @@
       "source_file": "src\\components\\CalcPanel.jsx",
       "source_location": "L15",
       "id": "calcpanel_getinterpretationmeta",
-      "community": 15,
+      "community": 14,
       "norm_label": "getinterpretationmeta()"
     },
     {
@@ -1215,7 +1215,7 @@
       "source_file": "src\\components\\CalcPanel.jsx",
       "source_location": "L31",
       "id": "calcpanel_getinterpretationmemo",
-      "community": 15,
+      "community": 14,
       "norm_label": "getinterpretationmemo()"
     },
     {
@@ -1224,7 +1224,7 @@
       "source_file": "src\\components\\CalcPanel.jsx",
       "source_location": "L37",
       "id": "calcpanel_calcpanel",
-      "community": 15,
+      "community": 14,
       "norm_label": "calcpanel()"
     },
     {
@@ -1269,7 +1269,7 @@
       "source_file": "src\\components\\CalcPanelFixed.jsx",
       "source_location": "L1",
       "id": "src_components_calcpanelfixed_jsx",
-      "community": 17,
+      "community": 16,
       "norm_label": "calcpanelfixed.jsx"
     },
     {
@@ -1278,7 +1278,7 @@
       "source_file": "src\\components\\CalcPanelFixed.jsx",
       "source_location": "L4",
       "id": "calcpanelfixed_buildissuemap",
-      "community": 17,
+      "community": 16,
       "norm_label": "buildissuemap()"
     },
     {
@@ -1287,7 +1287,7 @@
       "source_file": "src\\components\\CalcPanelFixed.jsx",
       "source_location": "L15",
       "id": "calcpanelfixed_getinterpretationmeta",
-      "community": 17,
+      "community": 16,
       "norm_label": "getinterpretationmeta()"
     },
     {
@@ -1296,7 +1296,7 @@
       "source_file": "src\\components\\CalcPanelFixed.jsx",
       "source_location": "L31",
       "id": "calcpanelfixed_calcpanelfixed",
-      "community": 17,
+      "community": 16,
       "norm_label": "calcpanelfixed()"
     },
     {
@@ -1341,7 +1341,7 @@
       "source_file": "src\\components\\CommandHeader.jsx",
       "source_location": "L1",
       "id": "src_components_commandheader_jsx",
-      "community": 22,
+      "community": 21,
       "norm_label": "commandheader.jsx"
     },
     {
@@ -1350,7 +1350,7 @@
       "source_file": "src\\components\\CommandHeader.jsx",
       "source_location": "L4",
       "id": "commandheader_headerbutton",
-      "community": 22,
+      "community": 21,
       "norm_label": "headerbutton()"
     },
     {
@@ -1359,7 +1359,7 @@
       "source_file": "src\\components\\CommandHeader.jsx",
       "source_location": "L15",
       "id": "commandheader_commandheader",
-      "community": 22,
+      "community": 21,
       "norm_label": "commandheader()"
     },
     {
@@ -1368,7 +1368,7 @@
       "source_file": "src\\components\\DateInput.jsx",
       "source_location": "L1",
       "id": "src_components_dateinput_jsx",
-      "community": 35,
+      "community": 34,
       "norm_label": "dateinput.jsx"
     },
     {
@@ -1377,7 +1377,7 @@
       "source_file": "src\\components\\DateInput.jsx",
       "source_location": "L3",
       "id": "dateinput_dateinput",
-      "community": 35,
+      "community": 34,
       "norm_label": "dateinput()"
     },
     {
@@ -1386,7 +1386,7 @@
       "source_file": "src\\components\\DeceasedTabPanel.jsx",
       "source_location": "L1",
       "id": "src_components_deceasedtabpanel_jsx",
-      "community": 1,
+      "community": 0,
       "norm_label": "deceasedtabpanel.jsx"
     },
     {
@@ -1395,7 +1395,7 @@
       "source_file": "src\\components\\DeceasedTabPanel.jsx",
       "source_location": "L18",
       "id": "deceasedtabpanel_deceasedtabpanel",
-      "community": 1,
+      "community": 0,
       "norm_label": "deceasedtabpanel()"
     },
     {
@@ -1455,19 +1455,19 @@
     {
       "label": "HeirRow.jsx",
       "file_type": "code",
-      "source_file": "src\\components\\HeirRow.jsx",
+      "source_file": "C:\\VS_CODE\\\uc0c1\uc18d\uc9c0\ubd84 \uacc4\uc0b0\uae30\\src\\components\\HeirRow.jsx",
       "source_location": "L1",
-      "id": "src_components_heirrow_jsx",
-      "community": 1,
+      "id": "c_vs_code_src_components_heirrow_jsx",
+      "community": 0,
       "norm_label": "heirrow.jsx"
     },
     {
       "label": "HeirRow()",
       "file_type": "code",
-      "source_file": "src\\components\\HeirRow.jsx",
+      "source_file": "C:\\VS_CODE\\\uc0c1\uc18d\uc9c0\ubd84 \uacc4\uc0b0\uae30\\src\\components\\HeirRow.jsx",
       "source_location": "L24",
       "id": "heirrow_heirrow",
-      "community": 1,
+      "community": 0,
       "norm_label": "heirrow()"
     },
     {
@@ -1476,7 +1476,7 @@
       "source_file": "src\\components\\Icons.jsx",
       "source_location": "L1",
       "id": "src_components_icons_jsx",
-      "community": 3,
+      "community": 4,
       "norm_label": "icons.jsx"
     },
     {
@@ -1485,7 +1485,7 @@
       "source_file": "src\\components\\Icons.jsx",
       "source_location": "L3",
       "id": "icons_iconcalculator",
-      "community": 3,
+      "community": 4,
       "norm_label": "iconcalculator()"
     },
     {
@@ -1494,7 +1494,7 @@
       "source_file": "src\\components\\Icons.jsx",
       "source_location": "L4",
       "id": "icons_iconuserplus",
-      "community": 3,
+      "community": 4,
       "norm_label": "iconuserplus()"
     },
     {
@@ -1503,7 +1503,7 @@
       "source_file": "src\\components\\Icons.jsx",
       "source_location": "L5",
       "id": "icons_icontrash2",
-      "community": 3,
+      "community": 4,
       "norm_label": "icontrash2()"
     },
     {
@@ -1512,7 +1512,7 @@
       "source_file": "src\\components\\Icons.jsx",
       "source_location": "L6",
       "id": "icons_iconchevronright",
-      "community": 3,
+      "community": 4,
       "norm_label": "iconchevronright()"
     },
     {
@@ -1521,7 +1521,7 @@
       "source_file": "src\\components\\Icons.jsx",
       "source_location": "L7",
       "id": "icons_iconsave",
-      "community": 3,
+      "community": 4,
       "norm_label": "iconsave()"
     },
     {
@@ -1530,7 +1530,7 @@
       "source_file": "src\\components\\Icons.jsx",
       "source_location": "L8",
       "id": "icons_iconfolderopen",
-      "community": 3,
+      "community": 4,
       "norm_label": "iconfolderopen()"
     },
     {
@@ -1539,7 +1539,7 @@
       "source_file": "src\\components\\Icons.jsx",
       "source_location": "L9",
       "id": "icons_iconprinter",
-      "community": 3,
+      "community": 4,
       "norm_label": "iconprinter()"
     },
     {
@@ -1548,7 +1548,7 @@
       "source_file": "src\\components\\Icons.jsx",
       "source_location": "L10",
       "id": "icons_iconcalendardays",
-      "community": 3,
+      "community": 4,
       "norm_label": "iconcalendardays()"
     },
     {
@@ -1557,7 +1557,7 @@
       "source_file": "src\\components\\Icons.jsx",
       "source_location": "L11",
       "id": "icons_iconnetwork",
-      "community": 3,
+      "community": 4,
       "norm_label": "iconnetwork()"
     },
     {
@@ -1566,7 +1566,7 @@
       "source_file": "src\\components\\Icons.jsx",
       "source_location": "L12",
       "id": "icons_icontable",
-      "community": 3,
+      "community": 4,
       "norm_label": "icontable()"
     },
     {
@@ -1575,7 +1575,7 @@
       "source_file": "src\\components\\Icons.jsx",
       "source_location": "L13",
       "id": "icons_iconlist",
-      "community": 3,
+      "community": 4,
       "norm_label": "iconlist()"
     },
     {
@@ -1584,7 +1584,7 @@
       "source_file": "src\\components\\Icons.jsx",
       "source_location": "L14",
       "id": "icons_iconreset",
-      "community": 3,
+      "community": 4,
       "norm_label": "iconreset()"
     },
     {
@@ -1593,7 +1593,7 @@
       "source_file": "src\\components\\Icons.jsx",
       "source_location": "L15",
       "id": "icons_iconfiletext",
-      "community": 3,
+      "community": 4,
       "norm_label": "iconfiletext()"
     },
     {
@@ -1602,7 +1602,7 @@
       "source_file": "src\\components\\Icons.jsx",
       "source_location": "L16",
       "id": "icons_iconxcircle",
-      "community": 3,
+      "community": 4,
       "norm_label": "iconxcircle()"
     },
     {
@@ -1611,7 +1611,7 @@
       "source_file": "src\\components\\Icons.jsx",
       "source_location": "L17",
       "id": "icons_iconx",
-      "community": 3,
+      "community": 4,
       "norm_label": "iconx()"
     },
     {
@@ -1620,7 +1620,7 @@
       "source_file": "src\\components\\Icons.jsx",
       "source_location": "L18",
       "id": "icons_iconmenu",
-      "community": 3,
+      "community": 4,
       "norm_label": "iconmenu()"
     },
     {
@@ -1629,7 +1629,7 @@
       "source_file": "src\\components\\Icons.jsx",
       "source_location": "L19",
       "id": "icons_iconsun",
-      "community": 3,
+      "community": 4,
       "norm_label": "iconsun()"
     },
     {
@@ -1638,7 +1638,7 @@
       "source_file": "src\\components\\Icons.jsx",
       "source_location": "L20",
       "id": "icons_iconmoon",
-      "community": 3,
+      "community": 4,
       "norm_label": "iconmoon()"
     },
     {
@@ -1647,7 +1647,7 @@
       "source_file": "src\\components\\Icons.jsx",
       "source_location": "L21",
       "id": "icons_iconundo",
-      "community": 3,
+      "community": 4,
       "norm_label": "iconundo()"
     },
     {
@@ -1656,7 +1656,7 @@
       "source_file": "src\\components\\Icons.jsx",
       "source_location": "L22",
       "id": "icons_iconredo",
-      "community": 3,
+      "community": 4,
       "norm_label": "iconredo()"
     },
     {
@@ -1665,7 +1665,7 @@
       "source_file": "src\\components\\Icons.jsx",
       "source_location": "L23",
       "id": "icons_iconsearchplus",
-      "community": 3,
+      "community": 4,
       "norm_label": "iconsearchplus()"
     },
     {
@@ -1674,7 +1674,7 @@
       "source_file": "src\\components\\Icons.jsx",
       "source_location": "L24",
       "id": "icons_iconsearchminus",
-      "community": 3,
+      "community": 4,
       "norm_label": "iconsearchminus()"
     },
     {
@@ -1683,7 +1683,7 @@
       "source_file": "src\\components\\Icons.jsx",
       "source_location": "L25",
       "id": "icons_iconusergroup",
-      "community": 3,
+      "community": 4,
       "norm_label": "iconusergroup()"
     },
     {
@@ -1692,7 +1692,7 @@
       "source_file": "src\\components\\Icons.jsx",
       "source_location": "L26",
       "id": "icons_iconsparkles",
-      "community": 3,
+      "community": 4,
       "norm_label": "iconsparkles()"
     },
     {
@@ -1701,7 +1701,7 @@
       "source_file": "src\\components\\InputPanel.jsx",
       "source_location": "L1",
       "id": "src_components_inputpanel_jsx",
-      "community": 1,
+      "community": 0,
       "norm_label": "inputpanel.jsx"
     },
     {
@@ -1710,7 +1710,7 @@
       "source_file": "src\\components\\InputPanel.jsx",
       "source_location": "L10",
       "id": "inputpanel_inputpanel",
-      "community": 1,
+      "community": 0,
       "norm_label": "inputpanel()"
     },
     {
@@ -1719,7 +1719,7 @@
       "source_file": "src\\components\\MainLayout.jsx",
       "source_location": "L1",
       "id": "src_components_mainlayout_jsx",
-      "community": 36,
+      "community": 35,
       "norm_label": "mainlayout.jsx"
     },
     {
@@ -1728,7 +1728,7 @@
       "source_file": "src\\components\\MainLayout.jsx",
       "source_location": "L3",
       "id": "mainlayout_mainlayout",
-      "community": 36,
+      "community": 35,
       "norm_label": "mainlayout()"
     },
     {
@@ -1737,7 +1737,7 @@
       "source_file": "src\\components\\MetaHeader.jsx",
       "source_location": "L1",
       "id": "src_components_metaheader_jsx",
-      "community": 1,
+      "community": 0,
       "norm_label": "metaheader.jsx"
     },
     {
@@ -1746,7 +1746,7 @@
       "source_file": "src\\components\\MetaHeader.jsx",
       "source_location": "L4",
       "id": "metaheader_metaheader",
-      "community": 1,
+      "community": 0,
       "norm_label": "metaheader()"
     },
     {
@@ -1755,7 +1755,7 @@
       "source_file": "src\\components\\MiniTreeView.jsx",
       "source_location": "L1",
       "id": "src_components_minitreeview_jsx",
-      "community": 7,
+      "community": 3,
       "norm_label": "minitreeview.jsx"
     },
     {
@@ -1764,8 +1764,53 @@
       "source_file": "src\\components\\MiniTreeView.jsx",
       "source_location": "L4",
       "id": "minitreeview_minitreeview",
-      "community": 7,
+      "community": 3,
       "norm_label": "minitreeview()"
+    },
+    {
+      "label": "PersonEditModal.jsx",
+      "file_type": "code",
+      "source_file": "C:\\VS_CODE\\\uc0c1\uc18d\uc9c0\ubd84 \uacc4\uc0b0\uae30\\src\\components\\PersonEditModal.jsx",
+      "source_location": "L1",
+      "id": "c_vs_code_src_components_personeditmodal_jsx",
+      "community": 0,
+      "norm_label": "personeditmodal.jsx"
+    },
+    {
+      "label": "relLabel()",
+      "file_type": "code",
+      "source_file": "C:\\VS_CODE\\\uc0c1\uc18d\uc9c0\ubd84 \uacc4\uc0b0\uae30\\src\\components\\PersonEditModal.jsx",
+      "source_location": "L16",
+      "id": "personeditmodal_rellabel",
+      "community": 0,
+      "norm_label": "rellabel()"
+    },
+    {
+      "label": "FullRow()",
+      "file_type": "code",
+      "source_file": "C:\\VS_CODE\\\uc0c1\uc18d\uc9c0\ubd84 \uacc4\uc0b0\uae30\\src\\components\\PersonEditModal.jsx",
+      "source_location": "L22",
+      "id": "personeditmodal_fullrow",
+      "community": 0,
+      "norm_label": "fullrow()"
+    },
+    {
+      "label": "GridRow()",
+      "file_type": "code",
+      "source_file": "C:\\VS_CODE\\\uc0c1\uc18d\uc9c0\ubd84 \uacc4\uc0b0\uae30\\src\\components\\PersonEditModal.jsx",
+      "source_location": "L33",
+      "id": "personeditmodal_gridrow",
+      "community": 0,
+      "norm_label": "gridrow()"
+    },
+    {
+      "label": "PersonEditModal()",
+      "file_type": "code",
+      "source_file": "C:\\VS_CODE\\\uc0c1\uc18d\uc9c0\ubd84 \uacc4\uc0b0\uae30\\src\\components\\PersonEditModal.jsx",
+      "source_location": "L47",
+      "id": "personeditmodal_personeditmodal",
+      "community": 0,
+      "norm_label": "personeditmodal()"
     },
     {
       "label": "PrintReport.jsx",
@@ -1773,7 +1818,7 @@
       "source_file": "src\\components\\PrintReport.jsx",
       "source_location": "L1",
       "id": "src_components_printreport_jsx",
-      "community": 1,
+      "community": 0,
       "norm_label": "printreport.jsx"
     },
     {
@@ -1782,7 +1827,7 @@
       "source_file": "src\\components\\PrintReport.jsx",
       "source_location": "L4",
       "id": "printreport_lawlabel",
-      "community": 1,
+      "community": 0,
       "norm_label": "lawlabel()"
     },
     {
@@ -1791,7 +1836,7 @@
       "source_file": "src\\components\\PrintReport.jsx",
       "source_location": "L11",
       "id": "printreport_printreport",
-      "community": 1,
+      "community": 0,
       "norm_label": "printreport()"
     },
     {
@@ -1800,7 +1845,7 @@
       "source_file": "src\\components\\ResetConfirmModal.jsx",
       "source_location": "L1",
       "id": "src_components_resetconfirmmodal_jsx",
-      "community": 37,
+      "community": 36,
       "norm_label": "resetconfirmmodal.jsx"
     },
     {
@@ -1809,7 +1854,7 @@
       "source_file": "src\\components\\ResetConfirmModal.jsx",
       "source_location": "L3",
       "id": "resetconfirmmodal_resetconfirmmodal",
-      "community": 37,
+      "community": 36,
       "norm_label": "resetconfirmmodal()"
     },
     {
@@ -1818,7 +1863,7 @@
       "source_file": "src\\components\\ResultPanel.jsx",
       "source_location": "L1",
       "id": "src_components_resultpanel_jsx",
-      "community": 18,
+      "community": 17,
       "norm_label": "resultpanel.jsx"
     },
     {
@@ -1827,7 +1872,7 @@
       "source_file": "src\\components\\ResultPanel.jsx",
       "source_location": "L4",
       "id": "resultpanel_buildissuemap",
-      "community": 18,
+      "community": 17,
       "norm_label": "buildissuemap()"
     },
     {
@@ -1836,7 +1881,7 @@
       "source_file": "src\\components\\ResultPanel.jsx",
       "source_location": "L15",
       "id": "resultpanel_getinterpretationnote",
-      "community": 18,
+      "community": 17,
       "norm_label": "getinterpretationnote()"
     },
     {
@@ -1845,7 +1890,7 @@
       "source_file": "src\\components\\ResultPanel.jsx",
       "source_location": "L21",
       "id": "resultpanel_resultpanel",
-      "community": 18,
+      "community": 17,
       "norm_label": "resultpanel()"
     },
     {
@@ -1899,7 +1944,7 @@
       "source_file": "src\\components\\SidebarTreePanel.jsx",
       "source_location": "L1",
       "id": "src_components_sidebartreepanel_jsx",
-      "community": 23,
+      "community": 22,
       "norm_label": "sidebartreepanel.jsx"
     },
     {
@@ -1908,7 +1953,7 @@
       "source_file": "src\\components\\SidebarTreePanel.jsx",
       "source_location": "L4",
       "id": "sidebartreepanel_panelactionbutton",
-      "community": 23,
+      "community": 22,
       "norm_label": "panelactionbutton()"
     },
     {
@@ -1917,7 +1962,7 @@
       "source_file": "src\\components\\SidebarTreePanel.jsx",
       "source_location": "L16",
       "id": "sidebartreepanel_sidebartreepanel",
-      "community": 23,
+      "community": 22,
       "norm_label": "sidebartreepanel()"
     },
     {
@@ -1926,7 +1971,7 @@
       "source_file": "src\\components\\SmartGuidePanel.jsx",
       "source_location": "L1",
       "id": "src_components_smartguidepanel_jsx",
-      "community": 24,
+      "community": 23,
       "norm_label": "smartguidepanel.jsx"
     },
     {
@@ -1935,7 +1980,7 @@
       "source_file": "src\\components\\SmartGuidePanel.jsx",
       "source_location": "L4",
       "id": "smartguidepanel_guidecheckbutton",
-      "community": 24,
+      "community": 23,
       "norm_label": "guidecheckbutton()"
     },
     {
@@ -1944,7 +1989,7 @@
       "source_file": "src\\components\\SmartGuidePanel.jsx",
       "source_location": "L15",
       "id": "smartguidepanel_smartguidepanel",
-      "community": 24,
+      "community": 23,
       "norm_label": "smartguidepanel()"
     },
     {
@@ -1953,7 +1998,7 @@
       "source_file": "src\\components\\SummaryPanel.jsx",
       "source_location": "L1",
       "id": "src_components_summarypanel_jsx",
-      "community": 25,
+      "community": 24,
       "norm_label": "summarypanel.jsx"
     },
     {
@@ -1962,7 +2007,7 @@
       "source_file": "src\\components\\SummaryPanel.jsx",
       "source_location": "L5",
       "id": "summarypanel_buildissuemap",
-      "community": 25,
+      "community": 24,
       "norm_label": "buildissuemap()"
     },
     {
@@ -1971,7 +2016,7 @@
       "source_file": "src\\components\\SummaryPanel.jsx",
       "source_location": "L16",
       "id": "summarypanel_summarypanel",
-      "community": 25,
+      "community": 24,
       "norm_label": "summarypanel()"
     },
     {
@@ -2034,7 +2079,7 @@
       "source_file": "src\\components\\TopToolbar.jsx",
       "source_location": "L1",
       "id": "src_components_toptoolbar_jsx",
-      "community": 38,
+      "community": 37,
       "norm_label": "toptoolbar.jsx"
     },
     {
@@ -2043,7 +2088,7 @@
       "source_file": "src\\components\\TopToolbar.jsx",
       "source_location": "L15",
       "id": "toptoolbar_toptoolbar",
-      "community": 38,
+      "community": 37,
       "norm_label": "toptoolbar()"
     },
     {
@@ -2052,7 +2097,7 @@
       "source_file": "src\\components\\TopToolbarBalanced.jsx",
       "source_location": "L1",
       "id": "src_components_toptoolbarbalanced_jsx",
-      "community": 19,
+      "community": 18,
       "norm_label": "toptoolbarbalanced.jsx"
     },
     {
@@ -2061,7 +2106,7 @@
       "source_file": "src\\components\\TopToolbarBalanced.jsx",
       "source_location": "L14",
       "id": "toptoolbarbalanced_paneltoggleicon",
-      "community": 19,
+      "community": 18,
       "norm_label": "paneltoggleicon()"
     },
     {
@@ -2070,7 +2115,7 @@
       "source_file": "src\\components\\TopToolbarBalanced.jsx",
       "source_location": "L24",
       "id": "toptoolbarbalanced_inlinemeta",
-      "community": 19,
+      "community": 18,
       "norm_label": "inlinemeta()"
     },
     {
@@ -2079,7 +2124,7 @@
       "source_file": "src\\components\\TopToolbarBalanced.jsx",
       "source_location": "L38",
       "id": "toptoolbarbalanced_toptoolbarbalanced",
-      "community": 19,
+      "community": 18,
       "norm_label": "toptoolbarbalanced()"
     },
     {
@@ -2088,7 +2133,7 @@
       "source_file": "src\\components\\TopToolbarDesktop.jsx",
       "source_location": "L1",
       "id": "src_components_toptoolbardesktop_jsx",
-      "community": 39,
+      "community": 38,
       "norm_label": "toptoolbardesktop.jsx"
     },
     {
@@ -2097,7 +2142,7 @@
       "source_file": "src\\components\\TopToolbarDesktop.jsx",
       "source_location": "L15",
       "id": "toptoolbardesktop_toptoolbardesktop",
-      "community": 39,
+      "community": 38,
       "norm_label": "toptoolbardesktop()"
     },
     {
@@ -2106,7 +2151,7 @@
       "source_file": "src\\components\\TopToolbarFixed.jsx",
       "source_location": "L1",
       "id": "src_components_toptoolbarfixed_jsx",
-      "community": 40,
+      "community": 39,
       "norm_label": "toptoolbarfixed.jsx"
     },
     {
@@ -2115,7 +2160,7 @@
       "source_file": "src\\components\\TopToolbarFixed.jsx",
       "source_location": "L15",
       "id": "toptoolbarfixed_toptoolbarfixed",
-      "community": 40,
+      "community": 39,
       "norm_label": "toptoolbarfixed()"
     },
     {
@@ -2124,7 +2169,7 @@
       "source_file": "src\\components\\TreePanel.jsx",
       "source_location": "L1",
       "id": "src_components_treepanel_jsx",
-      "community": 1,
+      "community": 0,
       "norm_label": "treepanel.jsx"
     },
     {
@@ -2133,7 +2178,7 @@
       "source_file": "src\\components\\TreePanel.jsx",
       "source_location": "L7",
       "id": "treepanel_getstepkey",
-      "community": 1,
+      "community": 0,
       "norm_label": "getstepkey()"
     },
     {
@@ -2142,7 +2187,7 @@
       "source_file": "src\\components\\TreePanel.jsx",
       "source_location": "L9",
       "id": "treepanel_laweralabel",
-      "community": 1,
+      "community": 0,
       "norm_label": "laweralabel()"
     },
     {
@@ -2151,7 +2196,7 @@
       "source_file": "src\\components\\TreePanel.jsx",
       "source_location": "L17",
       "id": "treepanel_buildsteptree",
-      "community": 1,
+      "community": 0,
       "norm_label": "buildsteptree()"
     },
     {
@@ -2160,7 +2205,7 @@
       "source_file": "src\\components\\TreePanel.jsx",
       "source_location": "L43",
       "id": "treepanel_tag",
-      "community": 1,
+      "community": 0,
       "norm_label": "tag()"
     },
     {
@@ -2169,7 +2214,7 @@
       "source_file": "src\\components\\TreePanel.jsx",
       "source_location": "L62",
       "id": "treepanel_excludedsection",
-      "community": 1,
+      "community": 0,
       "norm_label": "excludedsection()"
     },
     {
@@ -2178,7 +2223,7 @@
       "source_file": "src\\components\\TreePanel.jsx",
       "source_location": "L83",
       "id": "treepanel_heircard",
-      "community": 1,
+      "community": 0,
       "norm_label": "heircard()"
     },
     {
@@ -2187,7 +2232,7 @@
       "source_file": "src\\components\\TreePanel.jsx",
       "source_location": "L189",
       "id": "treepanel_eventdetail",
-      "community": 1,
+      "community": 0,
       "norm_label": "eventdetail()"
     },
     {
@@ -2196,7 +2241,7 @@
       "source_file": "src\\components\\TreePanel.jsx",
       "source_location": "L290",
       "id": "treepanel_viewmodebtn",
-      "community": 1,
+      "community": 0,
       "norm_label": "viewmodebtn()"
     },
     {
@@ -2205,7 +2250,7 @@
       "source_file": "src\\components\\TreePanel.jsx",
       "source_location": "L305",
       "id": "treepanel_navitem",
-      "community": 1,
+      "community": 0,
       "norm_label": "navitem()"
     },
     {
@@ -2214,7 +2259,7 @@
       "source_file": "src\\components\\TreePanel.jsx",
       "source_location": "L337",
       "id": "treepanel_treepanel",
-      "community": 1,
+      "community": 0,
       "norm_label": "treepanel()"
     },
     {
@@ -2223,7 +2268,7 @@
       "source_file": "src\\components\\TreeReportNode.jsx",
       "source_location": "L1",
       "id": "src_components_treereportnode_jsx",
-      "community": 1,
+      "community": 0,
       "norm_label": "treereportnode.jsx"
     },
     {
@@ -2232,7 +2277,7 @@
       "source_file": "src\\components\\TreeReportNode.jsx",
       "source_location": "L5",
       "id": "treereportnode_treereportnode",
-      "community": 1,
+      "community": 0,
       "norm_label": "treereportnode()"
     },
     {
@@ -2241,7 +2286,7 @@
       "source_file": "src\\components\\ui\\CapsuleTabs.jsx",
       "source_location": "L1",
       "id": "src_components_ui_capsuletabs_jsx",
-      "community": 41,
+      "community": 40,
       "norm_label": "capsuletabs.jsx"
     },
     {
@@ -2250,7 +2295,7 @@
       "source_file": "src\\components\\ui\\CapsuleTabs.jsx",
       "source_location": "L3",
       "id": "capsuletabs_capsuletabs",
-      "community": 41,
+      "community": 40,
       "norm_label": "capsuletabs()"
     },
     {
@@ -2259,7 +2304,7 @@
       "source_file": "src\\components\\ui\\ContextualDrawer.jsx",
       "source_location": "L1",
       "id": "src_components_ui_contextualdrawer_jsx",
-      "community": 42,
+      "community": 41,
       "norm_label": "contextualdrawer.jsx"
     },
     {
@@ -2268,7 +2313,7 @@
       "source_file": "src\\components\\ui\\ContextualDrawer.jsx",
       "source_location": "L3",
       "id": "contextualdrawer_contextualdrawer",
-      "community": 42,
+      "community": 41,
       "norm_label": "contextualdrawer()"
     },
     {
@@ -2277,7 +2322,7 @@
       "source_file": "src\\components\\ui\\DocumentCard.jsx",
       "source_location": "L1",
       "id": "src_components_ui_documentcard_jsx",
-      "community": 43,
+      "community": 42,
       "norm_label": "documentcard.jsx"
     },
     {
@@ -2286,7 +2331,7 @@
       "source_file": "src\\components\\ui\\DocumentCard.jsx",
       "source_location": "L3",
       "id": "documentcard_documentcard",
-      "community": 43,
+      "community": 42,
       "norm_label": "documentcard()"
     },
     {
@@ -2295,7 +2340,7 @@
       "source_file": "src\\components\\ui\\InheritDesign.jsx",
       "source_location": "L1",
       "id": "src_components_ui_inheritdesign_jsx",
-      "community": 20,
+      "community": 19,
       "norm_label": "inheritdesign.jsx"
     },
     {
@@ -2304,7 +2349,7 @@
       "source_file": "src\\components\\ui\\InheritDesign.jsx",
       "source_location": "L7",
       "id": "inheritdesign_multiplierbadge",
-      "community": 20,
+      "community": 19,
       "norm_label": "multiplierbadge()"
     },
     {
@@ -2313,7 +2358,7 @@
       "source_file": "src\\components\\ui\\InheritDesign.jsx",
       "source_location": "L31",
       "id": "inheritdesign_badgetoggle",
-      "community": 20,
+      "community": 19,
       "norm_label": "badgetoggle()"
     },
     {
@@ -2322,7 +2367,7 @@
       "source_file": "src\\components\\ui\\InheritDesign.jsx",
       "source_location": "L73",
       "id": "inheritdesign_exclusionbadge",
-      "community": 20,
+      "community": 19,
       "norm_label": "exclusionbadge()"
     },
     {
@@ -2385,7 +2430,7 @@
       "source_file": "src\\engine\\check_logic.js",
       "source_location": "L1",
       "id": "src_engine_check_logic_js",
-      "community": 8,
+      "community": 7,
       "norm_label": "check_logic.js"
     },
     {
@@ -2394,7 +2439,7 @@
       "source_file": "src\\engine\\check_logic.js",
       "source_location": "L5",
       "id": "check_logic_printresult",
-      "community": 8,
+      "community": 7,
       "norm_label": "printresult()"
     },
     {
@@ -2403,7 +2448,7 @@
       "source_file": "src\\engine\\check_logic.js",
       "source_location": "L47",
       "id": "check_logic_getfamily",
-      "community": 8,
+      "community": 7,
       "norm_label": "getfamily()"
     },
     {
@@ -2484,7 +2529,7 @@
       "source_file": "src\\engine\\inheritance.js",
       "source_location": "L1",
       "id": "src_engine_inheritance_js",
-      "community": 8,
+      "community": 7,
       "norm_label": "inheritance.js"
     },
     {
@@ -2493,7 +2538,7 @@
       "source_file": "src\\engine\\inheritance.js",
       "source_location": "L4",
       "id": "inheritance_calculateinheritance",
-      "community": 8,
+      "community": 7,
       "norm_label": "calculateinheritance()"
     },
     {
@@ -2502,7 +2547,7 @@
       "source_file": "src\\engine\\inheritance.test.js",
       "source_location": "L1",
       "id": "src_engine_inheritance_test_js",
-      "community": 58,
+      "community": 57,
       "norm_label": "inheritance.test.js"
     },
     {
@@ -2511,7 +2556,7 @@
       "source_file": "src\\engine\\inheritanceAudit.js",
       "source_location": "L1",
       "id": "src_engine_inheritanceaudit_js",
-      "community": 8,
+      "community": 7,
       "norm_label": "inheritanceaudit.js"
     },
     {
@@ -2520,7 +2565,7 @@
       "source_file": "src\\engine\\inheritanceAudit.js",
       "source_location": "L3",
       "id": "inheritanceaudit_flattengroupshares",
-      "community": 8,
+      "community": 7,
       "norm_label": "flattengroupshares()"
     },
     {
@@ -2529,7 +2574,7 @@
       "source_file": "src\\engine\\inheritanceAudit.js",
       "source_location": "L11",
       "id": "inheritanceaudit_flattenfinalshares",
-      "community": 8,
+      "community": 7,
       "norm_label": "flattenfinalshares()"
     },
     {
@@ -2538,7 +2583,7 @@
       "source_file": "src\\engine\\inheritanceAudit.js",
       "source_location": "L18",
       "id": "inheritanceaudit_collectresolvedtransitids",
-      "community": 8,
+      "community": 7,
       "norm_label": "collectresolvedtransitids()"
     },
     {
@@ -2547,7 +2592,7 @@
       "source_file": "src\\engine\\inheritanceAudit.js",
       "source_location": "L26",
       "id": "inheritanceaudit_pushissue",
-      "community": 8,
+      "community": 7,
       "norm_label": "pushissue()"
     },
     {
@@ -2556,7 +2601,7 @@
       "source_file": "src\\engine\\inheritanceAudit.js",
       "source_location": "L35",
       "id": "inheritanceaudit_normalizewarning",
-      "community": 8,
+      "community": 7,
       "norm_label": "normalizewarning()"
     },
     {
@@ -2565,7 +2610,7 @@
       "source_file": "src\\engine\\inheritanceAudit.js",
       "source_location": "L60",
       "id": "inheritanceaudit_auditinheritanceresult",
-      "community": 8,
+      "community": 7,
       "norm_label": "auditinheritanceresult()"
     },
     {
@@ -2601,7 +2646,7 @@
       "source_file": "src\\engine\\utils.js",
       "source_location": "L1",
       "id": "src_engine_utils_js",
-      "community": 1,
+      "community": 0,
       "norm_label": "utils.js"
     },
     {
@@ -2610,7 +2655,7 @@
       "source_file": "src\\engine\\utils.js",
       "source_location": "L37",
       "id": "utils_getrelstr",
-      "community": 1,
+      "community": 0,
       "norm_label": "getrelstr()"
     },
     {
@@ -2619,7 +2664,7 @@
       "source_file": "src\\engine\\utils.js",
       "source_location": "L61",
       "id": "utils_getlawera",
-      "community": 1,
+      "community": 0,
       "norm_label": "getlawera()"
     },
     {
@@ -2628,7 +2673,7 @@
       "source_file": "src\\engine\\utils.js",
       "source_location": "L69",
       "id": "utils_isbefore",
-      "community": 1,
+      "community": 0,
       "norm_label": "isbefore()"
     },
     {
@@ -2637,7 +2682,7 @@
       "source_file": "src\\engine\\utils.js",
       "source_location": "L74",
       "id": "utils_formatkordate",
-      "community": 1,
+      "community": 0,
       "norm_label": "formatkordate()"
     },
     {
@@ -2646,7 +2691,7 @@
       "source_file": "src\\engine\\utils.js",
       "source_location": "L80",
       "id": "utils_formatmoney",
-      "community": 1,
+      "community": 0,
       "norm_label": "formatmoney()"
     },
     {
@@ -2655,7 +2700,7 @@
       "source_file": "src\\hooks\\useSmartGuide.js",
       "source_location": "L1",
       "id": "src_hooks_usesmartguide_js",
-      "community": 7,
+      "community": 8,
       "norm_label": "usesmartguide.js"
     },
     {
@@ -2664,7 +2709,7 @@
       "source_file": "src\\hooks\\useSmartGuide.js",
       "source_location": "L18",
       "id": "usesmartguide_usesmartguide",
-      "community": 7,
+      "community": 8,
       "norm_label": "usesmartguide()"
     },
     {
@@ -2673,7 +2718,7 @@
       "source_file": "src\\utils\\aiPrompt.js",
       "source_location": "L1",
       "id": "src_utils_aiprompt_js",
-      "community": 59,
+      "community": 58,
       "norm_label": "aiprompt.js"
     },
     {
@@ -2682,7 +2727,7 @@
       "source_file": "src\\utils\\aiPromptUtf8.js",
       "source_location": "L1",
       "id": "src_utils_aipromptutf8_js",
-      "community": 60,
+      "community": 59,
       "norm_label": "aipromptutf8.js"
     },
     {
@@ -2763,7 +2808,7 @@
       "source_file": "src\\utils\\complexSample.js",
       "source_location": "L1",
       "id": "src_utils_complexsample_js",
-      "community": 61,
+      "community": 60,
       "norm_label": "complexsample.js"
     },
     {
@@ -2772,7 +2817,7 @@
       "source_file": "src\\utils\\excelUtils.js",
       "source_location": "L1",
       "id": "src_utils_excelutils_js",
-      "community": 16,
+      "community": 15,
       "norm_label": "excelutils.js"
     },
     {
@@ -2781,7 +2826,7 @@
       "source_file": "src\\utils\\excelUtils.js",
       "source_location": "L13",
       "id": "excelutils_exporttreetoexcel",
-      "community": 16,
+      "community": 15,
       "norm_label": "exporttreetoexcel()"
     },
     {
@@ -2790,7 +2835,7 @@
       "source_file": "src\\utils\\excelUtils.js",
       "source_location": "L50",
       "id": "excelutils_importexceltotree",
-      "community": 16,
+      "community": 15,
       "norm_label": "importexceltotree()"
     },
     {
@@ -2799,7 +2844,7 @@
       "source_file": "src\\utils\\excelUtils.js",
       "source_location": "L99",
       "id": "excelutils_importtexttotree",
-      "community": 16,
+      "community": 15,
       "norm_label": "importtexttotree()"
     },
     {
@@ -2808,7 +2853,7 @@
       "source_file": "src\\utils\\excelUtils.js",
       "source_location": "L156",
       "id": "excelutils_exporttreetotext",
-      "community": 16,
+      "community": 15,
       "norm_label": "exporttreetotext()"
     },
     {
@@ -2817,7 +2862,7 @@
       "source_file": "src\\utils\\hojuBonusCompare.js",
       "source_location": "L1",
       "id": "src_utils_hojubonuscompare_js",
-      "community": 21,
+      "community": 20,
       "norm_label": "hojubonuscompare.js"
     },
     {
@@ -2826,7 +2871,7 @@
       "source_file": "src\\utils\\hojuBonusCompare.js",
       "source_location": "L3",
       "id": "hojubonuscompare_collectfinalshares",
-      "community": 21,
+      "community": 20,
       "norm_label": "collectfinalshares()"
     },
     {
@@ -2835,7 +2880,7 @@
       "source_file": "src\\utils\\hojuBonusCompare.js",
       "source_location": "L16",
       "id": "hojubonuscompare_striphojubonusinputs",
-      "community": 21,
+      "community": 20,
       "norm_label": "striphojubonusinputs()"
     },
     {
@@ -2844,7 +2889,7 @@
       "source_file": "src\\utils\\hojuBonusCompare.js",
       "source_location": "L26",
       "id": "hojubonuscompare_buildhojubonusdiffs",
-      "community": 21,
+      "community": 20,
       "norm_label": "buildhojubonusdiffs()"
     },
     {
@@ -2889,7 +2934,7 @@
       "source_file": "src\\utils\\importValidation.js",
       "source_location": "L1",
       "id": "src_utils_importvalidation_js",
-      "community": 26,
+      "community": 25,
       "norm_label": "importvalidation.js"
     },
     {
@@ -2898,7 +2943,7 @@
       "source_file": "src\\utils\\importValidation.js",
       "source_location": "L6",
       "id": "importvalidation_collectimportvalidationissues",
-      "community": 26,
+      "community": 25,
       "norm_label": "collectimportvalidationissues()"
     },
     {
@@ -2907,7 +2952,7 @@
       "source_file": "src\\utils\\importValidation.js",
       "source_location": "L102",
       "id": "importvalidation_buildimportvalidationmessage",
-      "community": 26,
+      "community": 25,
       "norm_label": "buildimportvalidationmessage()"
     },
     {
@@ -2916,7 +2961,7 @@
       "source_file": "src\\utils\\importValidationV2.js",
       "source_location": "L1",
       "id": "src_utils_importvalidationv2_js",
-      "community": 27,
+      "community": 26,
       "norm_label": "importvalidationv2.js"
     },
     {
@@ -2925,7 +2970,7 @@
       "source_file": "src\\utils\\importValidationV2.js",
       "source_location": "L6",
       "id": "importvalidationv2_buildissue",
-      "community": 27,
+      "community": 26,
       "norm_label": "buildissue()"
     },
     {
@@ -2934,7 +2979,7 @@
       "source_file": "src\\utils\\importValidationV2.js",
       "source_location": "L15",
       "id": "importvalidationv2_collectimportvalidationissues",
-      "community": 27,
+      "community": 26,
       "norm_label": "collectimportvalidationissues()"
     },
     {
@@ -2943,7 +2988,7 @@
       "source_file": "src\\utils\\initialData.js",
       "source_location": "L1",
       "id": "src_utils_initialdata_js",
-      "community": 7,
+      "community": 8,
       "norm_label": "initialdata.js"
     },
     {
@@ -2952,7 +2997,7 @@
       "source_file": "src\\utils\\initialData.js",
       "source_location": "L1",
       "id": "initialdata_getinitialtree",
-      "community": 7,
+      "community": 8,
       "norm_label": "getinitialtree()"
     },
     {
@@ -2961,7 +3006,7 @@
       "source_file": "src\\utils\\initialData.js",
       "source_location": "L6",
       "id": "initialdata_getemptytree",
-      "community": 7,
+      "community": 8,
       "norm_label": "getemptytree()"
     },
     {
@@ -2970,7 +3015,7 @@
       "source_file": "src\\utils\\styles.js",
       "source_location": "L1",
       "id": "src_utils_styles_js",
-      "community": 28,
+      "community": 27,
       "norm_label": "styles.js"
     },
     {
@@ -2979,7 +3024,7 @@
       "source_file": "src\\utils\\styles.js",
       "source_location": "L1",
       "id": "styles_getlevelstyle",
-      "community": 28,
+      "community": 27,
       "norm_label": "getlevelstyle()"
     },
     {
@@ -2988,7 +3033,7 @@
       "source_file": "src\\utils\\styles.js",
       "source_location": "L6",
       "id": "styles_getlinestyle",
-      "community": 28,
+      "community": 27,
       "norm_label": "getlinestyle()"
     },
     {
@@ -3195,7 +3240,7 @@
       "source_file": "src\\utils\\vault.js",
       "source_location": "L1",
       "id": "src_utils_vault_js",
-      "community": 7,
+      "community": 8,
       "norm_label": "vault.js"
     },
     {
@@ -3204,7 +3249,7 @@
       "source_file": "src\\utils\\vault.js",
       "source_location": "L5",
       "id": "vault_migratetovault",
-      "community": 7,
+      "community": 8,
       "norm_label": "migratetovault()"
     },
     {
@@ -3213,7 +3258,7 @@
       "source_file": "src\\utils\\vault.js",
       "source_location": "L47",
       "id": "vault_buildtreefromvault",
-      "community": 7,
+      "community": 8,
       "norm_label": "buildtreefromvault()"
     },
     {
@@ -3222,7 +3267,7 @@
       "source_file": "src\\utils\\vault.js",
       "source_location": "L122",
       "id": "vault_preprocesstree",
-      "community": 7,
+      "community": 8,
       "norm_label": "preprocesstree()"
     },
     {
@@ -3231,7 +3276,7 @@
       "source_file": "src\\utils\\vaultTransforms.js",
       "source_location": "L1",
       "id": "src_utils_vaulttransforms_js",
-      "community": 7,
+      "community": 8,
       "norm_label": "vaulttransforms.js"
     },
     {
@@ -3240,7 +3285,7 @@
       "source_file": "src\\utils\\vaultTransforms.js",
       "source_location": "L3",
       "id": "vaulttransforms_migratetovault",
-      "community": 7,
+      "community": 8,
       "norm_label": "migratetovault()"
     },
     {
@@ -3249,7 +3294,7 @@
       "source_file": "src\\utils\\vaultTransforms.js",
       "source_location": "L82",
       "id": "vaulttransforms_buildtreefromvault",
-      "community": 7,
+      "community": 8,
       "norm_label": "buildtreefromvault()"
     },
     {
@@ -3258,7 +3303,7 @@
       "source_file": "src-tauri\\build.rs",
       "source_location": "L1",
       "id": "src_tauri_build_rs",
-      "community": 44,
+      "community": 43,
       "norm_label": "build.rs"
     },
     {
@@ -3267,7 +3312,7 @@
       "source_file": "src-tauri\\build.rs",
       "source_location": "L1",
       "id": "build_main",
-      "community": 44,
+      "community": 43,
       "norm_label": "main()"
     },
     {
@@ -3312,7 +3357,7 @@
       "source_file": "tests\\example.spec.js",
       "source_location": "L1",
       "id": "tests_example_spec_js",
-      "community": 62,
+      "community": 61,
       "norm_label": "example.spec.js"
     },
     {
@@ -3321,7 +3366,7 @@
       "source_file": "tools\\compare_kimhyeokjo_leaf.js",
       "source_location": "L1",
       "id": "tools_compare_kimhyeokjo_leaf_js",
-      "community": 8,
+      "community": 7,
       "norm_label": "compare_kimhyeokjo_leaf.js"
     },
     {
@@ -3330,7 +3375,7 @@
       "source_file": "tools\\compare_kimhyeokjo_leaf.js",
       "source_location": "L5",
       "id": "compare_kimhyeokjo_leaf_gcd",
-      "community": 8,
+      "community": 7,
       "norm_label": "gcd()"
     },
     {
@@ -3339,7 +3384,7 @@
       "source_file": "tools\\compare_kimhyeokjo_leaf.js",
       "source_location": "L14",
       "id": "compare_kimhyeokjo_leaf_simplify",
-      "community": 8,
+      "community": 7,
       "norm_label": "simplify()"
     },
     {
@@ -3348,8 +3393,17 @@
       "source_file": "tools\\dump_step_by_name.js",
       "source_location": "L1",
       "id": "tools_dump_step_by_name_js",
-      "community": 63,
+      "community": 62,
       "norm_label": "dump_step_by_name.js"
+    },
+    {
+      "label": "graphify.ps1",
+      "file_type": "code",
+      "source_file": "C:\\VS_CODE\\\uc0c1\uc18d\uc9c0\ubd84 \uacc4\uc0b0\uae30\\tools\\graphify.ps1",
+      "source_location": "L1",
+      "id": "c_vs_code_tools_graphify_ps1",
+      "community": 63,
+      "norm_label": "graphify.ps1"
     },
     {
       "label": "inspect_kimmyeongnam.js",
@@ -3357,7 +3411,7 @@
       "source_file": "tools\\inspect_kimmyeongnam.js",
       "source_location": "L1",
       "id": "tools_inspect_kimmyeongnam_js",
-      "community": 45,
+      "community": 44,
       "norm_label": "inspect_kimmyeongnam.js"
     },
     {
@@ -3366,7 +3420,7 @@
       "source_file": "tools\\inspect_kimmyeongnam.js",
       "source_location": "L7",
       "id": "inspect_kimmyeongnam_findbyname",
-      "community": 45,
+      "community": 44,
       "norm_label": "findbyname()"
     },
     {
@@ -3388,52 +3442,12 @@
       "norm_label": "inspect_kimmyeongnam_paternal.js"
     },
     {
-      "label": "App.jsx (Main Controller)",
-      "file_type": "code",
-      "source_file": "src/App.jsx",
-      "id": "app_jsx",
-      "community": 14,
-      "norm_label": "app.jsx (main controller)"
-    },
-    {
-      "label": "Inheritance Engine",
-      "file_type": "code",
-      "source_file": "src/engine/inheritance.js",
-      "id": "inheritance_js",
-      "community": 14,
-      "norm_label": "inheritance engine"
-    },
-    {
-      "label": "Vault Lifecycle",
-      "file_type": "code",
-      "source_file": "src/utils/vaultTransforms.js",
-      "id": "vault_transforms",
-      "community": 14,
-      "norm_label": "vault lifecycle"
-    },
-    {
-      "label": "Smart Guide Logic",
-      "file_type": "code",
-      "source_file": "src/hooks/useSmartGuide.js",
-      "id": "smart_guide",
-      "community": 14,
-      "norm_label": "smart guide logic"
-    },
-    {
       "label": "Core Logic Specs",
       "file_type": "document",
       "source_file": "!\uba85\uc138\uc11c/specs/CORE_LOGIC_SPECS.md",
-      "id": "core_logic_specs",
-      "community": 14,
-      "norm_label": "core logic specs"
-    },
-    {
-      "label": "Tauri Backend",
-      "file_type": "code",
-      "source_file": "src-tauri/src/main.rs",
-      "id": "tauri_main",
-      "community": 14,
-      "norm_label": "tauri backend"
+      "community": 66,
+      "norm_label": "core logic specs",
+      "id": "core_logic_specs"
     }
   ],
   "links": [
@@ -3816,8 +3830,8 @@
       "source_file": "backups\\old_app_v2.js",
       "source_location": "L556",
       "weight": 1.0,
-      "_src": "old_app_v2_applywizard",
-      "_tgt": "old_app2_genid",
+      "_src": "old_app2_genid",
+      "_tgt": "old_app_v2_applywizard",
       "source": "old_app2_genid",
       "target": "old_app_v2_applywizard"
     },
@@ -4464,8 +4478,8 @@
       "source_file": "scratch\\InputPanel_410.jsx",
       "source_location": "L62",
       "weight": 1.0,
-      "_src": "inputpanel_410_handleautofill",
-      "_tgt": "old_app_v2_handleupdate",
+      "_src": "old_app_v2_handleupdate",
+      "_tgt": "inputpanel_410_handleautofill",
       "source": "old_app_v2_handleupdate",
       "target": "inputpanel_410_handleautofill"
     },
@@ -4548,8 +4562,8 @@
       "source_file": "src\\utils\\appActions.js",
       "source_location": "L194",
       "weight": 1.0,
-      "_src": "appactions_ingestaijsoninput",
-      "_tgt": "old_app_v2_findrawids",
+      "_src": "old_app_v2_findrawids",
+      "_tgt": "appactions_ingestaijsoninput",
       "source": "old_app_v2_findrawids",
       "target": "appactions_ingestaijsoninput"
     },
@@ -4908,8 +4922,8 @@
       "source_file": "src\\components\\MiniTreeView.jsx",
       "source_location": "L62",
       "weight": 1.0,
-      "_src": "minitreeview_minitreeview",
-      "_tgt": "app_bc_getstatusstyle",
+      "_src": "app_bc_getstatusstyle",
+      "_tgt": "minitreeview_minitreeview",
       "source": "app_bc_getstatusstyle",
       "target": "minitreeview_minitreeview"
     },
@@ -4920,8 +4934,8 @@
       "source_file": "src\\components\\TreeReportNode.jsx",
       "source_location": "L68",
       "weight": 1.0,
-      "_src": "treereportnode_treereportnode",
-      "_tgt": "app_bc_getstatusstyle",
+      "_src": "app_bc_getstatusstyle",
+      "_tgt": "treereportnode_treereportnode",
       "source": "app_bc_getstatusstyle",
       "target": "treereportnode_treereportnode"
     },
@@ -4980,8 +4994,8 @@
       "source_file": "src\\utils\\treeDomain.js",
       "source_location": "L223",
       "weight": 1.0,
-      "_src": "treedomain_normalizeimportedtree",
-      "_tgt": "app_bc_sanitizenode",
+      "_src": "app_bc_sanitizenode",
+      "_tgt": "treedomain_normalizeimportedtree",
       "source": "app_bc_sanitizenode",
       "target": "treedomain_normalizeimportedtree"
     },
@@ -5084,12 +5098,12 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "src\\App.jsx",
-      "source_location": "L38",
+      "source_file": "C:\\VS_CODE\\\uc0c1\uc18d\uc9c0\ubd84 \uacc4\uc0b0\uae30\\src\\App.jsx",
+      "source_location": "L39",
       "weight": 1.0,
-      "_src": "src_app_jsx",
+      "_src": "c_vs_code_src_app_jsx",
       "_tgt": "app_app",
-      "source": "src_app_jsx",
+      "source": "c_vs_code_src_app_jsx",
       "target": "app_app",
       "confidence_score": 1.0
     },
@@ -5564,12 +5578,12 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "src\\components\\HeirRow.jsx",
+      "source_file": "C:\\VS_CODE\\\uc0c1\uc18d\uc9c0\ubd84 \uacc4\uc0b0\uae30\\src\\components\\HeirRow.jsx",
       "source_location": "L24",
       "weight": 1.0,
-      "_src": "src_components_heirrow_jsx",
+      "_src": "c_vs_code_src_components_heirrow_jsx",
       "_tgt": "heirrow_heirrow",
-      "source": "src_components_heirrow_jsx",
+      "source": "c_vs_code_src_components_heirrow_jsx",
       "target": "heirrow_heirrow",
       "confidence_score": 1.0
     },
@@ -6004,6 +6018,90 @@
       "source": "src_components_minitreeview_jsx",
       "target": "minitreeview_minitreeview",
       "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "C:\\VS_CODE\\\uc0c1\uc18d\uc9c0\ubd84 \uacc4\uc0b0\uae30\\src\\components\\PersonEditModal.jsx",
+      "source_location": "L16",
+      "weight": 1.0,
+      "_src": "c_vs_code_src_components_personeditmodal_jsx",
+      "_tgt": "personeditmodal_rellabel",
+      "source": "c_vs_code_src_components_personeditmodal_jsx",
+      "target": "personeditmodal_rellabel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "C:\\VS_CODE\\\uc0c1\uc18d\uc9c0\ubd84 \uacc4\uc0b0\uae30\\src\\components\\PersonEditModal.jsx",
+      "source_location": "L22",
+      "weight": 1.0,
+      "_src": "c_vs_code_src_components_personeditmodal_jsx",
+      "_tgt": "personeditmodal_fullrow",
+      "source": "c_vs_code_src_components_personeditmodal_jsx",
+      "target": "personeditmodal_fullrow",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "C:\\VS_CODE\\\uc0c1\uc18d\uc9c0\ubd84 \uacc4\uc0b0\uae30\\src\\components\\PersonEditModal.jsx",
+      "source_location": "L33",
+      "weight": 1.0,
+      "_src": "c_vs_code_src_components_personeditmodal_jsx",
+      "_tgt": "personeditmodal_gridrow",
+      "source": "c_vs_code_src_components_personeditmodal_jsx",
+      "target": "personeditmodal_gridrow",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "C:\\VS_CODE\\\uc0c1\uc18d\uc9c0\ubd84 \uacc4\uc0b0\uae30\\src\\components\\PersonEditModal.jsx",
+      "source_location": "L47",
+      "weight": 1.0,
+      "_src": "c_vs_code_src_components_personeditmodal_jsx",
+      "_tgt": "personeditmodal_personeditmodal",
+      "source": "c_vs_code_src_components_personeditmodal_jsx",
+      "target": "personeditmodal_personeditmodal",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "C:\\VS_CODE\\\uc0c1\uc18d\uc9c0\ubd84 \uacc4\uc0b0\uae30\\src\\components\\PersonEditModal.jsx",
+      "source_location": "L174",
+      "weight": 1.0,
+      "_src": "personeditmodal_personeditmodal",
+      "_tgt": "personeditmodal_rellabel",
+      "source": "personeditmodal_rellabel",
+      "target": "personeditmodal_personeditmodal",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "C:\\VS_CODE\\\uc0c1\uc18d\uc9c0\ubd84 \uacc4\uc0b0\uae30\\src\\components\\PersonEditModal.jsx",
+      "source_location": "L60",
+      "weight": 1.0,
+      "_src": "personeditmodal_personeditmodal",
+      "_tgt": "utils_getlawera",
+      "source": "personeditmodal_personeditmodal",
+      "target": "utils_getlawera"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "C:\\VS_CODE\\\uc0c1\uc18d\uc9c0\ubd84 \uacc4\uc0b0\uae30\\src\\components\\PersonEditModal.jsx",
+      "source_location": "L66",
+      "weight": 1.0,
+      "_src": "personeditmodal_personeditmodal",
+      "_tgt": "utils_isbefore",
+      "source": "personeditmodal_personeditmodal",
+      "target": "utils_isbefore"
     },
     {
       "relation": "contains",
@@ -6984,8 +7082,8 @@
       "source_file": "src\\engine\\migrator.js",
       "source_location": "L70",
       "weight": 1.0,
-      "_src": "migrator_migratetreetograph",
-      "_tgt": "graphmodel_createperson",
+      "_src": "graphmodel_createperson",
+      "_tgt": "migrator_migratetreetograph",
       "source": "graphmodel_createperson",
       "target": "migrator_migratetreetograph"
     },
@@ -7248,8 +7346,8 @@
       "source_file": "src\\utils\\treeDomain.js",
       "source_location": "L256",
       "weight": 1.0,
-      "_src": "treedomain_updatedeathinfo",
-      "_tgt": "utils_isbefore",
+      "_src": "utils_isbefore",
+      "_tgt": "treedomain_updatedeathinfo",
       "source": "utils_isbefore",
       "target": "treedomain_updatedeathinfo"
     },
@@ -7260,8 +7358,8 @@
       "source_file": "src\\utils\\vault.js",
       "source_location": "L127",
       "weight": 1.0,
-      "_src": "vault_preprocesstree",
-      "_tgt": "utils_isbefore",
+      "_src": "utils_isbefore",
+      "_tgt": "vault_preprocesstree",
       "source": "utils_isbefore",
       "target": "vault_preprocesstree"
     },
@@ -7668,8 +7766,8 @@
       "source_file": "src\\utils\\vault.js",
       "source_location": "L48",
       "weight": 1.0,
-      "_src": "vault_buildtreefromvault",
-      "_tgt": "initialdata_getinitialtree",
+      "_src": "initialdata_getinitialtree",
+      "_tgt": "vault_buildtreefromvault",
       "source": "initialdata_getinitialtree",
       "target": "vault_buildtreefromvault"
     },
@@ -8304,8 +8402,8 @@
       "source_file": "src-tauri\\src\\main.rs",
       "source_location": "L5",
       "weight": 1.0,
-      "_src": "main_main",
-      "_tgt": "lib_run",
+      "_src": "lib_run",
+      "_tgt": "main_main",
       "source": "lib_run",
       "target": "main_main"
     },
@@ -8368,51 +8466,6 @@
       "source": "tools_inspect_kimmyeongnam_js",
       "target": "inspect_kimmyeongnam_findbyname",
       "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "_src": "app_jsx",
-      "_tgt": "inheritance_js",
-      "source": "app_jsx",
-      "target": "inheritance_js"
-    },
-    {
-      "relation": "uses",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "_src": "app_jsx",
-      "_tgt": "vault_transforms",
-      "source": "app_jsx",
-      "target": "vault_transforms"
-    },
-    {
-      "relation": "uses",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "_src": "app_jsx",
-      "_tgt": "smart_guide",
-      "source": "app_jsx",
-      "target": "smart_guide"
-    },
-    {
-      "relation": "bridged_by",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "_src": "app_jsx",
-      "_tgt": "tauri_main",
-      "source": "app_jsx",
-      "target": "tauri_main"
-    },
-    {
-      "relation": "implements",
-      "confidence": "INFERRED",
-      "confidence_score": 0.9,
-      "_src": "inheritance_js",
-      "_tgt": "core_logic_specs",
-      "source": "inheritance_js",
-      "target": "core_logic_specs"
     }
   ],
   "hyperedges": []
