@@ -231,6 +231,7 @@ function App() {
   const [checkedGuideKeys, setCheckedGuideKeys] = useState(new Set());
   const [hiddenGuideKeys, setHiddenGuideKeys] = useState(new Set());
   const [confirmedGuidesOpen, setConfirmedGuidesOpen] = useState(false);
+  const [reviewContext, setReviewContext] = useState(null); // { guideKey, guideText }
 
   // [v4.64] 스마트 저장 팝업 제어
   useEffect(() => {
@@ -506,6 +507,32 @@ function App() {
       return next;
     });
   };
+  const handleGuideNavigate = (guide) => {
+    if (!guide) return;
+    const targetId = guide.targetNodeId || guide.targetTabId || guide.personId || guide.id;
+    if (!targetId) return;
+
+    const navigationMode = guide.navigationMode || 'auto';
+
+    setPersonEditModal(null);
+
+    if (activeTab === 'input') {
+      handleNavigate(targetId);
+      return;
+    }
+
+    if (navigationMode === 'event') {
+      if (activeTab !== 'tree') {
+        setActiveTab('tree');
+      }
+      setTreeViewMode('flow');
+      setNavigationSignal({ targetId, at: Date.now(), source: 'guide-event' });
+      setReviewContext({ guideKey: guide.uniqueKey, guideText: guide.text });
+      return;
+    }
+
+    handleNavigate(targetId);
+  };
   const dismissGuide = (key) => {
     setHiddenGuideKeys(prev => {
       const next = new Set(prev);
@@ -669,7 +696,7 @@ function App() {
           confirmedGuides={confirmedGuides} confirmedGuidesOpen={confirmedGuidesOpen}
           setConfirmedGuidesOpen={setConfirmedGuidesOpen} showGlobalWarning={guideInfo?.showGlobalWarning}
           globalMismatchReasons={guideInfo?.globalMismatchReasons} auditActionItems={guideInfo?.auditActionItems}
-          repairHints={guideInfo?.repairHints} handleNavigate={handleNavigate}
+          repairHints={guideInfo?.repairHints} handleNavigate={handleNavigate} handleGuideNavigate={handleGuideNavigate}
           showAutoCalcNotice={guideInfo?.showAutoCalcNotice} autoCalculatedNames={guideInfo?.autoCalculatedNames}
           removeHeir={removeHeir}
         />
@@ -738,6 +765,18 @@ function App() {
                         viewMode={treeViewMode}
                         setViewMode={setTreeViewMode}
                         navigationSignal={navigationSignal}
+                        reviewContext={reviewContext}
+                        onCompleteReview={() => {
+                          if (reviewContext) {
+                            toggleGuideChecked(reviewContext.guideKey);
+                            setReviewContext(null);
+                          }
+                        }}
+                        onOpenInInput={(targetId) => {
+                          setReviewContext(null);
+                          setActiveTab('input');
+                          if (targetId) setActiveDeceasedTab(targetId);
+                        }}
                       />
                     </div>
                   )}
@@ -769,6 +808,12 @@ function App() {
             setPersonEditModal(null);
           setActiveTab('input');
           if (foundTabId) setActiveDeceasedTab(foundTabId);
+          }}
+          onOpenInTreeTab={(personId) => {
+            setPersonEditModal(null);
+            setActiveTab('tree');
+            setTreeViewMode('flow');
+            setNavigationSignal({ targetId: personId, at: Date.now(), source: 'guide-event' });
           }}
           node={personEditModalData?.node ?? null}
           parentNode={personEditModalData?.parentNode ?? null}

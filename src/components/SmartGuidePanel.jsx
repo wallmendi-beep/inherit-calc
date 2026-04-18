@@ -1,11 +1,15 @@
 ﻿import React from 'react';
 import ContextualDrawer from './ui/ContextualDrawer';
 
-const GuideCheckButton = ({ label, onClick }) => (
+const GuideCheckButton = ({ label, onClick, tone = 'neutral' }) => (
   <button
     type="button"
     onClick={onClick}
-    className="shrink-0 rounded-md border border-neutral-200 px-2 py-1 text-[11px] font-medium text-slate-500 transition-colors hover:bg-neutral-100 hover:text-slate-700 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+    className={`shrink-0 rounded-md border px-2 py-1 text-[11px] font-medium transition-colors ${
+      tone === 'event'
+        ? 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-300'
+        : 'border-neutral-200 text-slate-500 hover:bg-neutral-100 hover:text-slate-700 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800'
+    }`}
     title={label}
   >
     {label}
@@ -40,12 +44,21 @@ export default function SmartGuidePanel({
   auditActionItems = [],
   repairHints = [],
   handleNavigate = () => {},
+  handleGuideNavigate = () => {},
   showAutoCalcNotice = false,
   autoCalculatedNames = [],
   removeHeir = () => {},
 }) {
   const resolveGuideTarget = (item) =>
     item?.targetNodeId || item?.targetTabId || item?.personId || item?.id || null;
+  const getGuideActionLabel = (guide) => {
+    if (guide?.navigationMode === 'event' && activeTab !== 'input') return '사건 열기';
+    return '확인';
+  };
+  const getGuideActionTone = (guide) => {
+    if (guide?.navigationMode === 'event' && activeTab !== 'input') return 'event';
+    return 'neutral';
+  };
 
   const checkedSet = checkedGuideKeys || new Set();
   const warningsToShow = (warnings || []).filter((warning) => warning.code !== 'auto-sibling-redistribution');
@@ -186,7 +199,7 @@ export default function SmartGuidePanel({
                           !isDeleteAction ? 'cursor-pointer hover:bg-neutral-100' : ''
                         }`}
                         onClick={() => {
-                          if (!isDeleteAction) handleNavigate(resolveGuideTarget(guide));
+                          if (!isDeleteAction) handleGuideNavigate(guide);
                         }}
                       >
                         <div className="flex items-start justify-between gap-3">
@@ -217,9 +230,14 @@ export default function SmartGuidePanel({
                               </button>
                             ) : (
                               <GuideCheckButton
-                                label="확인"
+                                label={getGuideActionLabel(guide)}
+                                tone={getGuideActionTone(guide)}
                                 onClick={(e) => {
                                   e.stopPropagation();
+                                  if (guide?.navigationMode === 'event' && activeTab !== 'input') {
+                                    handleGuideNavigate(guide);
+                                    return;
+                                  }
                                   toggleGuideChecked(guide.uniqueKey);
                                 }}
                               />
@@ -242,7 +260,7 @@ export default function SmartGuidePanel({
                   <li key={`recommended-${index}`} className="group relative">
                     <button
                       type="button"
-                      onClick={() => handleNavigate(resolveGuideTarget(guide))}
+                      onClick={() => handleGuideNavigate(guide)}
                       className="w-full rounded-lg border border-neutral-200 bg-neutral-50 p-3 pr-10 text-left shadow-sm transition-all hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800/40"
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -250,9 +268,14 @@ export default function SmartGuidePanel({
                           {guide.text}
                         </span>
                         <GuideCheckButton
-                          label="확인"
+                          label={getGuideActionLabel(guide)}
+                          tone={getGuideActionTone(guide)}
                           onClick={(e) => {
                             e.stopPropagation();
+                            if (guide?.navigationMode === 'event' && activeTab !== 'input') {
+                              handleGuideNavigate(guide);
+                              return;
+                            }
                             toggleGuideChecked(guide.uniqueKey);
                           }}
                         />

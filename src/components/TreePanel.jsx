@@ -537,6 +537,9 @@ export default function TreePanel({
   viewMode,
   setViewMode,
   navigationSignal,
+  reviewContext = null,
+  onCompleteReview,
+  onOpenInInput,
 }) {
   const [selectedStepKey, setSelectedStepKey] = React.useState(null);
   const asideListRef = React.useRef(null);
@@ -581,7 +584,22 @@ export default function TreePanel({
     }
   }, [steps, selectedStepKey, stepMap]);
 
+  React.useEffect(() => {
+    if (!navigationSignal?.targetId || viewMode !== 'flow' || !steps.length) return;
+    const targetId = navigationSignal.targetId;
+    const nextIndex = steps.findIndex(
+      (step) => step?.dec?.personId === targetId || step?.dec?.id === targetId,
+    );
+    if (nextIndex >= 0) {
+      setSelectedStepKey(getStepKey(steps[nextIndex], nextIndex));
+    }
+  }, [navigationSignal, viewMode, steps]);
+
   const selectedStep = React.useMemo(() => (steps.length ? stepMap.get(selectedStepKey) || steps[0] : null), [steps, selectedStepKey, stepMap]);
+  const isGuideEventOpen =
+    navigationSignal?.source === 'guide-event' &&
+    !!selectedStep &&
+    (selectedStep?.dec?.personId === navigationSignal?.targetId || selectedStep?.dec?.id === navigationSignal?.targetId);
 
   const modeBar = (
     <div className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-[#e5e5e5] bg-[#f8f8f7] p-4 text-[13px] text-[#787774] dark:border-neutral-700 dark:bg-neutral-800/50 dark:text-neutral-300 no-print">
@@ -625,6 +643,31 @@ export default function TreePanel({
   return (
     <div className="flex h-full min-h-0 animate-in fade-in flex-col py-2 duration-300">
       {modeBar}
+
+      {reviewContext && selectedStep && (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-[12px] shadow-sm dark:border-blue-900/40 dark:bg-blue-950/30 no-print">
+          <div className="min-w-0 flex-1">
+            <span className="font-black text-blue-800 dark:text-blue-200">현재 검토 중: </span>
+            <span className="font-bold text-blue-700 dark:text-blue-300">망 {selectedStep.dec?.name} 사건</span>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onOpenInInput?.(selectedStep.dec?.personId || selectedStep.dec?.id)}
+              className="rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-[11px] font-bold text-blue-700 transition-colors hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/20 dark:text-blue-300"
+            >
+              입력 탭에서 수정
+            </button>
+            <button
+              type="button"
+              onClick={onCompleteReview}
+              className="rounded-lg bg-blue-600 px-3 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-600"
+            >
+              검토 완료 ✓
+            </button>
+          </div>
+        </div>
+      )}
 
       {steps.length === 0 || !selectedStep ? (
         <div className="rounded-2xl border border-dashed border-[#d9d9d5] bg-white px-5 py-8 text-center text-[13px] text-[#787774] dark:border-neutral-700 dark:bg-neutral-900/30 dark:text-neutral-400">

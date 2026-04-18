@@ -45,6 +45,7 @@ export default function PersonEditModal({
   isOpen,
   onClose,
   onOpenInInputTab,
+  onOpenInTreeTab,
   node,
   parentNode,
   inheritedDate,
@@ -161,7 +162,17 @@ export default function PersonEditModal({
 
           <Surface className="space-y-3">
             <InfoRow label="이름">
-              <div className="text-[15px] font-bold">{node.name || '이름 미상'}</div>
+              {node.isDeceased && onOpenInTreeTab ? (
+                <button
+                  type="button"
+                  onClick={() => { onOpenInTreeTab(node.personId || node.id); }}
+                  className="text-[15px] font-bold text-blue-700 underline underline-offset-2 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-200 transition-colors text-left"
+                >
+                  {node.name || '이름 미상'}
+                </button>
+              ) : (
+                <div className="text-[15px] font-bold">{node.name || '이름 미상'}</div>
+              )}
             </InfoRow>
 
             <InfoRow label="관계">
