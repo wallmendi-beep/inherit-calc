@@ -107,10 +107,13 @@ const buildShareInfo = (step, dist, innerCommonD, commonD) => {
   };
 };
 
-const getNodeBadges = (dist) => {
+const getNodeBadges = (dist, era) => {
   const badges = [];
   if (typeof dist.h?.isHoju === 'boolean' && dist.h.isHoju) badges.push({ label: '호주상속', tone: 'blue' });
-  if (dist.h?.relation === 'daughter') {
+  const isDaughterContext =
+    dist.h?.relation === 'daughter' ||
+    (dist.h?.relation === 'sibling' && dist.h?._origRelation === 'daughter');
+  if (era && era !== '1991' && isDaughterContext) {
     badges.push({
       label: dist.h?.isSameRegister === false ? '비동일가적' : '동일가적',
       tone: dist.h?.isSameRegister === false ? 'amber' : 'green',
@@ -133,10 +136,11 @@ const getReviewNotes = (step, activeDists) => {
     const sources = step.inflows.map((flow) => `${flow.from} ${flow.n}/${flow.d}`).join(' + ');
     notes.push(`복수 경로 유입: ${sources}`);
   }
-  if (activeDists.some((d) => typeof d.mod === 'string' && d.mod.includes('호주'))) {
+  const era = step.dec?.deathDate ? getLawEra(step.dec.deathDate) : '1991';
+  if (era !== '1991' && activeDists.some((d) => typeof d.mod === 'string' && d.mod.includes('호주'))) {
     notes.push('이번 사건에는 호주상속 판단이 반영된 상속인이 있습니다.');
   }
-  if (activeDists.some((d) => d.h?.relation === 'daughter')) {
+  if (era !== '1991' && activeDists.some((d) => d.h?.relation === 'daughter' || (d.h?.relation === 'sibling' && d.h?._origRelation === 'daughter'))) {
     notes.push('여성 상속인의 동일가적/비동일가적 상태가 결과를 바꿀 수 있습니다.');
   }
   if (activeDists.some((d) => d.h?.deathDate && isBefore(d.h.deathDate, step.dec?.deathDate))) {
@@ -166,19 +170,28 @@ const createGraphNode = ({ key, x, y, width, height, title, subtitle, dateLabel 
   isRoot,
 });
 
+// 배지 수·내용에 따라 카드 실제 높이를 추정
+const estimateCardHeight = (tags, hasBranch) => {
+  // 헤더 + dateLabel + 계산식 한 줄 = base
+  // 브랜치(재상속→) 행은 별도 추가
+  const tagCount = (tags || []).length;
+  const extraRows = tagCount >= 2 ? tagCount - 1 : 0;
+  const base = hasBranch ? 155 : 118;
+  return base + extraRows * 30;
+};
+
 const buildEventLayout = (step, stepMap, commonD, innerCommonD) => {
   const activeDists = (step.dists || []).filter((d) => !d.ex && d.n > 0);
   const spouseDists = activeDists.filter((d) => ['wife', 'husband', 'spouse'].includes(d.h?.relation));
   const heirDists = activeDists.filter((d) => !['wife', 'husband', 'spouse'].includes(d.h?.relation));
 
-  const rootW = 250;
+  const rootW = 255;
   const rootH = 110;
-  const cardW = 260;
-  const cardH = 155;
-  const leftColX = 70;
+  const cardW = 265;
+  const leftColX = 50;
   const topY = 76;
   const verticalGap = 28;
-  const heirsX = 520;
+  const heirsX = 500;
   const heirGap = 20;
 
   const root = createGraphNode({
@@ -197,46 +210,64 @@ const buildEventLayout = (step, stepMap, commonD, innerCommonD) => {
     isRoot: true,
   });
 
+  const stepEra = step.dec?.deathDate ? getLawEra(step.dec.deathDate) : '1991';
+
+  // 배우자 카드: 누적 y 계산
+  let spouseY = topY + rootH + verticalGap;
   const spouseNodes = spouseDists.map((dist, index) => {
     const share = buildShareInfo(step, dist, innerCommonD, commonD);
-    return createGraphNode({
+    const tags = getNodeBadges(dist, stepEra);
+    const hasBranch = !!(dist.h?.deathDate);
+    const cardH = estimateCardHeight(tags, hasBranch);
+    const node = createGraphNode({
       key: dist.h?.personId || dist.h?.id || `spouse-${index}`,
       x: leftColX,
-      y: topY + rootH + verticalGap + index * (cardH + verticalGap),
+      y: spouseY,
       width: cardW,
       height: cardH,
       title: dist.h?.name,
       subtitle: getRelStr(dist.h?.relation, step.dec?.deathDate) || '배우자',
-      tags: getNodeBadges(dist),
+      tags,
       share,
       dist,
       relatedStep: stepMap.get(dist.h?.personId) || stepMap.get(dist.h?.id) || null,
       branchLabel: dist.h?.deathDate ? (isBefore(dist.h.deathDate, step.dec?.deathDate) ? '대습상속 ->' : '재상속 ->') : '',
       eventDateNote: dist.h?.deathDate ? `${formatKorDate(dist.h.deathDate)} 사망` : '',
     });
+    spouseY += cardH + verticalGap;
+    return node;
   });
 
+  // 상속인 카드: 누적 y 계산
+  let heirY = topY;
   const heirNodes = heirDists.map((dist, index) => {
     const share = buildShareInfo(step, dist, innerCommonD, commonD);
-    return createGraphNode({
+    const tags = getNodeBadges(dist, stepEra);
+    const hasBranch = !!(dist.h?.deathDate);
+    const cardH = estimateCardHeight(tags, hasBranch);
+    const node = createGraphNode({
       key: dist.h?.personId || dist.h?.id || `heir-${index}`,
       x: heirsX,
-      y: topY + index * (cardH + heirGap),
+      y: heirY,
       width: cardW,
       height: cardH,
       title: dist.h?.name,
       subtitle: getRelStr(dist.h?.relation, step.dec?.deathDate) || '상속인',
-      tags: getNodeBadges(dist),
+      tags,
       share,
       dist,
       relatedStep: stepMap.get(dist.h?.personId) || stepMap.get(dist.h?.id) || null,
       branchLabel: dist.h?.deathDate ? (isBefore(dist.h.deathDate, step.dec?.deathDate) ? '대습상속 ->' : '재상속 ->') : '',
       eventDateNote: dist.h?.deathDate ? `${formatKorDate(dist.h.deathDate)} 사망` : '',
     });
+    heirY += cardH + heirGap;
+    return node;
   });
 
-  const leftColBottom = spouseNodes.length > 0 ? spouseNodes[spouseNodes.length - 1].y + cardH : root.y + rootH;
-  const heirsBottom = heirNodes.length > 0 ? heirNodes[heirNodes.length - 1].y + cardH : root.y + rootH;
+  const lastSpouse = spouseNodes[spouseNodes.length - 1];
+  const lastHeir = heirNodes[heirNodes.length - 1];
+  const leftColBottom = lastSpouse ? lastSpouse.y + lastSpouse.height : root.y + rootH;
+  const heirsBottom = lastHeir ? lastHeir.y + lastHeir.height : root.y + rootH;
 
   const graphWidth = Math.max(1040, heirsX + cardW + 100);
   const graphHeight = Math.max(leftColBottom, heirsBottom) + 80;
@@ -308,7 +339,10 @@ const PersonNodeCard = ({ node, stepDate, onNavigate, onOpenEvent }) => {
       <div className="flex flex-wrap items-center gap-2">
         <Tag tone={relationTone(node.dist?.h?.relation)}>{relationLabel}</Tag>
         {node.isRoot ? (
-          <div className="text-[16px] font-black text-[#37352f] dark:text-neutral-100">{node.title}</div>
+          <div className="flex items-baseline gap-1">
+            <span className="text-[11.5px] font-bold text-[#9a9994] dark:text-neutral-500">망</span>
+            <span className="text-[16px] font-black text-[#37352f] dark:text-neutral-100">{node.title.replace(/^망\s*/, '')}</span>
+          </div>
         ) : (
           <button
             type="button"
@@ -326,10 +360,9 @@ const PersonNodeCard = ({ node, stepDate, onNavigate, onOpenEvent }) => {
       {node.dateLabel && <div className="mt-2 text-[11px] font-bold text-[#7c7a76] dark:text-neutral-400">{node.dateLabel}</div>}
       {node.share && (
         <div className="mt-3 rounded-xl bg-[#fafaf9] px-3 py-2 dark:bg-neutral-950/30">
-          <div className="font-mono text-[11px] text-[#787774] dark:text-neutral-400">{node.share.formula}</div>
-          <div className="mt-2 flex items-center justify-between gap-3">
-            <div className="text-[11px] text-[#8a8884] dark:text-neutral-400">이 사건 계산</div>
-            <div className="text-[17px] font-black text-[#3f5f8a] dark:text-blue-300">{node.share.finalShare}</div>
+          <div className="flex items-baseline justify-between gap-2">
+            <div className="font-mono text-[11px] text-[#787774] dark:text-neutral-400">{node.share.formula}</div>
+            <div className="text-[15px] font-black text-[#3f5f8a] dark:text-blue-300 shrink-0">{node.share.finalShare}</div>
           </div>
         </div>
       )}
@@ -390,14 +423,15 @@ const EventGraphView = ({ step, stepMap, onNavigate, onOpenEvent }) => {
   const notes = getReviewNotes(step, activeDists);
   const era = step.dec?.deathDate ? getLawEra(step.dec.deathDate) : '';
   const layout = React.useMemo(() => buildEventLayout(step, stepMap, commonD, innerCommonD), [step, stepMap, commonD, innerCommonD]);
-  const pan = useDragPan();
-
   return (
     <div className="space-y-5">
       <div className="rounded-2xl border border-[#e4e2de] bg-[#f7f6f3] px-5 py-4 dark:border-neutral-700 dark:bg-neutral-800/40">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-[12px] font-black tracking-[0.08em] text-[#9b9a97] dark:text-neutral-500">사건 그래프</span>
-          <div className="text-[22px] font-black tracking-tight text-[#37352f] dark:text-neutral-100">피상속인 망 {step.dec?.name}</div>
+        <div className="flex flex-wrap items-baseline gap-3">
+          <span className="text-[13px] font-black tracking-[0.08em] text-[#3b5f8a] dark:text-blue-400">사건 그래프</span>
+          <div className="flex items-baseline gap-1">
+            <span className="text-[13px] font-black text-[#9b9a97] dark:text-neutral-500">피상속인 망</span>
+            <span className="text-[22px] font-black tracking-tight text-[#37352f] dark:text-neutral-100">{step.dec?.name}</span>
+          </div>
           <div className="text-[13px] font-bold text-[#787774] dark:text-neutral-400">{formatKorDate(step.dec?.deathDate)} 사망</div>
           {step.dec?.isHoju && <Tag tone="blue">호주</Tag>}
         </div>
@@ -405,7 +439,6 @@ const EventGraphView = ({ step, stepMap, onNavigate, onOpenEvent }) => {
           <Tag tone="blue">상속지분 {step.inN}/{step.inD}</Tag>
           <Tag>{lawEraLabel(era)}</Tag>
           <Tag>{activeDists.length}명 분배</Tag>
-          <Tag>드래그로 이동</Tag>
         </div>
       </div>
 
@@ -424,14 +457,7 @@ const EventGraphView = ({ step, stepMap, onNavigate, onOpenEvent }) => {
       )}
 
       <div className="rounded-2xl border border-[#e9e9e7] bg-white p-5 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/50">
-        <div
-          ref={pan.ref}
-          onMouseDown={pan.onMouseDown}
-          onMouseMove={pan.onMouseMove}
-          onMouseUp={pan.onMouseUp}
-          onMouseLeave={pan.onMouseLeave}
-          className="w-full cursor-grab select-none rounded-xl bg-[#fcfcfb] dark:bg-neutral-950/20"
-        >
+        <div className="w-full rounded-xl bg-[#fcfcfb] dark:bg-neutral-950/20">
           <div className="relative" style={{ width: `${layout.graphWidth}px`, height: `${layout.graphHeight}px` }}>
             <OrthogonalEdges layout={layout} />
             <PersonNodeCard node={layout.root} stepDate={step.dec?.deathDate} onNavigate={onNavigate} onOpenEvent={onOpenEvent} />

@@ -85,7 +85,7 @@ export const auditInheritanceResult = ({
     (share) => share.n > 0 && !resolvedTransitIds.has(share.personId)
   );
   const hasTotalMismatch = totalN !== expectedN || totalD !== expectedD;
-  const hasWarnings = normalizedWarnings.length > 0;
+  const hasWarnings = normalizedWarnings.length > 0; // 전체 경고 존재 여부 (외부 반환용)
 
   const issues = [];
 
@@ -160,19 +160,21 @@ export const auditInheritanceResult = ({
     });
   }
 
-  normalizedWarnings.forEach((warning) => {
+  // auto-sibling-redistribution은 useSmartGuide에서 권장 가이드로 표시하므로 audit 이슈로 중복 등록하지 않음
+  const auditableWarnings = normalizedWarnings.filter((w) => w.code !== 'auto-sibling-redistribution');
+  auditableWarnings.forEach((warning) => {
     pushIssue(issues, {
       ...warning,
       displayTargets: ['guide', 'input'],
     });
   });
 
-  if (hasWarnings) {
+  if (auditableWarnings.length > 0) {
     pushIssue(issues, {
       code: 'engine-warnings-present',
       severity: 'warning',
       blocking: false,
-      text: `계산 엔진에서 확인이 필요한 경고 ${warnings.length}건이 감지되었습니다.`,
+      text: `계산 엔진에서 확인이 필요한 경고 ${auditableWarnings.length}건이 감지되었습니다.`,
       displayTargets: ['guide', 'input'],
     });
   }

@@ -204,4 +204,83 @@ describe('상속지분 계산 엔진 회귀 테스트 (6종 필수 시나리오)
     expect(daughter.n).toBe(1);
     expect(daughter.d).toBe(1);
   });
+  it('8. excludes a pre-1991 son-in-law-only branch and redistributes at the parent stage', () => {
+    const tree = {
+      id: 'root',
+      name: 'Root',
+      isDeceased: true,
+      deathDate: '1995-10-10',
+      shareN: 1,
+      shareD: 1,
+      heirs: [
+        {
+          id: 'd1',
+          name: 'LateDaughter',
+          relation: 'daughter',
+          isDeceased: true,
+          deathDate: '1985-05-05',
+          heirs: [
+            { id: 'h1', name: 'SonInLaw', relation: 'husband', isDeceased: false, heirs: [] }
+          ]
+        },
+        { id: 's1', name: 'LivingSon', relation: 'son', isDeceased: false, heirs: [] }
+      ]
+    };
+
+    const result = calculateInheritance(tree);
+    const allShares = [
+      ...(result.finalShares.direct || []),
+      ...(result.finalShares.subGroups || []).flatMap(g => g.shares)
+    ];
+
+    const sonInLaw = allShares.find(h => h.name === 'SonInLaw');
+    const livingSon = allShares.find(h => h.name === 'LivingSon');
+    const blockedBranchWarning = (result.warnings || []).find(w => w.code === 'ineligible-substitution-heirs');
+
+    expect(sonInLaw).toBeUndefined();
+    expect(livingSon).toBeDefined();
+    expect(livingSon.n).toBe(1);
+    expect(livingSon.d).toBe(1);
+    expect(result.integrity.hasTotalMismatch).toBe(false);
+    expect(blockedBranchWarning).toBeDefined();
+  });
+
+  it('9. keeps separate substitution groups even when ancestors do not have personId', () => {
+    const tree = {
+      id: 'root',
+      name: 'Root',
+      isDeceased: true,
+      deathDate: '1987-06-01',
+      shareN: 1,
+      shareD: 1,
+      heirs: [
+        {
+          id: 's1',
+          name: 'BranchA',
+          relation: 'son',
+          isDeceased: true,
+          deathDate: '1983-01-01',
+          heirs: [
+            { id: 's1c1', name: 'AChild', relation: 'son', isDeceased: false, heirs: [] }
+          ]
+        },
+        {
+          id: 's2',
+          name: 'BranchB',
+          relation: 'son',
+          isDeceased: true,
+          deathDate: '1984-01-01',
+          heirs: [
+            { id: 's2c1', name: 'BChild', relation: 'son', isDeceased: false, heirs: [] }
+          ]
+        }
+      ]
+    };
+
+    const result = calculateInheritance(tree);
+    const ancestorNames = (result.finalShares.subGroups || []).map(g => g.ancestor.name).sort();
+
+    expect(result.finalShares.subGroups.length).toBe(2);
+    expect(ancestorNames).toEqual(['BranchA', 'BranchB']);
+  });
 });

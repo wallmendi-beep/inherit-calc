@@ -8,6 +8,7 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
   let warnings = [];
   let appliedLaws = new Set();
   const hojuSelectionWarned = new Set();
+  const substitutionBranchWarned = new Set();
 
   const getPersonKey = (person) => {
     if (!person) return '';
@@ -155,6 +156,43 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
     return found;
   };
 
+  const warnIneligibleSubstitutionBranch = (node, contextDate, children = []) => {
+    const warningKey = `${getPersonKey(node)}::${contextDate || ''}`;
+    if (!warningKey || substitutionBranchWarned.has(warningKey)) return;
+    substitutionBranchWarned.add(warningKey);
+
+    const childNames = children
+      .map((child) => `[${child?.name || '이름 미상'}]`)
+      .join(', ');
+
+    pushWarning({
+      code: 'ineligible-substitution-heirs',
+      severity: 'warning',
+      blocking: false,
+      id: node.id || null,
+      personId: getPersonKey(node) || null,
+      targetTabId: node.personId || node.id || null,
+      text: `[${node.name || '이름 미상'}]의 하위 상속인 ${childNames || '[이름 미상]'}은(는) 법적으로 대습상속인이 될 수 없어 이 가지는 제외됩니다. 해당 몫은 같은 단계의 다른 공동상속인 기준으로 다시 계산됩니다.`,
+    });
+  };
+
+  const isEligibleSubstitutionHeir = (child, ancestor, contextDate) => {
+    if (!child) return false;
+    const ancestorDeathDate = ancestor?.deathDate || null;
+    const blocksHusbandSubstitution =
+      (ancestorDeathDate && isBefore(ancestorDeathDate, '1991-01-01'))
+      || (contextDate && isBefore(contextDate, '1991-01-01'));
+
+    if (
+      ancestor?.relation === 'daughter'
+      && child.relation === 'husband'
+      && blocksHusbandSubstitution
+    ) {
+      return false;
+    }
+    return true;
+  };
+
   //  parentPersonId를 추가하여 현재 어떤 탭(부모)을 처리 중인지 추적합니다.
   const traverse = (node, inN, inD, inheritedDate, visitedIds = [], parentDecName = '피상속인') => {
     if (visitedIds.includes(node.id)) {
@@ -198,14 +236,13 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
       if (survivingSpouse.length > 0) return survivingSpouse;
 
       // 3순위: 형제자매 (부모의 다른 자녀 중 생존자 또는 대습상속 유발자)
-      // ※ relation을 'sibling'으로 변환: 원래 son/daughter 그대로 반환하면 이 단계에서
-      //   1979·1960년 법의 출가녀 감산(h.r=0.25) 등 직계비속 비율 로직이 잘못 적용되기 때문.
-      //   형제자매 차순위 상속에서는 법정 균분(h.r=1.0)이 원칙이므로 반드시 'sibling'으로 넘긴다.
+      // ※ relation을 'sibling'으로 변환하되, 원래 성별(son/daughter)은 _origRelation에 보존.
+      //   비율 계산 시 구민법(1979/1960) 출가녀 감산은 _origRelation을 참조한다.
       const siblings = (pNode.heirs || []).filter(h =>
         h.id !== targetNode.id &&
         (['son', 'daughter'].includes(h.relation)) &&
         (!h.isExcluded || (h.exclusionOption === 'predeceased' || h.exclusionOption === 'disqualified' || h.exclusionOption === 'lost'))
-      ).map(h => ({ ...h, relation: 'sibling' }));
+      ).map(h => ({ ...h, relation: 'sibling', _origRelation: h.relation }));
       return siblings;
     };
 
@@ -253,26 +290,7 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
       if (isSpouseHeir && (isPre || isDisqualified)) return true;
       
       if (isPre || isDisqualified) {
-        let children = h.heirs || [];
-        
-        if (children.length === 0 && h.name) {
-          const borrowed = findHeirsByName(tree, h.name, h.id);
-          if (borrowed) children = borrowed;
-
-          // 선사망 대습상속 여부는 직계비속 존재로만 판단한다.
-        }
-
-        if (isDisqualified) {
-          const rootDDate = tree.deathDate || contextDate; 
-          if (!isBefore(rootDDate, '2024-04-25')) {
-            children = children.filter(c => !isSpouseRelation(c.relation));
-          }
-        }
-
-        if (children.length === 0) return true;
-
-        //  대습상속 자격(재혼/결격 등)은 '피대습자(윤숙자)'가 아닌 상속이 개시된 '본래 피상속인(김명남)'의 사망일(contextDate)을 기준으로 엄격히 판별해야 합니다!
-        const validHeirs = children.filter(child => !isRenounced(child, contextDate));
+        const validHeirs = getQualifiedSubstitutionHeirs(h, contextDate, true);
         if (validHeirs.length === 0) return true;
 
         return false;
@@ -284,6 +302,32 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
       !isSpouseRelation(h.relation) && (
         h.isDeceased || (h.isExcluded && (h.exclusionOption === 'disqualified' || h.exclusionOption === 'lost'))
       );
+
+    const getQualifiedSubstitutionHeirs = (target, contextDate, emitWarning = false) => {
+      let children = target.heirs || [];
+
+      if (children.length === 0 && target.name) {
+        const borrowed = findHeirsByName(tree, target.name, target.id);
+        if (borrowed) children = borrowed;
+      }
+
+      if (
+        target.isExcluded
+        && (target.exclusionOption === 'lost' || target.exclusionOption === 'disqualified')
+        && !isBefore(tree.deathDate || contextDate, '2024-04-25')
+      ) {
+        children = children.filter((child) => !isSpouseRelation(child.relation));
+      }
+
+      const activeChildren = children.filter((child) => !isRenounced(child, contextDate));
+      const qualifiedChildren = activeChildren.filter((child) => isEligibleSubstitutionHeir(child, target, contextDate));
+
+      if (emitWarning && activeChildren.length > 0 && qualifiedChildren.length === 0) {
+        warnIneligibleSubstitutionBranch(target, contextDate, activeChildren);
+      }
+
+      return qualifiedChildren;
+    };
 
     if (!node.isExcluded) {
       if (node.isDeceased && !node.deathDate) {
@@ -349,6 +393,20 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
     if (targetHeirs.length === 0 && !isSubstitution && node.id !== 'root' && !isRenounced(node, inheritedDate) && node.successorStatus !== 'confirmed_no_substitute_heirs') {
       const globalSuccessors = findGlobalSuccessors(node).filter(h => !isRenounced(h, distributionDate));
       if (globalSuccessors.length > 0) {
+        // 구민법 시대에 출가녀 감산 대상 자매가 있으면 이름 목록 추가
+        let reducedNote = '';
+        if (law !== '1991') {
+          const reducedNames = globalSuccessors.filter(s => {
+            if (s._origRelation !== 'daughter') return false;
+            let isMarried = s.isSameRegister === false;
+            if (s.marriageDate && distributionDate) isMarried = !isBefore(distributionDate, s.marriageDate);
+            if (s.restoreDate && distributionDate && !isBefore(distributionDate, s.restoreDate)) isMarried = false;
+            return isMarried;
+          }).map(s => `[${s.name || '이름 미상'}]`);
+          if (reducedNames.length > 0) {
+            reducedNote = ` ${reducedNames.join(', ')}은(는) 비동일가적으로 감산되었습니다.`;
+          }
+        }
         pushWarning({
           code: 'auto-sibling-redistribution',
           severity: 'info',
@@ -356,7 +414,7 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
           id: node.id,
           personId: node.personId || node.id,
           targetTabId: node.personId || node.id,
-          text: `[${node.name || '이름 미상'}]의 후속 상속인이 없어 형제자매(차순위)에게 자동 분배되었습니다. 실제 상속인과 다를 경우 해당 탭에서 후속 상속인을 직접 입력해 주세요.`,
+          text: `[${node.name || '이름 미상'}]의 후속 상속인이 없어 형제자매(차순위)에게 자동 분배되었습니다. 실제 상속인과 다를 경우 해당 탭에서 후속 상속인을 직접 입력해 주세요.${reducedNote}`,
         });
       }
       targetHeirs = globalSuccessors;
@@ -457,7 +515,9 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
          if (law === '1991') {
            h.r = 1.0;
          } else if (law === '1979') {
-           if (h.relation === 'daughter') {
+           // 형제자매(sibling)는 _origRelation으로 원래 성별을 복원하여 출가녀 감산 적용
+           const effRel = h.relation === 'sibling' ? (h._origRelation || 'son') : h.relation;
+           if (effRel === 'daughter') {
              // 🤖 [Phase 2-2: 시계열 판별 AI] 혼인 및 친가복적 자동 판별
              let isMarried = h.isSameRegister === false;
              if (h.marriageDate && distributionDate) {
@@ -468,16 +528,18 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
              }
 
              if (!isMarried) { h.r = 1.0; }
-              else { h.r = 0.25; modifier = '출가녀 감산 (남자의 1/4)'; }
-            } else if (h.relation === 'son') {
-              if (canApplyHojuBonus({ heir: h, law, context: hojuContext })) {
+              else { h.r = 0.25; modifier = h.relation === 'sibling' ? '자매 출가녀 감산 (남자의 1/4)' : '출가녀 감산 (남자의 1/4)'; }
+            } else if (effRel === 'son') {
+              // 형제자매 맥락에서는 호주 가산 미적용
+              if (h.relation !== 'sibling' && canApplyHojuBonus({ heir: h, law, context: hojuContext })) {
                 h.r = 1.5;
                 modifier = getHojuBonusReason({ context: hojuContext });
               }
               else { h.r = 1.0; }
             } else h.r = 1.0;
          } else { // 1960년 구법
-            if (h.relation === 'daughter') {
+           const effRel = h.relation === 'sibling' ? (h._origRelation || 'son') : h.relation;
+           if (effRel === 'daughter') {
               // 🤖 [Phase 2-2: 시계열 판별 AI] 혼인 및 친가복적 자동 판별
               let isMarried = h.isSameRegister === false;
               if (h.marriageDate && distributionDate) {
@@ -487,10 +549,11 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
                 isMarried = false; // 복적 완료!
               }
 
-                if (!isMarried) { h.r = 0.5; modifier = '여자 감산 (남자의 1/2)'; }
-                else { h.r = 0.25; modifier = '출가녀 감산 (남자의 1/4)'; }
-             } else if (h.relation === 'son') {
-               if (canApplyHojuBonus({ heir: h, law, context: hojuContext })) {
+              if (!isMarried) { h.r = 0.5; modifier = h.relation === 'sibling' ? '자매 여자 감산 (남자의 1/2)' : '여자 감산 (남자의 1/2)'; }
+              else { h.r = 0.25; modifier = h.relation === 'sibling' ? '자매 출가녀 감산 (남자의 1/4)' : '출가녀 감산 (남자의 1/4)'; }
+             } else if (effRel === 'son') {
+               // 형제자매 맥락에서는 호주 가산 미적용
+               if (h.relation !== 'sibling' && canApplyHojuBonus({ heir: h, law, context: hojuContext })) {
                  h.r = 1.5;
                 modifier = getHojuBonusReason({ context: hojuContext });
                }
@@ -602,14 +665,19 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
 
   const buildCategory = (node, branchRoot, order) => {
     if (!node.heirs) return;
-    node.heirs.forEach(h => {
-      if (!h.isDeceased && h.name && h.name.trim() !== '') {
-        const personKey = getPersonKey(h);
-        if (!categoryMap[personKey]) {
-          categoryMap[personKey] = { type: 'sub', ancestor: branchRoot, order: order };
+      node.heirs.forEach(h => {
+        if (!h.isDeceased && h.name && h.name.trim() !== '') {
+          const personKey = getPersonKey(h);
+          if (!categoryMap[personKey]) {
+            categoryMap[personKey] = {
+              type: 'sub',
+              ancestor: branchRoot,
+              ancestorKey: getPersonKey(branchRoot),
+              order: order,
+            };
+          }
         }
-      }
-      if (h.isDeceased) {
+        if (h.isDeceased) {
         buildCategory(h, branchRoot, order);
       }
     });
@@ -632,9 +700,9 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
     const cat = categoryMap[m.personId];
     if (!cat || cat.type === 'direct') { directShares.push(m); } 
     else {
-      const ancPId = cat.ancestor.personId;
-      if (!subMap[ancPId]) subMap[ancPId] = { ancestor: cat.ancestor, order: cat.order, shares: [] };
-      subMap[ancPId].shares.push(m);
+      const ancestorKey = cat.ancestorKey || getPersonKey(cat.ancestor);
+      if (!subMap[ancestorKey]) subMap[ancestorKey] = { ancestor: cat.ancestor, order: cat.order, shares: [] };
+      subMap[ancestorKey].shares.push(m);
     }
   });
 
