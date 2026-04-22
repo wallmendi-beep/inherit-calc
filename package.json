@@ -1,7 +1,7 @@
 {
   "name": "inheritance-calc-pro",
   "private": true,
-  "version": "3.0.28",
+  "version": "1.0.0-beta",
   "type": "module",
   "scripts": {
     "dev": "vite",
