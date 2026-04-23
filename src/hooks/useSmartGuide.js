@@ -2,7 +2,7 @@
 import { getLawEra, isBefore } from '../engine/utils';
 import { auditInheritanceResult } from '../engine/inheritanceAudit';
 
-// 紐⑤뱢 ?덈꺼 ?곸닔: tree媛 null?닿굅??鍮꾩뼱?덉쓣 ????긽 ?숈씪??李몄“瑜?諛섑솚??
+// 트리가 없을 때는 항상 같은 기본 상태 참조를 반환한다.
 const EMPTY_GUIDE_STATE = {
   showGlobalWarning: false,
   showAutoCalcNotice: false,
@@ -79,7 +79,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       return null;
     };
 
-    // ?ы띁 ?⑥닔 3: 援ъ“???ㅻ쪟 媛먯? (?먯떇 ?먮━??遺紐???
+    // 헬퍼 함수 3: 구조 오류 감지 (자식 아래 부모/형제 관계)
     const checkStructuralError = (node) => {
       const invalidHeirs = (node.heirs || []).filter(h => ['parent', 'sibling'].includes(h.relation));
       invalidHeirs.forEach(h => {
@@ -156,7 +156,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
           const groupKey = `next-order-female:${node.personId || node.id}`;
           const current = groupedNextOrderFemaleMap.get(groupKey) || {
             decedentName: node.name || '해당 사건',
-            // ?ъ꽦 ?뺤젣?먮ℓ??parentNode???먯떇?대?濡?parentNode ??뿉???섏젙
+            // 여성 형제자매 검토 가이드는 부모 사건 단위로 묶는다.
             targetTabId: parentTabId,
             names: [],
           };
@@ -244,7 +244,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       }
     };
 
-    // 媛?대뱶 寃???ㅽ뻾
+    // 가이드 규칙 실행
     checkStructuralError(tree);
     checkIndependentExclusionGuide(tree);
     checkDuplicateSpouseGuide(tree);
@@ -254,7 +254,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
     groupedPredeceasedMissingMap.forEach((group, key) => {
       const uniqueNames = Array.from(new Set(group.names));
       if (uniqueNames.length === 0) return;
-      // 1紐낆씠硫??대떦 ?щ쭩??蹂몄씤 ??쑝濡? ?щ윭 紐낆씠硫?遺紐???쑝濡??대룞
+      // 1명이면 해당 인물 사건으로, 여러 명이면 부모 사건으로 이동
       const navTarget = uniqueNames.length === 1 ? group.firstTargetTabId : group.targetTabId;
       uniqueGuidesMap.set(`grouped-missing-substitution-${key}`, {
         id: key, uniqueKey: `grouped-missing-substitution-${key}`, targetTabId: navTarget, type: 'mandatory', navigationMode: 'event',
@@ -265,7 +265,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
     groupedDirectMissingMap.forEach((group, key) => {
       const uniqueNames = Array.from(new Set(group.names));
       if (uniqueNames.length === 0) return;
-      // 1紐낆씠硫??대떦 ?щ쭩??蹂몄씤 ??쑝濡? ?щ윭 紐낆씠硫?遺紐???쑝濡??대룞
+      // 1명이면 해당 인물 사건으로, 여러 명이면 부모 사건으로 이동
       const navTarget = uniqueNames.length === 1 ? group.firstTargetTabId : group.targetTabId;
       uniqueGuidesMap.set(`grouped-direct-missing-${key}`, {
         id: navTarget, uniqueKey: `grouped-direct-missing-${key}`, targetTabId: navTarget, type: 'mandatory', navigationMode: 'event',
