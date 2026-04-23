@@ -95,6 +95,93 @@ export default function InputPanel({
     return Array.from(new Set(names));
   };
 
+  const spouseEmptyStateGuide = React.useMemo(() => {
+    if (!currentNode || !['wife', 'husband', 'spouse'].includes(currentNode.relation)) return null;
+
+    if (currentNode.relation === 'wife') {
+      return {
+        title: `[${currentNode.name || '해당 배우자'}]에게만 있는 추가 자녀가 있는지 확인해 주세요.`,
+        body: `현재 화면은 [${resolvedParentNode?.name || '상위 사건'}] 사건에서 이어진 자녀 목록을 기준으로 보이고 있습니다. ${currentNode.name || '해당 배우자'}에게만 있는 별도의 자녀가 있으면 추가로 입력하고, 없으면 '추가 상속인 없음'으로 확정해 주세요.`,
+        confirmHelper: '처 사건 기준으로 더 입력할 자녀가 없으면 이 상태를 확정합니다.',
+      };
+    }
+
+    if (currentNode.relation === 'husband') {
+      return {
+        title: `[${currentNode.name || '해당 배우자'}] 사건의 자녀 범위를 확인해 주세요.`,
+        body: `현재 표시된 자녀들이 모두 [${currentNode.name || '해당 배우자'}]의 자녀인지 먼저 확인해 주세요. [${currentNode.name || '해당 배우자'}]의 자녀가 아닌 사람은 삭제하거나 제외 처리하고, 자녀가 없다면 그다음 직계존속 여부를 검토해 주세요.`,
+        confirmHelper: '남편 사건의 자녀 범위를 확인한 뒤 더 입력할 후속 상속인이 없으면 이 상태를 확정합니다.',
+      };
+    }
+
+    return {
+      title: `[${currentNode.name || '해당 배우자'}] 사건의 후속 상속 구성을 확인해 주세요.`,
+      body: `현재 사건에서 [${currentNode.name || '해당 배우자'}]에게 연결될 후속 상속인이 더 있는지 확인해 주세요. 더 입력할 사람이 없으면 '추가 상속인 없음'으로 확정하면 됩니다.`,
+      confirmHelper: '이 배우자 사건에서 더 입력할 후속 상속인이 없으면 이 상태를 확정합니다.',
+    };
+  }, [currentNode, resolvedParentNode]);
+
+  const [excludedSpouseChildMap, setExcludedSpouseChildMap] = React.useState({});
+
+  const parentChildCandidates = React.useMemo(
+    () => parentHeirsForGuide.filter((person) => ['son', 'daughter'].includes(person.relation)),
+    [parentHeirsForGuide]
+  );
+  const getSpouseCandidateKey = React.useCallback(
+    (person) => person?.personId || person?.id || '',
+    []
+  );
+
+  const excludedSpouseChildIds = excludedSpouseChildMap[currentNode?.id || ''] || [];
+  const isLegacyWifeReinheritance =
+    !!currentNode &&
+    currentNode.relation === 'wife' &&
+    currentLawEra !== '1991' &&
+    !!resolvedParentNode &&
+    resolvedParentNode.id !== 'root';
+  const isHusbandReinheritanceGuide =
+    !!currentNode &&
+    currentNode.relation === 'husband' &&
+    !!resolvedParentNode &&
+    resolvedParentNode.id !== 'root';
+  const showSpouseComparisonPanel =
+    ['wife', 'husband', 'spouse'].includes(currentNode?.relation) &&
+    parentChildCandidates.length > 0 &&
+    !!resolvedParentNode;
+  const areAllHusbandCandidatesExcluded =
+    isHusbandReinheritanceGuide &&
+    parentChildCandidates.length > 0 &&
+    excludedSpouseChildIds.length === parentChildCandidates.length;
+
+  const toggleExcludedSpouseChild = React.useCallback((personId) => {
+    if (!currentNode?.id || !personId) return;
+    setExcludedSpouseChildMap((prev) => {
+      const current = new Set(prev[currentNode.id] || []);
+      if (current.has(personId)) current.delete(personId);
+      else current.add(personId);
+      return {
+        ...prev,
+        [currentNode.id]: Array.from(current),
+      };
+    });
+  }, [currentNode]);
+
+  const clearExcludedSpouseChildren = React.useCallback(() => {
+    if (!currentNode?.id) return;
+    setExcludedSpouseChildMap((prev) => ({
+      ...prev,
+      [currentNode.id]: [],
+    }));
+  }, [currentNode]);
+
+  const excludeAllSpouseChildren = React.useCallback(() => {
+    if (!currentNode?.id) return;
+    setExcludedSpouseChildMap((prev) => ({
+      ...prev,
+      [currentNode.id]: parentChildCandidates.map((person) => getSpouseCandidateKey(person)).filter(Boolean),
+    }));
+  }, [currentNode, parentChildCandidates, getSpouseCandidateKey]);
+
   const getEmptyStateGuide = () => {
     if (currentNode?.successorStatus) {
       const confirmedLabel =
@@ -177,7 +264,9 @@ export default function InputPanel({
     };
   };
 
-  const emptyStateGuide = getEmptyStateGuide();
+  const emptyStateGuide = ['wife', 'husband', 'spouse'].includes(currentNode?.relation)
+    ? spouseEmptyStateGuide
+    : getEmptyStateGuide();
   const compareDateForCurrentNode = resolvedParentNode?.deathDate || tree?.deathDate || '';
   const isCurrentPredeceased =
     !!(currentNode?.deathDate && compareDateForCurrentNode && isBefore(currentNode.deathDate, compareDateForCurrentNode));
@@ -218,7 +307,14 @@ export default function InputPanel({
 
     if (['wife', 'husband', 'spouse'].includes(currentNode.relation)) {
       const children = parentHeirs.filter((s) => ['son', 'daughter'].includes(s.relation));
-      baseAdd = children.filter((c) => c.name.trim() === '' || !existingNames.has(c.name));
+      const filteredChildren = currentNode.relation === 'husband'
+        ? children.filter((child) => !excludedSpouseChildIds.includes(getSpouseCandidateKey(child)))
+        : children;
+      if (currentNode.relation === 'husband' && children.length > 0 && filteredChildren.length === 0) {
+        alert('남은 자녀 후보가 없습니다. 직계존속 또는 형제자매 같은 차순위 상속인 입력이 필요한지 검토해 주세요.');
+        return;
+      }
+      baseAdd = filteredChildren.filter((c) => c.name.trim() === '' || !existingNames.has(c.name));
     } else {
       const parents = parentHeirs.filter((s) => {
         if (!['wife', 'husband', 'spouse'].includes(s.relation)) return false;
@@ -384,6 +480,79 @@ export default function InputPanel({
               </div>
             )}
 
+            {showSpouseComparisonPanel && (
+              <div className="mb-4 rounded-lg border border-[#e9e9e7] bg-[#fcfcfb] px-4 py-4 dark:border-neutral-700 dark:bg-neutral-900/30">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-[12px] font-bold text-[#37352f] dark:text-neutral-200">
+                      상위 사건 자녀 목록
+                    </div>
+                    <div className="mt-1 text-[11.5px] leading-relaxed text-[#787774] dark:text-neutral-400">
+                      {isLegacyWifeReinheritance
+                        ? `위 자녀들은 [${resolvedParentNode?.name || '상위 사건'}] 사건 기준 자녀 목록입니다. 1991년 이전 사건에서는 이 자녀들이 [${currentNode?.name || '해당 배우자'}] 사건의 기본 상속인으로 반영됩니다. [${currentNode?.name || '해당 배우자'}]에게만 있는 별도의 자녀가 있으면 추가로 입력해 주세요.`
+                        : isHusbandReinheritanceGuide
+                          ? `위 자녀들은 [${resolvedParentNode?.name || '상위 사건'}] 사건 기준 자녀 목록입니다. [${currentNode?.name || '해당 배우자'}] 사건에서는 이 목록이 그대로 상속인이 아닐 수 있습니다. 상속인이 아닌 사람이 있으면 선택해 주세요.`
+                          : `위 자녀들은 [${resolvedParentNode?.name || '상위 사건'}] 사건 기준 자녀 목록입니다. 현재 사건과 다른 부분이 있으면 불러오기 후 수정해 주세요.`}
+                    </div>
+                  </div>
+                  {isHusbandReinheritanceGuide && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={clearExcludedSpouseChildren}
+                        className="rounded-md border border-[#e9e9e7] bg-white px-2.5 py-1 text-[11px] font-bold text-[#5f5b55] transition-colors hover:bg-[#f3f3f1] dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                      >
+                        전체 해제
+                      </button>
+                      <button
+                        type="button"
+                        onClick={excludeAllSpouseChildren}
+                        className="rounded-md border border-[#e9e9e7] bg-white px-2.5 py-1 text-[11px] font-bold text-[#5f5b55] transition-colors hover:bg-[#f3f3f1] dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                      >
+                        전부 제외
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {parentChildCandidates.map((child) => {
+                    const candidateKey = getSpouseCandidateKey(child);
+                    const isExcludedCandidate = excludedSpouseChildIds.includes(candidateKey);
+                    return (
+                      <button
+                        key={child.id}
+                        type="button"
+                        onClick={() => isHusbandReinheritanceGuide && toggleExcludedSpouseChild(candidateKey)}
+                        className={`inline-flex items-center rounded-full border px-3 py-1.5 text-[11.5px] font-bold transition-colors ${
+                          isHusbandReinheritanceGuide
+                            ? isExcludedCandidate
+                              ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300'
+                              : 'border-[#d9d5cf] bg-white text-[#5f5b55] hover:bg-[#f3f3f1] dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200'
+                            : 'border-[#d9d5cf] bg-white text-[#5f5b55] dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200'
+                        }`}
+                      >
+                        {child.name || '이름 미상'}
+                        {isHusbandReinheritanceGuide && isExcludedCandidate ? ' 제외' : ''}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {isHusbandReinheritanceGuide && (
+                  <div className="mt-3 text-[11px] leading-relaxed text-[#787774] dark:text-neutral-400">
+                    선택한 사람은 남편 사건에서 불러오기 대상에서 제외합니다. 모두 제외하면 직계존속 또는 형제자매 같은 차순위 상속인 입력이 필요한지 검토해 주세요.
+                  </div>
+                )}
+
+                {areAllHusbandCandidatesExcluded && (
+                  <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200">
+                    {`현재 자녀 후보가 모두 제외되었습니다. [${currentNode?.name || '해당 배우자'}] 사건에서는 직계비속이 보이지 않으므로, 부모 등 직계존속 또는 형제자매 같은 차순위 상속인 입력이 필요한지 검토해 주세요.`}
+                  </div>
+                )}
+              </div>
+            )}
+
             {nodeHeirs.length === 0 && (
               currentNode?.isDeceased && (currentNode?.isExcluded !== true || !!emptyStateConfirm || !!currentNode?.successorStatus) ? (
                 <div className="flex flex-col items-center justify-center p-8 bg-[#f8f8f7] dark:bg-neutral-800/40 border border-[#e9e9e7] dark:border-neutral-700 rounded-lg text-center gap-2 m-2 mb-4">
@@ -400,10 +569,14 @@ export default function InputPanel({
                         onClick={() => handleUpdate(currentNode.id, 'successorStatus', emptyStateConfirm.value)}
                         className="inline-flex items-center rounded-md border border-neutral-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-700 shadow-sm transition-colors hover:bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200"
                       >
-                        {emptyStateConfirm.label}
+                        {['wife', 'husband', 'spouse'].includes(currentNode?.relation)
+                          ? '추가 상속인 없음'
+                          : emptyStateConfirm.label}
                       </button>
                       <span className="text-[11.5px] text-[#787774] dark:text-neutral-400">
-                        {emptyStateConfirm.helper}
+                        {['wife', 'husband', 'spouse'].includes(currentNode?.relation)
+                          ? (spouseEmptyStateGuide?.confirmHelper || emptyStateConfirm.helper)
+                          : emptyStateConfirm.helper}
                       </span>
                     </div>
                   )}

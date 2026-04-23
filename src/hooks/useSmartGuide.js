@@ -1,6 +1,7 @@
 ﻿import { useMemo } from 'react';
 import { getLawEra, isBefore } from '../engine/utils';
 import { auditInheritanceResult } from '../engine/inheritanceAudit';
+import { buildSpouseDirectGuideText, collectLegacyStepchildGuideEntries } from './smartGuideHelpers';
 
 // 트리가 없을 때는 항상 같은 기본 상태 참조를 반환한다.
 const EMPTY_GUIDE_STATE = {
@@ -187,13 +188,15 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
             }
           } else {
             const contextName = parentNode?.name || tree.name || '현재 계보';
-            const groupKey = `${parentNode?.personId || parentNode?.id || 'root'}:${isSpouse ? 'spouse' : 'general'}`;
+            const spouseGroupKey = isSpouse ? `${node.relation || 'spouse'}` : 'general';
+            const groupKey = `${parentNode?.personId || parentNode?.id || 'root'}:${spouseGroupKey}`;
             const current = groupedDirectMissingMap.get(groupKey) || {
               parentName: contextName,
               targetTabId: parentNode?.personId || parentNode?.id || 'root',
               firstTargetTabId: node.personId || node.id,
               names: [],
               isSpouseGroup: isSpouse,
+              spouseRelation: isSpouse ? node.relation : null,
             };
             current.names.push(node.name || '?대쫫 誘몄긽');
             groupedDirectMissingMap.set(groupKey, current);
@@ -250,6 +253,18 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
     checkDuplicateSpouseGuide(tree);
     if (tree.heirs) tree.heirs.forEach(h => checkGuideNode(h, tree.deathDate));
 
+    collectLegacyStepchildGuideEntries(tree).forEach((entry) => {
+      if (uniqueGuidesMap.has(entry.key)) return;
+      uniqueGuidesMap.set(entry.key, {
+        id: entry.personId,
+        uniqueKey: entry.key,
+        type: 'recommended',
+        navigationMode: 'event',
+        targetTabId: entry.targetTabId,
+        text: entry.text,
+      });
+    });
+
     // 洹몃９?붾맂 媛?대뱶??泥섎━
     groupedPredeceasedMissingMap.forEach((group, key) => {
       const uniqueNames = Array.from(new Set(group.names));
@@ -270,7 +285,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       uniqueGuidesMap.set(`grouped-direct-missing-${key}`, {
         id: navTarget, uniqueKey: `grouped-direct-missing-${key}`, targetTabId: navTarget, type: 'mandatory', navigationMode: 'event',
         text: group.isSpouseGroup
-          ? `${group.parentName} 사건에서 후속 상속 검토가 필요한 배우자가 있습니다: [${uniqueNames.join('], [')}]. 후속 상속인을 입력하거나 '추가 상속인 없음' 확정 버튼을 눌러 주세요.`
+          ? buildSpouseDirectGuideText(group, uniqueNames)
           : `${group.parentName} 사건에서 후속 상속 검토가 필요한 사람이 있습니다: [${uniqueNames.join('], [')}]. 후속 상속인을 입력하거나 '후속 상속인 없음' 확정 버튼을 눌러 주세요.`, 
       });
     });
@@ -312,13 +327,21 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
     // ?붿쭊 寃쎄퀬 ??SmartGuide ?듯빀 (auto-sibling-redistribution ??
     (warnings || []).forEach((warning) => {
       if (warning.code !== 'auto-sibling-redistribution') return;
+      const linkedNode = findNodeInHook(tree, warning.personId, warning.targetTabId || warning.id);
+      const warningText = linkedNode && ['wife', 'husband', 'spouse'].includes(linkedNode.relation)
+        ? linkedNode.relation === 'wife'
+          ? `[${linkedNode.name || '해당 배우자'}] 사건의 추가 자녀 여부를 다시 확인해 주세요.`
+          : linkedNode.relation === 'husband'
+            ? `[${linkedNode.name || '해당 배우자'}] 사건의 자녀 범위를 다시 확인해 주세요.`
+            : `[${linkedNode.name || '해당 배우자'}] 사건의 후속 상속 구성을 다시 확인해 주세요.`
+        : warning.text;
       const key = `engine-${warning.code}-${warning.personId || warning.targetTabId || 'root'}`;
       if (!uniqueGuidesMap.has(key)) {
         uniqueGuidesMap.set(key, {
           id: warning.personId || warning.id,
           uniqueKey: key,
           type: 'recommended',
-          text: warning.text,
+          text: warningText,
           targetTabId: warning.targetTabId || warning.personId,
           personId: warning.personId || '',
         });

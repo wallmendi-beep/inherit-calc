@@ -85,6 +85,9 @@ export default function PersonEditModal({
   const needsNextOrderFemaleReview = hasAnyConfirmedNoSuccessors && isLegacyContext && node.relation === 'daughter';
   const needsHojuReview = showHoju && hasEnteredHeirs && !node.isHoju;
   const isReinheritanceReview = !!node.isDeceased && hasEnteredHeirs && !hasAnyConfirmedNoSuccessors;
+  const isSpouseReinheritanceReview = isSpouseType && !!node.isDeceased;
+  const isWifeReinheritanceReview = isSpouseReinheritanceReview && node.relation === 'wife';
+  const isHusbandReinheritanceReview = isSpouseReinheritanceReview && node.relation === 'husband';
 
   const relationLabelMap = {
     wife: lawEra === '1991' ? '배우자' : '처',
@@ -115,6 +118,10 @@ export default function PersonEditModal({
     ? `${sourceEventName || '현재'} 사건은 차순위 상속 검토 대상입니다. 여성 형제자매의 혼인·복적·동일가적 여부가 결과를 바꿀 수 있습니다.`
     : needsHojuReview
       ? `${node.name || '해당 인물'} 사건은 호주상속 검토 단계입니다. 1차 상속인 중 호주상속인을 지정해야 합니다.`
+      : isWifeReinheritanceReview
+        ? `${node.name || '해당 배우자'} 사건은 배우자 재상속 검토 단계입니다. 상위 사건에서 이어진 자녀 목록과 별도로, ${node.name || '해당 배우자'}에게만 있는 자녀가 있는지 먼저 확인해 주세요.`
+        : isHusbandReinheritanceReview
+          ? `${node.name || '해당 배우자'} 사건은 배우자 재상속 검토 단계입니다. 현재 자녀 범위를 먼저 확인하고, 자녀가 없으면 직계존속 순서를 검토해 주세요.`
       : isReinheritanceReview
         ? `${node.name || '해당 인물'}는 이 사건에서 지분을 받은 뒤 다시 사망했습니다. 다음 상속 단계가 올바르게 이어지는지 확인해 주세요.`
         : hasAnyConfirmedNoSuccessors
@@ -242,13 +249,25 @@ export default function PersonEditModal({
                   <li>1차 상속인 중 누구를 호주상속으로 볼지 입력 탭에서 지정해 주세요.</li>
                 </>
               ) : null}
-              {isReinheritanceReview ? (
+              {isWifeReinheritanceReview ? (
+                <>
+                  <li>현재 화면의 자녀 목록은 상위 사건에서 이어진 정보일 수 있으니, 그대로 이 처의 상속인이라고 단정하지 말아야 합니다.</li>
+                  <li>이 처에게만 있는 별도의 자녀가 있으면 추가로 입력하고, 없으면 추가 상속인 없음으로 정리하면 됩니다.</li>
+                </>
+              ) : null}
+              {isHusbandReinheritanceReview ? (
+                <>
+                  <li>현재 표시된 자녀들이 모두 이 남편의 자녀인지 먼저 확인해 주세요.</li>
+                  <li>남편의 자녀가 아닌 사람은 삭제하거나 제외 처리하고, 자녀가 없으면 그다음 직계존속 여부를 검토해 주세요.</li>
+                </>
+              ) : null}
+              {isReinheritanceReview && !isSpouseReinheritanceReview ? (
                 <>
                   <li>이 사람은 이 사건에서 지분을 받은 뒤 다시 사망했습니다.</li>
                   <li>다음 상속 단계에서 후속 상속인과 분배 경로가 맞는지 확인해 주세요.</li>
                 </>
               ) : null}
-              {!needsNextOrderFemaleReview && !needsHojuReview && !isReinheritanceReview ? (
+              {!needsNextOrderFemaleReview && !needsHojuReview && !isReinheritanceReview && !isSpouseReinheritanceReview ? (
                 <>
                   <li>현재 사건에서 이 사람의 지위와 이미 확정된 사실이 충돌하지 않는지 확인해 주세요.</li>
                   <li>입력값이 다르면 입력 탭으로 돌아가 수정하면 됩니다.</li>
