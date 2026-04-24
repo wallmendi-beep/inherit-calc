@@ -519,10 +519,10 @@ const DialScrubber = ({ listRef, steps, selectedKey, onSelect }) => {
   return (
     <div
       ref={trackRef}
-      className="flex w-5 shrink-0 cursor-ns-resize select-none items-stretch py-3"
+      className="flex w-4 shrink-0 cursor-ns-resize select-none items-stretch py-3"
       onMouseDown={(e) => { dragging.current = true; seek(e.clientY); e.preventDefault(); }}
     >
-      <div className="relative mx-auto w-[3px] flex-1 rounded-full bg-[#e4e2de] dark:bg-neutral-700">
+      <div className="relative mx-auto w-[2px] flex-1 rounded-full bg-[#e4e2de] dark:bg-neutral-700">
         <div
           className="absolute left-0 w-full rounded-full bg-[#a8a39a] dark:bg-neutral-500 pointer-events-none"
           style={{ top: `${thumbTop}%`, height: `${thumbH}%` }}
@@ -539,10 +539,10 @@ const DialScrubber = ({ listRef, steps, selectedKey, onSelect }) => {
               onClick={(e) => { e.stopPropagation(); onSelect(key); }}
               className={`absolute left-1/2 -translate-x-1/2 rounded-full transition-all ${
                 isActive
-                  ? 'h-3 w-3 bg-blue-500 ring-2 ring-blue-200 dark:ring-blue-800'
-                  : 'h-1.5 w-1.5 bg-[#c8c4be] hover:bg-[#6b6964] dark:bg-neutral-600 dark:hover:bg-neutral-400'
+                  ? 'h-2.5 w-2.5 bg-blue-500 ring-[1.5px] ring-blue-200 dark:ring-blue-800'
+                  : 'h-1 w-1 bg-[#c8c4be] hover:bg-[#6b6964] dark:bg-neutral-600 dark:hover:bg-neutral-400'
               }`}
-              style={{ top: `calc(${pct}% - ${isActive ? 6 : 3}px)` }}
+              style={{ top: `calc(${pct}% - ${isActive ? 5 : 2}px)` }}
             />
           );
         })}
