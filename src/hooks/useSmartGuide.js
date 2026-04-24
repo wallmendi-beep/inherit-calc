@@ -90,7 +90,8 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
             type: 'mandatory',
             navigationMode: 'event',
             text: `[${h.name || '이름 미상'}]이(가) [${node.name || '부모'}]의 하위 위치에 '부모/형제' 관계로 입력되어 있습니다. 해당 위치로 이동해 관계를 확인한 뒤 수정하거나 삭제해 주세요.`,
-            targetTabId: 'tree',
+            targetTabId: node.personId || node.id || 'root',
+            targetNodeIds: [h.id, h.personId].filter(Boolean),
             targetNodeId: h.id,
             parentNodeId: node.id
           });
