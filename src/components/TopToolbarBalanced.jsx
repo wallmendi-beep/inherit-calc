@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   IconFolderOpen,
   IconMoon,
@@ -93,7 +93,7 @@ export default function TopToolbarBalanced({
           <div className="flex min-w-0 items-center gap-3 overflow-hidden rounded-2xl border border-[#eceae4] bg-[#fbfaf7] px-3 py-1.5 shadow-[0_1px_0_rgba(255,255,255,0.9)] dark:border-neutral-700 dark:bg-neutral-800/80">
             <div className="flex min-w-0 items-center gap-2 pr-1">
               <span className="truncate text-[17px] font-bold tracking-tight text-[#37352f] dark:text-neutral-100">상속지분계산기 PRO</span>
-              <span className="shrink-0 rounded-full bg-[#e9e9e7] px-2 py-0.5 text-[10px] font-semibold text-[#787774] dark:bg-neutral-700 dark:text-neutral-300">beta 1.0</span>
+
             </div>
 
             <div className="hidden h-7 w-px bg-[#e1dfd8] dark:bg-neutral-700 lg:block" />
