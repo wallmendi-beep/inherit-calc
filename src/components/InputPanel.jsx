@@ -97,7 +97,7 @@ export default function InputPanel({
     [reviewContext]
   );
 
-  // [v4.74] 가이드 클릭 시 자동 스크롤 및 하이라이트 유지
+  // [v4.74] 가이드 클릭 시 자동 스크롤 및 하이라이트 유지 로직
   React.useEffect(() => {
     if (reviewTargetNodeIds.size === 0) return;
     const timer = setTimeout(() => {
