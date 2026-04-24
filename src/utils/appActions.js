@@ -1,11 +1,11 @@
-﻿import {
+import {
   normalizeImportedTree,
   serializeFactTree,
   serializeFullTree
 } from './treeDomain';
 import { AI_PROMPT } from './aiPromptUtf8';
 
-// AI ?묐떟 JSON?먯꽌 ?덉슜???꾨뱶留?異붿텧 (蹂댁븞/?덉쟾??
+// AI 응답 JSON에서 허용된 필드만 추출 (보안/안전성)
 const sanitizeAiFacts = (node, isRoot = true) => {
   if (!node || typeof node !== 'object') return node;
   const src = Array.isArray(node) ? { heirs: node } : node;
@@ -24,20 +24,20 @@ const sanitizeAiFacts = (node, isRoot = true) => {
 };
 
 /**
- * [v4.60] ?뚯씪紐낆쑝濡??ъ슜?????녿뒗 臾몄옄瑜??쒓굅?⑸땲??
+ * [v4.60] 파일명으로 사용할 수 없는 문자를 제거합니다.
  */
 function sanitizeKorFilePart(str, fallback) {
   if (!str) return fallback;
-  return str.replace(/[^a-zA-Z0-9가-힣\s_-]/g, '').trim() || fallback;
+  return str.replace(/[^a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ\s_-]/g, '').trim() || fallback;
 }
 
 export function printCurrentTab({ activeTab, tree, summaryViewMode = 'structure' }) {
   const tabNames = {
-    input: '가계도_입력화면',
+    input: '가계도시뮬레이션',
     tree: '사건검토_상속인명부',
     calc: '상속지분_산출내역',
     summary: summaryViewMode === 'path' ? '법정상속분_취득경로표' : '법정상속분_요약표',
-    amount: '구체적상속분_계산결과',
+    amount: '구체적상속분_결과',
   };
 
   const currentTabName = tabNames[activeTab] || '보고서';
@@ -56,20 +56,20 @@ export function saveFactTreeToFile(tree, scenarioData = null) {
   let exportData;
 
   if (isCaseSnapshot) {
-    // [v4.60] ?ш굔踰덊샇媛 ?덈뒗 寃쎌슦 ?꾩껜 ?곹깭 ?ㅻ깄?????
+    // [v4.60] 사건번호가 있는 경우 전체 상태 스냅샷 저장
     exportData = {
       type: 'inheritance-case-snapshot',
       version: 'v4.60',
       metadata: {
         caseNo: tree.caseNo,
-        decedentName: tree.name || '?쇱긽?띿씤',
+        decedentName: tree.name || '피상속인',
         savedAt: new Date().toISOString(),
       },
       vault: serializeFullTree(tree),
       scenario: scenarioData
     };
   } else {
-    // 湲곗〈 諛⑹떇: ?쒖닔 媛怨꾨룄 ?몃━留????
+    // 기존 방식: 순수 가계도 트리만 저장
     exportData = serializeFactTree(tree);
   }
 
@@ -102,12 +102,12 @@ export function loadTreeFromJsonFile(file, {
     try {
       const data = JSON.parse(event.target.result);
 
-      // [v4.60] ?ㅻ깄???뺤떇??寃쎌슦
+      // [v4.60] 스냅샷 형식인 경우
       if (data.type === 'inheritance-case-snapshot' && data.vault) {
         const normalized = normalizeImportedTree(data.vault);
         setTree(normalized);
         
-        // ?쒕굹由ъ삤 ?곗씠??蹂듦뎄
+        // 시나리오 데이터 복구
         if (data.scenario) {
           const { propertyValue, specialBenefits, contributions, isAmountActive } = data.scenario;
           if (propertyValue !== undefined) setPropertyValue?.(propertyValue);
@@ -116,18 +116,18 @@ export function loadTreeFromJsonFile(file, {
           if (isAmountActive !== undefined) setIsAmountActive?.(isAmountActive);
         }
         
-        setActiveTab('calc'); // 紐⑤뱺 ?곗씠?곌? ?덉쑝誘濡?諛붾줈 怨꾩궛 ??쑝濡??대룞
+        setActiveTab('calc'); // 모든 데이터가 있으므로 바로 계산 탭으로 이동
         return;
       }
 
-      // 湲곗〈 諛⑹떇 ?명솚
+      // 기존 방식 호환
       if (data.id === 'root' || (Array.isArray(data.heirs) && data.name !== undefined)) {
         const normalized = normalizeImportedTree(data);
-        const issues = []; // 湲곗〈 諛⑹떇? 寃利??댁뒋瑜??덈줈 ?섏쭛?섏? ?딄퀬 鍮?諛곗뿴 ?꾨떖 (遺덈윭?ㅺ린 吏곹썑 watcher?먯꽌 泥섎━??
+        const issues = []; // 기존 방식은 검증 이슈를 새로 수집하지 않고 빈 배열 전달 (불러오기 직후 watcher에서 처리됨)
         setTree(normalized);
         setActiveTab('input');
       } else if (data.people && Array.isArray(data.people)) {
-        alert('?댁쟾 踰꾩쟾 ?뺤떇?낅땲?? ?쇰? ?곗씠?곌? ?꾨씫?????덉뒿?덈떎.');
+        alert('이전 버전 형식입니다. 일부 데이터가 누락될 수 있습니다.');
         const root = data.people.find((person) => person.isRoot || person.id === 'root');
         if (root) {
           setTree({
@@ -144,10 +144,10 @@ export function loadTreeFromJsonFile(file, {
           setActiveTab('input');
         }
       } else {
-        alert('?몄떇?????녿뒗 ?뚯씪 ?뺤떇?낅땲??');
+        alert('인식할 수 없는 파일 형식입니다.');
       }
     } catch (error) {
-      alert(`?뚯씪???щ뒗 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎: ${error.message}`);
+      alert(`파일을 여는 중 오류가 발생했습니다: ${error.message}`);
     }
   };
 
@@ -155,46 +155,16 @@ export function loadTreeFromJsonFile(file, {
 }
 
 export function printAiPromptDocument() {
-  const printWindow = window.open('', '_blank', 'width=800,height=600');
-  if (!printWindow) {
-    alert('인쇄 창을 열 수 없습니다. 브라우저의 팝업 차단 설정을 확인해 주세요.');
-    return;
-  }
-
-  printWindow.document.write(`
-    <html>
-      <head>
-        <title>AI 프롬프트 인쇄</title>
-        <style>
-          body {
-            font-family: sans-serif;
-            line-height: 1.6;
-            padding: 20px;
-            white-space: pre-wrap;
-          }
-        </style>
-      </head>
-      <body>${AI_PROMPT}</body>
-    </html>
-  `);
+  const printWindow = window.open('', '', 'height=600,width=800');
+  printWindow.document.write('<html><head><title>AI 프롬프트 인쇄</title>');
+  printWindow.document.write('<style>body { font-family: sans-serif; line-height: 1.6; padding: 20px; white-space: pre-wrap; }</style>');
+  printWindow.document.write('</head><body>');
+  printWindow.document.write(AI_PROMPT);
+  printWindow.document.write('</body></html>');
   printWindow.document.close();
-
-  const triggerPrint = () => {
-    try {
-      printWindow.focus();
-      printWindow.print();
-    } catch (error) {
-      console.error('AI prompt print failed:', error);
-    }
-  };
-
-  printWindow.onload = () => {
-    setTimeout(triggerPrint, 150);
-  };
-
-  if (printWindow.document.readyState === 'complete') {
-    setTimeout(triggerPrint, 150);
-  }
+  printWindow.focus();
+  printWindow.print();
+  printWindow.close();
 }
 
 export function ingestAiJsonInput({
@@ -215,7 +185,7 @@ export function ingestAiJsonInput({
     if (aiTargetId === 'root') {
       setTree(normalizeImportedTree({ ...parsedTree, id: 'root' }));
     } else {
-      // ????몃뱶??id 紐⑸줉 ?섏쭛
+      // 대상 노드의 id 목록 수집
       const targetRawIds = [];
       const findRawIds = (node) => {
         if (node.id === aiTargetId || node.personId === aiTargetId) targetRawIds.push(node.id);
@@ -256,7 +226,7 @@ export function ingestAiJsonInput({
     setAiInputText('');
     setActiveTab('input');
 
-    // ?꾪룷????寃利?
+    // 임포트 후 검증
     let hasMissingHeir = false;
     let hasMultipleSpouses = false;
     const checkIssues = (node) => {
@@ -271,14 +241,13 @@ export function ingestAiJsonInput({
     checkIssues(parsedTree);
 
     if (hasMultipleSpouses) {
-      alert('?좑툘 [二쇱쓽] AI ?낅젰 寃곌낵, ?숈씪?몄뿉寃?諛곗슦?먭? ?щ윭 紐??깅줉?섏뿀?듬땲??\n?낅젰 ??뿉???ㅼ젣 ?곸냽沅뚯씠 ?녿뒗 諛곗슦?먮? [?곸냽 ?쒖쇅] 泥섎━?섍굅????젣??二쇱꽭??');
+      alert('⚠️ [주의] AI 입력 결과, 동일인에게 배우자가 여러 명 등록되었습니다.\n입력 탭에서 실제 상속권이 없는 배우자를 [상속 제외] 처리하거나 삭제해 주세요.');
     } else if (hasMissingHeir) {
-      alert('?좑툘 [寃利??덈궡] AI ?곸냽???먮룞 ?낅젰???꾨즺?섏뿀?쇰굹,\n?섏쐞 ?곸냽?몄씠 ?녿뒗 ?щ쭩?먭? ?ы븿?섏뼱 ?덉뒿?덈떎.\n?낅젰 ??쓽 寃쎄퀬 諛곕꼫瑜??뺤씤?섍퀬 蹂댁셿??二쇱꽭??');
+      alert('⚠️ [검증 안내] AI 상속인 자동 입력이 완료되었으나,\n하위 상속인이 없는 사망자가 포함되어 있습니다.\n입력 탭의 경고 배너를 확인하고 보완해 주세요.');
     } else {
-      alert('AI ?곸냽???먮룞 ?낅젰???꾨즺?섏뿀?듬땲??');
+      alert('AI 상속인 자동 입력이 완료되었습니다.');
     }
   } catch (e) {
-    alert('JSON ?뺤떇???щ컮瑜댁? ?딆뒿?덈떎. AI ?묐떟?먯꽌 JSON 肄붾뱶釉붾줉留?蹂듭궗??二쇱꽭??');
+    alert('JSON 형식이 올바르지 않습니다. AI 응답에서 JSON 코드블록만 복사해 주세요.');
   }
 }
-

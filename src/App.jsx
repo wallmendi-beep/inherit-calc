@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   IconCalculator, IconUserPlus, IconSave, IconFolderOpen,
   IconPrinter, IconNetwork, IconTable, IconList,
@@ -511,24 +511,74 @@ function App() {
     if (!guide) return;
     const targetId = guide.targetNodeId || guide.targetTabId || guide.personId || guide.id;
     if (!targetId) return;
-
+    
+    // 타겟 노드가 배열로 존재하는 모든 가이드에 대해 하이라이트 기능을 범용적으로 적용
+    const hasTargetNodes = Array.isArray(guide.targetNodeIds) && guide.targetNodeIds.length > 0;
     const navigationMode = guide.navigationMode || 'auto';
-    const isGroupedSubstitutionGuide = guide?.uniqueKey?.startsWith('grouped-missing-substitution-');
 
     setPersonEditModal(null);
 
-    if (isGroupedSubstitutionGuide) {
+    if (hasTargetNodes) {
+      if (activeTab !== 'input') setActiveTab('input');
+      if (guide.targetTabId && guide.targetTabId !== activeDeceasedTab) {
+        setActiveDeceasedTab(guide.targetTabId);
+      }
+      
+      // InputPanel의 isHighlighted 하이라이트를 활성화하기 위해 reviewContext 설정
+      // 상태 업데이트 배칭(Batching)으로 인해 탭 이동과 컨텍스트 설정이 동시에 안전하게 적용됩니다.
       setReviewContext({
         guideKey: guide.uniqueKey,
         guideText: guide.text,
         targetNodeIds: guide.targetNodeIds || [],
       });
-      if (activeTab !== 'input') {
-        setActiveTab('input');
-      }
-      if (guide.targetTabId) {
-        setActiveDeceasedTab(guide.targetTabId);
-      }
+      
+      const nodeIds = (guide.targetNodeIds || []).filter(Boolean);
+      
+      // 렌더링이 완전히 끝난 후 DOM에 확실하게 접근하기 위해 약간의 여유(400ms)를 둡니다.
+      setTimeout(() => {
+        let firstScrolled = false;
+        nodeIds.forEach((id) => {
+          try {
+            const el = document.querySelector(`[data-node-id="${id}"]`);
+            if (!el) return;
+            
+            if (!firstScrolled) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              firstScrolled = true;
+            }
+            
+            // 인라인 스타일로 확실한 시각적 피드백 제공
+            const origBg = el.style.backgroundColor;
+            const origShadow = el.style.boxShadow;
+            const origTransform = el.style.transform;
+            const origZIndex = el.style.zIndex;
+            const origTransition = el.style.transition;
+            
+            el.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+            el.style.backgroundColor = '#eff6ff';
+            el.style.boxShadow = '0 0 0 3px #1d4ed8, 0 8px 25px -5px rgba(29, 78, 216, 0.5)';
+            el.style.transform = 'scale(1.02)';
+            el.style.zIndex = '50';
+            
+            // 애니메이션 원복
+            setTimeout(() => {
+              try {
+                if (el) {
+                  el.style.backgroundColor = origBg;
+                  el.style.boxShadow = origShadow;
+                  el.style.transform = origTransform;
+                  el.style.zIndex = origZIndex;
+                  el.style.transition = origTransition;
+                }
+              } catch (e) {
+                // DOM 요소가 언마운트된 경우 조용히 무시
+              }
+            }, 2500);
+          } catch (error) {
+            console.error('Highlight DOM Error:', error);
+          }
+        });
+      }, 400);
       return;
     }
 
