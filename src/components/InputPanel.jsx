@@ -647,6 +647,14 @@ export default function InputPanel({
             </DndContext>
           </div>
         </div>
+        
+        <div className="mt-4 flex justify-end px-2 no-print pointer-events-none select-none">
+          <span 
+            className="font-['Caveat','Dancing_Script','Great_Vibes',cursive] text-[16px] tracking-wider text-[#d4d4d0] dark:text-[#404040] [text-shadow:1px_1px_0px_rgba(255,255,255,0.9),-1px_-1px_0px_rgba(0,0,0,0.05)] dark:[text-shadow:1px_1px_0px_rgba(255,255,255,0.02),-1px_-1px_0px_rgba(0,0,0,0.8)] opacity-90"
+          >
+            Designed by J.H. LEE
+          </span>
+        </div>
       </div>
     </div>
   );
