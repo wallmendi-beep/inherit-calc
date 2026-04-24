@@ -114,7 +114,7 @@ export default function ResultPanel({ calcSteps, tree, issues = [], handleNaviga
                   {r.sources.map((src, si) => (
                     <div key={si} className={`flex items-baseline gap-1 ${si > 0 ? 'mt-1.5 pt-1.5 border-t border-dashed border-[#e9e9e7] dark:border-neutral-700' : ''}`}>
                       <span className="font-medium text-[#37352f] dark:text-neutral-200 shrink-0">{src.n}/{src.d}</span>
-                      <span className="text-[#787774] dark:text-neutral-500 text-[12px]">망 {src.decName}의 {getRelStr(src.relation, src.decDeathDate) || '상속인'}으로 {lawLabel(src.lawEra)} 적용{src.mod ? ` (${src.mod})` : ''}</span>
+                      <span className="text-[#787774] dark:text-neutral-500 text-[12px]">망 {src.decName}의 {getRelStr(src.relation, src.decDeathDate) || '상속인'} &lt;{lawLabel(src.lawEra)}&gt;{src.mod ? ` (${src.mod})` : ''}</span>
                     </div>
                   ))}
                   {isMultiSource && (

@@ -243,7 +243,7 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
                     <td className="border border-black py-2 px-2 text-left">
                       {r.sources.map((src, si) => (
                         <div key={si} className="mb-1">
-                          • 망 {src.decName}의 {getRelStr(src.relation, src.decDeathDate)}로서 ({src.n}/{src.d})
+                          • 망 {src.decName}의 {getRelStr(src.relation, src.decDeathDate)} &lt;{lawLabel(src.lawEra)}&gt;{src.mod ? ` (${src.mod})` : ''} ({src.n}/{src.d})
                         </div>
                       ))}
                       {r.sources.length > 1 && (
@@ -336,8 +336,7 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
                       <td className="border border-black py-2 px-2 text-left">
                         {r.sources.map((src, si) => (
                           <div key={si} className={si > 0 ? 'mt-1 pt-1 border-t border-dashed border-gray-300' : ''}>
-                            • 망 {src.decName}의 {getRelStr(src.relation, src.decDeathDate)}로서 {src.n}/{src.d}
-                            <span className="text-gray-500 ml-1">({lawLabel(src.lawEra)} 적용{src.mod ? `, ${src.mod}` : ''})</span>
+                            • 망 {src.decName}의 {getRelStr(src.relation, src.decDeathDate)} &lt;{lawLabel(src.lawEra)}&gt;{src.mod ? ` (${src.mod})` : ''} ({src.n}/{src.d})
                           </div>
                         ))}
                         {r.sources.length > 1 && (

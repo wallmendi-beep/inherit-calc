@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { IconList } from './Icons';
 import { math, getRelStr, formatKorDate, isBefore } from '../engine/utils';
 import { extractHojuBonusNotices, buildHojuBonusPersonMap } from '../utils/hojuBonusNotice';
@@ -121,7 +121,7 @@ const PathView = ({ calcSteps, tree, issues, handleNavigate, searchQuery }) => {
                     <div key={`${result.personId}-src-${index}`} className={`flex items-baseline gap-1 ${index > 0 ? 'mt-1.5 border-t border-dashed border-[#e9e9e7] pt-1.5 dark:border-neutral-700' : ''}`}>
                       <span className="shrink-0 font-medium text-[#37352f] dark:text-neutral-200">{source.n}/{source.d}</span>
                       <span className="text-[12px] text-[#787774] dark:text-neutral-500">
-                        망 {source.decName}의 {getRelStr(source.relation, source.decDeathDate) || '상속인'}으로 {lawLabel(source.lawEra)} 적용
+                        망 {source.decName}의 {getRelStr(source.relation, source.decDeathDate) || '상속인'} &lt;{lawLabel(source.lawEra)}&gt;
                         {source.modifier ? ` (${source.modifier})` : ''}
                       </span>
                     </div>
