@@ -1,16 +1,52 @@
-# React + Vite
+# 🏛️ 상속지분 계산기 PRO (Inheritance Calculator PRO)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+복잡한 구민법 적용, 대습상속, 재상속 등 까다로운 대한민국 상속 법리를 정확히 반영하여 상속 지분을 자동으로 연산해 주는 전문가용 웹 애플리케이션입니다.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## ⚠️ 사용자 필수 숙지 및 주의사항
 
-## React Compiler
+### 1. 개인정보 보호 및 보안 유의사항 (Privacy & Security)
+본 계산기는 사용자의 민감한 정보 보호를 위해 **100% 클라이언트(웹 브라우저) 환경**에서만 동작합니다.
+* **서버 전송 없음**: 입력하신 가족 관계, 성명, 사망일자 등 민감한 개인정보는 외부 서버나 데이터베이스로 절대 전송되지 않습니다.
+* **로컬 파일 저장**: 작업 중인 데이터는 화면 상단의 **[저장]** 버튼을 눌러 본인의 PC에 `.json` 파일로 안전하게 보관해 주십시오. (브라우저 종료 또는 새로고침 시 데이터가 초기화될 수 있습니다.)
+* **출력물 보안**: 민감 정보가 포함된 결과물을 인쇄하거나 PDF로 저장할 때, 타인에게 유출되지 않도록 각별한 주의를 바랍니다.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 2. 연도별 상속권 판정 규칙 (구민법 반영 자동화)
+대한민국 민법은 제정 및 개정 연도에 따라 상속 순위와 지분, 차별 규정이 다르게 적용됩니다. 본 계산기는 입력된 **피상속인의 사망일자**를 기준으로 아래의 법령을 자동 추적하여 지분을 계산합니다.
+* **1960년 제정 민법 (1960.1.1 ~ 1978.12.31)**: 호주상속인 5할 가산, 출가녀(비동일가적) 감산(남자의 1/4) 등 차별 규정 적용.
+* **1979년 개정 민법 (1979.1.1 ~ 1990.12.31)**: 배우자 5할 가산 도입. 장남 가산 존재. 출가녀 감산 규정 일부 완화 등 세부 규정 적용.
+* **1991년 현행 민법 (1991.1.1 ~ 현재)**: 남녀 차별 철폐, 호주제 관련 상속 특례 폐지. 배우자 1.5배, 자녀 1배로 평등 분배.
 
-## Expanding the ESLint configuration
+> **핵심 가이드**: 1990년 이전 사망 사건의 경우, "호주 상속" 여부와 여성 상속인의 "가적(동일가적/비동일가적)" 상태가 전체 지분에 막대한 영향을 미칩니다. 스마트 가이드의 안내에 따라 해당 정보를 정확히 체크해 주셔야 올바른 계산이 진행됩니다.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### 3. 스마트 가이드(가계도 검증기) 활용 방법
+우측(또는 상단 툴바)에 위치한 **스마트 가이드**는 상속 지분 계산의 법률 나침반입니다.
+* 데이터 입력 후 반드시 가이드 창을 열어 **빨간색 ⚠️(필수 조치)** 항목이 있는지 확인하십시오.
+* 부모/자식 관계의 꼬임, 사망일자의 역전, 필수 입력값 누락 시 가이드가 즉각적인 해결 방법을 제시합니다.
+* 가이드 창이 "이상 없음" 상태가 되어야만 [계산 상세] 및 [결과 요약] 탭에서 신뢰할 수 있는 정확한 결괏값이 출력됩니다.
+
+### 4. 대습상속과 재상속의 자동 분기 처리
+* **대습상속**: 피상속인보다 '먼저' 사망한 자녀나 형제자매가 있을 경우, 그들의 배우자와 자녀(손자녀)가 상속권을 이어받습니다. 계산기가 사망일자를 비교하여 자동으로 대습상속을 판정합니다.
+* **재상속**: 상속 개시(피상속인 사망) 후 지분을 물려받은 상속인이 이어서 사망한 경우입니다. 계산기는 이들에게 먼저 지분을 분배한 뒤, 그 지분을 다시 하위 상속인들에게 2차 분배하는 연쇄 사건 그래프를 시뮬레이션 탭에 자동 생성합니다. 
+
+---
+
+## 🚀 시작하기 (Getting Started)
+
+### 로컬 환경 구성 및 실행
+이 프로젝트는 React + Vite 환경으로 구축되어 있습니다. Node.js 가 설치된 환경에서 아래 명령어를 실행하세요.
+
+```bash
+# 1. 의존성 패키지 설치
+npm install
+
+# 2. 로컬 개발 서버 실행
+npm run dev
+
+# 3. 프로덕션 환경 빌드
+npm run build
+```
+
+---
+*Designed by J.H. LEE*
