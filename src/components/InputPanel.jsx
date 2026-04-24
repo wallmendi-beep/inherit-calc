@@ -3,9 +3,8 @@ import { DndContext, closestCenter } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { DateInput } from './DateInput';
 import HeirRow from './HeirRow';
-import { IconTrash2, IconUserGroup, IconUserPlus, IconX } from './Icons';
+import { IconTrash2, IconUserGroup, IconUserPlus, IconX, IconSparkles } from './Icons';
 import { getLawEra, formatKorDate, getRelStr, isBefore } from '../engine/utils';
-import { BadgeToggle } from './ui/InheritDesign';
 
 export default function InputPanel({
   tree,
@@ -98,6 +97,7 @@ export default function InputPanel({
     [reviewContext]
   );
 
+  // [최신 기능] 가이드 클릭 후 하이라이트 대상 첫 행으로 자동 스크롤
   React.useEffect(() => {
     if (reviewTargetNodeIds.size === 0) return;
     const timer = setTimeout(() => {
@@ -117,6 +117,24 @@ export default function InputPanel({
     () => parentHeirsForGuide.filter((person) => ['son', 'daughter'].includes(person.relation)),
     [parentHeirsForGuide]
   );
+
+  const isLegacyWifeReinheritance =
+    !!currentNode &&
+    currentNode.relation === 'wife' &&
+    currentLawEra !== '1991' &&
+    !!resolvedParentNode &&
+    resolvedParentNode.id !== 'root';
+
+  const isHusbandReinheritanceGuide =
+    !!currentNode &&
+    currentNode.relation === 'husband' &&
+    !!resolvedParentNode &&
+    resolvedParentNode.id !== 'root';
+
+  const showSpouseComparisonPanel =
+    ['wife', 'husband', 'spouse'].includes(currentNode?.relation) &&
+    parentChildCandidates.length > 0 &&
+    !!resolvedParentNode;
 
   const briefing = React.useMemo(() => {
     if (currentNode?.successorStatus) {
@@ -196,6 +214,23 @@ export default function InputPanel({
         </div>
       )}
 
+      {showSpouseComparisonPanel && (
+        <div className="mb-6 rounded-2xl border-2 border-[#1e56a0]/20 bg-[#eff6ff]/30 p-5 dark:border-blue-900/30 dark:bg-blue-900/10">
+          <div className="flex items-start justify-between">
+            <div>
+              <h4 className="text-[14px] font-bold text-[#1e56a0] dark:text-blue-400">
+                {isLegacyWifeReinheritance ? '여성 상속인(처)의 동일가적 여부 검토' : '남편의 대습상속 자격 검토'}
+              </h4>
+              <p className="mt-1 text-[13px] text-blue-700/80 dark:text-blue-300/80">
+                {isLegacyWifeReinheritance
+                  ? '구민법상 처가 시댁 가계에서 계속 상속권을 가지려면 남편 사망 후 시댁 가적에 남아있어야 합니다. 분가하거나 재혼했다면 상속권이 소멸할 수 있습니다.'
+                  : '1991년 이전 민법에서는 남편이 사망한 경우, 아내가 대습상속인이 되기 위해서는 해당 가계에 자녀가 있어야 합니다. 자녀가 없다면 아내의 대습상속권이 인정되지 않습니다.'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mb-4 flex items-center justify-between no-print">
         <div className="flex items-center gap-2">
           <IconUserGroup className="w-5 h-5 text-[#37352f] dark:text-neutral-400" />
@@ -250,11 +285,11 @@ export default function InputPanel({
                 placeholder="상속인 이름을 쉼표(,)로 구분해 입력 (예: 김철수, 이영희)"
                 value={mainQuickVal}
                 onChange={(e) => setMainQuickVal(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleQuickSubmit(mainQuickVal); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleQuickSubmit(activeDeceasedTab, currentNode, mainQuickVal); }}
                 className="w-full rounded-xl border border-[#e9e9e7] bg-white px-5 py-3.5 text-[14px] shadow-sm transition-all focus:border-[#1e56a0] focus:ring-4 focus:ring-[#1e56a0]/10 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100"
               />
               <button
-                onClick={() => handleQuickSubmit(mainQuickVal)}
+                onClick={() => handleQuickSubmit(activeDeceasedTab, currentNode, mainQuickVal)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg bg-[#1e56a0] p-2 text-white shadow-md hover:bg-[#1a4a8a] transition-all"
               >
                 <IconUserPlus className="w-5 h-5" />
@@ -270,7 +305,7 @@ export default function InputPanel({
                   onClick={() => setIsAiModalOpen(true)}
                   className="flex items-center gap-1.5 text-[13px] font-bold text-[#1e56a0] hover:underline dark:text-blue-400"
                 >
-                  AI로 가계도 자동 구성
+                  <IconSparkles className="w-4 h-4" /> AI로 가계도 자동 구성
                 </button>
                 {nodeHeirs.length > 0 && (
                   <button

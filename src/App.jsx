@@ -573,6 +573,29 @@ function App() {
     return smartGuides.filter(g => checkedGuideKeys.has(g.uniqueKey));
   }, [smartGuides, checkedGuideKeys]);
 
+  const resetAllState = () => {
+    setTree({ id: 'root', name: '', gender: 'male', deathDate: '', caseNo: '', isHoju: true, shareN: 1, shareD: 1, heirs: [] });
+    setActiveTab('input');
+    setActiveDeceasedTab('root');
+    setPropertyValue('');
+    setSpecialBenefits({});
+    setContributions({});
+    setIsAmountActive(false);
+    setImportIssues([]);
+    setCheckedGuideKeys(new Set());
+    setHiddenGuideKeys(new Set());
+    setConfirmedGuidesOpen(false);
+    setReviewContext(null);
+    setSearchQuery('');
+    setMatchIds([]);
+    setCurrentMatchIdx(0);
+    setSidebarSearchQuery('');
+    setSidebarMatchIds([]);
+    setSidebarCurrentMatchIdx(0);
+    setIsDirty(false);
+    setIsResetModalOpen(false);
+  };
+
   const removeHeir = (id) => {
     appendChangeLog({ type: 'removeHeir', nodeId: id });
     let targetPersonId = id; let parentPersonId = null;
@@ -824,7 +847,17 @@ function App() {
         onSubmit={(text) => ingestAiJsonInput({ input: text, aiTargetId, tree, setTree, setActiveTab, setIsAiModalOpen, setAiInputText })}
         onTextareaAutoSubmit={(text) => ingestAiJsonInput({ input: text, aiTargetId, tree, setTree, setActiveTab, setIsAiModalOpen, setAiInputText })}
       />
-      <ResetConfirmModal isOpen={isResetModalOpen} onClose={() => setIsResetModalOpen(false)} onConfirm={() => {}} />
+      <ResetConfirmModal
+        isOpen={isResetModalOpen}
+        onClose={() => setIsResetModalOpen(false)}
+        onSaveAndReset={() => {
+          saveFactTreeToFile(tree, { propertyValue, specialBenefits, contributions, isAmountActive });
+          resetAllState();
+        }}
+        onResetOnly={() => {
+          resetAllState();
+        }}
+      />
         <PersonEditModal
           isOpen={!!personEditModal}
           onClose={() => setPersonEditModal(null)}
