@@ -32,6 +32,7 @@ export default function HeirRow({
   rootIsHoju,
   onTabClick,
   parentNode,
+  isHighlighted,
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: node.id });
 
@@ -198,7 +199,11 @@ export default function HeirRow({
           ref={setNodeRef}
           style={dndStyle}
           data-node-id={node.id}
-          className="group/row relative z-10 flex w-full flex-col rounded-md border border-[#e5e5e5] bg-white transition-colors hover:bg-[#f8f8f7] dark:border-neutral-700 dark:bg-neutral-800 dark:hover:bg-neutral-700/50"
+          className={`group/row relative z-10 flex w-full flex-col rounded-md border transition-colors ${
+            isHighlighted
+              ? 'border-blue-400 bg-blue-50/60 ring-2 ring-blue-300 ring-offset-1 dark:border-blue-500 dark:bg-blue-950/30 dark:ring-blue-600'
+              : 'border-[#e5e5e5] bg-white hover:bg-[#f8f8f7] dark:border-neutral-700 dark:bg-neutral-800 dark:hover:bg-neutral-700/50'
+          }`}
         >
           <div className="flex min-h-[52px] w-full items-center py-1">
             <div {...attributes} {...listeners} className="ml-[10px] flex h-8 w-5 shrink-0 cursor-grab items-center justify-center text-neutral-300 transition-colors hover:text-neutral-400 active:cursor-grabbing">

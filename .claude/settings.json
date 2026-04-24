@@ -1,7 +1,16 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(grep -n \"?[^'\\\\\"]\\\\{2,\\\\}?\" src/hooks/useSmartGuide.js)",
+      "Bash(grep -n \"?[^'\\\\\"]\\\\{2,\\\\}?\" src/engine/distribution.js)",
+      "Bash(grep -n \"?[^'\\\\\"a-zA-Z0-9 ]\\\\{2,\\\\}\" src/engine/warningFactory.js)",
+      "Bash(grep -n \"?[^'\\\\\"a-zA-Z0-9 ]\\\\{2,\\\\}\" src/components/InputPanel.jsx)",
+      "Bash(git diff *)",
+      "Read(//tmp/**)",
+      "Bash(del fix_encoding.py)",
+      "Bash(grep -v \"^[+-][[:space:]]*//\")",
+      "Bash(git checkout *)"
     ]
   }
 }

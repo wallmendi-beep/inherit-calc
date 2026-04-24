@@ -31,6 +31,7 @@ export default function InputPanel({
   handleQuickSubmit,
   getBriefingInfo,
   setActiveDeceasedTab,
+  reviewContext,
 }) {
   const currentNode = activeTabObj ? activeTabObj.node : tree;
   const nodeHeirs = currentNode ? (currentNode.heirs || []) : [];
@@ -95,6 +96,94 @@ export default function InputPanel({
     return Array.from(new Set(names));
   };
 
+  const spouseEmptyStateGuide = React.useMemo(() => {
+    if (!currentNode || !['wife', 'husband', 'spouse'].includes(currentNode.relation)) return null;
+    if (currentNode.relation === 'wife') {
+      return {
+        title: `[${currentNode.name || '해당 배우자'}]에게만 있는 추가 자녀가 있는지 확인해 주세요.`,
+        body: `1991년 이전 사건에서는 [${resolvedParentNode?.name || '상위 사건'}]의 자녀들이 [${currentNode.name || '해당 배우자'}] 사건의 상속인으로 반영됩니다. ${currentNode.name || '해당 배우자'}에게만 있는 별도의 자녀가 있으면 추가로 입력해 주세요.`,
+        confirmHelper: `추가 자녀가 없으면 '추가 상속인 없음'으로 정리하면 됩니다.`,
+      };
+    }
+    if (currentNode.relation === 'husband') {
+      return {
+        title: `[${currentNode.name || '해당 배우자'}] 사건의 자녀 범위를 확인해 주세요.`,
+        body: `아래의 상속인은 [${resolvedParentNode?.name || '상위 사건'}] 사건 기준 자녀 목록입니다. [${currentNode.name || '해당 배우자'}]의 상속인이 아닌 사람이 있으면 선택해 주세요.`,
+        confirmHelper: `자녀 범위를 확인한 뒤, 남는 상속인이 없으면 다음 순위 상속인 입력 여부를 검토해 주세요.`,
+      };
+    }
+    return {
+      title: `[${currentNode.name || '해당 배우자'}] 사건의 후속 상속 구성을 확인해 주세요.`,
+      body: `현재 사건에서 [${currentNode.name || '해당 배우자'}]에게 연결될 후속 상속인이 더 있는지 확인해 주세요. 더 입력할 사람이 없으면 '추가 상속인 없음'으로 정리하면 됩니다.`,
+      confirmHelper: `이 배우자 사건에서 더 입력할 후속 상속인이 없으면 현재 상태를 확정합니다.`,
+    };
+  }, [currentNode, resolvedParentNode]);
+
+  const [excludedSpouseChildMap, setExcludedSpouseChildMap] = React.useState({});
+  const parentChildCandidates = React.useMemo(
+    () => parentHeirsForGuide.filter((person) => ['son', 'daughter'].includes(person.relation)),
+    [parentHeirsForGuide]
+  );
+  const getSpouseCandidateKey = React.useCallback(
+    (person) => person?.personId || person?.id || '',
+    []
+  );
+  const excludedSpouseChildIds = excludedSpouseChildMap[currentNode?.id || ''] || [];
+  const reviewTargetNodeIds = React.useMemo(
+    () => new Set((reviewContext?.targetNodeIds || []).filter(Boolean)),
+    [reviewContext]
+  );
+  // 가이드 클릭 후 하이라이트 대상 첫 행으로 자동 스크롤
+  React.useEffect(() => {
+    if (reviewTargetNodeIds.size === 0) return;
+    const timer = setTimeout(() => {
+      for (const id of reviewTargetNodeIds) {
+        const el = document.querySelector(`[data-node-id="${id}"]`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          break;
+        }
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [reviewTargetNodeIds, activeDeceasedTab]);
+
+  const isLegacyWifeReinheritance =
+    !!currentNode && currentNode.relation === 'wife' && currentLawEra !== '1991' &&
+    !!resolvedParentNode && resolvedParentNode.id !== 'root';
+  const isHusbandReinheritanceGuide =
+    !!currentNode && currentNode.relation === 'husband' &&
+    !!resolvedParentNode && resolvedParentNode.id !== 'root';
+  const showSpouseComparisonPanel =
+    ['wife', 'husband', 'spouse'].includes(currentNode?.relation) &&
+    parentChildCandidates.length > 0 && !!resolvedParentNode;
+  const areAllHusbandCandidatesExcluded =
+    isHusbandReinheritanceGuide && parentChildCandidates.length > 0 &&
+    excludedSpouseChildIds.length === parentChildCandidates.length;
+
+  const toggleExcludedSpouseChild = React.useCallback((personId) => {
+    if (!currentNode?.id || !personId) return;
+    setExcludedSpouseChildMap((prev) => {
+      const current = new Set(prev[currentNode.id] || []);
+      if (current.has(personId)) current.delete(personId);
+      else current.add(personId);
+      return { ...prev, [currentNode.id]: Array.from(current) };
+    });
+  }, [currentNode]);
+
+  const clearExcludedSpouseChildren = React.useCallback(() => {
+    if (!currentNode?.id) return;
+    setExcludedSpouseChildMap((prev) => ({ ...prev, [currentNode.id]: [] }));
+  }, [currentNode]);
+
+  const excludeAllSpouseChildren = React.useCallback(() => {
+    if (!currentNode?.id) return;
+    setExcludedSpouseChildMap((prev) => ({
+      ...prev,
+      [currentNode.id]: parentChildCandidates.map((person) => getSpouseCandidateKey(person)).filter(Boolean),
+    }));
+  }, [currentNode, parentChildCandidates, getSpouseCandidateKey]);
+
   const getEmptyStateGuide = () => {
     if (currentNode?.successorStatus) {
       const confirmedLabel =
@@ -143,6 +232,21 @@ export default function InputPanel({
       };
     }
 
+    if (currentNode?.relation === 'wife') {
+      return {
+        title: '아직 직접 입력된 후속 상속인이 없습니다.',
+        body: `1991년 이전 사건에서는 상위 사건의 자녀들이 [${currentNode?.name || '처'}] 사건의 기본 상속인으로 반영됩니다. [${currentNode?.name || '처'}]에게만 있는 별도의 고유 자녀가 있으면 추가해 주세요.`,
+      };
+    }
+
+    if (currentNode?.relation === 'husband') {
+      const isOldEra = currentLawEra !== '1991';
+      return {
+        title: '아직 직접 입력된 후속 상속인이 없습니다.',
+        body: `불러오기를 통해 상위 사건의 자녀를 가져온 뒤, [${currentNode?.name || '남편'}]의 상속인이 아닌 자녀는 삭제해 주세요.${isOldEra ? ' (1991년 이전 사망한 남편은 기본적으로 호주 자격이 전제됩니다.)' : ''}`,
+      };
+    }
+
     if (requiresHojuReview) {
       return {
         title: '이 상속 단계는 호주상속 가산 검토가 필요합니다.',
@@ -157,7 +261,7 @@ export default function InputPanel({
       parentNode &&
       (!parentNode.deathDate || !currentNode?.deathDate || !isBefore(parentNode.deathDate, currentNode.deathDate));
 
-    if (['wife', 'husband', 'spouse'].includes(currentNode?.relation)) {
+    if (['spouse'].includes(currentNode?.relation)) {
       return {
         title: '아직 직접 입력된 후속 상속인이 없습니다.',
         body: '필요한 상속인이 있다면 추가해 주세요. 입력하지 않으면 법정 순위에 따라 자동 분배가 진행될 수 있습니다.',
@@ -459,7 +563,10 @@ export default function InputPanel({
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={nodeHeirs.map((h) => h.id)} strategy={verticalListSortingStrategy}>
                 <div className="space-y-1.5">
-                  {nodeHeirs.map((h) => (
+                  {nodeHeirs.map((h) => {
+                    const highlighted = reviewTargetNodeIds.size > 0 &&
+                      (reviewTargetNodeIds.has(h.id) || reviewTargetNodeIds.has(h.personId));
+                    return (
                     <HeirRow
                       key={h.id}
                       node={h}
@@ -475,6 +582,7 @@ export default function InputPanel({
                       rootIsHoju={tree.isHoju !== false}
                       isRootChildren={activeDeceasedTab === 'root'}
                       parentNode={currentNode}
+                      isHighlighted={highlighted}
                       onTabClick={(id) => {
                         let targetPId = id;
                         const findPId = (n) => {
@@ -485,7 +593,8 @@ export default function InputPanel({
                         setActiveDeceasedTab(targetPId);
                       }}
                     />
-                  ))}
+                    );
+                  })}
                 </div>
               </SortableContext>
             </DndContext>

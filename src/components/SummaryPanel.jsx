@@ -1,6 +1,7 @@
 import React from 'react';
 import { IconList } from './Icons';
 import { math, getRelStr, formatKorDate, isBefore } from '../engine/utils';
+import { collectMissingHeirNames } from '../utils/missingHeirStatus';
 
 const buildIssueMap = (issues = []) => {
   const map = new Map();
@@ -28,22 +29,7 @@ export default function SummaryPanel({
 }) {
   const issueMap = buildIssueMap(issues);
 
-  const missingHeirNames = React.useMemo(() => {
-    if (!tree) return [];
-    const names = [];
-    const check = (node) => {
-      if (
-        node.id !== 'root' &&
-        node.isDeceased &&
-        node.isExcluded !== true &&
-        node.successorStatus !== 'confirmed_no_substitute_heirs' &&
-        (!node.heirs || node.heirs.length === 0)
-      ) names.push(node.name || '이름미상');
-      if (node.heirs) node.heirs.forEach(check);
-    };
-    check(tree);
-    return names;
-  }, [tree]);
+  const missingHeirNames = React.useMemo(() => collectMissingHeirNames(tree), [tree]);
   const hasMissingHeir = missingHeirNames.length > 0;
 
   const shareByPersonId = new Map();
