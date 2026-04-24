@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import ContextualDrawer from './ui/ContextualDrawer';
 
 const GuideCheckButton = ({ label, onClick, tone = 'neutral' }) => (
@@ -119,12 +119,12 @@ export default function SmartGuidePanel({
 
           {!hasActionItems && !noSurvivors && (
             <section className="flex h-40 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white text-center dark:border-neutral-700 dark:bg-neutral-900/40">
-              <span className="text-2xl">정상</span>
+              <span className="text-2xl font-bold text-[#1e56a0] dark:text-blue-400">이상 없음</span>
               <p className="mt-2 text-sm font-medium text-slate-600 dark:text-neutral-300">
-                입력 기준으로 바로 잡아야 할 핵심 문제는 없습니다.
+                가계도 검증이 완료되었습니다.
               </p>
               <p className="mt-1 text-xs text-slate-400 dark:text-neutral-500">
-                사건 검토나 계산 상세에서 사건별 변화만 이어서 확인하면 됩니다.
+                상세 검토 및 계산 결과를 확인해 주세요.
               </p>
             </section>
           )}
