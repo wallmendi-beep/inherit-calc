@@ -88,7 +88,7 @@ export default function InputPanel({
     }
     return {
       title: `[${currentNode.name || '이름 미상'}]의 하위 상속인을 구성해 주세요.`,
-      body: `이 사건의 상속인 [${currentNode.name || '이름 미상'}]에게 연결될 하위 계통 정보를 입력해 주셔야 합니다.`,
+      body: `이 사건의 상속인 [${currentNode.name || '이름 미상'}]에게 연결될 하위 계통 정보를 입력해 주셔야 합니다. 더 이상 하위 상속인이 없다면 '추가 상속인 없음'으로 확정해 주세요.`,
     };
   }, [currentNode]);
 
@@ -97,7 +97,7 @@ export default function InputPanel({
     [reviewContext]
   );
 
-  // [최신 기능] 가이드 클릭 후 하이라이트 대상 첫 행으로 자동 스크롤
+  // [v4.74] 가이드 클릭 시 자동 스크롤 및 하이라이트 유지
   React.useEffect(() => {
     if (reviewTargetNodeIds.size === 0) return;
     const timer = setTimeout(() => {
@@ -112,7 +112,6 @@ export default function InputPanel({
     return () => clearTimeout(timer);
   }, [reviewTargetNodeIds, activeDeceasedTab]);
 
-  const [excludedSpouseChildMap, setExcludedSpouseChildMap] = React.useState({});
   const parentChildCandidates = React.useMemo(
     () => parentHeirsForGuide.filter((person) => ['son', 'daughter'].includes(person.relation)),
     [parentHeirsForGuide]
@@ -146,7 +145,7 @@ export default function InputPanel({
             : '추가 상속인 없음';
       return {
         title: `${confirmedLabel} 확정 상태입니다.`,
-        body: '사용자가 하위 상속인이 없음을 직접 확정하였습니다. 정보가 더 있다면 확정 상태를 해제하고 입력해 주세요.',
+        body: '사용자가 하위 상속인이 없음을 직접 확정하였습니다. 만약 입력할 정보가 더 있다면 아래 버튼을 통해 확정 상태를 해제하고 다시 입력해 주세요.',
       };
     }
 
@@ -161,7 +160,7 @@ export default function InputPanel({
     if (isRootNode && (!tree.name?.trim() || !tree.deathDate)) {
       return {
         title: '기본 정보를 먼저 입력해 주세요.',
-        body: '사건번호, 피상속인 성명, 사망일자를 입력해야 정확한 안내가 시작됩니다.',
+        body: '사건번호, 피상속인 성명, 사망일자를 입력해야 정확한 안내와 계산이 시작됩니다.',
       };
     }
 
@@ -169,7 +168,7 @@ export default function InputPanel({
     if (isPre) {
       return {
         title: '선사망자로 판정되어 대습상속이 적용됩니다.',
-        body: '배우자나 직계비속이 있다면 대습상속인으로 추가 입력해 주세요.',
+        body: '사망자의 배우자나 직계비속이 있다면 대습상속인으로 추가 입력해 주세요.',
       };
     }
 
@@ -177,7 +176,7 @@ export default function InputPanel({
       if (isRootNode) {
         return {
           title: '상속인(자녀, 배우자 등)을 입력해 주세요.',
-          body: '피상속인 사망 당시의 상속인들을 아래 입력창을 통해 등록해 주세요.',
+          body: '피상속인 사망 당시의 상속인들을 아래 입력창을 통해 등록해 주세요. 구민법 적용 시 호주 여부도 중요합니다.',
         };
       }
       return spouseEmptyStateGuide;
@@ -195,7 +194,7 @@ export default function InputPanel({
   return (
     <div className="flex flex-col h-full">
       {briefing && (
-        <div className="mb-6 p-5 rounded-2xl bg-[#fcfcfb] border border-[#e9e9e7] dark:bg-neutral-900/40 dark:border-neutral-700">
+        <div className="mb-6 p-5 rounded-2xl bg-[#fcfcfb] border border-[#e9e9e7] dark:bg-neutral-900/40 dark:border-neutral-700 animate-in fade-in slide-in-from-top-1">
           <h3 className="text-[15px] font-bold text-[#37352f] dark:text-neutral-100 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#1e56a0] dark:bg-blue-400"></span>
             {briefing.title}
@@ -221,7 +220,7 @@ export default function InputPanel({
               <h4 className="text-[14px] font-bold text-[#1e56a0] dark:text-blue-400">
                 {isLegacyWifeReinheritance ? '여성 상속인(처)의 동일가적 여부 검토' : '남편의 대습상속 자격 검토'}
               </h4>
-              <p className="mt-1 text-[13px] text-blue-700/80 dark:text-blue-300/80">
+              <p className="mt-1 text-[13px] text-blue-700/80 dark:text-blue-300/80 leading-relaxed">
                 {isLegacyWifeReinheritance
                   ? '구민법상 처가 시댁 가계에서 계속 상속권을 가지려면 남편 사망 후 시댁 가적에 남아있어야 합니다. 분가하거나 재혼했다면 상속권이 소멸할 수 있습니다.'
                   : '1991년 이전 민법에서는 남편이 사망한 경우, 아내가 대습상속인이 되기 위해서는 해당 가계에 자녀가 있어야 합니다. 자녀가 없다면 아내의 대습상속권이 인정되지 않습니다.'}
