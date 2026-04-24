@@ -41,7 +41,7 @@ export default function ResultPanelFixed({ calcSteps, tree, issues = [], handleN
         heirMap.set(personId, {
           personId,
           name: dist.h.name,
-          relation: dist.h.relation,
+          relation: dist.h._origRelation || dist.h.relation,
           isDeceased: dist.h.isDeceased,
           sources: [],
         });
@@ -49,7 +49,7 @@ export default function ResultPanelFixed({ calcSteps, tree, issues = [], handleN
       heirMap.get(personId).sources.push({
         decName: step.dec.name,
         decDeathDate: step.dec.deathDate,
-        relation: dist.h.relation,
+        relation: dist.h._origRelation || dist.h.relation,
         lawEra: step.lawEra,
         modifier: dist.mod || '',
         n: dist.n,

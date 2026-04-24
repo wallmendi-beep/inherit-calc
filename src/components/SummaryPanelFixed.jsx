@@ -2,6 +2,7 @@
 import { IconList } from './Icons';
 import { math, getRelStr, formatKorDate, isBefore } from '../engine/utils';
 import { extractHojuBonusNotices, buildHojuBonusPersonMap } from '../utils/hojuBonusNotice';
+import { hasMissingHeirsInTree, isMissingHeirNode } from '../utils/missingHeirStatus';
 
 const lawLabel = (era) => {
   if (era === '1960') return '구민법';
@@ -10,7 +11,7 @@ const lawLabel = (era) => {
   return `${era} 기준`;
 };
 
-const PathView = ({ calcSteps, tree, issues, handleNavigate }) => {
+const PathView = ({ calcSteps, tree, issues, handleNavigate, searchQuery }) => {
   const issueMap = React.useMemo(() => {
     const map = new Map();
     (issues || []).forEach((issue) => {
@@ -23,6 +24,8 @@ const PathView = ({ calcSteps, tree, issues, handleNavigate }) => {
   }, [issues]);
 
   const hojuBonusMap = buildHojuBonusPersonMap(calcSteps);
+  const normalizedSearchQuery = (searchQuery || '').trim().toLowerCase();
+  const matchesName = (name) => !normalizedSearchQuery || (name || '').toLowerCase().includes(normalizedSearchQuery);
 
   const heirMap = new Map();
   calcSteps.forEach((step) => {
@@ -33,7 +36,7 @@ const PathView = ({ calcSteps, tree, issues, handleNavigate }) => {
         heirMap.set(personId, {
           personId,
           name: dist.h.name,
-          relation: dist.h.relation,
+          relation: dist.h._origRelation || dist.h.relation,
           isDeceased: dist.h.isDeceased,
           sources: [],
         });
@@ -41,7 +44,7 @@ const PathView = ({ calcSteps, tree, issues, handleNavigate }) => {
       heirMap.get(personId).sources.push({
         decName: step.dec.name,
         decDeathDate: step.dec.deathDate,
-        relation: dist.h.relation,
+        relation: dist.h._origRelation || dist.h.relation,
         lawEra: step.lawEra,
         modifier: dist.mod || '',
         n: dist.n,
@@ -50,7 +53,9 @@ const PathView = ({ calcSteps, tree, issues, handleNavigate }) => {
     });
   });
 
-  const results = Array.from(heirMap.values()).filter((item) => !item.isDeceased);
+  const results = Array.from(heirMap.values())
+    .filter((item) => !item.isDeceased)
+    .filter((item) => matchesName(item.name));
   const commonD = results.reduce((acc, result) => {
     const total = result.sources.reduce((sum, source) => {
       const [nn, nd] = math.add(sum.n, sum.d, source.n, source.d);
@@ -91,7 +96,7 @@ const PathView = ({ calcSteps, tree, issues, handleNavigate }) => {
             const hojuApplied = hojuBonusMap.has(result.personId);
 
             return (
-              <tr key={`path-${result.personId}`} className="align-top hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20">
+              <tr key={`path-${result.personId}`} className={`align-top ${matchesName(result.name) && normalizedSearchQuery ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''} hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20`}>
                 <td className="border border-[#e9e9e7] p-2.5 text-center font-medium dark:border-neutral-700">
                   <button
                     type="button"
@@ -174,17 +179,10 @@ export default function SummaryPanelFixed({
   const issueMap = buildIssueMap(issues);
   const hojuBonusNotices = extractHojuBonusNotices(calcSteps);
   const hojuBonusMap = buildHojuBonusPersonMap(calcSteps);
+  const normalizedSearchQuery = (searchQuery || '').trim().toLowerCase();
+  const matchesName = (name) => !normalizedSearchQuery || (name || '').toLowerCase().includes(normalizedSearchQuery);
 
-  const hasMissingHeir = React.useMemo(() => {
-    if (!tree) return false;
-    let missing = false;
-    const check = (node) => {
-      if (node.isDeceased && node.isExcluded !== true && !node.successorStatus && (!node.heirs || node.heirs.length === 0)) missing = true;
-      if (node.heirs) node.heirs.forEach(check);
-    };
-    check(tree);
-    return missing;
-  }, [tree]);
+  const hasMissingHeir = React.useMemo(() => hasMissingHeirsInTree(tree), [tree]);
 
   const missingHeirTargets = React.useMemo(() => {
     const map = new Map();
@@ -199,16 +197,7 @@ export default function SummaryPanelFixed({
 
     const collectFromTree = (node, inheritedDate = tree?.deathDate || '') => {
       if (!node) return;
-      const isSpouse = ['wife', 'husband', 'spouse'].includes(node.relation);
-      const isPredeceased = !!(node.deathDate && inheritedDate && isBefore(node.deathDate, inheritedDate));
-      if (
-        node.id !== 'root' &&
-        node.isDeceased &&
-        node.isExcluded !== true &&
-        !node.successorStatus &&
-        (!node.heirs || node.heirs.length === 0) &&
-        !(isSpouse && isPredeceased)
-      ) {
+      if (isMissingHeirNode(node, inheritedDate)) {
         register(node.name, node.personId || node.id);
       }
       (node.heirs || []).forEach((child) => collectFromTree(child, node.deathDate || inheritedDate));
@@ -317,7 +306,11 @@ export default function SummaryPanelFixed({
       <tr
         key={`summary-row-${share.id}-${groupAncestorId || 'top'}`}
         id={rowId}
-        className={`transition-colors duration-300 ${isCurrentMatch ? 'border-l-4 border-l-yellow-500 bg-yellow-100 dark:bg-yellow-900/50' : 'hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20'}`}
+        className={`transition-colors duration-300 ${
+          isCurrentMatch || (normalizedSearchQuery && matchesName(share.name))
+            ? 'border-l-4 border-l-yellow-500 bg-yellow-100 dark:bg-yellow-900/50'
+            : 'hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20'
+        }`}
       >
         <td className="border border-[#e9e9e7] p-2.5 text-left font-medium dark:border-neutral-700" style={{ paddingLeft }}>
           <button
@@ -365,6 +358,34 @@ export default function SummaryPanelFixed({
 
   const sumVal = totalSumD ? totalSumN / totalSumD : 0;
   const targetVal = simpleTargetD ? simpleTargetN / simpleTargetD : 1;
+  const filterGroupBySearch = React.useCallback((group) => {
+    if (!normalizedSearchQuery) return group;
+    const filteredDirectShares = (group.directShares || []).filter((share) => matchesName(share.name));
+    const filteredSubGroups = (group.subGroups || [])
+      .map(filterGroupBySearch)
+      .filter(Boolean);
+    if (filteredDirectShares.length === 0 && filteredSubGroups.length === 0) return null;
+    return { ...group, directShares: filteredDirectShares, subGroups: filteredSubGroups };
+  }, [normalizedSearchQuery]);
+
+  const visibleTopDirect = React.useMemo(
+    () => (!normalizedSearchQuery ? topDirect : topDirect.filter((share) => matchesName(share.name))),
+    [topDirect, normalizedSearchQuery]
+  );
+  const visibleTopGroups = React.useMemo(
+    () => (!normalizedSearchQuery ? topGroups : topGroups.map(filterGroupBySearch).filter(Boolean)),
+    [topGroups, normalizedSearchQuery, filterGroupBySearch]
+  );
+  const visibleMatchCount = React.useMemo(() => {
+    if (!normalizedSearchQuery) return 0;
+    let count = visibleTopDirect.length;
+    const countGroup = (group) => {
+      count += (group.directShares || []).length;
+      (group.subGroups || []).forEach(countGroup);
+    };
+    visibleTopGroups.forEach(countGroup);
+    return count;
+  }, [normalizedSearchQuery, visibleTopDirect, visibleTopGroups]);
 
   return (
     <div className="w-full text-[#37352f] dark:text-neutral-200">
@@ -398,30 +419,28 @@ export default function SummaryPanelFixed({
               취득 경로
             </button>
           </div>
-          {viewMode === 'structure' && (
-            <div className="flex items-center gap-2 rounded-full border border-[#e5e5e5] bg-white px-3 py-1.5 shadow-sm focus-within:ring-2 focus-within:ring-blue-100 dark:border-neutral-700 dark:bg-neutral-800">
-              <svg className="h-4 w-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input
-                type="text"
-                placeholder="이름 검색"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-16 border-none bg-transparent text-[13px] outline-none transition-all focus:w-28"
-              />
-              {matchIds.length > 0 && (
-                <span className="ml-1 text-[11px] font-medium text-neutral-500">
-                  {currentMatchIdx + 1}/{matchIds.length}
-                </span>
-              )}
-            </div>
-          )}
+          <div className="flex items-center gap-2 rounded-full border border-[#e5e5e5] bg-white px-3 py-1.5 shadow-sm focus-within:ring-2 focus-within:ring-blue-100 dark:border-neutral-700 dark:bg-neutral-800">
+            <svg className="h-4 w-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="이름 검색"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-16 border-none bg-transparent text-[13px] outline-none transition-all focus:w-28"
+            />
+            {normalizedSearchQuery && (
+              <span className="ml-1 text-[11px] font-medium text-neutral-500">
+                {visibleMatchCount}건
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
       {viewMode === 'path' && (
-        <PathView calcSteps={calcSteps} tree={tree} issues={issues} handleNavigate={handleNavigate} />
+        <PathView calcSteps={calcSteps} tree={tree} issues={issues} handleNavigate={handleNavigate} searchQuery={searchQuery} />
       )}
 
       {viewMode === 'structure' && (<>
@@ -456,8 +475,8 @@ export default function SummaryPanelFixed({
           </tr>
         </thead>
         <tbody>
-          {topDirect.map((share) => renderShareRow(share, 0))}
-          {topGroups.map((group) => renderGroup(group, 0))}
+          {visibleTopDirect.map((share) => renderShareRow(share, 0))}
+          {visibleTopGroups.map((group) => renderGroup(group, 0))}
         </tbody>
         <tfoot className="bg-[#fcfcfb] dark:bg-neutral-800/40">
           <tr>
@@ -475,3 +494,4 @@ export default function SummaryPanelFixed({
     </div>
   );
 }
+

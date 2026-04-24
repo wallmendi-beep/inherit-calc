@@ -192,11 +192,20 @@ export default function SmartGuidePanel({
               <ul className="space-y-2">
                 {mandatoryGuides.map((guide, index) => {
                   const isDeleteAction = guide.action === 'delete';
+                  const isSubstitutionGuide = guide?.uniqueKey?.startsWith('grouped-missing-substitution-');
                   return (
                     <li key={`mandatory-${index}`}>
                       <div
-                        className={`w-full rounded-lg border border-neutral-200 bg-neutral-50 p-3 shadow-sm transition-all dark:border-neutral-700 dark:bg-neutral-800/50 ${
-                          !isDeleteAction ? 'cursor-pointer hover:bg-neutral-100' : ''
+                        className={`w-full rounded-lg border p-3 shadow-sm transition-all ${
+                          isSubstitutionGuide
+                            ? 'border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-950/20'
+                            : 'border-neutral-200 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800/50'
+                        } ${
+                          !isDeleteAction
+                            ? isSubstitutionGuide
+                              ? 'cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-950/30'
+                              : 'cursor-pointer hover:bg-neutral-100'
+                            : ''
                         }`}
                         onClick={() => {
                           if (!isDeleteAction) handleGuideNavigate(guide);
@@ -208,7 +217,9 @@ export default function SmartGuidePanel({
                               className={`text-[11.5px] font-medium leading-relaxed ${
                                 isDeleteAction
                                   ? 'text-rose-600 dark:text-rose-400'
-                                  : 'text-slate-800 dark:text-neutral-100'
+                                  : isSubstitutionGuide
+                                    ? 'text-amber-900 dark:text-amber-100'
+                                    : 'text-slate-800 dark:text-neutral-100'
                               }`}
                             >
                               {guide.text}
@@ -234,7 +245,7 @@ export default function SmartGuidePanel({
                                 tone={getGuideActionTone(guide)}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  if (guide?.navigationMode === 'event' && activeTab !== 'input') {
+                                  if (guide?.navigationMode === 'event') {
                                     handleGuideNavigate(guide);
                                     return;
                                   }

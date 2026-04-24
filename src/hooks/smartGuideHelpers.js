@@ -31,14 +31,16 @@ export const collectLegacyStepchildGuideEntries = (tree) => {
     if (!node?.heirs?.length) return;
 
     node.heirs.forEach((child) => {
-      if (
-        child?.relation === 'husband' &&
-        getLawEra(child.deathDate || node.deathDate || tree.deathDate) !== '1991'
-      ) {
+      if (child?.relation === 'husband') {
         const wifeReferenceNode =
           node.relation === 'wife'
             ? node
             : (node.heirs || []).find((sibling) => sibling.id !== child.id && ['wife', 'spouse'].includes(sibling.relation)) || node;
+        const wifeEstateDate = wifeReferenceNode?.deathDate || node.deathDate || tree.deathDate;
+        if (getLawEra(wifeEstateDate) === '1991') {
+          walk(child);
+          return;
+        }
         const husbandChildren = (child.heirs || []).filter((grandChild) => ['son', 'daughter'].includes(grandChild.relation));
         const wifeChildPersonIds = new Set(
           (node.heirs || [])

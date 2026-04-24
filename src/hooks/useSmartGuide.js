@@ -83,18 +83,18 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
     // 헬퍼 함수 3: 구조 오류 감지 (자식 아래 부모/형제 관계)
     const checkStructuralError = (node) => {
       const invalidHeirs = (node.heirs || []).filter(h => ['parent', 'sibling'].includes(h.relation));
-      invalidHeirs.forEach(h => {
-        uniqueGuidesMap.set(`struct-err-${h.id}`, {
-          id: h.id,
-          uniqueKey: `struct-err-${h.id}`,
-          type: 'mandatory',
-          action: 'delete',
-          text: `[${h.name || '이름 미상'}]이(가) [${node.name || '부모'}]의 하위 위치에 '부모/형제' 관계로 잘못 입력되어 있습니다. 아래 [삭제] 버튼으로 제거해 주세요.`,
-          targetTabId: 'tree',
-          targetNodeId: h.id,
-          parentNodeId: node.id
+        invalidHeirs.forEach(h => {
+          uniqueGuidesMap.set(`struct-err-${h.id}`, {
+            id: h.id,
+            uniqueKey: `struct-err-${h.id}`,
+            type: 'mandatory',
+            navigationMode: 'event',
+            text: `[${h.name || '이름 미상'}]이(가) [${node.name || '부모'}]의 하위 위치에 '부모/형제' 관계로 입력되어 있습니다. 해당 위치로 이동해 관계를 확인한 뒤 수정하거나 삭제해 주세요.`,
+            targetTabId: 'tree',
+            targetNodeId: h.id,
+            parentNodeId: node.id
+          });
         });
-      });
       if (node.heirs) node.heirs.forEach(checkStructuralError);
     };
 
@@ -182,8 +182,10 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
                 targetTabId: groupKey,
                 firstTargetTabId: node.personId || node.id,
                 names: [],
+                nodeIds: [],
               };
               current.names.push(node.name || '?대쫫 誘몄긽');
+              current.nodeIds.push(node.id);
               groupedPredeceasedMissingMap.set(groupKey, current);
             }
           } else {
@@ -273,7 +275,8 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       const navTarget = uniqueNames.length === 1 ? group.firstTargetTabId : group.targetTabId;
       uniqueGuidesMap.set(`grouped-missing-substitution-${key}`, {
         id: key, uniqueKey: `grouped-missing-substitution-${key}`, targetTabId: navTarget, type: 'mandatory', navigationMode: 'event',
-        text: `${group.parentName} 사건에서 선사망 상속인의 대습상속 검토가 필요합니다: [${uniqueNames.join('], [')}]. 실제로 배우자 또는 직계비속이 있는 사람만 선택해 대습상속인을 입력해 주세요.`, 
+        targetNodeIds: group.nodeIds || [],
+        text: `${group.parentName} 사건에서 선사망 상속인의 대습상속 검토가 필요합니다: [${uniqueNames.join('], [')}]. 대습상속인이 있으면 입력해 주세요. 없으면 '대습상속인 없음'을 클릭해 주세요.`,
       });
     });
 

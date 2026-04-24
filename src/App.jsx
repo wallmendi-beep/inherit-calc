@@ -513,8 +513,24 @@ function App() {
     if (!targetId) return;
 
     const navigationMode = guide.navigationMode || 'auto';
+    const isGroupedSubstitutionGuide = guide?.uniqueKey?.startsWith('grouped-missing-substitution-');
 
     setPersonEditModal(null);
+
+    if (isGroupedSubstitutionGuide) {
+      setReviewContext({
+        guideKey: guide.uniqueKey,
+        guideText: guide.text,
+        targetNodeIds: guide.targetNodeIds || [],
+      });
+      if (activeTab !== 'input') {
+        setActiveTab('input');
+      }
+      if (guide.targetTabId) {
+        setActiveDeceasedTab(guide.targetTabId);
+      }
+      return;
+    }
 
     if (activeTab === 'input') {
       handleNavigate(targetId);
@@ -749,6 +765,7 @@ function App() {
                     isMainQuickActive={isMainQuickActive} setIsMainQuickActive={setIsMainQuickActive}
                     mainQuickVal={mainQuickVal} setMainQuickVal={setMainQuickVal}
                     handleQuickSubmit={handleQuickSubmit} setActiveDeceasedTab={setActiveDeceasedTab}
+                    reviewContext={reviewContext}
                   />
                 )}
                   {activeTab === 'tree' && (
@@ -780,7 +797,15 @@ function App() {
                       />
                     </div>
                   )}
-                {activeTab === 'calc' && <CalcPanel calcSteps={calcSteps} issues={blockingIssues} handleNavigate={handleNavigate} />}
+                {activeTab === 'calc' && (
+                  <CalcPanel
+                    calcSteps={calcSteps}
+                    issues={blockingIssues}
+                    handleNavigate={handleNavigate}
+                    searchQuery={searchQuery}
+                    setSearchQuery={setSearchQuery}
+                  />
+                )}
                 {activeTab === 'summary' && <SummaryPanel tree={tree} finalShares={finalShares} calcSteps={calcSteps} issues={blockingIssues} handleNavigate={handleNavigate} matchIds={matchIds} currentMatchIdx={currentMatchIdx} searchQuery={searchQuery} setSearchQuery={setSearchQuery} viewMode={summaryViewMode} setViewMode={setSummaryViewMode} />}
                 {activeTab === 'amount' && <AmountPanel tree={tree} finalShares={finalShares} amountCalculations={amountCalculations} propertyValue={propertyValue} setPropertyValue={setPropertyValue} specialBenefits={specialBenefits} setSpecialBenefits={setSpecialBenefits} contributions={contributions} setContributions={setContributions} />}
               </div>

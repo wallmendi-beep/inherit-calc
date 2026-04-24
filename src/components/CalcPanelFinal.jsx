@@ -20,10 +20,28 @@ const NoticeCard = ({ notice }) => (
   </div>
 );
 
-export default function CalcPanelFinal({ calcSteps, issues = [], handleNavigate }) {
+export default function CalcPanelFinal({ calcSteps, issues = [], handleNavigate, searchQuery = '', setSearchQuery = () => {} }) {
   const issueMap = buildIssueMap(issues);
   const hojuBonusNotices = extractHojuBonusNotices(calcSteps);
   const hojuBonusMap = buildHojuBonusPersonMap(calcSteps);
+  const normalizedSearchQuery = (searchQuery || '').trim().toLowerCase();
+  const matchesName = (name) => !normalizedSearchQuery || (name || '').toLowerCase().includes(normalizedSearchQuery);
+
+  const visibleSteps = React.useMemo(() => {
+    return (calcSteps || [])
+      .map((step) => ({
+        ...step,
+        dists: (step.dists || []).filter((dist) => matchesName(dist.h?.name)),
+      }))
+      .filter((step) => step.dists.length > 0 || !normalizedSearchQuery);
+  }, [calcSteps, normalizedSearchQuery]);
+
+  const visibleMatchCount = React.useMemo(() => {
+    if (!normalizedSearchQuery) return 0;
+    return (calcSteps || []).reduce((count, step) => {
+      return count + (step.dists || []).filter((dist) => matchesName(dist.h?.name)).length;
+    }, 0);
+  }, [calcSteps, normalizedSearchQuery]);
 
   return (
     <section className="w-full text-[#37352f] dark:text-neutral-200">
@@ -35,12 +53,31 @@ export default function CalcPanelFinal({ calcSteps, issues = [], handleNavigate 
         </div>
       )}
 
-      <div className="mb-4 text-[13px] text-[#787774] dark:text-neutral-500">
-        각 상속 단계에서 지분이 어떻게 산정되었는지 순서대로 보여주는 계산 상세입니다.
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="text-[13px] text-[#787774] dark:text-neutral-500">
+          각 상속 단계에서 지분이 어떻게 산정되었는지 순서대로 보여주는 계산 상세입니다.
+        </div>
+        <div className="flex items-center gap-2 rounded-full border border-[#e5e5e5] bg-white px-3 py-1.5 shadow-sm focus-within:ring-2 focus-within:ring-blue-100 dark:border-neutral-700 dark:bg-neutral-800">
+          <svg className="h-4 w-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="이름 검색"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-20 border-none bg-transparent text-[13px] outline-none transition-all focus:w-32"
+          />
+          {normalizedSearchQuery && (
+            <span className="ml-1 text-[11px] font-medium text-neutral-500">
+              {visibleMatchCount}건
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="space-y-6 print-mt-4">
-        {calcSteps.map((step, index) => {
+        {visibleSteps.map((step, index) => {
           // [v4.74] 해당 단계 내 통분 분모(LCM) 계산
           const innerLCM = step.dists.reduce((acc, d) => (d.sd ? math.lcm(acc, d.sd) : acc), 1);
           const outerLCM = step.dists.reduce((acc, d) => (d.d ? math.lcm(acc, d.d) : acc), 1);
@@ -88,7 +125,7 @@ export default function CalcPanelFinal({ calcSteps, issues = [], handleNavigate 
                     const displayOuterN = dist.n * scaleOuter;
 
                     return (
-                      <tr key={`calc-dist-${distIndex}`} className="hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20">
+                      <tr key={`calc-dist-${distIndex}`} className={`${matchesName(dist.h?.name) && normalizedSearchQuery ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''} hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20`}>
                         <td className="border border-[#e9e9e7] p-2 text-center font-medium dark:border-neutral-700">
                           <button
                             type="button"
@@ -113,9 +150,9 @@ export default function CalcPanelFinal({ calcSteps, issues = [], handleNavigate 
                             </span>
                           </button>
                         </td>
-                        <td className="border border-[#e9e9e7] p-2 text-center text-[#787774] dark:border-neutral-700">
-                          {getRelStr(dist.h.relation, step.dec.deathDate) || '상속인'}
-                        </td>
+                          <td className="border border-[#e9e9e7] p-2 text-center text-[#787774] dark:border-neutral-700">
+                           {getRelStr(dist.h._origRelation || dist.h.relation, step.dec.deathDate) || '상속인'}
+                          </td>
                         <td className="border border-[#e9e9e7] p-2 text-center text-[#787774] dark:border-neutral-700">
                           {step.inN}/{step.inD} × {displayInnerN}/{innerLCM}
                         </td>

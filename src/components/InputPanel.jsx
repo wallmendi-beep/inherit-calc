@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { DndContext, closestCenter } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { DateInput } from './DateInput';
@@ -31,6 +31,7 @@ export default function InputPanel({
   handleQuickSubmit,
   getBriefingInfo,
   setActiveDeceasedTab,
+  reviewContext,
 }) {
   const currentNode = activeTabObj ? activeTabObj.node : tree;
   const nodeHeirs = currentNode ? (currentNode.heirs || []) : [];
@@ -101,23 +102,23 @@ export default function InputPanel({
     if (currentNode.relation === 'wife') {
       return {
         title: `[${currentNode.name || '해당 배우자'}]에게만 있는 추가 자녀가 있는지 확인해 주세요.`,
-        body: `현재 화면은 [${resolvedParentNode?.name || '상위 사건'}] 사건에서 이어진 자녀 목록을 기준으로 보이고 있습니다. ${currentNode.name || '해당 배우자'}에게만 있는 별도의 자녀가 있으면 추가로 입력하고, 없으면 '추가 상속인 없음'으로 확정해 주세요.`,
-        confirmHelper: '처 사건 기준으로 더 입력할 자녀가 없으면 이 상태를 확정합니다.',
+        body: `1991년 이전 사건에서는 [${resolvedParentNode?.name || '상위 사건'}]의 자녀들이 [${currentNode.name || '해당 배우자'}] 사건의 상속인으로 반영됩니다. ${currentNode.name || '해당 배우자'}에게만 있는 별도의 자녀가 있으면 추가로 입력해 주세요.`,
+        confirmHelper: `추가 자녀가 없으면 '추가 상속인 없음'으로 정리하면 됩니다.`,
       };
     }
 
     if (currentNode.relation === 'husband') {
       return {
         title: `[${currentNode.name || '해당 배우자'}] 사건의 자녀 범위를 확인해 주세요.`,
-        body: `현재 표시된 자녀들이 모두 [${currentNode.name || '해당 배우자'}]의 자녀인지 먼저 확인해 주세요. [${currentNode.name || '해당 배우자'}]의 자녀가 아닌 사람은 삭제하거나 제외 처리하고, 자녀가 없다면 그다음 직계존속 여부를 검토해 주세요.`,
-        confirmHelper: '남편 사건의 자녀 범위를 확인한 뒤 더 입력할 후속 상속인이 없으면 이 상태를 확정합니다.',
+        body: `아래의 상속인은 [${resolvedParentNode?.name || '상위 사건'}] 사건 기준 자녀 목록입니다. [${currentNode.name || '해당 배우자'}]의 상속인이 아닌 사람이 있으면 선택해 주세요.`,
+        confirmHelper: `자녀 범위를 확인한 뒤, 남는 상속인이 없으면 다음 순위 상속인 입력 여부를 검토해 주세요.`,
       };
     }
 
     return {
       title: `[${currentNode.name || '해당 배우자'}] 사건의 후속 상속 구성을 확인해 주세요.`,
-      body: `현재 사건에서 [${currentNode.name || '해당 배우자'}]에게 연결될 후속 상속인이 더 있는지 확인해 주세요. 더 입력할 사람이 없으면 '추가 상속인 없음'으로 확정하면 됩니다.`,
-      confirmHelper: '이 배우자 사건에서 더 입력할 후속 상속인이 없으면 이 상태를 확정합니다.',
+      body: `현재 사건에서 [${currentNode.name || '해당 배우자'}]에게 연결될 후속 상속인이 더 있는지 확인해 주세요. 더 입력할 사람이 없으면 '추가 상속인 없음'으로 정리하면 됩니다.`,
+      confirmHelper: `이 배우자 사건에서 더 입력할 후속 상속인이 없으면 현재 상태를 확정합니다.`,
     };
   }, [currentNode, resolvedParentNode]);
 
@@ -133,6 +134,10 @@ export default function InputPanel({
   );
 
   const excludedSpouseChildIds = excludedSpouseChildMap[currentNode?.id || ''] || [];
+  const reviewTargetNodeIds = React.useMemo(
+    () => new Set((reviewContext?.targetNodeIds || []).filter(Boolean)),
+    [reviewContext]
+  );
   const isLegacyWifeReinheritance =
     !!currentNode &&
     currentNode.relation === 'wife' &&
@@ -186,36 +191,36 @@ export default function InputPanel({
     if (currentNode?.successorStatus) {
       const confirmedLabel =
         currentNode.successorStatus === 'confirmed_no_substitute_heirs'
-          ? '대습상속인 없음 확정'
+          ? '??듭긽?띿씤 ?놁쓬 ?뺤젙'
           : currentNode.successorStatus === 'confirmed_no_spouse_descendants'
-            ? '직계비속·배우자 없음 확정'
-            : '추가 상속인 없음 확정';
+            ? '吏곴퀎鍮꾩냽쨌諛곗슦???놁쓬 ?뺤젙'
+            : '異붽? ?곸냽???놁쓬 ?뺤젙';
       return {
-        title: `${confirmedLabel} 상태입니다.`,
-        body: '이 단계는 추가 상속인 없이 진행하도록 확인된 상태입니다. 후속 상속인이 필요해지면 상속인 추가 또는 불러오기를 사용하면 됩니다.',
+        title: `${confirmedLabel} ?곹깭?낅땲??`,
+        body: '???④퀎??異붽? ?곸냽???놁씠 吏꾪뻾?섎룄濡??뺤씤???곹깭?낅땲?? ?꾩냽 ?곸냽?몄씠 ?꾩슂?댁?硫??곸냽??異붽? ?먮뒗 遺덈윭?ㅺ린瑜??ъ슜?섎㈃ ?⑸땲??',
       };
     }
 
     const cycleIssue = currentNodeIssues.find((issue) => issue.code === 'inheritance-cycle');
     if (cycleIssue) {
       return {
-        title: '순환 참조 오류를 먼저 정리해 주세요.',
+        title: '?쒗솚 李몄“ ?ㅻ쪟瑜?癒쇱? ?뺣━??二쇱꽭??',
         body: cycleIssue.text,
       };
     }
 
     if (isRootNode && (!tree.name?.trim() || !tree.deathDate)) {
       return {
-        title: '기본정보를 먼저 입력해 주세요.',
-        body: '사건번호, 피상속인 이름, 사망일자를 입력하면 다음 안내가 이어집니다.',
+        title: '湲곕낯?뺣낫瑜?癒쇱? ?낅젰??二쇱꽭??',
+        body: '?ш굔踰덊샇, ?쇱긽?띿씤 ?대쫫, ?щ쭩?쇱옄瑜??낅젰?섎㈃ ?ㅼ쓬 ?덈궡媛 ?댁뼱吏묐땲??',
       };
     }
 
     const isPre = currentNode?.deathDate && tree?.deathDate && isBefore(currentNode.deathDate, tree.deathDate);
     if (isPre) {
       return {
-        title: '선사망 상속인은 대습상속인 입력이 필요합니다.',
-        body: '배우자 또는 직계비속을 입력하지 않으면 계산에서 제외됩니다.',
+        title: '?좎궗留??곸냽?몄? ??듭긽?띿씤 ?낅젰???꾩슂?⑸땲??',
+        body: '諛곗슦???먮뒗 吏곴퀎鍮꾩냽???낅젰?섏? ?딆쑝硫?怨꾩궛?먯꽌 ?쒖쇅?⑸땲??',
       };
     }
 
@@ -226,14 +231,14 @@ export default function InputPanel({
     ) {
       return {
         title: `${currentNode?.name || '현재 상속인'}은(는) 비호주로 설정되어 있습니다.`,
-        body: '특별한 사정이 없다면 호주 여부를 다시 확인한 뒤 1차 상속인을 입력해 주세요.',
+        body: '사정이 없다면 호주 여부를 다시 확인하고, 1차 상속인을 입력해 주세요.',
       };
     }
 
     if (requiresHojuReview) {
       return {
-        title: '이 상속 단계는 호주상속 가산 검토가 필요합니다.',
-        body: '상속인 불러오기 또는 수동 입력을 먼저 진행한 뒤, 현재 탭에서 호주 여부를 확인하세요.',
+        title: '이 상속 단계는 호주상속 검토가 필요합니다.',
+        body: '상속인을 먼저 불러오거나 입력한 뒤, 현재 단계에서 호주 여부를 확인해 주세요.',
       };
     }
 
@@ -246,21 +251,21 @@ export default function InputPanel({
 
     if (['wife', 'husband', 'spouse'].includes(currentNode?.relation)) {
       return {
-        title: '아직 직접 입력된 후속 상속인이 없습니다.',
-        body: '필요한 상속인이 있다면 추가해 주세요. 입력하지 않으면 법정 순위에 따라 자동 분배가 진행될 수 있습니다.',
+        title: '?꾩쭅 吏곸젒 ?낅젰???꾩냽 ?곸냽?몄씠 ?놁뒿?덈떎.',
+        body: '?꾩슂???곸냽?몄씠 ?덈떎硫?異붽???二쇱꽭?? ?낅젰?섏? ?딆쑝硫?踰뺤젙 ?쒖쐞???곕씪 ?먮룞 遺꾨같媛 吏꾪뻾?????덉뒿?덈떎.',
       };
     }
 
     if (isParentAliveAtTargetDeath) {
       return {
-        title: '아직 직접 입력된 후속 상속인이 없습니다.',
-        body: '필요한 상속인이 있다면 추가해 주세요. 입력하지 않으면 법정 순위에 따라 자동 분배가 진행될 수 있습니다.',
+        title: '?꾩쭅 吏곸젒 ?낅젰???꾩냽 ?곸냽?몄씠 ?놁뒿?덈떎.',
+        body: '?꾩슂???곸냽?몄씠 ?덈떎硫?異붽???二쇱꽭?? ?낅젰?섏? ?딆쑝硫?踰뺤젙 ?쒖쐞???곕씪 ?먮룞 遺꾨같媛 吏꾪뻾?????덉뒿?덈떎.',
       };
     }
 
     return {
-      title: '아직 직접 입력된 후속 상속인이 없습니다.',
-      body: '필요한 상속인이 있다면 추가해 주세요. 입력하지 않으면 법정 순위에 따라 자동 분배가 진행될 수 있습니다.',
+      title: '?꾩쭅 吏곸젒 ?낅젰???꾩냽 ?곸냽?몄씠 ?놁뒿?덈떎.',
+      body: '?꾩슂???곸냽?몄씠 ?덈떎硫?異붽???二쇱꽭?? ?낅젰?섏? ?딆쑝硫?踰뺤젙 ?쒖쐞???곕씪 ?먮룞 遺꾨같媛 吏꾪뻾?????덉뒿?덈떎.',
     };
   };
 
@@ -274,28 +279,28 @@ export default function InputPanel({
     if (!currentNode || currentNode.id === 'root' || !currentNode.isDeceased || currentNode.isExcluded === true) return null;
     if (['wife', 'husband', 'spouse'].includes(currentNode.relation)) {
       return {
-        label: '추가 상속인 없음',
+        label: '異붽? ?곸냽???놁쓬',
         value: 'confirmed_no_additional_heirs',
-        helper: '이 단계에서 더 입력할 후속 상속인이 없음을 확정합니다.',
+        helper: '???④퀎?먯꽌 ???낅젰???꾩냽 ?곸냽?몄씠 ?놁쓬???뺤젙?⑸땲??',
       };
     }
     if (isCurrentPredeceased && ['son', 'daughter', 'sibling'].includes(currentNode.relation)) {
       return {
-        label: '대습상속인 없음',
+        label: '??듭긽?띿씤 ?놁쓬',
         value: 'confirmed_no_substitute_heirs',
-        helper: '배우자나 직계비속이 없어 대습상속이 없음을 확정합니다.',
+        helper: '諛곗슦?먮굹 吏곴퀎鍮꾩냽???놁뼱 ??듭긽?띿씠 ?놁쓬???뺤젙?⑸땲??',
       };
     }
     return {
-      label: '직계비속·배우자 없음',
+      label: '吏곴퀎鍮꾩냽쨌諛곗슦???놁쓬',
       value: 'confirmed_no_spouse_descendants',
-      helper: '직계비속과 배우자가 없어 차순위 상속으로 넘어가도 됨을 확정합니다.',
+      helper: '吏곴퀎鍮꾩냽怨?諛곗슦?먭? ?놁뼱 李⑥닚???곸냽?쇰줈 ?섏뼱媛???⑥쓣 ?뺤젙?⑸땲??',
     };
   }, [currentNode, isCurrentPredeceased]);
 
   const handleRemoveAllHeirs = () => {
     if (!nodeHeirs.length) return;
-    const confirmed = window.confirm('입력된 상속인 목록을 전부 삭제하시겠습니까?');
+    const confirmed = window.confirm('?낅젰???곸냽??紐⑸줉???꾨? ??젣?섏떆寃좎뒿?덇퉴?');
     if (!confirmed) return;
     removeAllHeirs(currentNode?.id || 'root');
   };
@@ -311,7 +316,7 @@ export default function InputPanel({
         ? children.filter((child) => !excludedSpouseChildIds.includes(getSpouseCandidateKey(child)))
         : children;
       if (currentNode.relation === 'husband' && children.length > 0 && filteredChildren.length === 0) {
-        alert('남은 자녀 후보가 없습니다. 직계존속 또는 형제자매 같은 차순위 상속인 입력이 필요한지 검토해 주세요.');
+        alert('?⑥? ?먮? ?꾨낫媛 ?놁뒿?덈떎. 吏곴퀎議댁냽 ?먮뒗 ?뺤젣?먮ℓ 媛숈? 李⑥닚???곸냽???낅젰???꾩슂?쒖? 寃?좏빐 二쇱꽭??');
         return;
       }
       baseAdd = filteredChildren.filter((c) => c.name.trim() === '' || !existingNames.has(c.name));
@@ -329,7 +334,7 @@ export default function InputPanel({
     }
 
     if (baseAdd.length === 0) {
-      alert('불러올 상속인이 없습니다.');
+      alert('遺덈윭???곸냽?몄씠 ?놁뒿?덈떎.');
       return;
     }
 
@@ -341,7 +346,7 @@ export default function InputPanel({
       <div className="bg-white dark:bg-neutral-800/20 border border-[#e9e9e7] dark:border-neutral-700 rounded-lg px-6 py-4 flex flex-wrap items-center gap-4 transition-colors shadow-sm">
         <div className="flex items-center gap-2 shrink-0 border-r border-[#f1f1ef] dark:border-neutral-700/50 pr-6 py-1">
           <div className="w-1.5 h-1.5 rounded-full bg-neutral-300 dark:bg-neutral-600" />
-          <span className="text-[12px] font-bold text-[#787774] dark:text-neutral-400 uppercase tracking-widest">기본정보</span>
+          <span className="text-[12px] font-bold text-[#787774] dark:text-neutral-400 uppercase tracking-widest">湲곕낯?뺣낫</span>
         </div>
         <div className="shrink-0 flex items-center gap-2">
           <label className="text-[12px] text-[#787774] dark:text-neutral-400 font-bold whitespace-nowrap">사건번호</label>
@@ -406,7 +411,7 @@ export default function InputPanel({
                 </span>
                 <div className="flex items-center overflow-hidden">
                   <span className="text-[16px] font-black text-neutral-800 dark:text-neutral-100 truncate">
-                    {getBriefingInfo?.name || (activeDeceasedTab === 'root' ? (tree.name || '피상속인') : '(상속인)')}
+                    {getBriefingInfo?.name || (activeDeceasedTab === 'root' ? (tree.name || '?쇱긽?띿씤') : '(?곸냽??')}
                   </span>
                 </div>
               </div>
@@ -451,8 +456,8 @@ export default function InputPanel({
               <div className="mb-4 p-4 rounded-lg bg-[#fcfcfb] dark:bg-neutral-800/50 border border-[#e9e9e7] dark:border-neutral-700">
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between">
-                    <div className="text-[12px] font-bold text-[#787774] dark:text-neutral-400">상속인 이름을 쉼표로 구분해 빠르게 입력하세요.</div>
-                    <button onClick={() => { setIsMainQuickActive(false); setMainQuickVal(''); }} className="text-[#a3a3a3] dark:text-neutral-500 hover:text-[#37352f] dark:hover:text-neutral-300 p-0.5 rounded transition-colors" title="닫기"><IconX className="w-3.5 h-3.5" /></button>
+                    <div className="text-[12px] font-bold text-[#787774] dark:text-neutral-400">?곸냽???대쫫???쇳몴濡?援щ텇??鍮좊Ⅴ寃??낅젰?섏꽭??</div>
+                    <button onClick={() => { setIsMainQuickActive(false); setMainQuickVal(''); }} className="text-[#a3a3a3] dark:text-neutral-500 hover:text-[#37352f] dark:hover:text-neutral-300 p-0.5 rounded transition-colors" title="?リ린"><IconX className="w-3.5 h-3.5" /></button>
                   </div>
                   <div className="flex gap-2">
                     <input
@@ -485,34 +490,16 @@ export default function InputPanel({
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="text-[12px] font-bold text-[#37352f] dark:text-neutral-200">
-                      상위 사건 자녀 목록
+                      {isLegacyWifeReinheritance ? '기준 자녀 목록' : '상위 사건 자녀 목록'}
                     </div>
                     <div className="mt-1 text-[11.5px] leading-relaxed text-[#787774] dark:text-neutral-400">
                       {isLegacyWifeReinheritance
-                        ? `위 자녀들은 [${resolvedParentNode?.name || '상위 사건'}] 사건 기준 자녀 목록입니다. 1991년 이전 사건에서는 이 자녀들이 [${currentNode?.name || '해당 배우자'}] 사건의 기본 상속인으로 반영됩니다. [${currentNode?.name || '해당 배우자'}]에게만 있는 별도의 자녀가 있으면 추가로 입력해 주세요.`
+                        ? `[${resolvedParentNode?.name || '상위 사건'}] 사건 자녀`
                         : isHusbandReinheritanceGuide
-                          ? `위 자녀들은 [${resolvedParentNode?.name || '상위 사건'}] 사건 기준 자녀 목록입니다. [${currentNode?.name || '해당 배우자'}] 사건에서는 이 목록이 그대로 상속인이 아닐 수 있습니다. 상속인이 아닌 사람이 있으면 선택해 주세요.`
-                          : `위 자녀들은 [${resolvedParentNode?.name || '상위 사건'}] 사건 기준 자녀 목록입니다. 현재 사건과 다른 부분이 있으면 불러오기 후 수정해 주세요.`}
+                          ? `아래의 상속인은 [${resolvedParentNode?.name || '상위 사건'}] 사건 기준 자녀 목록입니다. [${currentNode?.name || '해당 배우자'}]의 상속인이 아닌 사람이 있으면 선택해 주세요.`
+                          : `아래의 상속인은 [${resolvedParentNode?.name || '상위 사건'}] 사건 기준 자녀 목록입니다.`}
                     </div>
                   </div>
-                  {isHusbandReinheritanceGuide && (
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={clearExcludedSpouseChildren}
-                        className="rounded-md border border-[#e9e9e7] bg-white px-2.5 py-1 text-[11px] font-bold text-[#5f5b55] transition-colors hover:bg-[#f3f3f1] dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
-                      >
-                        전체 해제
-                      </button>
-                      <button
-                        type="button"
-                        onClick={excludeAllSpouseChildren}
-                        className="rounded-md border border-[#e9e9e7] bg-white px-2.5 py-1 text-[11px] font-bold text-[#5f5b55] transition-colors hover:bg-[#f3f3f1] dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
-                      >
-                        전부 제외
-                      </button>
-                    </div>
-                  )}
                 </div>
 
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -541,13 +528,13 @@ export default function InputPanel({
 
                 {isHusbandReinheritanceGuide && (
                   <div className="mt-3 text-[11px] leading-relaxed text-[#787774] dark:text-neutral-400">
-                    선택한 사람은 남편 사건에서 불러오기 대상에서 제외합니다. 모두 제외하면 직계존속 또는 형제자매 같은 차순위 상속인 입력이 필요한지 검토해 주세요.
+                    선택한 사람은 [불러오기] 대상에서 제외됩니다. 모두 제외하면 직계존속 또는 형제자매 같은 차순위 상속인 입력이 필요한지 검토해 주세요.
                   </div>
                 )}
 
                 {areAllHusbandCandidatesExcluded && (
                   <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200">
-                    {`현재 자녀 후보가 모두 제외되었습니다. [${currentNode?.name || '해당 배우자'}] 사건에서는 직계비속이 보이지 않으므로, 부모 등 직계존속 또는 형제자매 같은 차순위 상속인 입력이 필요한지 검토해 주세요.`}
+                    {`현재 자녀 후보가 모두 제외되었습니다. [${currentNode?.name || '해당 배우자'}] 사건에서는 직계비속이 보이지 않으므로, 부모 등 직계존속이나 형제자매 같은 차순위 상속인 입력이 필요한지 검토해 주세요.`}
                   </div>
                 )}
               </div>
@@ -590,15 +577,15 @@ export default function InputPanel({
                             : '추가 상속인 없음 확정'}
                       </div>
                       <span className="text-[11.5px] text-[#787774] dark:text-neutral-400">
-                        상속인을 추가하거나 불러오기 하면 이 확정 상태는 자동으로 해제됩니다.
+                        ?곸냽?몄쓣 異붽??섍굅??遺덈윭?ㅺ린 ?섎㈃ ???뺤젙 ?곹깭???먮룞?쇰줈 ?댁젣?⑸땲??
                       </span>
                     </div>
                   )}
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center p-8 bg-[#f8f8f7] dark:bg-neutral-800/40 border border-[#e9e9e7] dark:border-neutral-700 rounded-lg text-center gap-2 m-2 mb-4">
-                  <span className="text-[#37352f] dark:text-neutral-200 font-bold text-[14px]">아직 하위 상속인 데이터가 없습니다.</span>
-                  <span className="text-[#787774] dark:text-neutral-400 text-[12.5px]">이 가지에 상속인이 없다면 법정 순위에 따라 다음 순위로 지분이 분배됩니다.</span>
+                  <span className="text-[#37352f] dark:text-neutral-200 font-bold text-[14px]">?꾩쭅 ?섏쐞 ?곸냽???곗씠?곌? ?놁뒿?덈떎.</span>
+                  <span className="text-[#787774] dark:text-neutral-400 text-[12.5px]">??媛吏???곸냽?몄씠 ?녿떎硫?踰뺤젙 ?쒖쐞???곕씪 ?ㅼ쓬 ?쒖쐞濡?吏遺꾩씠 遺꾨같?⑸땲??</span>
                 </div>
               )
             )}
@@ -611,18 +598,18 @@ export default function InputPanel({
                 <div className="w-[76px] ml-[30px] shrink-0">관계</div>
                 <div className="w-[150px] ml-[50px] shrink-0">생존/사망(사망일자)</div>
                 <div className="w-[180px] ml-[10px] shrink-0">특수조건/가감산 요소</div>
-                <div className="w-[98px] ml-[10px] shrink-0 text-center">재상속/대습상속</div>
+                <div className="w-[98px] ml-[10px] shrink-0 text-center">사상 또는 대습상태</div>
                 <div className="ml-[15px] mr-[20px] w-12 shrink-0 flex justify-center">
                   <button
                     type="button"
                     onClick={handleRemoveAllHeirs}
                     disabled={!nodeHeirs.length}
                     className="group relative flex h-7 w-7 items-center justify-center rounded-md text-[#a3a3a3] transition-colors hover:text-red-500 disabled:cursor-default disabled:opacity-40"
-                    aria-label="전체삭제"
+                    aria-label="전체 제거"
                   >
                     <IconTrash2 className="h-4 w-4 shrink-0" />
                     <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 -translate-x-1/2 rounded-md border border-red-200 bg-white px-2 py-1 text-[10px] font-normal whitespace-nowrap text-red-500 opacity-0 shadow-sm transition-all duration-150 group-hover:opacity-100">
-                      전체삭제
+                      전체 제거
                     </span>
                   </button>
                 </div>
@@ -633,31 +620,39 @@ export default function InputPanel({
               <SortableContext items={nodeHeirs.map((h) => h.id)} strategy={verticalListSortingStrategy}>
                 <div className="space-y-1.5">
                   {nodeHeirs.map((h) => (
-                    <HeirRow
+                    <div
                       key={h.id}
-                      node={h}
-                      finalShares={finalShares}
-                      level={1}
-                      handleUpdate={handleUpdate}
-                      removeHeir={removeHeir}
-                      addHeir={addHeir}
-                      siblings={nodeHeirs}
-                      inheritedDate={inheritedDate}
-                      rootDeathDate={tree.deathDate}
-                      onKeyDown={handleKeyDown}
-                      rootIsHoju={tree.isHoju !== false}
-                      isRootChildren={activeDeceasedTab === 'root'}
-                      parentNode={currentNode}
-                      onTabClick={(id) => {
-                        let targetPId = id;
-                        const findPId = (n) => {
-                          if (n.id === id) targetPId = n.personId;
-                          if (n.heirs) n.heirs.forEach(findPId);
-                        };
-                        findPId(tree);
-                        setActiveDeceasedTab(targetPId);
-                      }}
-                    />
+                      className={
+                        reviewTargetNodeIds.has(h.id)
+                          ? 'rounded-lg ring-2 ring-amber-300 ring-offset-2 ring-offset-white dark:ring-amber-600 dark:ring-offset-neutral-800'
+                          : ''
+                      }
+                    >
+                      <HeirRow
+                        node={h}
+                        finalShares={finalShares}
+                        level={1}
+                        handleUpdate={handleUpdate}
+                        removeHeir={removeHeir}
+                        addHeir={addHeir}
+                        siblings={nodeHeirs}
+                        inheritedDate={inheritedDate}
+                        rootDeathDate={tree.deathDate}
+                        onKeyDown={handleKeyDown}
+                        rootIsHoju={tree.isHoju !== false}
+                        isRootChildren={activeDeceasedTab === 'root'}
+                        parentNode={currentNode}
+                        onTabClick={(id) => {
+                          let targetPId = id;
+                          const findPId = (n) => {
+                            if (n.id === id) targetPId = n.personId;
+                            if (n.heirs) n.heirs.forEach(findPId);
+                          };
+                          findPId(tree);
+                          setActiveDeceasedTab(targetPId);
+                        }}
+                      />
+                    </div>
                   ))}
                 </div>
               </SortableContext>

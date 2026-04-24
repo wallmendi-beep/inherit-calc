@@ -178,13 +178,29 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
 
     if (!node.isDeceased && !(node.isExcluded && (node.exclusionOption === 'lost' || node.exclusionOption === 'disqualified')) || node.id === 'root') {
       if (node.id !== 'root') {
-        results.push({ id: node.id, personId: getPersonKey(node), name: node.name, n: inN, d: inD, relation: node.relation, isDeceased: !!node.isDeceased });
+        results.push({
+          id: node.id,
+          personId: getPersonKey(node),
+          name: node.name,
+          n: inN,
+          d: inD,
+          relation: node._origRelation || node.relation,
+          isDeceased: !!node.isDeceased,
+        });
       }
       if (!node.isDeceased && !isDisqualifiedOrLost) return;
     }
 
     if (isDisqualifiedOrLost) {
-      results.push({ id: node.id, personId: getPersonKey(node), name: node.name, n: 0, d: 1, relation: node.relation, isDeceased: !!node.isDeceased });
+      results.push({
+        id: node.id,
+        personId: getPersonKey(node),
+        name: node.name,
+        n: 0,
+        d: 1,
+        relation: node._origRelation || node.relation,
+        isDeceased: !!node.isDeceased,
+      });
     }
 
     if (isRenounced(node, inheritedDate)) return;
@@ -258,7 +274,15 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
         const isSubstitution = node.isDeceased && node.deathDate && inheritedDate && isBefore(node.deathDate, inheritedDate);
         if (isSubstitution) return; 
         
-        results.push({ id: node.id, personId: getPersonKey(node), name: node.name, n: inN, d: inD, relation: node.relation, isDeceased: !!node.isDeceased });
+        results.push({
+          id: node.id,
+          personId: getPersonKey(node),
+          name: node.name,
+          n: inN,
+          d: inD,
+          relation: node._origRelation || node.relation,
+          isDeceased: !!node.isDeceased,
+        });
         return; 
       }
       return; 
