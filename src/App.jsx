@@ -646,6 +646,29 @@ function App() {
     });
   };
 
+  const resetAllState = () => {
+    setTree({ id: 'root', name: '', gender: 'male', deathDate: '', caseNo: '', isHoju: true, shareN: 1, shareD: 1, heirs: [] });
+    setActiveTab('input');
+    setActiveDeceasedTab('root');
+    setPropertyValue('');
+    setSpecialBenefits({});
+    setContributions({});
+    setIsAmountActive(false);
+    setImportIssues([]);
+    setCheckedGuideKeys(new Set());
+    setHiddenGuideKeys(new Set());
+    setConfirmedGuidesOpen(false);
+    setReviewContext(null);
+    setSearchQuery('');
+    setMatchIds([]);
+    setCurrentMatchIdx(0);
+    setSidebarSearchQuery('');
+    setSidebarMatchIds([]);
+    setSidebarCurrentMatchIdx(0);
+    setIsDirty(false);
+    setIsResetModalOpen(false);
+  };
+
   const handleUpdate = (id, changes, value) => {
     // [v4.64] 객체 기반 Dispatch 호출 지원 (HeirRow 등에서 사용)
     if (typeof id === 'object' && id.type) {
@@ -787,23 +810,32 @@ function App() {
             setIsDirty(false);
           }}
           handleExcelExport={() => {
-            // finalShares를 CSV로 내보내기
-            const rows = (finalShares?.survivors || []).map((s) => [
-              s.name || '',
-              s.relation || '',
-              `${s.n}/${s.d}`,
-              s.path || '',
-            ]);
-            const header = ['성명', '관계', '지분(분수)', '취득경로'];
-            const csv = [header, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+            const survivors = finalShares?.survivors || [];
+            const commonDenominator = survivors.reduce((acc, s) => math.lcm(acc || 1, s.d || 1), 1) || 1;
+            const rows = survivors.map((s) => {
+              const simplifiedN = s.n || 0;
+              const simplifiedD = s.d || 1;
+              const commonN = simplifiedN * (commonDenominator / simplifiedD);
+              return [
+                s.name || '',
+                getRelStr(s.relation, tree.deathDate) || s.relation || '',
+                simplifiedN,
+                simplifiedD,
+                commonN,
+                commonDenominator,
+                s.path || '',
+              ];
+            });
+            const header = ['??', '??', '??? ??', '??? ??', '??? ??', '??? ??', '????'];
+            const csv = [header, ...rows].map((r) => r.map((c) => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
             const bom = '\uFEFF';
             const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            const safeCaseNo = (tree.caseNo || '사건번호없음').replace(/[^a-zA-Z0-9가-힣_-]/g, '');
-            const safeName = (tree.name || '피상속인없음').replace(/[^a-zA-Z0-9가-힣_-]/g, '');
+            const safeCaseNo = (tree.caseNo || '??????').replace(/[^\w?-?-]/g, '');
+            const safeName = (tree.name || '??????').replace(/[^\w?-?-]/g, '');
             a.href = url;
-            a.download = `${safeCaseNo}_${safeName}_상속지분_${new Date().toISOString().slice(0,10)}.csv`;
+            a.download = `${safeCaseNo}_${safeName}_??????_${new Date().toISOString().slice(0,10)}.csv`;
             a.click();
             URL.revokeObjectURL(url);
           }}
@@ -903,19 +935,17 @@ function App() {
         onSubmit={(text) => ingestAiJsonInput({ input: text, aiTargetId, tree, setTree, setActiveTab, setIsAiModalOpen, setAiInputText })}
         onTextareaAutoSubmit={(text) => ingestAiJsonInput({ input: text, aiTargetId, tree, setTree, setActiveTab, setIsAiModalOpen, setAiInputText })}
       />
-      <ResetConfirmModal isOpen={isResetModalOpen} onClose={() => setIsResetModalOpen(false)} onConfirm={() => {
-        // 모든 상태를 초기값으로 리셋
-        setTree({ id: 'root', name: '', gender: 'male', deathDate: '', caseNo: '', isHoju: true, shareN: 1, shareD: 1, heirs: [] });
-        setActiveTab('input');
-        setActiveDeceasedTab('root');
-        setPropertyValue('');
-        setSpecialBenefits({});
-        setContributions({});
-        setIsAmountActive(false);
-        setImportIssues([]);
-        setIsDirty(false);
-        setIsResetModalOpen(false);
-      }} />
+      <ResetConfirmModal
+          isOpen={isResetModalOpen}
+          onClose={() => setIsResetModalOpen(false)}
+          onSaveAndReset={() => {
+            saveFactTreeToFile(tree, { propertyValue, specialBenefits, contributions, isAmountActive });
+            resetAllState();
+          }}
+          onResetOnly={() => {
+            resetAllState();
+          }}
+        />
         <PersonEditModal
           isOpen={!!personEditModal}
           onClose={() => setPersonEditModal(null)}
