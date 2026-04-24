@@ -774,14 +774,38 @@ function App() {
         <TopToolbar
           sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} tree={tree}
           setAiTargetId={setAiTargetId} setIsAiModalOpen={setIsAiModalOpen}
+          setShowNavigator={setShowNavigator}
+          hasActionItems={guideInfo?.hasActionItems}
           undoTree={undoTree} redoTree={redoTree} canUndo={vaultState.currentIndex > 0} canRedo={vaultState.currentIndex < vaultState.history.length - 1}
+          setIsResetModalOpen={setIsResetModalOpen}
           loadFile={(e) => {
             loadTreeFromJsonFile(e.target.files[0], { setTree, setActiveTab, setImportIssues, setPropertyValue, setSpecialBenefits, setContributions, setIsAmountActive });
-            setIsDirty(false); // 새 파일 로드 시 수정 상태 초기화
+            setIsDirty(false);
           }}
           saveFile={() => {
             saveFactTreeToFile(tree, { propertyValue, specialBenefits, contributions, isAmountActive });
-            setIsDirty(false); // 저장 완료 시 수정 상태 초기화
+            setIsDirty(false);
+          }}
+          handleExcelExport={() => {
+            // finalShares를 CSV로 내보내기
+            const rows = (finalShares?.survivors || []).map((s) => [
+              s.name || '',
+              s.relation || '',
+              `${s.n}/${s.d}`,
+              s.path || '',
+            ]);
+            const header = ['성명', '관계', '지분(분수)', '취득경로'];
+            const csv = [header, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+            const bom = '\uFEFF';
+            const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const safeCaseNo = (tree.caseNo || '사건번호없음').replace(/[^a-zA-Z0-9가-힣_-]/g, '');
+            const safeName = (tree.name || '피상속인없음').replace(/[^a-zA-Z0-9가-힣_-]/g, '');
+            a.href = url;
+            a.download = `${safeCaseNo}_${safeName}_상속지분_${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
           }}
           handlePrint={() => printCurrentTab({ activeTab, tree, summaryViewMode })}
           zoomLevel={zoomLevel} setZoomLevel={setZoomLevel} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode}
@@ -879,7 +903,19 @@ function App() {
         onSubmit={(text) => ingestAiJsonInput({ input: text, aiTargetId, tree, setTree, setActiveTab, setIsAiModalOpen, setAiInputText })}
         onTextareaAutoSubmit={(text) => ingestAiJsonInput({ input: text, aiTargetId, tree, setTree, setActiveTab, setIsAiModalOpen, setAiInputText })}
       />
-      <ResetConfirmModal isOpen={isResetModalOpen} onClose={() => setIsResetModalOpen(false)} onConfirm={() => {}} />
+      <ResetConfirmModal isOpen={isResetModalOpen} onClose={() => setIsResetModalOpen(false)} onConfirm={() => {
+        // 모든 상태를 초기값으로 리셋
+        setTree({ id: 'root', name: '', gender: 'male', deathDate: '', caseNo: '', isHoju: true, shareN: 1, shareD: 1, heirs: [] });
+        setActiveTab('input');
+        setActiveDeceasedTab('root');
+        setPropertyValue('');
+        setSpecialBenefits({});
+        setContributions({});
+        setIsAmountActive(false);
+        setImportIssues([]);
+        setIsDirty(false);
+        setIsResetModalOpen(false);
+      }} />
         <PersonEditModal
           isOpen={!!personEditModal}
           onClose={() => setPersonEditModal(null)}
