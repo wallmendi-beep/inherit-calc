@@ -124,7 +124,7 @@ export default function SmartGuidePanel({
                 가계도 검증이 완료되었습니다.
               </p>
               <p className="mt-1 text-xs text-slate-400 dark:text-neutral-500">
-                상세 검토 및 계산 결과를 확인해 주세요.
+                사건 검토 및 계산 결과를 확인해 주세요.
               </p>
             </section>
           )}
