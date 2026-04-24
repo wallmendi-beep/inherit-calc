@@ -315,7 +315,7 @@ export default function InputPanel({
     removeAllHeirs(currentNode?.id || 'root');
   };
 
-  const handleAutoFill = () => {
+  const handleAutoFill = (silent = false) => {
     const parentHeirs = parentHeirsForGuide;
     const existingNames = new Set(nodeHeirs.map((h) => h.name).filter((n) => n.trim() !== ''));
     let baseAdd = [];
@@ -337,12 +337,22 @@ export default function InputPanel({
     }
 
     if (baseAdd.length === 0) {
-      alert('불러올 상속인이 없습니다.');
+      if (silent !== true) alert('불러올 상속인이 없습니다.');
       return;
     }
 
     appendResolvedHeirs(currentNode.id, baseAdd.map((item) => ({ ...item })));
   };
+
+  const autoFilledTabs = React.useRef(new Set());
+  React.useEffect(() => {
+    if (activeDeceasedTab !== 'root' && currentNode && ['wife', 'husband', 'spouse'].includes(currentNode.relation)) {
+      if (nodeHeirs.length === 0 && !autoFilledTabs.current.has(activeDeceasedTab)) {
+        handleAutoFill(true);
+        autoFilledTabs.current.add(activeDeceasedTab);
+      }
+    }
+  }, [activeDeceasedTab, currentNode?.relation, nodeHeirs.length]);
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-400 flex flex-col flex-1">
@@ -532,6 +542,30 @@ export default function InputPanel({
                   <span className="text-[#787774] dark:text-neutral-400 text-[12.5px]">이 가지에 상속인이 없다면 법정 순위에 따라 다음 순위로 지분이 분배됩니다.</span>
                 </div>
               )
+            )}
+
+            {nodeHeirs.length > 0 && ['wife', 'husband', 'spouse'].includes(currentNode?.relation) && (
+              <div className="flex flex-col p-4 bg-[#f8f8f7] dark:bg-neutral-800/40 border border-[#e9e9e7] dark:border-neutral-700 rounded-lg text-center gap-1 mb-4 shadow-sm">
+                <span className="text-[#37352f] dark:text-neutral-200 font-bold text-[13.5px]">
+                  [{resolvedParentNode?.name || '상위 피상속인'}]의 자녀들을 자동으로 불러왔습니다.
+                </span>
+                {currentNode?.relation === 'wife' ? (
+                  <span className="text-[#787774] dark:text-neutral-400 text-[12px] mt-1">
+                    [{currentNode?.name || '처'}]에게만 있는 별도의 고유 자녀가 있으면 추가해 주세요.
+                  </span>
+                ) : (
+                  <>
+                    <span className="text-[#787774] dark:text-neutral-400 text-[12px] mt-1">
+                      [{currentNode?.name || '남편'}]의 고유자녀가 아닌 사람은 삭제해 주세요.
+                    </span>
+                    {!nodeHeirs.some((h) => h.isHoju) && (
+                      <span className="text-red-500 font-bold text-[12.5px] mt-1">
+                        [{currentNode?.name || '남편'}]은 호주 입니다. 호주상속을 받는 자를 선택해주세요.
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
             )}
 
             {nodeHeirs.length > 0 && (
