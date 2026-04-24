@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+import { useMemo } from 'react';
 import { getLawEra, isBefore } from '../engine/utils';
 import { auditInheritanceResult } from '../engine/inheritanceAudit';
 import { buildSpouseDirectGuideText, collectLegacyStepchildGuideEntries } from './smartGuideHelpers';
@@ -184,8 +184,10 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
                 names: [],
                 nodeIds: [],
               };
-              current.names.push(node.name || '?대쫫 誘몄긽');
-              current.nodeIds.push(node.id);
+              current.names.push(node.name || '이름 미상');
+              // node.id와 personId 모두 저장해 InputPanel에서 양쪽으로 매칭 가능하게 함
+              if (node.id) current.nodeIds.push(node.id);
+              if (node.personId && node.personId !== node.id) current.nodeIds.push(node.personId);
               groupedPredeceasedMissingMap.set(groupKey, current);
             }
           } else {
@@ -271,8 +273,8 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
     groupedPredeceasedMissingMap.forEach((group, key) => {
       const uniqueNames = Array.from(new Set(group.names));
       if (uniqueNames.length === 0) return;
-      // 1명이면 해당 인물 사건으로, 여러 명이면 부모 사건으로 이동
-      const navTarget = uniqueNames.length === 1 ? group.firstTargetTabId : group.targetTabId;
+      // 대습상속 누락의 경우 항상 부모(피상속인) 사건 탭으로 이동해야 하위 대습상속인을 입력할 수 있습니다.
+      const navTarget = group.targetTabId;
       uniqueGuidesMap.set(`grouped-missing-substitution-${key}`, {
         id: key, uniqueKey: `grouped-missing-substitution-${key}`, targetTabId: navTarget, type: 'mandatory', navigationMode: 'event',
         targetNodeIds: group.nodeIds || [],
@@ -283,8 +285,8 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
     groupedDirectMissingMap.forEach((group, key) => {
       const uniqueNames = Array.from(new Set(group.names));
       if (uniqueNames.length === 0) return;
-      // 1명이면 해당 인물 사건으로, 여러 명이면 부모 사건으로 이동
-      const navTarget = uniqueNames.length === 1 ? group.firstTargetTabId : group.targetTabId;
+      // 배우자 단독상속 그룹이 아니면 항상 부모(피상속인) 사건 탭으로 이동해야 올바른 위치에서 입력 가능합니다.
+      const navTarget = group.isSpouseGroup ? group.firstTargetTabId : group.targetTabId;
       uniqueGuidesMap.set(`grouped-direct-missing-${key}`, {
         id: navTarget, uniqueKey: `grouped-direct-missing-${key}`, targetTabId: navTarget, type: 'mandatory', navigationMode: 'event',
         text: group.isSpouseGroup

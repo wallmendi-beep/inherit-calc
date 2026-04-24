@@ -578,6 +578,11 @@ function App() {
             console.error('Highlight DOM Error:', error);
           }
         });
+        
+        // 애니메이션이 완전히 종료된 후 하이라이트 상태(파란 테두리 등)를 원복하기 위해 Context 초기화
+        setTimeout(() => {
+          setReviewContext(null);
+        }, 2600);
       }, 400);
       return;
     }
