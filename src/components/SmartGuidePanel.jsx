@@ -3,414 +3,202 @@ import ContextualDrawer from './ui/ContextualDrawer';
 
 const GuideCheckButton = ({ label, onClick, tone = 'neutral' }) => (
   <button
-    type="button"
     onClick={onClick}
-    className={`shrink-0 rounded-md border px-2 py-1 text-[11px] font-medium transition-colors ${
-      tone === 'event'
-        ? 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-300'
-        : 'border-neutral-200 text-slate-500 hover:bg-neutral-100 hover:text-slate-700 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800'
+    className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11.5px] font-bold transition-all ${
+      tone === 'primary'
+        ? 'border-[#1e56a0] bg-white text-[#1e56a0] hover:bg-[#eff6ff] dark:bg-neutral-800'
+        : 'border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 dark:border-neutral-700 dark:bg-neutral-900/60 dark:text-neutral-400'
     }`}
-    title={label}
   >
     {label}
   </button>
 );
 
-function GuideSectionTitle({ children }) {
-  return (
-    <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-neutral-400">
-      {children}
-    </h3>
-  );
-}
-
-export default function SmartGuidePanel({
-  showNavigator = false,
-  setShowNavigator = () => {},
-  hasActionItems = false,
-  noSurvivors = false,
-  activeTab = 'input',
-  warnings = [],
-  smartGuides = [],
-  hiddenGuideKeys = new Set(),
-  dismissGuide = () => {},
-  checkedGuideKeys = new Set(),
-  toggleGuideChecked = () => {},
-  confirmedGuides = [],
-  confirmedGuidesOpen = false,
-  setConfirmedGuidesOpen = () => {},
-  showGlobalWarning = false,
-  globalMismatchReasons = [],
-  auditActionItems = [],
-  repairHints = [],
-  handleNavigate = () => {},
-  handleGuideNavigate = () => {},
-  showAutoCalcNotice = false,
-  autoCalculatedNames = [],
-  removeHeir = () => {},
-}) {
-  const resolveGuideTarget = (item) =>
-    item?.targetNodeId || item?.targetTabId || item?.personId || item?.id || null;
-  const getGuideActionLabel = (guide) => {
-    if (guide?.navigationMode === 'event' && activeTab !== 'input') return '사건 열기';
-    return '확인';
-  };
-  const getGuideActionTone = (guide) => {
-    if (guide?.navigationMode === 'event' && activeTab !== 'input') return 'event';
-    return 'neutral';
-  };
-
-  const checkedSet = checkedGuideKeys || new Set();
-  const warningsToShow = (warnings || []).filter((warning) => warning.code !== 'auto-sibling-redistribution');
-  const visibleAuditActionItems = (auditActionItems || []).filter((item) => {
-    if (item.code === 'hierarchy-violation') return activeTab === 'input';
-    return (item?.displayTargets || []).includes('guide');
-  });
-
-  const mandatoryGuides = (smartGuides || []).filter(
-    (guide) => guide?.type === 'mandatory' && !checkedSet.has(guide?.uniqueKey),
-  );
-  const recommendedGuides = (smartGuides || []).filter(
-    (guide) =>
-      guide?.type === 'recommended' &&
-      !(hiddenGuideKeys || new Set()).has(guide?.uniqueKey) &&
-      !checkedSet.has(guide?.uniqueKey),
-  );
-
-  const hasUrgentSignals =
-    mandatoryGuides.length > 0 ||
-    visibleAuditActionItems.length > 0 ||
-    !!showGlobalWarning;
+const GuideCard = ({ guide, onChecked, onDismiss, isChecked, handleGuideNavigate }) => {
+  const isMandatory = guide.type === 'mandatory';
 
   return (
-    <>
-      {!showNavigator && (
-        <button
-          type="button"
-          onClick={() => setShowNavigator(true)}
-          className={`fixed right-4 top-[92px] z-50 inline-flex items-center gap-2 rounded-full border px-3 py-2 text-[12px] font-bold shadow-lg transition-all ${
-            hasUrgentSignals
-              ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-900/40 dark:bg-amber-950/60 dark:text-amber-300'
-              : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200'
-          }`}
-          title={hasUrgentSignals ? '확인이 필요한 가이드가 있습니다.' : '가이드 펼치기'}
-        >
-          <span
-            className={`h-2 w-2 rounded-full ${
-              hasUrgentSignals ? 'bg-amber-500' : 'bg-slate-300 dark:bg-neutral-600'
-            }`}
-          />
-          가이드
-        </button>
-      )}
-
-      <ContextualDrawer isOpen={showNavigator} onClose={() => setShowNavigator(false)} title="스마트 가이드">
-        <div className="space-y-6 p-5">
-          {noSurvivors && (
-            <section className="rounded-lg border border-slate-200 bg-slate-50 p-4 shadow-sm dark:border-neutral-700 dark:bg-neutral-800/50">
-              <div className="text-[13px] font-bold text-slate-800 dark:text-neutral-100">
-                최종 생존 상속인이 없습니다.
-              </div>
-              <div className="mt-1 text-[12px] leading-relaxed text-slate-500 dark:text-neutral-400">
-                모든 상속인이 제외되었거나 사망 상태입니다. 입력 데이터를 다시 확인하고 실제 상속인을 추가해 주세요.
-              </div>
-            </section>
-          )}
-
-          {!hasActionItems && !noSurvivors && (
-            <section className="flex h-40 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white text-center dark:border-neutral-700 dark:bg-neutral-900/40">
-              <span className="text-2xl font-bold text-[#1e56a0] dark:text-blue-400">이상 없음</span>
-              <p className="mt-2 text-sm font-medium text-slate-600 dark:text-neutral-300">
-                가계도 검증이 완료되었습니다.
-              </p>
-              <p className="mt-1 text-xs text-slate-400 dark:text-neutral-500">
-                사건 검토 및 계산 결과를 확인해 주세요.
-              </p>
-            </section>
-          )}
-
-          {visibleAuditActionItems.length > 0 && (
-            <section className="space-y-3">
-              <GuideSectionTitle>즉시 해결이 필요한 문제</GuideSectionTitle>
-              <ul className="space-y-2">
-                {visibleAuditActionItems.map((item, index) => (
-                  <li key={`audit-${item.id || index}`}>
-                    <button
-                      type="button"
-                      onClick={() => handleNavigate(item.targetTabId || item.personId || item.id)}
-                      className="w-full rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-left transition-all hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800/50"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <div className="text-[12.5px] font-bold text-slate-800 dark:text-neutral-100">
-                            {item.name || '확인이 필요한 인물'}
-                          </div>
-                          <div className="mt-0.5 text-[11.5px] font-medium leading-relaxed text-slate-600 dark:text-neutral-400">
-                            {item.text}
-                          </div>
-                        </div>
-                      </div>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {activeTab !== 'input' && warningsToShow.length > 0 && (
-            <section className="space-y-3">
-              <GuideSectionTitle>참고할 사건 메모</GuideSectionTitle>
-              <ul className="space-y-2">
-                {warningsToShow.map((warning, index) => {
-                  const target = warning?.targetTabId || warning?.personId || warning?.id || null;
-                  return (
-                    <li key={`warning-${index}`}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (target) handleNavigate(target);
-                        }}
-                        disabled={!target}
-                        className={`w-full rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-left dark:border-neutral-700 dark:bg-neutral-800/50 ${
-                          target ? 'transition-all hover:bg-neutral-100' : 'cursor-default'
-                        }`}
-                      >
-                        <span className="text-[11.5px] font-medium leading-snug text-slate-700 dark:text-neutral-200">
-                          {warning.text || warning}
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          )}
-
-          {mandatoryGuides.length > 0 && (
-            <section className="space-y-3">
-              <GuideSectionTitle>우선 확인이 필요한 항목</GuideSectionTitle>
-              <ul className="space-y-2">
-                {mandatoryGuides.map((guide, index) => {
-                  const isDeleteAction = guide.action === 'delete';
-                  const isSubstitutionGuide = guide?.uniqueKey?.startsWith('grouped-missing-substitution-');
-                  return (
-                    <li key={`mandatory-${index}`}>
-                      <div
-                        className={`w-full rounded-lg border p-3 shadow-sm transition-all ${
-                          isSubstitutionGuide
-                            ? 'border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-950/20'
-                            : 'border-neutral-200 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800/50'
-                        } ${
-                          !isDeleteAction
-                            ? isSubstitutionGuide
-                              ? 'cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-950/30'
-                              : 'cursor-pointer hover:bg-neutral-100'
-                            : ''
-                        }`}
-                        onClick={() => {
-                          if (!isDeleteAction) handleGuideNavigate(guide);
-                        }}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1">
-                            <span
-                              className={`text-[11.5px] font-medium leading-relaxed ${
-                                isDeleteAction
-                                  ? 'text-rose-600 dark:text-rose-400'
-                                  : isSubstitutionGuide
-                                    ? 'text-amber-900 dark:text-amber-100'
-                                    : 'text-slate-800 dark:text-neutral-100'
-                              }`}
-                            >
-                              {guide.text}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {isDeleteAction ? (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (window.confirm('잘못 연결된 노드를 삭제하시겠습니까?')) {
-                                    removeHeir(guide.targetNodeId);
-                                  }
-                                }}
-                                className="shrink-0 rounded-md bg-rose-600 px-2 py-1 text-[11px] font-bold text-white shadow-sm transition-colors hover:bg-rose-700"
-                              >
-                                삭제
-                              </button>
-                            ) : (
-                              <GuideCheckButton
-                                label={getGuideActionLabel(guide)}
-                                tone={getGuideActionTone(guide)}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (guide?.navigationMode === 'event') {
-                                    handleGuideNavigate(guide);
-                                    return;
-                                  }
-                                  toggleGuideChecked(guide.uniqueKey);
-                                }}
-                              />
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          )}
-
-          {recommendedGuides.length > 0 && (
-            <section className="space-y-3">
-              <GuideSectionTitle>권장 가이드</GuideSectionTitle>
-              <ul className="space-y-2">
-                {recommendedGuides.map((guide, index) => (
-                  <li key={`recommended-${index}`} className="group relative">
-                    <button
-                      type="button"
-                      onClick={() => handleGuideNavigate(guide)}
-                      className="w-full rounded-lg border border-neutral-200 bg-neutral-50 p-3 pr-10 text-left shadow-sm transition-all hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800/40"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <span className="text-[11.5px] font-medium leading-relaxed text-slate-700 dark:text-neutral-200">
-                          {guide.text}
-                        </span>
-                        <GuideCheckButton
-                          label={getGuideActionLabel(guide)}
-                          tone={getGuideActionTone(guide)}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (guide?.navigationMode === 'event' && activeTab !== 'input') {
-                              handleGuideNavigate(guide);
-                              return;
-                            }
-                            toggleGuideChecked(guide.uniqueKey);
-                          }}
-                        />
-                      </div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        dismissGuide(guide.uniqueKey);
-                      }}
-                      className="absolute right-2 top-2 rounded-full p-1 text-slate-300 opacity-0 transition-all hover:text-slate-600 group-hover:opacity-100 dark:hover:text-neutral-300"
-                      title="숨기기"
-                    >
-                      ✕
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {showGlobalWarning && (
-            <section className="space-y-3 border-t border-slate-100 pt-4 dark:border-neutral-800">
-              <GuideSectionTitle>무결성 경고</GuideSectionTitle>
-              <ul className="space-y-2">
-                {globalMismatchReasons.map((reason, index) => (
-                  <li key={`global-${index}`}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (reason.id) handleNavigate(reason.id);
-                      }}
-                      className="w-full rounded-xl border border-neutral-200 bg-neutral-100 p-4 text-left text-slate-800 shadow-sm transition-all hover:bg-neutral-200 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
-                    >
-                      <span className="block text-[12px] font-medium leading-relaxed">
-                        {reason.text || reason}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {repairHints && repairHints.length > 0 && (
-            <section className="space-y-3 border-t border-slate-100 pt-4 dark:border-neutral-800">
-              <GuideSectionTitle>수정 힌트</GuideSectionTitle>
-              <ul className="space-y-2">
-                {repairHints.map((hint, index) => (
-                  <li key={`hint-${index}`}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (hint.targetTabId) handleNavigate(hint.targetTabId);
-                      }}
-                      className="w-full rounded-xl border border-neutral-200 bg-neutral-50/70 p-3 text-left transition-all hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900/40"
-                    >
-                      <span className="text-[11.5px] font-medium leading-relaxed text-slate-700 dark:text-neutral-200">
-                        {hint.text}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {(confirmedGuides || []).length > 0 && (
-            <section className="space-y-3 border-t border-slate-100 pt-4 dark:border-neutral-800">
-              <button
-                type="button"
-                onClick={() => setConfirmedGuidesOpen((prev) => !prev)}
-                className="flex w-full items-center justify-between text-left"
-              >
-                <GuideSectionTitle>확인 완료 항목 ({confirmedGuides.length})</GuideSectionTitle>
-                <span className="text-[11px] text-slate-400">{confirmedGuidesOpen ? '접기' : '펼치기'}</span>
-              </button>
-              {confirmedGuidesOpen && (
-                <ul className="space-y-2">
-                  {confirmedGuides.map((guide, index) => (
-                    <li key={`confirmed-${guide.uniqueKey || index}`}>
-                      <button
-                        type="button"
-                        onClick={() => handleNavigate(resolveGuideTarget(guide))}
-                        className="w-full rounded-lg border border-neutral-200 bg-neutral-50/60 p-3 text-left transition-all hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800/30"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <span className="text-[11.5px] font-medium leading-relaxed text-slate-500 dark:text-neutral-300">
-                            {guide.text}
-                          </span>
-                          <GuideCheckButton
-                            label="해제"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleGuideChecked(guide.uniqueKey);
-                            }}
-                          />
-                        </div>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          )}
-
-          {showAutoCalcNotice && (
-            <section className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50/50 p-4 dark:border-neutral-700 dark:bg-neutral-800/20">
-              <GuideSectionTitle>자동 분배 참고</GuideSectionTitle>
-              <ul className="mt-2 space-y-1.5">
-                {autoCalculatedNames.map((item, index) => (
-                  <li key={index} className="flex items-center justify-between text-[12px]">
-                    <span className="font-bold text-slate-800 dark:text-neutral-100">{item.name}</span>
-                    <div className="flex items-center gap-1.5 font-bold text-blue-600 dark:text-blue-400">
-                      <span>{item.target}</span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
+    <div
+      className={`group relative overflow-hidden rounded-xl border-2 p-4 transition-all duration-300 ${
+        isChecked
+          ? 'border-slate-100 bg-slate-50/50 opacity-60 dark:border-neutral-800 dark:bg-neutral-900/20'
+          : isMandatory
+          ? 'border-red-100 bg-white shadow-sm hover:border-red-200 dark:border-red-900/20 dark:bg-neutral-800/40'
+          : 'border-amber-100 bg-white shadow-sm hover:border-amber-200 dark:border-amber-900/20 dark:bg-neutral-800/40'
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 shrink-0">
+          {isMandatory ? (
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-100 text-[12px] font-black text-red-600 dark:bg-red-900/40 dark:text-red-400">
+              !
+            </span>
+          ) : (
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-[12px] font-black text-amber-600 dark:bg-amber-900/40 dark:text-amber-400">
+              ?
+            </span>
           )}
         </div>
-      </ContextualDrawer>
-    </>
+        <div className="flex-1 min-w-0">
+          <p className={`text-[13px] leading-relaxed transition-colors ${isChecked ? 'text-slate-400 dark:text-neutral-600 line-through' : 'text-[#37352f] dark:text-neutral-200'}`}>
+            {guide.text}
+          </p>
+          
+          <div className="mt-3.5 flex items-center gap-2">
+            <button
+              onClick={() => handleGuideNavigate(guide)}
+              className="text-[12px] font-bold text-[#1e56a0] hover:underline dark:text-blue-400"
+            >
+              조치하기
+            </button>
+            <div className="h-3 w-[1px] bg-slate-200 dark:bg-neutral-700" />
+            <button
+              onClick={() => onChecked(guide.uniqueKey)}
+              className="text-[12px] font-medium text-slate-500 hover:text-slate-700 dark:text-neutral-400"
+            >
+              {isChecked ? '완료 취소' : '확인 완료'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default function SmartGuidePanel({
+  showNavigator,
+  setShowNavigator,
+  navigatorWidth,
+  activeTab,
+  tree,
+  smartGuides = [],
+  hasActionItems,
+  noSurvivors,
+  warnings,
+  hiddenGuideKeys,
+  dismissGuide,
+  checkedGuideKeys,
+  toggleGuideChecked,
+  confirmedGuides = [],
+  confirmedGuidesOpen,
+  setConfirmedGuidesOpen,
+  showGlobalWarning,
+  globalMismatchReasons = [],
+  auditActionItems = [],
+  handleGuideNavigate,
+}) {
+  const visibleGuides = smartGuides.filter((g) => !hiddenGuideKeys.has(g.uniqueKey));
+  const mandatoryGuides = visibleGuides.filter((g) => g.type === 'mandatory');
+  const recommendedGuides = visibleGuides.filter((g) => g.type === 'recommended');
+
+  return (
+    <ContextualDrawer
+      isOpen={showNavigator}
+      onClose={() => setShowNavigator(false)}
+      width={navigatorWidth}
+      title="스마트 가이드"
+      subtitle="데이터 무결성 및 법리 검토"
+    >
+      <div className="flex flex-col gap-6">
+        {/* 가이드 상태 요약 */}
+        <section>
+          {mandatoryGuides.length > 0 ? (
+            <div className="rounded-xl border-2 border-red-100 bg-red-50/50 p-4 dark:border-red-900/30 dark:bg-red-900/10">
+              <div className="flex items-center gap-2 text-[14px] font-black text-red-600 dark:text-red-400">
+                <span>⚠️ {mandatoryGuides.length}건의 필수 확인 사항이 있습니다.</span>
+              </div>
+              <p className="mt-1 text-[12px] text-red-700/70 dark:text-red-500/70">
+                정확한 계산을 위해 아래 조치 사항을 먼저 해결해 주세요.
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-xl border-2 border-green-100 bg-green-50/50 p-4 dark:border-green-900/30 dark:bg-green-900/10">
+              <div className="flex items-center gap-2 text-[14px] font-black text-green-600 dark:text-green-400">
+                <span>✓ 이상 없음</span>
+              </div>
+              <p className="mt-1 text-[12px] text-green-700/70 dark:text-green-500/70">
+                가계도 검증이 완료되었습니다. 사건 검토 및 계산 결과를 확인해 주세요.
+              </p>
+            </div>
+          )}
+        </section>
+
+        {/* 필수 조치 가이드 */}
+        {mandatoryGuides.length > 0 && (
+          <section>
+            <h3 className="mb-3 flex items-center gap-2 text-[13px] font-black text-red-600 dark:text-red-400 uppercase tracking-wider">
+              필수 검토 사항
+            </h3>
+            <div className="space-y-3">
+              {mandatoryGuides.map((guide) => (
+                <GuideCard
+                  key={guide.uniqueKey}
+                  guide={guide}
+                  isChecked={checkedGuideKeys.has(guide.uniqueKey)}
+                  onChecked={toggleGuideChecked}
+                  onDismiss={dismissGuide}
+                  handleGuideNavigate={handleGuideNavigate}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* 권장 가이드 */}
+        {recommendedGuides.length > 0 && (
+          <section>
+            <h3 className="mb-3 flex items-center gap-2 text-[13px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+              권장 확인 사항
+            </h3>
+            <div className="space-y-3">
+              {recommendedGuides.map((guide) => (
+                <GuideCard
+                  key={guide.uniqueKey}
+                  guide={guide}
+                  isChecked={checkedGuideKeys.has(guide.uniqueKey)}
+                  onChecked={toggleGuideChecked}
+                  onDismiss={dismissGuide}
+                  handleGuideNavigate={handleGuideNavigate}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* 확인 완료 목록 */}
+        {confirmedGuides.length > 0 && (
+          <section>
+            <button
+              onClick={() => setConfirmedGuidesOpen(!confirmedGuidesOpen)}
+              className="flex w-full items-center justify-between py-2 text-[12px] font-bold text-slate-400 hover:text-slate-600 dark:text-neutral-500"
+            >
+              <span>확인 완료된 항목 ({confirmedGuides.length})</span>
+              <span className="text-[10px]">{confirmedGuidesOpen ? '▼' : '▶'}</span>
+            </button>
+            {confirmedGuidesOpen && (
+              <div className="mt-2 space-y-2">
+                {confirmedGuides.map((guide) => (
+                  <GuideCard
+                    key={guide.uniqueKey}
+                    guide={guide}
+                    isChecked={true}
+                    onChecked={toggleGuideChecked}
+                    onDismiss={dismissGuide}
+                    handleGuideNavigate={handleGuideNavigate}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {visibleGuides.length === 0 && !noSurvivors && (
+          <div className="flex h-40 flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-100 bg-white text-center dark:border-neutral-800 dark:bg-neutral-900/20">
+            <span className="text-2xl opacity-20">✓</span>
+            <p className="mt-2 text-sm font-medium text-slate-400 dark:text-neutral-500">모든 가이드가 처리되었습니다.</p>
+          </div>
+        )}
+      </div>
+    </ContextualDrawer>
   );
 }
