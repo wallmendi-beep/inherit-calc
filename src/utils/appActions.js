@@ -156,6 +156,7 @@ export function loadTreeFromJsonFile(file, {
 
 export function printAiPromptDocument() {
   const printWindow = window.open('', '', 'height=600,width=800');
+  if (!printWindow) return; // 팝업 차단 방어
   printWindow.document.write('<html><head><title>AI 프롬프트 인쇄</title>');
   printWindow.document.write('<style>body { font-family: sans-serif; line-height: 1.6; padding: 20px; white-space: pre-wrap; }</style>');
   printWindow.document.write('</head><body>');
@@ -163,8 +164,9 @@ export function printAiPromptDocument() {
   printWindow.document.write('</body></html>');
   printWindow.document.close();
   printWindow.focus();
+  // 인쇄 다이얼로그가 완전히 닫힌 후에 팝업창을 닫도록 afterprint 이벤트 사용
+  printWindow.addEventListener('afterprint', () => printWindow.close());
   printWindow.print();
-  printWindow.close();
 }
 
 export function ingestAiJsonInput({
