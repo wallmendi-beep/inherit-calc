@@ -12,8 +12,66 @@ const buildIssue = (node, issue) => ({
   ...issue,
 });
 
+// 트리 전체에서 personId 중복 노드를 수집
+const collectDuplicatePersonIds = (tree) => {
+  const seen = {};
+  const walk = (node) => {
+    if (!node) return;
+    const pid = node.personId;
+    if (pid && node.id !== 'root') {
+      if (!seen[pid]) seen[pid] = { name: node.name, count: 0, nodeId: node.id };
+      seen[pid].count += 1;
+    }
+    (node.heirs || []).forEach(walk);
+  };
+  walk(tree);
+  return Object.entries(seen)
+    .filter(([, v]) => v.count > 1)
+    .map(([pid, v]) => ({ personId: pid, name: v.name, nodeId: v.nodeId, count: v.count }));
+};
+
 export const collectImportValidationIssues = (tree) => {
   const issues = [];
+
+  // 전체 트리 personId 중복 감지 (배우자 탭 간 동일인 이중 입력 등)
+  const duplicatePersons = collectDuplicatePersonIds(tree);
+  duplicatePersons.forEach(({ personId, name, nodeId, count }) => {
+    issues.push({
+      personId,
+      nodeId,
+      targetTabId: personId,
+      personName: name || '이름 미상',
+      severity: 'warning',
+      code: 'duplicate-person',
+      message: `인물 중복 — [${name || '이름 미상'}]이(가) 트리 내 ${count}곳에 입력되어 있습니다. 동일인이면 한 곳만 남기고 삭제해 주세요.`,
+    });
+  });
+
+  // 순환 참조 감지 (DFS)
+  const detectCycle = (node, visiting = new Set()) => {
+    if (!node) return null;
+    const pid = node.personId || node.id;
+    if (visiting.has(pid)) return node;
+    const next = new Set(visiting);
+    next.add(pid);
+    for (const heir of node.heirs || []) {
+      const found = detectCycle(heir, next);
+      if (found) return found;
+    }
+    return null;
+  };
+  const cycleNode = detectCycle(tree);
+  if (cycleNode) {
+    issues.push({
+      personId: cycleNode.personId || cycleNode.id,
+      nodeId: cycleNode.id,
+      targetTabId: cycleNode.personId || cycleNode.id,
+      personName: cycleNode.name || '이름 미상',
+      severity: 'error',
+      code: 'inheritance-cycle',
+      message: `순환 참조 — [${cycleNode.name || '이름 미상'}]이 트리 상하위에 중복 연결되어 있습니다. 해당 탭에서 잘못 연결된 상속인을 제거해 주세요.`,
+    });
+  }
 
   const walk = (node, inheritedDate = tree?.deathDate || '') => {
     if (!node) return;
