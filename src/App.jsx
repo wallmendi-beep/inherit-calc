@@ -18,7 +18,6 @@ import SmartGuidePanel from './components/SmartGuidePanel';
 import SidebarTreePanel from './components/SidebarTreePanel';
 import TopToolbar from './components/TopToolbar';
 import { math, getRelStr } from './engine/utils';
-import { getInitialTree } from './utils/initialData';
 import { AI_PROMPT } from './utils/aiPromptUtf8';
 import { updateDeathInfo, updateHistoryInfo, updateRelationInfo, setHojuStatus, setPrimaryHojuSuccessor, applyNodeUpdates, appendQuickHeirs } from './utils/treeDomain';
 import { collectImportValidationIssues } from './utils/importValidationV2';
@@ -28,18 +27,11 @@ import { useVaultState } from './hooks/useVaultState';
 import { useDeceasedTabs } from './hooks/useDeceasedTabs';
 import { useCalcResult } from './hooks/useCalcResult';
 import { useAmountCalc } from './hooks/useAmountCalc';
-import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import { DndContext, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 
 const CHANGELOG_LIMIT = 300;
 const CHANGELOG_STORAGE_KEY = 'inheritance-calc-action-log-v1';
-
-const cloneDeep = (value) => {
-  if (typeof globalThis.structuredClone === 'function') {
-    return globalThis.structuredClone(value);
-  }
-  return JSON.parse(JSON.stringify(value));
-};
 
 const buildImportIssueSignature = (issues = []) =>
   issues
@@ -113,7 +105,7 @@ function App() {
   // [v4.64] 사이드바 및 레이아웃 상태
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(240);
-  const [navigatorWidth, setNavigatorWidth] = useState(310);
+  const [navigatorWidth] = useState(310);
   const [sidebarSearchQuery, setSidebarSearchQuery] = useState('');
   const [sidebarMatchIds, setSidebarMatchIds] = useState([]);
   const [sidebarCurrentMatchIdx, setSidebarCurrentMatchIdx] = useState(0);
@@ -204,7 +196,7 @@ function App() {
           decedentName: tree.name || '',
           changeLog,
         }));
-      } catch (error) {
+      } catch {
         // ignore
       }
     }, 800);
@@ -347,7 +339,7 @@ function App() {
     document.addEventListener('mouseup', handleMouseUp);
   };
 
-  const { finalShares, calcSteps, warnings, transitShares, blockingIssues, compareFinalShares, hojuBonusDiffs } = useCalcResult(tree, propertyValue, activeTab);
+  const { finalShares, calcSteps, warnings, transitShares, blockingIssues } = useCalcResult(tree, propertyValue, activeTab);
 
   const amountCalculations = useAmountCalc(finalShares, propertyValue, specialBenefits, contributions);
 
@@ -422,7 +414,7 @@ function App() {
                   el.style.zIndex = origZIndex;
                   el.style.transition = origTransition;
                 }
-              } catch (e) {
+              } catch {
                 // DOM 요소가 언마운트된 경우 조용히 무시
               }
             }, 2500);

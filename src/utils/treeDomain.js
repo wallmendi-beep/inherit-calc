@@ -73,15 +73,6 @@ const normalizeDateField = (value) => {
   return value.trim();
 };
 
-const pruneDerivedFields = (node) => {
-  const next = {};
-  Object.entries(node || {}).forEach(([key, value]) => {
-    if (DERIVED_KEYS.has(key)) return;
-    next[key] = value;
-  });
-  return next;
-};
-
 const normalizeRelation = (relation, fallback = 'son') => {
   const map = {
     wife: 'wife',
