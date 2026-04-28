@@ -321,6 +321,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       if (!uniqueGuidesMap.has(key)) {
         uniqueGuidesMap.set(key, {
           id: issue.nodeId || personKey, uniqueKey: key, personId: issue.personId || '', targetTabId: issue.targetTabId || personKey, targetNodeId: issue.nodeId || undefined, targetNodeIds: [issue.nodeId].filter(Boolean), name: issue.personName || null,
+          code: issue.code,
           type: issue.severity === 'error' ? 'mandatory' : 'recommended',
           navigationMode: isLegacyHojuInputCase ? 'event' : 'auto',
           text: isLegacyHojuInputCase

@@ -78,7 +78,7 @@ export const collectImportValidationIssues = (tree) => {
         issues.push(buildIssue(node, {
           code: 'duplicate-name',
           severity: 'warning',
-          message: `성명 중복 — [${node.name || '피상속인'}] 아래에 [${name}]이(가) ${count}명 입력되어 있습니다. 동일인이면 1명만 남기고 삭제해 주세요.`,
+          message: `성명 중복 — [${node.name || '피상속인'}] 아래에 [${name}]이(가) ${count}명 입력되어 있습니다. 동일인이면 삭제하고, 실제로 다른 사람이면 '확인 (다른 사람)'을 눌러 주세요.`,
         }));
       }
     });

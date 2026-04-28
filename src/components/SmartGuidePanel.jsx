@@ -52,6 +52,7 @@ export default function SmartGuidePanel({
   const resolveGuideTarget = (item) =>
     item?.targetNodeId || item?.targetTabId || item?.personId || item?.id || null;
   const getGuideActionLabel = (guide) => {
+    if (guide?.code === 'duplicate-name') return '확인 (다른 사람)';
     if (guide?.navigationMode === 'event' && activeTab !== 'input') return '사건 열기';
     return '확인';
   };
