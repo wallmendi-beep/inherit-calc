@@ -23,7 +23,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
     }
     const isInputMode = activeTab === 'input';
 
-    // [v4.32] 珥덇린 ?곹깭(湲곗큹 ?뺣낫 誘몄엯?? 理쒖슦??媛?대뱶
+    // 초기 상태(기본 정보 미입력 시) 조기 반환
     if (!tree.name?.trim() || !tree.deathDate) {
       return {
         showGlobalWarning: false,
@@ -57,7 +57,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
     const groupedNextOrderFemaleMap = new Map();
     let noSurvivors = false;
 
-    // ?ы띁 ?⑥닔 1: 遺紐??몃뱶 李얘린
+    // 보조 함수 1: 부모 노드 탐색
     const findParentNodeInHook = (root, targetId) => {
       if (root.heirs && root.heirs.some(h => h.id === targetId)) return root;
       if (root.heirs) {
@@ -99,7 +99,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       if (node.heirs) node.heirs.forEach(checkStructuralError);
     };
 
-    // ?ы띁 ?⑥닔 4: 媛쒕퀎 ?쒖쇅 ?곹깭 ?덈궡
+    // 보조 함수 4: 독립 제외 상태 점검
     const checkIndependentExclusionGuide = (node) => {
       const isPredeceased = node.deathDate && tree.deathDate && isBefore(node.deathDate, tree.deathDate);
       if (node.id !== 'root' && node.isExcluded && ['renounce', 'disqualified'].includes(node.exclusionOption) && !isPredeceased) {
@@ -112,7 +112,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       if (node.heirs) node.heirs.forEach(checkIndependentExclusionGuide);
     };
 
-    // ?ы띁 ?⑥닔 5: 以묐났 諛곗슦??寃??
+    // 보조 함수 5: 중복 배우자 점검
     const checkDuplicateSpouseGuide = (node) => {
       const spouses = (node.heirs || []).filter((h) => {
         if (!['wife', 'husband', 'spouse'].includes(h.relation)) return false;
@@ -133,7 +133,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       if (node.heirs) node.heirs.forEach(checkDuplicateSpouseGuide);
     };
 
-    // ?ы띁 ?⑥닔 6: ?몃뱶蹂?媛?대뱶 ?앹꽦 (硫붿씤 濡쒖쭅)
+    // 보조 함수 6: 노드별 가이드 생성 (메인 루프)
     const checkGuideNode = (node, parentDate) => {
       const parentNode = findParentNodeInHook(tree, node.id);
       const parentTabId = parentNode ? parentNode.personId : 'root';
@@ -162,7 +162,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
             targetTabId: parentTabId,
             names: [],
           };
-          femaleCandidatesNeedingReview.forEach((candidate) => current.names.push(candidate.name || '?대쫫 誘몄긽'));
+          femaleCandidatesNeedingReview.forEach((candidate) => current.names.push(candidate.name || '이름 미상'));
           groupedNextOrderFemaleMap.set(groupKey, current);
         }
       }
@@ -203,7 +203,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
               isSpouseGroup: isSpouse,
               spouseRelation: isSpouse ? node.relation : null,
             };
-            current.names.push(node.name || '?대쫫 誘몄긽');
+            current.names.push(node.name || '이름 미상');
             groupedDirectMissingMap.set(groupKey, current);
           }
         }
@@ -270,7 +270,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       });
     });
 
-    // 洹몃９?붾맂 媛?대뱶??泥섎━
+    // 수집된 가이드 처리
     groupedPredeceasedMissingMap.forEach((group, key) => {
       const uniqueNames = Array.from(new Set(group.names));
       if (uniqueNames.length === 0) return;
@@ -309,7 +309,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       noSurvivors = true;
     }
 
-    // 遺덈윭?ㅺ린 ?댁뒋 泥섎━
+    // 가져오기 오류 처리
     (importIssues || []).forEach((issue) => {
       const linkedNode = findNodeInHook(tree, issue.personId, issue.nodeId);
       if (issue.code === 'missing-descendants' && linkedNode && (((linkedNode.heirs || []).length > 0) || !!linkedNode.successorStatus)) {
@@ -330,7 +330,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       }
     });
 
-    // ?붿쭊 寃쎄퀬 ??SmartGuide ?듯빀 (auto-sibling-redistribution ??
+    // 엔진 경고 → SmartGuide 변환 (auto-sibling-redistribution)
     (warnings || []).forEach((warning) => {
       if (warning.code !== 'auto-sibling-redistribution') return;
       const linkedNode = findNodeInHook(tree, warning.personId, warning.targetTabId || warning.id);
