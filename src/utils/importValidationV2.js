@@ -22,14 +22,14 @@ export const collectImportValidationIssues = (tree) => {
       if (!node.name?.trim()) {
         issues.push(buildIssue(node, {
           code: 'missing-name',
-          message: '이름이 비어 있는 상속인이 있습니다.',
+          message: '이름 누락 — 이름 없이 등록된 상속인이 있습니다. 이름을 입력해 주세요.',
         }));
       }
 
       if (!VALID_RELATIONS.has(node.relation)) {
         issues.push(buildIssue(node, {
           code: 'invalid-relation',
-          message: `[${node.name || '이름 미상'}]의 관계값이 올바르지 않습니다.`,
+          message: `관계 오류 — [${node.name || '이름 미상'}]의 관계가 올바르지 않습니다. 관계를 다시 선택해 주세요.`,
         }));
       }
     }
@@ -37,7 +37,7 @@ export const collectImportValidationIssues = (tree) => {
     if (node.isDeceased && !node.deathDate) {
       issues.push(buildIssue(node, {
         code: 'missing-death-date',
-        message: `[${node.name || '이름 미상'}]은(는) 사망자로 입력되었지만 사망일이 없습니다.`,
+        message: `사망일 누락 — [${node.name || '이름 미상'}]. 사망일을 입력해야 계산이 가능합니다.`,
       }));
     }
 
@@ -48,7 +48,7 @@ export const collectImportValidationIssues = (tree) => {
     if (node.id !== 'root' && node.isDeceased && !hasHeirs && !node.successorStatus && !(isSpouse && isPredeceased)) {
       issues.push(buildIssue(node, {
         code: 'missing-descendants',
-        message: `[${node.name || '이름 미상'}]은(는) 사망자인데 하위상속인이 비어 있습니다.`,
+        message: `후속 상속 미확정 — [${node.name || '이름 미상'}]. 후속 상속인 입력 또는 '없음 확정'을 눌러 주세요.`,
       }));
     }
 
@@ -62,7 +62,7 @@ export const collectImportValidationIssues = (tree) => {
     if (activeSpouses.length > 1) {
       issues.push(buildIssue(node, {
         code: 'multiple-spouses',
-        message: `[${node.name || '이름 미상'}] 아래에 유효 배우자가 둘 이상 있습니다.`,
+        message: `배우자 중복 — [${node.name || '이름 미상'}] 아래에 유효 배우자가 둘 이상 있습니다. 1명만 남기고 나머지를 제외해 주세요.`,
       }));
     }
 

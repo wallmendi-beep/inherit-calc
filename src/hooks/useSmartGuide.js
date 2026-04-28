@@ -69,7 +69,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       return null;
     };
 
-    // ?ы띁 ?⑥닔 2: ?뱀젙 ?몃뱶 李얘린
+    // 보조 함수 2: 특정 노드 탐색
     const findNodeInHook = (root, targetPersonId, targetNodeId) => {
       if (!root) return null;
       if ((targetPersonId && root.personId === targetPersonId) || (targetNodeId && root.id === targetNodeId)) return root;
@@ -89,7 +89,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
             uniqueKey: `struct-err-${h.id}`,
             type: 'mandatory',
             navigationMode: 'event',
-            text: `[${h.name || '이름 미상'}]이(가) [${node.name || '부모'}]의 하위 위치에 '부모/형제' 관계로 입력되어 있습니다. 해당 위치로 이동해 관계를 확인한 뒤 수정하거나 삭제해 주세요.`,
+            text: `관계 오류 — [${h.name || '이름 미상'}]이 [${node.name || '부모'}] 아래에 '부모/형제'로 잘못 입력되어 있습니다. 관계를 수정하거나 삭제해 주세요.`,
             targetTabId: node.personId || node.id || 'root',
             targetNodeIds: [h.id, h.personId].filter(Boolean),
             targetNodeId: h.id,
@@ -106,7 +106,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
         const optionText = node.exclusionOption === 'renounce' ? '상속포기' : '상속결격';
         uniqueGuidesMap.set(`indep-excl-${node.personId}`, {
           id: node.id, uniqueKey: `indep-excl-${node.personId}`, type: 'recommended',
-          text: `[${node.name}]은(는) ${optionText} 처리되었습니다. 동일인이 다른 사건에도 있으면 그 사건에서의 제외 여부를 다시 확인해 주세요.`
+          text: `${optionText} 확인 — [${node.name}]. 다른 사건에도 등장한다면 해당 사건에서도 제외 여부를 함께 검토해 주세요.`
         });
       }
       if (node.heirs) node.heirs.forEach(checkIndependentExclusionGuide);
@@ -127,7 +127,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
           uniqueKey: `multi-spouse-${node.personId || node.id}`,
           targetTabId: node.personId || node.id || 'root',
           type: 'mandatory',
-          text: `[${node.name || '이름 미상'}]에게 유효 배우자가 중복 입력되어 있습니다. 현재 배우자: [${spouseNames.join('], [')}]. 실제 상속받는 1명만 남기고 나머지는 제외 처리해 주세요.`,
+          text: `배우자 중복 — [${node.name || '이름 미상'}]: [${spouseNames.join('], [')}]. 실제 상속받는 1명만 남기고 나머지를 제외해 주세요.`,
         });
       }
       if (node.heirs) node.heirs.forEach(checkDuplicateSpouseGuide);
@@ -210,7 +210,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
         if (node.id !== 'root' && node.isDeceased && !node.deathDate) {
           uniqueGuidesMap.set(`missing-death-date-${node.personId}`, {
             id: node.id, uniqueKey: `missing-death-date-${node.personId}`, targetTabId: parentTabId, type: 'mandatory',
-            text: `[${node.name || '이름 미상'}]은(는) 사망자로 표시되어 있지만 사망일이 없습니다.`
+            text: `사망일 누락 — [${node.name || '이름 미상'}]. 사망일을 입력해야 정확한 상속 계산이 가능합니다.`
           });
         }
 
@@ -220,7 +220,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
           const deathYear = (effectiveDate || '').slice(0, 4);
         uniqueGuidesMap.set(`missing-hoju-${node.personId}`, {
             id: node.id, uniqueKey: `missing-hoju-${node.personId}`, targetTabId: node.personId, type: 'mandatory', navigationMode: 'event',
-            text: `[${node.name || '이름 미상'}] 사건은 구법(${deathYear}년 사망) 적용 대상입니다. 1차 상속인 중 호주상속인을 지정해 주세요.`
+            text: `호주 미지정 — [${node.name || '이름 미상'}] 사건 (${deathYear}년, 구법 적용). 1차 상속인 중 호주상속인을 지정해 주세요.`
           });
         }
 
@@ -230,7 +230,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
             uniqueGuidesMap.set(`chained-hoju-${node.personId}`, {
               id: node.id, uniqueKey: `chained-hoju-${node.personId}`, type: 'recommended', navigationMode: 'event',
               targetTabId: node.personId,
-              text: `[${node.name || '해당 인물'}] 사건은 호주상속 검토 대상입니다. 1차 상속인의 호주상속/재산상속 구분을 확인해 주세요.`
+              text: `호주 연속 확인 — [${node.name || '해당 인물'}] 사건. 1차 상속인 중 호주상속인 지정 여부를 확인해 주세요.`
             });
           }
         }
@@ -240,7 +240,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
             uniqueGuidesMap.set(`verify-marriage-${node.personId}`, {
               id: node.id, uniqueKey: `verify-marriage-${node.personId}`, type: 'recommended',
               targetTabId: parentTabId,
-              text: `[${node.name || '이름 미상'}]은(는) 구법 적용 대상 여성 상속인입니다. 혼인 여부에 따라 결과가 달라질 수 있으니, 혼인·이혼·복적 정보를 확인해 주세요.`
+              text: `혼인 정보 확인 — [${node.name || '이름 미상'}] (구법 적용 여성). 혼인·이혼·복적 날짜를 입력하면 정확한 지분이 계산됩니다.`
             });
           }
         }
@@ -279,7 +279,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       uniqueGuidesMap.set(`grouped-missing-substitution-${key}`, {
         id: key, uniqueKey: `grouped-missing-substitution-${key}`, targetTabId: navTarget, type: 'mandatory', navigationMode: 'event',
         targetNodeIds: group.nodeIds || [],
-        text: `${group.parentName} 사건에서 선사망 상속인의 대습상속 검토가 필요합니다: [${uniqueNames.join('], [')}]. 대습상속인이 있으면 입력해 주세요. 없으면 '대습상속인 없음'을 클릭해 주세요.`,
+        text: `대습상속 미확정 — [${group.parentName}] 사건의 선사망자: [${uniqueNames.join('], [')}]. 대습상속인 입력 또는 '없음 확정'을 눌러 주세요.`,
       });
     });
 
@@ -292,7 +292,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
         id: navTarget, uniqueKey: `grouped-direct-missing-${key}`, targetTabId: navTarget, type: 'mandatory', navigationMode: 'event',
         text: group.isSpouseGroup
           ? buildSpouseDirectGuideText(group, uniqueNames)
-          : `${group.parentName} 사건에서 후속 상속 검토가 필요한 사람이 있습니다: [${uniqueNames.join('], [')}]. 후속 상속인을 입력하거나 '후속 상속인 없음' 확정 버튼을 눌러 주세요.`, 
+          : `후속 상속 미확정 — [${group.parentName}] 사건: [${uniqueNames.join('], [')}]. 후속 상속인 입력 또는 '없음 확정'을 눌러 주세요.`,
       });
     });
 
@@ -301,7 +301,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       if (uniqueNames.length === 0) return;
       uniqueGuidesMap.set(`next-order-female-${key}`, {
         id: group.targetTabId, uniqueKey: `next-order-female-${key}`, targetTabId: group.targetTabId, type: 'recommended', navigationMode: 'event',
-        text: `${group.decedentName} 사건은 차순위 상속 검토가 필요합니다. 여성 형제자매 중 동일가적 여부 확인이 필요한 사람이 있습니다: [${uniqueNames.join('], [')}]. 미혼이 확실하면 동일가적으로 두고, 그렇지 않으면 혼인·이혼·복적 정보를 입력해 주세요.`, 
+        text: `차순위 여성 검토 — [${group.decedentName}] 사건: [${uniqueNames.join('], [')}]. 미혼이면 그대로, 혼인력이 있으면 날짜를 입력해 주세요.`,
       });
     });
 
@@ -320,12 +320,12 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       const key = `import-${issue.code}-${personKey}`;
       if (!uniqueGuidesMap.has(key)) {
         uniqueGuidesMap.set(key, {
-          id: issue.nodeId || personKey, uniqueKey: key, personId: issue.personId || '', targetTabId: issue.targetTabId || personKey, targetNodeId: issue.nodeId || '', name: issue.personName || null,
+          id: issue.nodeId || personKey, uniqueKey: key, personId: issue.personId || '', targetTabId: issue.targetTabId || personKey, targetNodeId: issue.nodeId || undefined, targetNodeIds: [issue.nodeId].filter(Boolean), name: issue.personName || null,
           type: issue.severity === 'error' ? 'mandatory' : 'recommended',
           navigationMode: isLegacyHojuInputCase ? 'event' : 'auto',
           text: isLegacyHojuInputCase
-            ? `[${issue.personName || linkedNode?.name || '이름 미상'}] 사건은 호주상속 검토가 필요합니다. 불러오기로 상속인을 확인한 뒤, 호주상속인을 지정해 주세요.`
-            : `${issue.message} 입력값을 확인하고 저장한 뒤 계속 진행해 주세요.`,
+            ? `호주상속 검토 — [${issue.personName || linkedNode?.name || '이름 미상'}] 사건. 상속인 확인 후 호주상속인을 지정해 주세요.`
+            : issue.message,
         });
       }
     });
