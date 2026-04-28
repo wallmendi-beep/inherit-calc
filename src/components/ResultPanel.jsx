@@ -1,5 +1,6 @@
 import React from 'react';
 import { math, getRelStr } from '../engine/utils';
+import { extractHojuBonusNotices, buildHojuBonusPersonMap } from '../utils/hojuBonusNotice';
 
 const buildIssueMap = (issues = []) => {
   const map = new Map();
@@ -12,124 +13,148 @@ const buildIssueMap = (issues = []) => {
   return map;
 };
 
-const getInterpretationNote = (mode) => (
-  mode === 'conservative'
-    ? "보수해석 비교: 민법 제1009조의 '동시 상속' 문언을 엄격 해석하면 가산 배제 가능"
-    : '실무해석 적용: 대법원 90마772, 등기선례 제8-187호 취지 참조'
+const lawLabel = (era) => {
+  if (era === '1960') return '구민법';
+  if (era === '1979') return '1979 개정민법';
+  if (era === '1991') return '현행민법';
+  return `${era} 기준`;
+};
+
+const NoticeCard = ({ notice }) => (
+  <div className="rounded-xl border border-[#e9e9e7] bg-[#f8f8f7] px-4 py-3 dark:border-neutral-700 dark:bg-neutral-800/40">
+    <div className="text-[13px] font-semibold text-[#37352f] dark:text-neutral-100">{notice.title}</div>
+    <div className="mt-1 text-[12px] text-[#787774] dark:text-neutral-400">{notice.basis}</div>
+  </div>
 );
 
-export default function ResultPanel({ calcSteps, tree, issues = [], handleNavigate, interpretationMode = 'practical' }) {
+export default function ResultPanelFixed({ calcSteps, tree, issues = [], handleNavigate }) {
   const issueMap = buildIssueMap(issues);
+  const hojuBonusNotices = extractHojuBonusNotices(calcSteps);
+  const hojuBonusMap = buildHojuBonusPersonMap(calcSteps);
   const heirMap = new Map();
-  calcSteps.forEach((s) => {
-    s.dists.forEach((d) => {
-      if (d.n > 0) {
-        const key = d.h.personId;
-        if (!heirMap.has(key)) {
-          heirMap.set(key, { personId: key, name: d.h.name, relation: d.h.relation, sources: [], isDeceased: d.h.isDeceased });
-        }
-        heirMap.get(key).sources.push({
-          decName: s.dec.name,
-          decDeathDate: s.dec.deathDate,
-          relation: d.h.relation,
-          lawEra: s.lawEra,
-          mod: d.mod || '',
-          n: d.n,
-          d: d.d,
+
+  calcSteps.forEach((step) => {
+    step.dists.forEach((dist) => {
+      if (dist.n <= 0) return;
+      const personId = dist.h.personId || dist.h.id;
+      if (!heirMap.has(personId)) {
+        heirMap.set(personId, {
+          personId,
+          name: dist.h.name,
+          relation: dist.h._origRelation || dist.h.relation,
+          isDeceased: dist.h.isDeceased,
+          sources: [],
         });
       }
+      heirMap.get(personId).sources.push({
+        decName: step.dec.name,
+        decDeathDate: step.dec.deathDate,
+        relation: dist.h._origRelation || dist.h.relation,
+        lawEra: step.lawEra,
+        modifier: dist.mod || '',
+        n: dist.n,
+        d: dist.d,
+      });
     });
   });
 
-  const results = Array.from(heirMap.values()).filter((r) => !r.isDeceased);
-  const lawLabel = (era) => {
-    if (era === '1960') return '구민법';
-    if (era === '1979') return '1979 개정';
-    if (era === '1991') return '현행법';
-    return `${era}년`;
-  };
+  const results = Array.from(heirMap.values()).filter((item) => !item.isDeceased);
+  const commonD = results.reduce((acc, result) => {
+    const total = result.sources.reduce((sum, source) => {
+      const [nn, nd] = math.add(sum.n, sum.d, source.n, source.d);
+      return { n: nn, d: nd };
+    }, { n: 0, d: 1 });
+    return total.n > 0 ? math.lcm(acc, total.d) : acc;
+  }, 1);
 
   return (
     <section className="w-full text-[#37352f] dark:text-neutral-200">
-      <div className="mb-4 rounded-lg border border-[#e9e9e7] bg-[#fcfcfb] px-4 py-3 text-[12px] text-[#787774] dark:border-neutral-700 dark:bg-neutral-800/40 dark:text-neutral-400">
-        {getInterpretationNote(interpretationMode)}
-      </div>
+      {hojuBonusNotices.length > 0 && (
+        <div className="mb-4 space-y-2">
+          {hojuBonusNotices.map((notice) => (
+            <NoticeCard key={`${notice.personId}-${notice.decedentName}-${notice.modifier}`} notice={notice} />
+          ))}
+        </div>
+      )}
+
       <div className="mb-4 text-[13px] text-[#787774] dark:text-neutral-500">
-        최종 생존 상속인이 어떤 경로로 지분을 취득했는지 한눈에 검토하는 표입니다.
+        최종 생존 상속인이 어떤 경로로 지분을 취득했는지 정리한 결과표입니다.
       </div>
+
       <table className="w-full border-collapse text-[13px]">
         <thead className="bg-[#fcfcfb] dark:bg-neutral-800/40">
           <tr>
-            <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[18%] text-[#787774]">최종 상속인</th>
-            <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[52%] text-[#787774]">지분 취득 경로</th>
-            <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[15%] text-[#787774]">최종 합계</th>
-            <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[15%] text-[#787774]">통분 지분</th>
+            <th className="w-[18%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-700">최종 상속인</th>
+            <th className="w-[52%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-700">지분 취득 경로</th>
+            <th className="w-[15%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-700">최종 합계</th>
+            <th className="w-[15%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-700">통분 지분</th>
           </tr>
         </thead>
         <tbody>
-          {results.length > 0 ? results.map((r, i) => {
-            const total = r.sources.reduce((acc, s) => {
-              const [nn, nd] = math.add(acc.n, acc.d, s.n, s.d);
+          {results.length > 0 ? results.map((result) => {
+            const total = result.sources.reduce((sum, source) => {
+              const [nn, nd] = math.add(sum.n, sum.d, source.n, source.d);
               return { n: nn, d: nd };
             }, { n: 0, d: 1 });
 
-            let commonD = 1;
-            results.forEach((res) => {
-              const t = res.sources.reduce((acc, s) => {
-                const [nn, nd] = math.add(acc.n, acc.d, s.n, s.d);
-                return { n: nn, d: nd };
-              }, { n: 0, d: 1 });
-              if (t.n > 0) commonD = math.lcm(commonD, t.d);
-            });
-
             const unifiedN = total.n * (commonD / total.d);
-            const isMultiSource = r.sources.length > 1;
-
-            const personIssues = issueMap.get(r.personId) || [];
+            const personIssues = issueMap.get(result.personId) || [];
+            const isMultiSource = result.sources.length > 1;
+            const hojuApplied = hojuBonusMap.has(result.personId);
 
             return (
-              <tr key={i} className="hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20 align-top">
-                <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">
+              <tr key={`result-${result.personId}`} className="align-top hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20">
+                <td className="border border-[#e9e9e7] p-2.5 text-center font-medium dark:border-neutral-700">
                   <button
                     type="button"
-                    onClick={() => personIssues.length > 0 && handleNavigate ? handleNavigate(personIssues[0].targetTabId || r.personId) : null}
-                    className={`${personIssues.length > 0 ? 'cursor-pointer text-red-600 dark:text-red-400' : 'cursor-default'} inline-flex items-center gap-1 font-medium`}
+                    onClick={() => handleNavigate && handleNavigate(personIssues[0]?.targetTabId || result.personId)}
+                    title="입력 탭에서 이 사람 정보 수정"
+                    className={`${personIssues.length > 0 ? 'cursor-pointer text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300' : hojuApplied ? 'cursor-pointer text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300' : 'cursor-pointer hover:text-blue-700 dark:hover:text-blue-300'} group inline-flex items-center gap-1 font-medium transition-colors`}
                   >
-                    <span>{r.name}</span>
+                    <span className="underline-offset-2 group-hover:underline">{result.name}</span>
                     {personIssues.length > 0 && (
-                      <span className="inline-flex items-center rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 px-1.5 py-0.5 text-[10px] font-black">
+                      <span className="inline-flex items-center rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-black text-red-700 dark:bg-red-900/30 dark:text-red-300">
                         경고
                       </span>
                     )}
+                    <span className="hidden text-[10px] font-bold text-[#787774] group-hover:inline dark:text-neutral-500">
+                      수정
+                    </span>
                   </button>
-                  <span className="text-[#787774] font-normal ml-1">[{getRelStr(r.relation, tree.deathDate)}]</span>
+                  <span className="ml-1 font-normal text-[#787774]">[{getRelStr(result.relation, tree.deathDate)}]</span>
                   {personIssues.length > 0 && (
-                    <span className="block text-[11px] text-red-500 dark:text-red-400 font-semibold mt-1">
+                    <span className="mt-1 block text-[11px] font-semibold text-red-500 dark:text-red-400">
                       {personIssues[0].text}
                     </span>
                   )}
-                  {isMultiSource && <span className="block text-[10px] text-[#787774] font-bold mt-0.5">복수 경로</span>}
+                  {isMultiSource && <span className="mt-0.5 block text-[10px] font-bold text-[#787774]">복수 경로</span>}
                 </td>
-                <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left">
-                  {r.sources.map((src, si) => (
-                    <div key={si} className={`flex items-baseline gap-1 ${si > 0 ? 'mt-1.5 pt-1.5 border-t border-dashed border-[#e9e9e7] dark:border-neutral-700' : ''}`}>
-                      <span className="font-medium text-[#37352f] dark:text-neutral-200 shrink-0">{src.n}/{src.d}</span>
-                      <span className="text-[#787774] dark:text-neutral-500 text-[12px]">망 {src.decName}의 {getRelStr(src.relation, src.decDeathDate) || '상속인'} &lt;{lawLabel(src.lawEra)}&gt;{src.mod ? ` (${src.mod})` : ''}</span>
+                <td className="border border-[#e9e9e7] p-2.5 text-left dark:border-neutral-700">
+                  {result.sources.map((source, index) => (
+                    <div key={`${result.personId}-source-${index}`} className={`flex items-baseline gap-1 ${index > 0 ? 'mt-1.5 border-t border-dashed border-[#e9e9e7] pt-1.5 dark:border-neutral-700' : ''}`}>
+                      <span className="shrink-0 font-medium text-[#37352f] dark:text-neutral-200">{source.n}/{source.d}</span>
+                      <span className="text-[12px] text-[#787774] dark:text-neutral-500">
+                        망 {source.decName}의 {getRelStr(source.relation, source.decDeathDate) || '상속인'} &lt;{lawLabel(source.lawEra)}&gt;
+                        {source.modifier ? ` (${source.modifier})` : ''}
+                      </span>
                     </div>
                   ))}
                   {isMultiSource && (
-                    <div className="mt-1.5 pt-1.5 border-t border-[#e9e9e7] dark:border-neutral-700 text-[12px] text-[#504f4c] dark:text-neutral-400 font-medium">
-                      = {r.sources.map((s) => `${s.n}/${s.d}`).join(' + ')} = <span className="text-[#37352f] dark:text-neutral-200 font-bold">{total.n}/{total.d}</span>
+                    <div className="mt-1.5 border-t border-[#e9e9e7] pt-1.5 text-[12px] font-medium text-[#504f4c] dark:border-neutral-700 dark:text-neutral-400">
+                      = {result.sources.map((source) => `${source.n}/${source.d}`).join(' + ')} ={' '}
+                      <span className="font-bold text-[#37352f] dark:text-neutral-200">{total.n}/{total.d}</span>
                     </div>
                   )}
                 </td>
-                <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">{total.n} / {total.d}</td>
-                <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">{unifiedN} / {commonD}</td>
+                <td className="border border-[#e9e9e7] p-2.5 text-center font-medium dark:border-neutral-700">{total.n} / {total.d}</td>
+                <td className="border border-[#e9e9e7] p-2.5 text-center font-medium dark:border-neutral-700">{unifiedN} / {commonD}</td>
               </tr>
             );
           }) : (
             <tr>
-              <td colSpan="4" className="border border-[#e9e9e7] dark:border-neutral-700 p-8 text-center text-[#b45309] font-bold bg-amber-50">최종 생존 상속인이 없습니다.</td>
+              <td colSpan="4" className="border border-[#e9e9e7] bg-[#fcfcfb] p-8 text-center font-bold text-[#787774] dark:border-neutral-700 dark:bg-neutral-800/30">
+                최종 생존 상속인이 없습니다.
+              </td>
             </tr>
           )}
         </tbody>
