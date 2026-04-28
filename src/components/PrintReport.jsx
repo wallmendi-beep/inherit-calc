@@ -49,7 +49,7 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
   const hasMissingHeir = missingHeirNames.length > 0;
 
   // 최종 결과표 명칭도 불완전할 경우 변경 처리
-  const dynamicReportTitle = hasMissingHeir && (activeTab === 'calc' || activeTab === 'result' || activeTab === 'summary' || activeTab === 'amount')
+  const dynamicReportTitle = hasMissingHeir && (activeTab === 'calc' || activeTab === 'summary' || activeTab === 'amount')
     ? `${reportTitle} [주의: 미완성]`
     : reportTitle;
 
@@ -210,55 +210,6 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
               </table>
             </div>
           ))}
-        </div>
-      )}
-
-      {/* ========================================== */}
-      {/* 탭 3: 계산결과 (합산 표) */}
-      {/* ========================================== */}
-      {activeTab === 'result' && (
-        <div className="mb-8">
-          <table className="w-full border-collapse border border-black text-[11px]">
-            <thead className="bg-gray-100 text-center font-bold">
-              <tr>
-                <th className="border border-black py-2 px-2 w-[18%]">최종 생존 상속인</th>
-                <th className="border border-black py-2 px-2 w-[52%]">지분 취득 경로 및 산출 근거</th>
-                <th className="border border-black py-2 px-2 w-[15%]">{hasMissingHeir ? '가계산 합계' : '최종 합계'}</th>
-                <th className="border border-black py-2 px-2 w-[15%]">통분 지분</th>
-              </tr>
-            </thead>
-            <tbody>
-              {resultGroups.map((r, i) => {
-                const total = r.sources.reduce((acc, s) => { const [nn, nd] = math.add(acc.n, acc.d, s.n, s.d); return { n: nn, d: nd }; }, { n: 0, d: 1 });
-                let commonD = 1;
-                resultGroups.forEach(res => { const t = res.sources.reduce((acc, s) => { const [nn, nd] = math.add(acc.n, acc.d, s.n, s.d); return { n: nn, d: nd }; }, { n: 0, d: 1 }); if (t.n > 0) commonD = math.lcm(commonD, t.d); });
-                const unifiedN = total.n * (commonD / total.d);
-                
-                return (
-                  <tr key={i} className="align-top break-inside-avoid">
-                    <td className="border border-black py-2 px-2 text-center">
-                      <span className="font-bold">{r.name}</span><br/>
-                      <span className="text-gray-600">[{getRelStr(r.relation, tree.deathDate)}]</span>
-                    </td>
-                    <td className="border border-black py-2 px-2 text-left">
-                      {r.sources.map((src, si) => (
-                        <div key={si} className="mb-1">
-                          • 망 {src.decName}의 {getRelStr(src.relation, src.decDeathDate)} &lt;{lawLabel(src.lawEra)}&gt;{src.mod ? ` (${src.mod})` : ''} ({src.n}/{src.d})
-                        </div>
-                      ))}
-                      {r.sources.length > 1 && (
-                        <div className="mt-1 pt-1 border-t border-gray-300 font-bold">
-                          = 합계: {total.n}/{total.d}
-                        </div>
-                      )}
-                    </td>
-                    <td className="border border-black py-2 px-2 text-center font-bold">{total.n}/{total.d}</td>
-                    <td className="border border-black py-2 px-2 text-center font-bold">{unifiedN}/{commonD}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
         </div>
       )}
 

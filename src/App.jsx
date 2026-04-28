@@ -230,7 +230,7 @@ function App() {
     if (!nodeId) return;
     
     // 1. 단순 탭 이동 처리
-    const specialTabs = ['summary', 'result', 'calc', 'history', 'amount'];
+    const specialTabs = ['input', 'tree', 'calc', 'summary', 'amount'];
     if (specialTabs.includes(nodeId)) {
       setActiveTab(nodeId);
       return;
