@@ -1,34 +1,26 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   IconCalculator, IconUserPlus, IconSave, IconFolderOpen,
   IconPrinter, IconNetwork, IconTable, IconList,
   IconReset, IconFileText, IconXCircle, IconX, IconChevronRight,
   IconSun, IconMoon, IconUndo, IconRedo, IconUserGroup, IconTrash2, IconSparkles
 } from './components/Icons';
-import { DateInput } from './components/DateInput';
-import HeirRow from './components/HeirRow';
-import TreeReportNode from './components/TreeReportNode';
 import PrintReport from './components/PrintReport';
 import SummaryPanel from './components/SummaryPanel';
 import AmountPanel from './components/AmountPanel';
 import CalcPanel from './components/CalcPanel';
-import ResultPanel from './components/ResultPanel';
 import InputPanel from './components/InputPanel';
 import TreePanel from './components/TreePanel';
-import MetaHeader from './components/MetaHeader';
 import AiImportModal from './components/AiImportModal';
 import ResetConfirmModal from './components/ResetConfirmModal';
 import PersonEditModal from './components/PersonEditModal';
 import SmartGuidePanel from './components/SmartGuidePanel';
 import SidebarTreePanel from './components/SidebarTreePanel';
 import TopToolbar from './components/TopToolbar';
-import { math, getLawEra, getRelStr, formatKorDate, formatMoney, isBefore } from './engine/utils';
-import { calculateInheritance } from './engine/inheritance';
-import { getInitialTree, getEmptyTree } from './utils/initialData';
+import { math, getRelStr } from './engine/utils';
+import { getInitialTree } from './utils/initialData';
 import { AI_PROMPT } from './utils/aiPromptUtf8';
-import { normalizeImportedTree, updateDeathInfo, updateHistoryInfo, updateRelationInfo, setHojuStatus, setPrimaryHojuSuccessor, applyNodeUpdates, appendQuickHeirs, serializeFactTree } from './utils/treeDomain';
-import { migrateToVault, buildTreeFromVault } from './utils/vaultTransforms';
-import { stripHojuBonusInputs, buildHojuBonusDiffs } from './utils/hojuBonusCompare';
+import { updateDeathInfo, updateHistoryInfo, updateRelationInfo, setHojuStatus, setPrimaryHojuSuccessor, applyNodeUpdates, appendQuickHeirs } from './utils/treeDomain';
 import { collectImportValidationIssues } from './utils/importValidationV2';
 import { ingestAiJsonInput, loadTreeFromJsonFile, printAiPromptDocument, printCurrentTab, saveFactTreeToFile } from './utils/appActions';
 import { useSmartGuide } from './hooks/useSmartGuide';
@@ -38,9 +30,7 @@ import { useCalcResult } from './hooks/useCalcResult';
 import { useAmountCalc } from './hooks/useAmountCalc';
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
-import { QRCodeSVG } from 'qrcode.react'; // 메모: v3.0 브리핑 출력용 QR 코드 생성
 
-const HISTORY_LIMIT = 10;
 const CHANGELOG_LIMIT = 300;
 const CHANGELOG_STORAGE_KEY = 'inheritance-calc-action-log-v1';
 
@@ -75,10 +65,7 @@ function App() {
   const [treeViewMode, setTreeViewMode] = useState('flow');
   const [summaryViewMode, setSummaryViewMode] = useState('structure');
   const [navigationSignal, setNavigationSignal] = useState(null);
-  const [isFolderFocused, setIsFolderFocused] = useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
-  const [syncRequest, setSyncRequest] = useState(null);
-  const [showScrollTop, setShowScrollTop] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1.0);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
@@ -112,7 +99,6 @@ function App() {
   }, [personEditModal?.nodeId, personEditModal?.foundTabId, tree, deceasedTabs]);
   const [aiInputText, setAiInputText] = useState("");
   const [aiTargetId, setAiTargetId] = useState('root');
-  const [showQrCode, setShowQrCode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [matchIds, setMatchIds] = useState([]);
   const [currentMatchIdx, setCurrentMatchIdx] = useState(0);
