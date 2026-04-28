@@ -258,18 +258,41 @@ export default function HeirRow({
             </div>
 
             <div className="ml-[30px] w-[76px] shrink-0">
-              <select
-                value={node.relation}
-                onChange={(e) => handleUpdate(node.id, 'relation', e.target.value)}
-                className="w-full cursor-pointer bg-transparent text-[15px] font-normal text-[#787774] outline-none dark:text-neutral-400"
-              >
-                {!isParentFemale && <option value="wife">{lawEra === '1991' ? RELATION_OPTIONS.wife.modern : RELATION_OPTIONS.wife.legacy}</option>}
-                {!isParentMale && <option value="husband">{lawEra === '1991' ? RELATION_OPTIONS.husband.modern : RELATION_OPTIONS.husband.legacy}</option>}
-                <option value="son">{lawEra === '1991' ? RELATION_OPTIONS.son.modern : RELATION_OPTIONS.son.legacy}</option>
-                <option value="daughter">{lawEra === '1991' ? RELATION_OPTIONS.daughter.modern : RELATION_OPTIONS.daughter.legacy}</option>
-                <option value="parent">직계존속</option>
-                <option value="sibling">형제자매</option>
-              </select>
+              {(() => {
+                const isRelationInvalid =
+                  (node.relation === 'wife' && isParentFemale) ||
+                  (node.relation === 'husband' && isParentMale);
+                return (
+                  <div className="relative">
+                    <select
+                      value={node.relation}
+                      onChange={(e) => handleUpdate(node.id, 'relation', e.target.value)}
+                      className={`w-full cursor-pointer bg-transparent text-[15px] font-normal outline-none dark:text-neutral-400 ${
+                        isRelationInvalid
+                          ? 'text-red-500 dark:text-red-400'
+                          : 'text-[#787774]'
+                      }`}
+                    >
+                      {isRelationInvalid && (
+                        <option value={node.relation} disabled>
+                          {RELATION_OPTIONS[node.relation]?.[lawEra === '1991' ? 'modern' : 'legacy']} ⚠
+                        </option>
+                      )}
+                      {!isParentFemale && <option value="wife">{lawEra === '1991' ? RELATION_OPTIONS.wife.modern : RELATION_OPTIONS.wife.legacy}</option>}
+                      {!isParentMale && <option value="husband">{lawEra === '1991' ? RELATION_OPTIONS.husband.modern : RELATION_OPTIONS.husband.legacy}</option>}
+                      <option value="son">{lawEra === '1991' ? RELATION_OPTIONS.son.modern : RELATION_OPTIONS.son.legacy}</option>
+                      <option value="daughter">{lawEra === '1991' ? RELATION_OPTIONS.daughter.modern : RELATION_OPTIONS.daughter.legacy}</option>
+                      <option value="parent">직계존속</option>
+                      <option value="sibling">형제자매</option>
+                    </select>
+                    {isRelationInvalid && (
+                      <div className="absolute left-0 top-full mt-0.5 z-50 whitespace-nowrap rounded bg-red-600 px-2 py-0.5 text-[11px] text-white shadow">
+                        관계 재검토 필요
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="ml-[30px] flex w-[150px] shrink-0 items-center text-[15px]">

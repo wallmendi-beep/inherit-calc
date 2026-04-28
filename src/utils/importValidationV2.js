@@ -66,6 +66,23 @@ export const collectImportValidationIssues = (tree) => {
       }));
     }
 
+    // 중복 성명 검사 (같은 부모 아래에서)
+    const nameCount = {};
+    (node.heirs || []).forEach((heir) => {
+      const name = heir.name?.trim();
+      if (!name) return;
+      nameCount[name] = (nameCount[name] || 0) + 1;
+    });
+    Object.entries(nameCount).forEach(([name, count]) => {
+      if (count > 1) {
+        issues.push(buildIssue(node, {
+          code: 'duplicate-name',
+          severity: 'warning',
+          message: `성명 중복 — [${node.name || '피상속인'}] 아래에 [${name}]이(가) ${count}명 입력되어 있습니다. 동일인이면 1명만 남기고 삭제해 주세요.`,
+        }));
+      }
+    });
+
     (node.heirs || []).forEach((child) => {
       const nextInheritedDate = node.deathDate || inheritedDate;
       walk(child, nextInheritedDate);
