@@ -630,7 +630,9 @@ function App() {
   };
 
   const handleExcelExport = () => {
-    const survivors = finalShares?.survivors || [];
+    const direct = finalShares?.direct || [];
+    const fromSubGroups = (finalShares?.subGroups || []).flatMap((g) => g.shares || []);
+    const survivors = [...direct, ...fromSubGroups];
     const commonDenominator = survivors.reduce((acc, s) => math.lcm(acc || 1, s.d || 1), 1) || 1;
     const rows = survivors.map((s) => {
       const simplifiedN = s.n || 0;
