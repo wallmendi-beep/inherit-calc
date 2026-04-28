@@ -6,7 +6,7 @@ const TreeReportNode = ({ node, level, treeToggleSignal, rootDeathDate, onDelete
   const hasHeirs = node.heirs && node.heirs.length > 0;
   const [isExpanded, setIsExpanded] = useState(level === 0);
 
-  // [v4.61] 네비게이션 신호에 따른 자동 펼치기 로직
+  // 네비게이션 신호에 따른 자동 펼치기 로직
   useEffect(() => {
     if (!navigationSignal?.targetId || !hasHeirs) return;
     

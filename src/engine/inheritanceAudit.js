@@ -183,22 +183,21 @@ export const auditInheritanceResult = ({
   const repairHints = blockingIssues.map((issue) => {
     let hintText = issue.text;
     
-    // [v4.1] 문제 코드별 맞춤형 해결 힌트 제공
     switch (issue.code) {
       case 'final-total-mismatch':
-        hintText = '하위 계보 중 지분 분배가 끝나지 않은 곳이 있는지, 또는 상속포기·결격·상실선고 처리가 올바른지 확인해 주세요.';
+        hintText = '지분 합산 오류 — 하위 계보 분배 누락 또는 상속포기·결격·상실 처리를 확인해 주세요.';
         break;
       case 'deceased-in-final-shares':
-        hintText = '사망자의 지분이 최종 결과에 남아 있습니다. 해당 인물 탭으로 이동해 후속 상속인 입력 또는 자동 분배 결과를 확인해 주세요.';
+        hintText = '사망자 지분 잔존 — 해당 인물 탭에서 후속 상속인을 입력하거나 자동 분배 결과를 확인해 주세요.';
         break;
       case 'unresolved-transit-share':
-        hintText = `[${issue.name || '이름 미상'}]의 하위 상속인을 입력하거나 자동 분배 결과를 확인해 지분 ${issue.shareD}분의 ${issue.shareN}을 마무리해 주세요.`;
+        hintText = `미전달 지분 — [${issue.name || '이름 미상'}] (${issue.shareN}/${issue.shareD}). 하위 상속인 입력 또는 자동 분배 결과를 확인해 주세요.`;
         break;
       case 'hierarchy-violation':
-        hintText = '상위/하위 계보의 부모-자식 관계 설정이 법적으로 맞는지 확인하고, 잘못 배치된 사람은 위치를 바로잡아 주세요.';
+        hintText = '계층 위반 — 부모/형제 관계가 자녀 아래 잘못 배치되어 있습니다. 위치를 바로잡아 주세요.';
         break;
       case 'inheritance-cycle':
-        hintText = `[${issue.name || '해당 인물'}] 탭에서 본인이나 조상 계통이 다시 하위 상속인으로 연결된 부분이 있는지 확인해 주세요. 같은 사람이 상하위 단계에 중복 연결되면 지분 전이가 중단됩니다.`;
+        hintText = `순환 참조 — [${issue.name || '해당 인물'}] 탭에서 동일인이 상하위에 중복 연결된 경로를 제거해 주세요.`;
         break;
       default:
         hintText = issue.personId ? `[${issue.name || '이름 미상'}]의 입력 상태를 확인해 주세요.` : issue.text;

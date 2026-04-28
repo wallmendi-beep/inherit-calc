@@ -78,7 +78,7 @@ export default function CalcPanelFinal({ calcSteps, issues = [], handleNavigate,
 
       <div className="space-y-6 print-mt-4">
         {visibleSteps.map((step, index) => {
-          // [v4.74] 해당 단계 내 통분 분모(LCM) 계산
+          // 해당 단계 내 통분 분모(LCM) 계산
           const innerLCM = step.dists.reduce((acc, d) => (d.sd ? math.lcm(acc, d.sd) : acc), 1);
           const outerLCM = step.dists.reduce((acc, d) => (d.d ? math.lcm(acc, d.d) : acc), 1);
 

@@ -49,7 +49,6 @@ function App() {
 
   const { tree, setTree, setVault, undoTree, redoTree, canUndo, canRedo } = useVaultState();
 
-  // [v4.64] 모든 상태 변수 선언을 최상단으로 통합하여 초기화 순서 문제 해결
   const [activeTab, setActiveTab] = useState('input');
   const [proposedTab, setProposedTab] = useState(null);
   const [isDirty, setIsDirty] = useState(false);
@@ -102,7 +101,6 @@ function App() {
   const [isMainQuickActive, setIsMainQuickActive] = useState(false);
   const [mainQuickVal, setMainQuickVal] = useState('');
 
-  // [v4.64] 사이드바 및 레이아웃 상태
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(240);
   const [navigatorWidth] = useState(310);
@@ -111,7 +109,6 @@ function App() {
   const [sidebarCurrentMatchIdx, setSidebarCurrentMatchIdx] = useState(0);
   const [sidebarToggleSignal, setSidebarToggleSignal] = useState(0);
 
-  // [v4.64] 테마 및 가이드 상태
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('darkMode');
@@ -125,7 +122,6 @@ function App() {
   const [confirmedGuidesOpen, setConfirmedGuidesOpen] = useState(false);
   const [reviewContext, setReviewContext] = useState(null); // { guideKey, guideText }
 
-  // [v4.64] 스마트 저장 팝업 제어
   useEffect(() => {
     if (!proposedTab) return;
 
@@ -514,7 +510,6 @@ function App() {
   };
 
   const handleUpdate = (id, changes, value) => {
-    // [v4.64] 객체 기반 Dispatch 호출 지원 (HeirRow 등에서 사용)
     if (typeof id === 'object' && id.type) {
       const action = id;
       setIsDirty(true);

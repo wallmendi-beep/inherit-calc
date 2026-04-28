@@ -24,7 +24,7 @@ const sanitizeAiFacts = (node, isRoot = true) => {
 };
 
 /**
- * [v4.60] 파일명으로 사용할 수 없는 문자를 제거합니다.
+ * 파일명으로 사용할 수 없는 문자를 제거합니다.
  */
 function sanitizeKorFilePart(str, fallback) {
   if (!str) return fallback;
@@ -56,7 +56,7 @@ export function saveFactTreeToFile(tree, scenarioData = null) {
   let exportData;
 
   if (isCaseSnapshot) {
-    // [v4.60] 사건번호가 있는 경우 전체 상태 스냅샷 저장
+    // 사건번호가 있는 경우 전체 상태 스냅샷 저장
     exportData = {
       type: 'inheritance-case-snapshot',
       version: 'v4.60',
@@ -102,7 +102,7 @@ export function loadTreeFromJsonFile(file, {
     try {
       const data = JSON.parse(event.target.result);
 
-      // [v4.60] 스냅샷 형식인 경우
+      // 스냅샷 형식인 경우
       if (data.type === 'inheritance-case-snapshot' && data.vault) {
         const normalized = normalizeImportedTree(data.vault);
         setTree(normalized);
