@@ -215,6 +215,7 @@ SmartGuidePanel.jsx       → 가이드 렌더링 UI
 | `missing-death-date` | mandatory | `node.isDeceased && !node.deathDate` | 사망일 누락 — [이름]. 사망일을 입력해야 계산이 가능합니다. |
 | `missing-descendants` | mandatory | 사망자 + 하위상속인 없음 + 선사망 배우자 아님 | 후속 상속 미확정 — [이름]. 후속 상속인 입력 또는 '없음 확정'을 눌러 주세요. |
 | `multiple-spouses` | mandatory | 유효 배우자 2명 이상 | 배우자 중복 — [이름] 아래에 유효 배우자가 둘 이상 있습니다. 1명만 남기고 나머지를 제외해 주세요. |
+| `duplicate-name` | warning | 같은 부모 아래 동일 성명 2명 이상 | 성명 중복 — [부모] 아래에 [이름]이 N명 입력되어 있습니다. 동일인이면 1명만 남기고 삭제해 주세요. |
 
 **네비게이션:**  
 - `targetNodeIds: [issue.nodeId]` → hasTargetNodes = true → input 탭 + 노드 하이라이트  
@@ -294,15 +295,50 @@ SmartGuidePanel.jsx       → 가이드 렌더링 UI
 
 ---
 
-## 7. 변경 이력
+## 7. 입력 오류 방지 장치 (HeirRow.jsx)
+
+### 7.1 관계 무효화 감지
+
+부모 노드의 관계가 변경되어 자식 노드의 현재 관계가 유효하지 않아질 때 경고.
+
+| 조건 | 동작 |
+|---|---|
+| `node.relation === 'wife'` + 부모가 여성 | 드롭다운 텍스트 빨간색 + disabled '처 ⚠' 옵션 + '관계 재검토 필요' 툴팁 |
+| `node.relation === 'husband'` + 부모가 남성 | 동일 |
+
+사용자가 드롭다운에서 올바른 관계를 선택하면 자동 해제됨.
+
+### 7.2 호주상속 상호배제
+
+`setHojuStatus(tree, nodeId, isHoju)` (treeDomain.js)에서 처리:  
+형제 노드 중 하나를 호주로 설정하면 나머지 형제의 `isHoju`가 자동으로 `false`로 설정됨.
+
+---
+
+## 8. 수리 힌트 텍스트 (inheritanceAudit.js)
+
+계산 결과 검증 실패 시 SmartGuidePanel에 표시되는 수리 힌트.
+
+| code | 텍스트 |
+|---|---|
+| `final-total-mismatch` | 지분 합산 오류 — 하위 계보 분배 누락 또는 상속포기·결격·상실 처리를 확인해 주세요. |
+| `deceased-in-final-shares` | 사망자 지분 잔존 — 해당 인물 탭에서 후속 상속인을 입력하거나 자동 분배 결과를 확인해 주세요. |
+| `unresolved-transit-share` | 미전달 지분 — [이름] (N/D). 하위 상속인 입력 또는 자동 분배 결과를 확인해 주세요. |
+| `hierarchy-violation` | 계층 위반 — 부모/형제 관계가 자녀 아래 잘못 배치되어 있습니다. 위치를 바로잡아 주세요. |
+| `inheritance-cycle` | 순환 참조 — [이름] 탭에서 동일인이 상하위에 중복 연결된 경로를 제거해 주세요. |
+
+---
+
+## 9. 변경 이력
 
 | 날짜 | 내용 |
 |---|---|
 | 2026-04-29 | 초안 작성 — 전체 가이드 목록 정리, 안내문구 컴팩트화 적용, DateInput 검증 규칙 추가 |
+| 2026-04-29 | P1/P2 작업 반영 — duplicate-name 가이드 추가, 관계 무효화 감지 장치, 호주 상호배제, 수리 힌트 텍스트 추가 |
 
 ---
 
-## 8. 관련 문서
+## 10. 관련 문서
 
 - `GUIDE_RULES_AND_NAVIGATION.md` — 네비게이션 구현 기준 (구버전)
 - `GUIDE_AND_WARNING_SPLIT_RULES_2026-04-14.md` — 탭별 가이드/경고 분리 규칙
