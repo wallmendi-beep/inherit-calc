@@ -85,7 +85,6 @@ export const auditInheritanceResult = ({
     (share) => share.n > 0 && !resolvedTransitIds.has(share.personId)
   );
   const hasTotalMismatch = totalN !== expectedN || totalD !== expectedD;
-  const hasWarnings = normalizedWarnings.length > 0; // 전체 경고 존재 여부 (외부 반환용)
 
   const issues = [];
 

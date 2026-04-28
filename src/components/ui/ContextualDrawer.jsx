@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function ContextualDrawer({ isOpen, onClose, title, children, widthClass = 'w-full sm:w-96' }) {
+export default function ContextualDrawer({ isOpen, onClose, title, children }) {
   return (
     <>
       <div

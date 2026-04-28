@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { IconMenu, IconTrash2 } from './Icons';
@@ -23,7 +23,6 @@ const SPECIAL_LABELS = {
 
 export default function HeirRow({
   node,
-  finalShares,
   handleUpdate,
   removeHeir,
   inheritedDate,
@@ -35,17 +34,6 @@ export default function HeirRow({
   isHighlighted,
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: node.id });
-
-  const calcShare = useMemo(() => {
-    if (!finalShares) return null;
-    const direct = (finalShares.direct || []).find((share) => share.personId === node.personId);
-    if (direct) return direct;
-    for (const group of finalShares.subGroups || []) {
-      const subShare = (group.shares || []).find((share) => share.personId === node.personId);
-      if (subShare) return subShare;
-    }
-    return null;
-  }, [finalShares, node.personId]);
 
   const lawEra = getLawEra(inheritedDate);
   const isSpouseType = ['wife', 'husband', 'spouse'].includes(node.relation);
@@ -116,12 +104,6 @@ export default function HeirRow({
   }, [isPredeceasedActive, node.id]);
 
   const isToggleVisuallyOn = isPredeceasedActive || !isToggleOff || blocksHusbandSubstitution;
-  const displayN = isEffectivePredeceased && isToggleOff && (!node.heirs || node.heirs.length === 0)
-    ? 0
-    : (calcShare ? calcShare.n : (node.shareN || 0));
-  const displayD = isEffectivePredeceased && isToggleOff && (!node.heirs || node.heirs.length === 0)
-    ? 1
-    : (calcShare ? calcShare.d : (node.shareD || 1));
 
   const dndStyle = {
     transform: CSS.Transform.toString(transform),
