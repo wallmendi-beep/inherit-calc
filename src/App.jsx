@@ -32,143 +32,57 @@ import { stripHojuBonusInputs, buildHojuBonusDiffs } from './utils/hojuBonusComp
 import { collectImportValidationIssues } from './utils/importValidationV2';
 import { ingestAiJsonInput, loadTreeFromJsonFile, printAiPromptDocument, printCurrentTab, saveFactTreeToFile } from './utils/appActions';
 import { useSmartGuide } from './hooks/useSmartGuide';
+import { useVaultState } from './hooks/useVaultState';
+import { useDeceasedTabs } from './hooks/useDeceasedTabs';
+import { useCalcResult } from './hooks/useCalcResult';
+import { useAmountCalc } from './hooks/useAmountCalc';
 import { DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { QRCodeSVG } from 'qrcode.react'; // 메모: v3.0 브리핑 출력용 QR 코드 생성
 
+const HISTORY_LIMIT = 10;
+const CHANGELOG_LIMIT = 300;
+const CHANGELOG_STORAGE_KEY = 'inheritance-calc-action-log-v1';
+
+const cloneDeep = (value) => {
+  if (typeof globalThis.structuredClone === 'function') {
+    return globalThis.structuredClone(value);
+  }
+  return JSON.parse(JSON.stringify(value));
+};
+
+const buildImportIssueSignature = (issues = []) =>
+  issues
+    .map((issue) => [
+      issue.code || '',
+      issue.personId || '',
+      issue.nodeId || '',
+      issue.targetTabId || '',
+      issue.message || '',
+    ].join('|'))
+    .sort()
+    .join('||');
+
 function App() {
-  const HISTORY_LIMIT = 10;
-  const CHANGELOG_LIMIT = 300;
-  const CHANGELOG_STORAGE_KEY = 'inheritance-calc-action-log-v1';
-  const cloneDeep = (value) => {
-    if (typeof globalThis.structuredClone === 'function') {
-      return globalThis.structuredClone(value);
-    }
-    return JSON.parse(JSON.stringify(value));
-  };
 
-  const buildImportIssueSignature = (issues = []) =>
-    issues
-      .map((issue) => [
-        issue.code || '',
-        issue.personId || '',
-        issue.nodeId || '',
-        issue.targetTabId || '',
-        issue.message || '',
-      ].join('|'))
-      .sort()
-      .join('||');
-
-  // [v4.64] 데이터 핵심 상태 선언 (초기화 순서 문제 해결을 위해 최상단 이동)
-  const [vaultState, setVaultState] = useState({
-    history: [ migrateToVault(getInitialTree()) ],
-    currentIndex: 0
-  });
-
-  const rawVault = vaultState.history[vaultState.currentIndex];
-
-  const setVault = (action) => {
-    setVaultState(prev => {
-      const currentVault = prev.history[prev.currentIndex];
-      const newVault = typeof action === 'function' ? action(cloneDeep(currentVault)) : action;
-      const parsedVault = cloneDeep(newVault); 
-      const newHistory = prev.history.slice(0, prev.currentIndex + 1);
-      newHistory.push(parsedVault);
-      if (newHistory.length > HISTORY_LIMIT) newHistory.shift();
-      return { history: newHistory, currentIndex: newHistory.length - 1 };
-    });
-  };
-
-  const setTree = (action) => {
-    setVaultState(prev => {
-      const currentVault = prev.history[prev.currentIndex];
-      const currentTree = buildTreeFromVault(currentVault); 
-      const newTree = typeof action === 'function' ? action(currentTree) : action; 
-      const newVault = migrateToVault(newTree); 
-      const newHistory = prev.history.slice(0, prev.currentIndex + 1);
-      newHistory.push(newVault);
-      if (newHistory.length > HISTORY_LIMIT) newHistory.shift();
-      return { history: newHistory, currentIndex: newHistory.length - 1 };
-    });
-  };
-
-  const tree = useMemo(() => buildTreeFromVault(rawVault) || getInitialTree(), [rawVault]);
+  const { tree, setTree, setVault, undoTree, redoTree, canUndo, canRedo } = useVaultState();
 
   // [v4.64] 모든 상태 변수 선언을 최상단으로 통합하여 초기화 순서 문제 해결
-  const [activeTab, setActiveTab] = useState('input'); 
+  const [activeTab, setActiveTab] = useState('input');
   const [proposedTab, setProposedTab] = useState(null);
   const [isDirty, setIsDirty] = useState(false);
   const [changeLog, setChangeLog] = useState([]);
-  const [activeDeceasedTab, setActiveDeceasedTab] = useState('root');
   const [treeViewMode, setTreeViewMode] = useState('flow');
-  const [summaryViewMode, setSummaryViewMode] = useState('structure'); // 'structure' | 'path'
+  const [summaryViewMode, setSummaryViewMode] = useState('structure');
   const [navigationSignal, setNavigationSignal] = useState(null);
   const [isFolderFocused, setIsFolderFocused] = useState(false);
-  const [isResetModalOpen, setIsResetModalOpen] = useState(false); 
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [syncRequest, setSyncRequest] = useState(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1.0);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
-  const deceasedTabs = useMemo(() => {
-    const tabMap = new Map();
-    const registeredPersonIds = new Set();
-    const visitedNodes = new Set();
-    tabMap.set('root', { id: 'root', personId: 'root', name: tree.name || '피상속인', node: tree, parentName: null, level: 0, branchRootId: null });
-    const queue = [];
-    if (tree.heirs) tree.heirs.forEach(h => queue.push({ node: h, parentNode: tree, level: 1, branchRootId: h.personId }));
-    while (queue.length > 0) {
-      const { node, parentNode, level, branchRootId } = queue.shift();
-      if (!node || visitedNodes.has(node.id)) continue;
-      visitedNodes.add(node.id);
 
-      const hasEnteredHeirs = node.heirs && node.heirs.length > 0;
-      const isTarget = node.isDeceased || (node.isExcluded && (node.exclusionOption === 'lost' || node.exclusionOption === 'disqualified')) || hasEnteredHeirs;
-      const isSpouseNode = node.relation === 'wife' || node.relation === 'husband' || node.relation === 'spouse';
-      const parentDeathDate = parentNode?.deathDate || tree.deathDate;
-      const isPredeceasedSpouse = isSpouseNode && node.deathDate && parentDeathDate && isBefore(node.deathDate, parentDeathDate);
-      let currentBranchRootId = branchRootId;
-      const pId = node.personId;
-      if (isTarget && !isPredeceasedSpouse) {
-        if (!registeredPersonIds.has(pId)) {
-          tabMap.set(pId, { 
-            id: pId, personId: pId, name: node.name || '(상속인)', node: node, parentNode: parentNode, 
-            parentName: parentNode.id === 'root' ? (tree.name || '피상속인') : parentNode.name, 
-            parentTabId: parentNode.id === 'root' ? 'root' : parentNode.personId,
-            inheritanceType: node.isDeceased ? 'deceased' : 'excluded',
-            relation: node.relation, level: level, branchRootId: currentBranchRootId 
-          });
-          registeredPersonIds.add(pId);
-        } else {
-          const existingTab = tabMap.get(pId);
-          if (existingTab) currentBranchRootId = existingTab.branchRootId;
-        }
-      } else if (!isTarget && registeredPersonIds.has(pId)) {
-          const existingTab = tabMap.get(pId);
-          if (existingTab) currentBranchRootId = existingTab.branchRootId;
-      }
-      if (node.heirs && node.heirs.length > 0) node.heirs.forEach(h => queue.push({ node: h, parentNode: node, level: level + 1, branchRootId: currentBranchRootId }));
-    }
-    return Array.from(tabMap.values());
-  }, [tree]);
-
-  useEffect(() => {
-    if (!deceasedTabs.find((t) => t.id === activeDeceasedTab)) {
-      setActiveDeceasedTab('root');
-    }
-  }, [deceasedTabs, activeDeceasedTab]);
-
-  const activeTabObj = useMemo(
-    () => deceasedTabs.find((t) => t.id === activeDeceasedTab) || null,
-    [deceasedTabs, activeDeceasedTab],
-  );
-
-  const getBriefingInfo = useMemo(() => {
-    if (activeDeceasedTab === 'root') {
-      return { name: tree.name || '피상속인', relation: '피상속인', deathDate: tree.deathDate };
-    }
-    const tab = deceasedTabs.find((t) => t.id === activeDeceasedTab);
-    return { name: tab?.name || '(상속인)', relation: tab?.relation, deathDate: tab?.node?.deathDate };
-  }, [tree, deceasedTabs, activeDeceasedTab]);
+  const { deceasedTabs, activeDeceasedTab, setActiveDeceasedTab, activeTabObj, getBriefingInfo } = useDeceasedTabs(tree);
 
   const [personEditModal, setPersonEditModal] = useState(null); // null | { nodeId, foundTabId }
   const personEditModalData = useMemo(() => {
@@ -311,9 +225,6 @@ function App() {
     return () => clearTimeout(timer);
   }, [changeLog, tree.caseNo, tree.name]);
 
-  const undoTree = () => setVaultState(prev => prev.currentIndex > 0 ? { ...prev, currentIndex: prev.currentIndex - 1 } : prev);
-  const redoTree = () => setVaultState(prev => prev.currentIndex < prev.history.length - 1 ? { ...prev, currentIndex: prev.currentIndex + 1 } : prev);
-
   const handleKeyDown = (e) => {
     const navKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter'];
     if (!navKeys.includes(e.key)) return;
@@ -450,54 +361,9 @@ function App() {
     document.addEventListener('mouseup', handleMouseUp);
   };
 
-  const { finalShares, calcSteps, warnings, transitShares, blockingIssues, compareFinalShares, hojuBonusDiffs } = useMemo(() => {
-    const preprocessTree = (n, parentDate, parentNode, visited = new Set()) => {
-      const pId = n.personId || n.id;
-      if (visited.has(pId)) return { ...n, heirs: [], _cycle: true };
-      const clone = { ...n }; 
-      const refDate = clone.id === 'root' ? clone.deathDate : parentDate;
-      const newVisited = new Set(visited);
-      newVisited.add(pId);
-      if (clone.id !== 'root') {
-        const isPre = clone.deathDate && refDate && isBefore(clone.deathDate, refDate); 
-        const isSpouseType = ['wife', 'husband', 'spouse'].includes(clone.relation);
-        const hasHeirsInModel = clone.heirs && clone.heirs.length > 0;
-        if (hasHeirsInModel && !(isPre && isSpouseType)) { clone.isExcluded = false; clone.exclusionOption = ''; }
-        if (isPre && isSpouseType) { clone.isExcluded = true; clone.exclusionOption = 'predeceased'; }
-      }
-      if (clone.heirs) { clone.heirs = clone.heirs.map(h => preprocessTree(h, clone.deathDate || refDate, clone, newVisited)); }
-      return clone;
-    };
-    const calcTree = preprocessTree(tree, tree.deathDate, null);
-    const shouldBuildCalcSteps = ['tree', 'calc', 'summary', 'amount'].includes(activeTab);
-    const result = calculateInheritance(calcTree, propertyValue, { includeCalcSteps: shouldBuildCalcSteps });
-    const shouldBuildCompare = ['calc', 'summary'].includes(activeTab);
-    const compareTree = shouldBuildCompare ? stripHojuBonusInputs(calcTree) : null;
-    const compareResult = shouldBuildCompare ? calculateInheritance(compareTree, propertyValue, { includeCalcSteps: false }) : null;
-    return {
-      ...result,
-      compareFinalShares: compareResult?.finalShares || {},
-      hojuBonusDiffs: shouldBuildCompare ? buildHojuBonusDiffs(result.finalShares || {}, compareResult?.finalShares || {}) : [],
-    };
-  }, [tree, propertyValue, activeTab]);
+  const { finalShares, calcSteps, warnings, transitShares, blockingIssues, compareFinalShares, hojuBonusDiffs } = useCalcResult(tree, propertyValue, activeTab);
 
-  const amountCalculations = useMemo(() => {
-    const list = []; if (finalShares?.direct) list.push(...finalShares.direct);
-    if (finalShares?.subGroups) { const scan = (group) => { list.push(...group.shares); if (group.subGroups) group.subGroups.forEach(scan); }; finalShares.subGroups.forEach(scan); }
-    const estateVal = parseInt(String(propertyValue).replace(/[^0-9]/g, ''), 10) || 0;
-    let totalSpecial = 0; let totalContrib = 0;
-    list.forEach(share => { totalSpecial += parseInt(String(specialBenefits[share.personId] || '').replace(/[^0-9]/g, ''), 10) || 0; totalContrib += parseInt(String(contributions[share.personId] || '').replace(/[^0-9]/g, ''), 10) || 0; });
-    const deemedEstate = estateVal + totalSpecial - totalContrib;
-    const results = list.map(share => {
-      const sVal = parseInt(String(specialBenefits[share.personId] || '').replace(/[^0-9]/g, ''), 10) || 0; const cVal = parseInt(String(contributions[share.personId] || '').replace(/[^0-9]/g, ''), 10) || 0;
-      const statutoryAmount = Math.floor(deemedEstate * (share.n / share.d));
-      const finalAmount = Math.max(0, statutoryAmount - sVal) + cVal;
-      return { ...share, statutoryAmount, specialBenefit: sVal, contribution: cVal, finalAmount };
-    });
-    const totalDistributed = results.reduce((acc, r) => acc + (r.finalAmount || 0), 0);
-    const remainder = Math.max(0, estateVal - totalDistributed);
-    return { estateVal, deemedEstate, results, totalDistributed, remainder };
-  }, [finalShares, propertyValue, specialBenefits, contributions]);
+  const amountCalculations = useAmountCalc(finalShares, propertyValue, specialBenefits, contributions);
 
   const toggleGuideChecked = (key) => {
     setCheckedGuideKeys(prev => {
@@ -777,6 +643,36 @@ function App() {
     });
   };
 
+  const handleExcelExport = () => {
+    const survivors = finalShares?.survivors || [];
+    const commonDenominator = survivors.reduce((acc, s) => math.lcm(acc || 1, s.d || 1), 1) || 1;
+    const rows = survivors.map((s) => {
+      const simplifiedN = s.n || 0;
+      const simplifiedD = s.d || 1;
+      const commonN = simplifiedN * (commonDenominator / simplifiedD);
+      return [
+        s.name || '',
+        getRelStr(s.relation, tree.deathDate) || s.relation || '',
+        simplifiedN,
+        simplifiedD,
+        commonN,
+        commonDenominator,
+        s.path || '',
+      ];
+    });
+    const header = ['성명', '관계', '법정지분 분자', '법정지분 분모', '통분 분자', '통분 분모', '상속경로'];
+    const csv = [header, ...rows].map((r) => r.map((c) => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const safeCaseNo = (tree.caseNo || '미입력').replace(/[^\w가-힣-]/g, '');
+    const safeName = (tree.name || '피상속인').replace(/[^\w가-힣-]/g, '');
+    a.href = url;
+    a.download = `${safeCaseNo}_${safeName}_상속지분_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <>
       <PrintReport tree={tree} activeTab={activeTab} activeDeceasedTab={activeDeceasedTab} finalShares={finalShares} calcSteps={calcSteps} amountCalculations={amountCalculations} propertyValue={propertyValue} summaryViewMode={summaryViewMode} />
@@ -799,7 +695,7 @@ function App() {
           setAiTargetId={setAiTargetId} setIsAiModalOpen={setIsAiModalOpen}
           setShowNavigator={setShowNavigator}
           hasActionItems={guideInfo?.hasActionItems}
-          undoTree={undoTree} redoTree={redoTree} canUndo={vaultState.currentIndex > 0} canRedo={vaultState.currentIndex < vaultState.history.length - 1}
+          undoTree={undoTree} redoTree={redoTree} canUndo={canUndo} canRedo={canRedo}
           setIsResetModalOpen={setIsResetModalOpen}
           loadFile={(e) => {
             loadTreeFromJsonFile(e.target.files[0], { setTree, setActiveTab, setImportIssues, setPropertyValue, setSpecialBenefits, setContributions, setIsAmountActive });
@@ -809,36 +705,7 @@ function App() {
             saveFactTreeToFile(tree, { propertyValue, specialBenefits, contributions, isAmountActive });
             setIsDirty(false);
           }}
-          handleExcelExport={() => {
-            const survivors = finalShares?.survivors || [];
-            const commonDenominator = survivors.reduce((acc, s) => math.lcm(acc || 1, s.d || 1), 1) || 1;
-            const rows = survivors.map((s) => {
-              const simplifiedN = s.n || 0;
-              const simplifiedD = s.d || 1;
-              const commonN = simplifiedN * (commonDenominator / simplifiedD);
-              return [
-                s.name || '',
-                getRelStr(s.relation, tree.deathDate) || s.relation || '',
-                simplifiedN,
-                simplifiedD,
-                commonN,
-                commonDenominator,
-                s.path || '',
-              ];
-            });
-            const header = ['??', '??', '??? ??', '??? ??', '??? ??', '??? ??', '????'];
-            const csv = [header, ...rows].map((r) => r.map((c) => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
-            const bom = '\uFEFF';
-            const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            const safeCaseNo = (tree.caseNo || '??????').replace(/[^\w?-?-]/g, '');
-            const safeName = (tree.name || '??????').replace(/[^\w?-?-]/g, '');
-            a.href = url;
-            a.download = `${safeCaseNo}_${safeName}_??????_${new Date().toISOString().slice(0,10)}.csv`;
-            a.click();
-            URL.revokeObjectURL(url);
-          }}
+          handleExcelExport={handleExcelExport}
           handlePrint={() => printCurrentTab({ activeTab, tree, summaryViewMode })}
           zoomLevel={zoomLevel} setZoomLevel={setZoomLevel} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode}
         />
