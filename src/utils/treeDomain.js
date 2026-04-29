@@ -73,15 +73,6 @@ const normalizeDateField = (value) => {
   return value.trim();
 };
 
-const pruneDerivedFields = (node) => {
-  const next = {};
-  Object.entries(node || {}).forEach(([key, value]) => {
-    if (DERIVED_KEYS.has(key)) return;
-    next[key] = value;
-  });
-  return next;
-};
-
 const normalizeRelation = (relation, fallback = 'son') => {
   const map = {
     wife: 'wife',
@@ -115,7 +106,7 @@ export const normalizeImportedTree = (rawTree) => {
   const sanitizeNode = (inputNode, parentDate = '', isRoot = false) => {
     if (!inputNode) return null;
     
-    // [v4.60] 스냅샷인 경우 화이트리스트 필터링을 바이패스하여 모든 데이터 보존
+    // 스냅샷인 경우 화이트리스트 필터링을 바이패스하여 모든 데이터 보존
     const base = isSnapshot ? { ...inputNode } : {};
     if (!isSnapshot) {
       Object.entries(inputNode || {}).forEach(([key, value]) => {
@@ -126,7 +117,7 @@ export const normalizeImportedTree = (rawTree) => {
     // personId 절대 보존: 파일에 있으면 그대로 쓰고, 없으면 새로 생성
     const personId = base.personId || (isRoot ? 'root' : generateId('p'));
     
-    // [v4.60 중복 방지] 이미 처리된 ID가 또 나오면 (루트 제외) 자식 목록 생성을 중단
+    // 이미 처리된 ID가 또 나오면 (루트 제외) 자식 목록 생성을 중단
     const isDuplicate = !isRoot && visitedPersonIds.has(personId);
     if (personId) visitedPersonIds.add(personId);
 
@@ -527,7 +518,7 @@ export const serializeFactTree = (tree) => {
 };
 
 /**
- * [v4.60] 사건번호가 있는 경우 필터링 없이 모든 속성을 보존하여 직렬화합니다.
+ * 사건번호가 있는 경우 필터링 없이 모든 속성을 보존하여 직렬화합니다.
  * Vault의 메타데이터 및 UI 상태 등을 모두 포함합니다.
  */
 export const serializeFullTree = (tree) => {

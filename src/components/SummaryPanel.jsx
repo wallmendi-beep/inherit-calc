@@ -1,7 +1,147 @@
 import React from 'react';
 import { IconList } from './Icons';
 import { math, getRelStr, formatKorDate, isBefore } from '../engine/utils';
-import { collectMissingHeirNames } from '../utils/missingHeirStatus';
+import { extractHojuBonusNotices, buildHojuBonusPersonMap } from '../utils/hojuBonusNotice';
+import { hasMissingHeirsInTree, isMissingHeirNode } from '../utils/missingHeirStatus';
+
+const lawLabel = (era) => {
+  if (era === '1960') return '구민법';
+  if (era === '1979') return '1979 개정민법';
+  if (era === '1991') return '현행민법';
+  return `${era} 기준`;
+};
+
+const PathView = ({ calcSteps, tree, issues, handleNavigate, searchQuery }) => {
+  const issueMap = React.useMemo(() => {
+    const map = new Map();
+    (issues || []).forEach((issue) => {
+      const key = issue.personId || issue.id;
+      if (!key) return;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(issue);
+    });
+    return map;
+  }, [issues]);
+
+  const hojuBonusMap = buildHojuBonusPersonMap(calcSteps);
+  const normalizedSearchQuery = (searchQuery || '').trim().toLowerCase();
+  const matchesName = (name) => !normalizedSearchQuery || (name || '').toLowerCase().includes(normalizedSearchQuery);
+
+  const heirMap = new Map();
+  calcSteps.forEach((step) => {
+    step.dists.forEach((dist) => {
+      if (dist.n <= 0) return;
+      const personId = dist.h.personId || dist.h.id;
+      if (!heirMap.has(personId)) {
+        heirMap.set(personId, {
+          personId,
+          name: dist.h.name,
+          relation: dist.h._origRelation || dist.h.relation,
+          isDeceased: dist.h.isDeceased,
+          sources: [],
+        });
+      }
+      heirMap.get(personId).sources.push({
+        decName: step.dec.name,
+        decDeathDate: step.dec.deathDate,
+        relation: dist.h._origRelation || dist.h.relation,
+        lawEra: step.lawEra,
+        modifier: dist.mod || '',
+        n: dist.n,
+        d: dist.d,
+      });
+    });
+  });
+
+  const results = Array.from(heirMap.values())
+    .filter((item) => !item.isDeceased)
+    .filter((item) => matchesName(item.name));
+  const commonD = results.reduce((acc, result) => {
+    const total = result.sources.reduce((sum, source) => {
+      const [nn, nd] = math.add(sum.n, sum.d, source.n, source.d);
+      return { n: nn, d: nd };
+    }, { n: 0, d: 1 });
+    return total.n > 0 ? math.lcm(acc, total.d) : acc;
+  }, 1);
+
+  if (results.length === 0) {
+    return (
+      <div className="py-12 text-center text-[13px] text-[#787774] dark:text-neutral-400">
+        최종 생존 상속인이 없습니다.
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-4 text-[13px] text-[#787774] dark:text-neutral-500">
+      <p className="mb-4">최종 생존 상속인이 어떤 경로로 지분을 취득했는지 정리한 결과표입니다.</p>
+      <table className="w-full border-collapse text-[13px]">
+        <thead className="bg-[#fcfcfb] dark:bg-neutral-800/40">
+          <tr>
+            <th className="w-[18%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-700">최종 상속인</th>
+            <th className="w-[52%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-700">지분 취득 경로</th>
+            <th className="w-[15%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-700">최종 합계</th>
+            <th className="w-[15%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-700">통분 지분</th>
+          </tr>
+        </thead>
+        <tbody>
+          {results.map((result) => {
+            const total = result.sources.reduce((sum, source) => {
+              const [nn, nd] = math.add(sum.n, sum.d, source.n, source.d);
+              return { n: nn, d: nd };
+            }, { n: 0, d: 1 });
+            const unifiedN = total.n * (commonD / total.d);
+            const personIssues = issueMap.get(result.personId) || [];
+            const isMultiSource = result.sources.length > 1;
+            const hojuApplied = hojuBonusMap.has(result.personId);
+
+            return (
+              <tr key={`path-${result.personId}`} className={`align-top ${matchesName(result.name) && normalizedSearchQuery ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''} hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20`}>
+                <td className="border border-[#e9e9e7] p-2.5 text-center font-medium dark:border-neutral-700">
+                  <button
+                    type="button"
+                    onClick={() => handleNavigate && handleNavigate(personIssues[0]?.targetTabId || result.personId)}
+                    title="입력 탭에서 이 사람 정보 수정"
+                    className={`group inline-flex cursor-pointer items-center gap-1 font-medium transition-colors hover:text-blue-700 dark:hover:text-blue-300 ${personIssues.length > 0 ? 'text-red-600 dark:text-red-400' : hojuApplied ? 'text-blue-600 dark:text-blue-400' : 'text-[#37352f] dark:text-neutral-200'}`}
+                  >
+                    <span className="underline-offset-2 group-hover:underline">{result.name}</span>
+                    {personIssues.length > 0 && (
+                      <span className="inline-flex items-center rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-black text-red-700 dark:bg-red-900/30 dark:text-red-300">경고</span>
+                    )}
+                    <span className="hidden text-[10px] font-bold text-[#787774] group-hover:inline dark:text-neutral-500">수정</span>
+                  </button>
+                  <span className="ml-1 font-normal text-[#787774]">[{getRelStr(result.relation, tree.deathDate)}]</span>
+                  {personIssues.length > 0 && (
+                    <span className="mt-1 block text-[11px] font-semibold text-red-500 dark:text-red-400">{personIssues[0].text}</span>
+                  )}
+                  {isMultiSource && <span className="mt-0.5 block text-[10px] font-bold text-[#787774]">복수 경로</span>}
+                </td>
+                <td className="border border-[#e9e9e7] p-2.5 text-left dark:border-neutral-700">
+                  {result.sources.map((source, index) => (
+                    <div key={`${result.personId}-src-${index}`} className={`flex items-baseline gap-1 ${index > 0 ? 'mt-1.5 border-t border-dashed border-[#e9e9e7] pt-1.5 dark:border-neutral-700' : ''}`}>
+                      <span className="shrink-0 font-medium text-[#37352f] dark:text-neutral-200">{source.n}/{source.d}</span>
+                      <span className="text-[12px] text-[#787774] dark:text-neutral-500">
+                        망 {source.decName}의 {getRelStr(source.relation, source.decDeathDate) || '상속인'} &lt;{lawLabel(source.lawEra)}&gt;
+                        {source.modifier ? ` (${source.modifier})` : ''}
+                      </span>
+                    </div>
+                  ))}
+                  {isMultiSource && (
+                    <div className="mt-1.5 border-t border-[#e9e9e7] pt-1.5 text-[12px] font-medium text-[#504f4c] dark:border-neutral-700 dark:text-neutral-400">
+                      = {result.sources.map((s) => `${s.n}/${s.d}`).join(' + ')} = <span className="font-bold text-[#37352f] dark:text-neutral-200">{total.n}/{total.d}</span>
+                    </div>
+                  )}
+                </td>
+                <td className="border border-[#e9e9e7] p-2.5 text-center font-medium dark:border-neutral-700">{total.n} / {total.d}</td>
+                <td className="border border-[#e9e9e7] p-2.5 text-center font-medium dark:border-neutral-700">{unifiedN} / {commonD}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+};
 
 const buildIssueMap = (issues = []) => {
   const map = new Map();
@@ -14,7 +154,14 @@ const buildIssueMap = (issues = []) => {
   return map;
 };
 
-export default function SummaryPanel({
+const NoticeCard = ({ notice }) => (
+  <div className="rounded-xl border border-[#e9e9e7] bg-[#f8f8f7] px-4 py-3 dark:border-neutral-700 dark:bg-neutral-800/40">
+    <div className="text-[13px] font-semibold text-[#37352f] dark:text-neutral-100">{notice.title}</div>
+    <div className="mt-1 text-[12px] text-[#787774] dark:text-neutral-400">{notice.basis}</div>
+  </div>
+);
+
+export default function SummaryPanelFixed({
   tree,
   finalShares,
   issues = [],
@@ -25,16 +172,55 @@ export default function SummaryPanel({
   setSearchQuery,
   simpleTargetN,
   simpleTargetD,
-  interpretationMode = 'practical',
+  calcSteps = [],
+  viewMode = 'structure',
+  setViewMode,
 }) {
   const issueMap = buildIssueMap(issues);
+  const hojuBonusNotices = extractHojuBonusNotices(calcSteps);
+  const hojuBonusMap = buildHojuBonusPersonMap(calcSteps);
+  const normalizedSearchQuery = (searchQuery || '').trim().toLowerCase();
+  const matchesName = (name) => !normalizedSearchQuery || (name || '').toLowerCase().includes(normalizedSearchQuery);
 
-  const missingHeirNames = React.useMemo(() => collectMissingHeirNames(tree), [tree]);
-  const hasMissingHeir = missingHeirNames.length > 0;
+  const hasMissingHeir = React.useMemo(() => hasMissingHeirsInTree(tree), [tree]);
+
+  const missingHeirTargets = React.useMemo(() => {
+    const map = new Map();
+    const register = (name, target) => {
+      const safeName = name || '이름 미상';
+      if (!map.has(safeName)) {
+        map.set(safeName, { name: safeName, target: target || null });
+      } else if (!map.get(safeName).target && target) {
+        map.set(safeName, { name: safeName, target });
+      }
+    };
+
+    const collectFromTree = (node, inheritedDate = tree?.deathDate || '') => {
+      if (!node) return;
+      if (isMissingHeirNode(node, inheritedDate)) {
+        register(node.name, node.personId || node.id);
+      }
+      (node.heirs || []).forEach((child) => collectFromTree(child, node.deathDate || inheritedDate));
+    };
+
+    collectFromTree(tree, tree?.deathDate || '');
+
+    (issues || []).forEach((issue) => {
+      if (
+        issue?.code === 'missing-successors' ||
+        issue?.code === 'import-missing-descendants' ||
+        issue?.code === 'missing-descendants'
+      ) {
+        register(issue.personName || issue.name, issue.targetTabId || issue.personId || issue.nodeId || issue.id);
+      }
+    });
+
+    return Array.from(map.values());
+  }, [tree, issues]);
 
   const shareByPersonId = new Map();
-  (finalShares.direct || []).forEach((s) => shareByPersonId.set(s.personId, s));
-  (finalShares.subGroups || []).forEach((g) => g.shares.forEach((s) => shareByPersonId.set(s.personId, s)));
+  (finalShares.direct || []).forEach((share) => shareByPersonId.set(share.personId, share));
+  (finalShares.subGroups || []).forEach((group) => group.shares.forEach((share) => shareByPersonId.set(share.personId, share)));
 
   const printedPersonIds = new Set();
   const buildGroups = (node, parentDeathDate) => {
@@ -42,23 +228,23 @@ export default function SummaryPanel({
     const subGroups = [];
     const seenInThisGroup = new Set();
 
-    (node.heirs || []).forEach((h) => {
-      if (seenInThisGroup.has(h.personId)) return;
-      seenInThisGroup.add(h.personId);
+    (node.heirs || []).forEach((heir) => {
+      if (seenInThisGroup.has(heir.personId)) return;
+      seenInThisGroup.add(heir.personId);
 
-      if (!h.isDeceased) {
-        const s = shareByPersonId.get(h.personId);
-        if (s && s.n > 0 && !printedPersonIds.has(h.personId)) {
-          directShares.push(s);
-          printedPersonIds.add(h.personId);
+      if (!heir.isDeceased) {
+        const share = shareByPersonId.get(heir.personId);
+        if (share && share.n > 0 && !printedPersonIds.has(heir.personId)) {
+          directShares.push(share);
+          printedPersonIds.add(heir.personId);
         }
         return;
       }
 
-      const type = h.deathDate && isBefore(h.deathDate, parentDeathDate) ? '대습상속' : '사망상속';
-      const child = buildGroups(h, h.deathDate || parentDeathDate);
+      const type = heir.deathDate && isBefore(heir.deathDate, parentDeathDate) ? '대습상속' : '재상속';
+      const child = buildGroups(heir, heir.deathDate || parentDeathDate);
       if (child.directShares.length > 0 || child.subGroups.length > 0) {
-        subGroups.push({ ancestor: h, type, ...child });
+        subGroups.push({ ancestor: heir, type, ...child });
       }
     });
 
@@ -69,172 +255,243 @@ export default function SummaryPanel({
   const topGroups = [];
   const topSeen = new Set();
 
-  (tree.heirs || []).forEach((h) => {
-    if (topSeen.has(h.personId)) return;
-    topSeen.add(h.personId);
+  (tree.heirs || []).forEach((heir) => {
+    if (topSeen.has(heir.personId)) return;
+    topSeen.add(heir.personId);
 
-    if (!h.isDeceased) {
-      const s = shareByPersonId.get(h.personId);
-      if (s && s.n > 0 && !printedPersonIds.has(h.personId)) {
-        topDirect.push(s);
-        printedPersonIds.add(h.personId);
+    if (!heir.isDeceased) {
+      const share = shareByPersonId.get(heir.personId);
+      if (share && share.n > 0 && !printedPersonIds.has(heir.personId)) {
+        topDirect.push(share);
+        printedPersonIds.add(heir.personId);
       }
       return;
     }
 
-    const type = h.deathDate && isBefore(h.deathDate, tree.deathDate) ? '대습상속' : '사망상속';
-    const child = buildGroups(h, h.deathDate || tree.deathDate);
+    const type = heir.deathDate && isBefore(heir.deathDate, tree.deathDate) ? '대습상속' : '재상속';
+    const child = buildGroups(heir, heir.deathDate || tree.deathDate);
     if (child.directShares.length > 0 || child.subGroups.length > 0) {
-      topGroups.push({ ancestor: h, type, ...child });
+      topGroups.push({ ancestor: heir, type, ...child });
     }
   });
 
   const [totalSumN, totalSumD] = (() => {
     let tn = 0;
     let td = 1;
-    const addShare = (s) => {
-      if (s && s.n > 0) {
-        const [nn, nd] = math.add(tn, td, s.n, s.d);
+    const addShare = (share) => {
+      if (share && share.n > 0) {
+        const [nn, nd] = math.add(tn, td, share.n, share.d);
         tn = nn;
         td = nd;
       }
     };
     topDirect.forEach(addShare);
-    const traverseGroup = (g) => {
-      g.directShares.forEach(addShare);
-      g.subGroups.forEach(traverseGroup);
+    const traverseGroup = (group) => {
+      group.directShares.forEach(addShare);
+      group.subGroups.forEach(traverseGroup);
     };
     topGroups.forEach(traverseGroup);
     return math.simplify(tn, td);
   })();
 
-  const renderShareRow = (f, depth, groupAncestorId = null) => {
+  const renderShareRow = (share, depth, groupAncestorId = null) => {
     const paddingLeft = `${12 + depth * 16}px`;
-    const rowId = groupAncestorId ? `summary-row-${f.personId}-${groupAncestorId}` : `summary-row-${f.personId}`;
+    const rowId = groupAncestorId ? `summary-row-${share.personId}-${groupAncestorId}` : `summary-row-${share.personId}`;
     const isCurrentMatch = matchIds[currentMatchIdx] === rowId;
-    const personIssues = issueMap.get(f.personId) || issueMap.get(f.id) || [];
+    const personIssues = issueMap.get(share.personId) || issueMap.get(share.id) || [];
+    const hojuApplied = hojuBonusMap.has(share.personId);
+    const navigateTarget = personIssues[0]?.targetTabId || share.personId || share.id;
 
     return (
       <tr
-        key={`sr-${f.id}-${groupAncestorId || 'top'}`}
+        key={`summary-row-${share.id}-${groupAncestorId || 'top'}`}
         id={rowId}
-        className={`transition-colors duration-300 ${isCurrentMatch ? 'bg-yellow-100 dark:bg-yellow-900/50 border-l-4 border-l-yellow-500' : 'hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20'}`}
+        className={`transition-colors duration-300 ${
+          isCurrentMatch || (normalizedSearchQuery && matchesName(share.name))
+            ? 'border-l-4 border-l-yellow-500 bg-yellow-100 dark:bg-yellow-900/50'
+            : 'hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20'
+        }`}
       >
-        <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left font-medium" style={{ paddingLeft }}>
+        <td className="border border-[#e9e9e7] p-2.5 text-left font-medium dark:border-neutral-700" style={{ paddingLeft }}>
           <button
             type="button"
-            onClick={() => personIssues.length > 0 && handleNavigate ? handleNavigate(personIssues[0].targetTabId || f.personId || f.id) : null}
-            className={`${personIssues.length > 0 ? 'cursor-pointer text-red-600 dark:text-red-400' : 'cursor-default'} inline-flex items-center gap-1 font-medium`}
+            onClick={() => handleNavigate ? handleNavigate(navigateTarget) : null}
+            title="입력 탭에서 이 사람 정보 수정"
+            className={`${personIssues.length > 0 ? 'text-red-600 dark:text-red-400' : hojuApplied ? 'text-blue-600 dark:text-blue-400' : 'text-[#37352f] dark:text-neutral-200'} group inline-flex cursor-pointer items-center gap-1 font-medium transition-colors hover:text-blue-600 dark:hover:text-blue-400`}
           >
-            <span>{f.name}</span>
+            <span className="underline-offset-2 group-hover:underline">{share.name}</span>
             {personIssues.length > 0 && (
-              <span className="inline-flex items-center rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 px-1.5 py-0.5 text-[10px] font-black">
+              <span className="inline-flex items-center rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-black text-red-700 dark:bg-red-900/30 dark:text-red-300">
                 경고
               </span>
             )}
+            <span className="hidden text-[10px] font-bold text-blue-500 group-hover:inline dark:text-blue-300">수정</span>
           </button>
-          <span className="text-[#787774] font-normal ml-1">[{getRelStr(f.relation, tree.deathDate)}]</span>
+          <span className="ml-1 font-normal text-[#787774]">[{getRelStr(share.relation, tree.deathDate)}]</span>
           {personIssues.map((issue, issueIndex) => (
-            <span key={`${issue.code}-${issueIndex}`} className="block text-[11px] text-red-500 dark:text-red-400 font-semibold mt-1">
+            <span key={`${issue.code}-${issueIndex}`} className="mt-1 block text-[11px] font-semibold text-red-500 dark:text-red-400">
               {issue.text}
             </span>
           ))}
         </td>
-        <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center text-[#504f4c]">{f.n} / {f.d}</td>
-        <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">{f.un} / {f.ud}</td>
+        <td className="border border-[#e9e9e7] p-2.5 text-center text-[#504f4c] dark:border-neutral-700">{share.n} / {share.d}</td>
+        <td className="border border-[#e9e9e7] p-2.5 text-center font-medium dark:border-neutral-700">{share.un} / {share.ud}</td>
       </tr>
     );
   };
 
   const renderGroup = (group, depth) => (
-    <React.Fragment key={`grp-${group.ancestor.id}`}>
+    <React.Fragment key={`summary-group-${group.ancestor.id}`}>
       <tr className="bg-[#fcfcfb] dark:bg-neutral-800/40">
         <td
           colSpan={3}
-          className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left text-[#504f4c] dark:text-neutral-400"
+          className="border border-[#e9e9e7] p-2.5 text-left text-[#504f4c] dark:border-neutral-700 dark:text-neutral-400"
           style={{ paddingLeft: `${12 + depth * 16}px` }}
         >
           [{group.ancestor.name}] {formatKorDate(group.ancestor.deathDate)} 사망으로 인한 {group.type} 그룹
         </td>
       </tr>
-      {group.directShares.map((f) => renderShareRow(f, depth + 1, group.ancestor.id))}
-      {group.subGroups.map((sg) => renderGroup(sg, depth + 1))}
+      {group.directShares.map((share) => renderShareRow(share, depth + 1, group.ancestor.id))}
+      {group.subGroups.map((subGroup) => renderGroup(subGroup, depth + 1))}
     </React.Fragment>
   );
 
+  const sumVal = totalSumD ? totalSumN / totalSumD : 0;
+  const targetVal = simpleTargetD ? simpleTargetN / simpleTargetD : 1;
+  const filterGroupBySearch = React.useCallback((group) => {
+    if (!normalizedSearchQuery) return group;
+    const filteredDirectShares = (group.directShares || []).filter((share) => matchesName(share.name));
+    const filteredSubGroups = (group.subGroups || [])
+      .map(filterGroupBySearch)
+      .filter(Boolean);
+    if (filteredDirectShares.length === 0 && filteredSubGroups.length === 0) return null;
+    return { ...group, directShares: filteredDirectShares, subGroups: filteredSubGroups };
+  }, [normalizedSearchQuery]);
+
+  const visibleTopDirect = React.useMemo(
+    () => (!normalizedSearchQuery ? topDirect : topDirect.filter((share) => matchesName(share.name))),
+    [topDirect, normalizedSearchQuery]
+  );
+  const visibleTopGroups = React.useMemo(
+    () => (!normalizedSearchQuery ? topGroups : topGroups.map(filterGroupBySearch).filter(Boolean)),
+    [topGroups, normalizedSearchQuery, filterGroupBySearch]
+  );
+  const visibleMatchCount = React.useMemo(() => {
+    if (!normalizedSearchQuery) return 0;
+    let count = visibleTopDirect.length;
+    const countGroup = (group) => {
+      count += (group.directShares || []).length;
+      (group.subGroups || []).forEach(countGroup);
+    };
+    visibleTopGroups.forEach(countGroup);
+    return count;
+  }, [normalizedSearchQuery, visibleTopDirect, visibleTopGroups]);
+
   return (
     <div className="w-full text-[#37352f] dark:text-neutral-200">
-      <div className="mb-4 rounded-lg border border-[#e9e9e7] bg-[#fcfcfb] px-4 py-3 text-[12px] text-[#787774] dark:border-neutral-700 dark:bg-neutral-800/40 dark:text-neutral-400">
-        {interpretationMode === 'conservative'
-          ? "보수해석 비교: 민법 제1009조의 '동시 상속' 문언을 엄격 해석하면 가산 배제 가능"
-          : '실무해석 적용: 대법원 90마772, 등기선례 제8-187호 취지 참조'}
-      </div>
+      {hojuBonusNotices.length > 0 && (
+        <div className="mb-4 space-y-2">
+          {hojuBonusNotices.map((notice) => (
+            <NoticeCard key={`${notice.personId}-${notice.decedentName}-${notice.modifier}`} notice={notice} />
+          ))}
+        </div>
+      )}
+
       <div className="mb-4 flex items-center justify-between no-print">
-        <div className="flex items-center gap-6">
-          <h2 className="text-lg font-black text-[#37352f] dark:text-neutral-200 flex items-center gap-2">
-            <IconList className="w-5 h-5 text-[#787774]" />
-            지분 요약표
+        <div className="flex items-center gap-4">
+          <h2 className="flex items-center gap-2 text-lg font-black text-[#37352f] dark:text-neutral-200">
+            <IconList className="h-5 w-5 text-[#787774]" />
+            지분 요약
           </h2>
-          <div className="flex items-center gap-2 bg-white dark:bg-neutral-800 border border-[#e5e5e5] dark:border-neutral-700 rounded-full px-3 py-1.5 shadow-sm focus-within:ring-2 focus-within:ring-blue-100">
-            <svg className="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          <div className="flex items-center gap-1 rounded-full border border-[#dcdcd9] bg-[#f1f1ef] px-1.5 py-1 dark:border-neutral-700 dark:bg-neutral-800">
+            <button
+              type="button"
+              onClick={() => setViewMode('structure')}
+              className={`rounded-full px-3 py-1.5 text-[12px] font-bold transition-colors ${viewMode === 'structure' ? 'bg-[#37352f] text-white dark:bg-neutral-100 dark:text-neutral-900' : 'text-[#787774] hover:bg-[#efefed] dark:text-neutral-300 dark:hover:bg-neutral-700'}`}
+            >
+              지분 구조
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('path')}
+              className={`rounded-full px-3 py-1.5 text-[12px] font-bold transition-colors ${viewMode === 'path' ? 'bg-[#37352f] text-white dark:bg-neutral-100 dark:text-neutral-900' : 'text-[#787774] hover:bg-[#efefed] dark:text-neutral-300 dark:hover:bg-neutral-700'}`}
+            >
+              취득 경로
+            </button>
+          </div>
+          <div className="flex items-center gap-2 rounded-full border border-[#e5e5e5] bg-white px-3 py-1.5 shadow-sm focus-within:ring-2 focus-within:ring-blue-100 dark:border-neutral-700 dark:bg-neutral-800">
+            <svg className="h-4 w-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
               type="text"
               placeholder="이름 검색"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-transparent border-none outline-none text-[13px] w-16 focus:w-28 transition-all"
+              className="w-16 border-none bg-transparent text-[13px] outline-none transition-all focus:w-28"
             />
-            {matchIds.length > 0 && (
-              <span className="text-[11px] text-neutral-500 font-medium ml-1">
-                {currentMatchIdx + 1}/{matchIds.length}
+            {normalizedSearchQuery && (
+              <span className="ml-1 text-[11px] font-medium text-neutral-500">
+                {visibleMatchCount}건
               </span>
             )}
           </div>
         </div>
       </div>
 
-      {/* 요약표 화면 내 미완성 경고 배너 */}
-      {hasMissingHeir && (
-        <div className="mb-4 bg-[#fbfbfb] dark:bg-neutral-800/40 border border-[#e9e9e7] border-l-4 border-l-red-400 dark:border-neutral-700 p-3 rounded-lg shadow-sm transition-all duration-300">
-          <span className="text-[#37352f] dark:text-neutral-200 font-bold text-[13px]">
-            사망자 중 하위 상속인(대습/재상속인) 누락이 감지되어, 이 요약표 계산 내역은 미완성 상태입니다.
-          </span>
-          <div className="mt-1 text-[12px] text-[#787774] dark:text-neutral-400">
-            확정 필요: <span className="font-bold text-[#37352f] dark:text-neutral-200">{missingHeirNames.join(', ')}</span>의 하위 상속인 정보를 확정해 주세요.
-          </div>
-        </div>
+      {viewMode === 'path' && (
+        <PathView calcSteps={calcSteps} tree={tree} issues={issues} handleNavigate={handleNavigate} searchQuery={searchQuery} />
       )}
+
+      {viewMode === 'structure' && (<>
+        {hasMissingHeir && (
+          <div className="mb-4 flex items-center rounded-lg border border-[#e9e9e7] border-l-4 border-l-neutral-300 bg-[#fbfbfb] p-3 shadow-sm transition-all duration-300 dark:border-neutral-700 dark:bg-neutral-800/40">
+            <span className="text-[13px] font-bold text-[#37352f] dark:text-neutral-200">
+              직접 입력되지 않은 후속 상속인이 있는 상태입니다. 일부는 차순위 자동 분배로 처리될 수 있으므로 검토가 필요합니다.
+            </span>
+            {missingHeirTargets.length > 0 && (
+              <div className="ml-3 flex flex-wrap gap-2">
+                {missingHeirTargets.map((item) => (
+                  <button
+                    key={`missing-heir-${item.name}`}
+                    type="button"
+                    onClick={() => item.target && handleNavigate?.(item.target)}
+                    className="rounded-full border border-neutral-300 bg-white px-2.5 py-1 text-[11px] font-bold text-[#504f4c] transition-colors hover:bg-neutral-100 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700"
+                  >
+                    {item.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
       <table className="w-full border-collapse text-[13px]">
         <thead className="bg-[#fcfcfb] dark:bg-neutral-800/40">
           <tr>
-            <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[40%] text-[#787774]">상속인 성명</th>
-            <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[30%] text-[#787774]">{hasMissingHeir ? '산출 지분' : '최종 지분'}</th>
-            <th className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 font-medium text-center w-[30%] text-[#787774]">통분 지분</th>
+            <th className="w-[40%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-700">상속인 성명</th>
+            <th className="w-[30%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-700">{hasMissingHeir ? '현재 지분' : '최종 지분'}</th>
+            <th className="w-[30%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-700">통분 지분</th>
           </tr>
         </thead>
         <tbody>
-          {topDirect.map((f) => renderShareRow(f, 0))}
-          {topGroups.map((g) => renderGroup(g, 0))}
+          {visibleTopDirect.map((share) => renderShareRow(share, 0))}
+          {visibleTopGroups.map((group) => renderGroup(group, 0))}
         </tbody>
         <tfoot className="bg-[#fcfcfb] dark:bg-neutral-800/40">
           <tr>
-            <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-right font-medium text-[#787774]">합계 검증</td>
-            <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-center font-medium">{totalSumN} / {totalSumD}</td>
-            <td className="border border-[#e9e9e7] dark:border-neutral-700 p-2.5 text-left text-[12.5px]">
-              {(() => {
-                const sumVal = totalSumD ? totalSumN / totalSumD : 0;
-                const targetVal = simpleTargetD ? simpleTargetN / simpleTargetD : 1;
-                if (totalSumN === 0) return <span className="text-[#b45309] font-bold">최종 생존 상속인이 없습니다.</span>;
-                if (sumVal === targetVal) return <span className="text-[#504f4c]">법정상속분 합계와 일치합니다.</span>;
-                return <span className="text-red-500 font-bold">지분 합계가 일치하지 않습니다.</span>;
-              })()}
+            <td className="border border-[#e9e9e7] p-2.5 text-right font-medium text-[#787774] dark:border-neutral-700">합계 검증</td>
+            <td className="border border-[#e9e9e7] p-2.5 text-center font-medium dark:border-neutral-700">{totalSumN} / {totalSumD}</td>
+            <td className="border border-[#e9e9e7] p-2.5 text-left text-[12.5px] dark:border-neutral-700">
+              {totalSumN === 0 && <span className="font-bold text-[#787774]">최종 생존 상속인이 없습니다.</span>}
+              {totalSumN > 0 && sumVal === targetVal && <span className="text-[#504f4c] dark:text-neutral-300">법정상속분 합계와 일치합니다.</span>}
+              {totalSumN > 0 && sumVal !== targetVal && <span className="font-bold text-red-500">지분 합계가 일치하지 않습니다.</span>}
             </td>
           </tr>
         </tfoot>
       </table>
+      </>)}
     </div>
   );
 }
+

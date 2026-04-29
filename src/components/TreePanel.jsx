@@ -311,7 +311,6 @@ const OrthogonalEdges = ({ layout }) => {
       {layout.spouseNodes.map((node) => {
         const startX = spouseRightX;
         const startY = node.y + node.height / 2;
-        const targetX = heirsLeftX ? busX : node.x + node.width + 100;
         return (
           <g key={`spouse-edge-${node.key}`}>
             {layout.heirNodes.length > 0 && (
@@ -381,39 +380,6 @@ const PersonNodeCard = ({ node, stepDate, onNavigate, onOpenEvent }) => {
       )}
     </div>
   );
-};
-
-const useDragPan = () => {
-  const ref = React.useRef(null);
-  const dragState = React.useRef({ dragging: false, startX: 0, startY: 0, scrollLeft: 0, scrollTop: 0 });
-
-  const onMouseDown = React.useCallback((event) => {
-    const el = ref.current;
-    if (!el) return;
-    dragState.current = {
-      dragging: true,
-      startX: event.clientX,
-      startY: event.clientY,
-      scrollLeft: el.scrollLeft,
-      scrollTop: el.scrollTop,
-    };
-    el.style.cursor = 'grabbing';
-  }, []);
-
-  const onMouseMove = React.useCallback((event) => {
-    const el = ref.current;
-    if (!el || !dragState.current.dragging) return;
-    el.scrollLeft = dragState.current.scrollLeft - (event.clientX - dragState.current.startX);
-    el.scrollTop = dragState.current.scrollTop - (event.clientY - dragState.current.startY);
-  }, []);
-
-  const stopDragging = React.useCallback(() => {
-    const el = ref.current;
-    dragState.current.dragging = false;
-    if (el) el.style.cursor = 'grab';
-  }, []);
-
-  return { ref, onMouseDown, onMouseMove, onMouseUp: stopDragging, onMouseLeave: stopDragging };
 };
 
 const EventGraphView = ({ step, stepMap, onNavigate, onOpenEvent }) => {
@@ -622,11 +588,6 @@ export default function TreePanel({
   }, [navigationSignal, viewMode, steps]);
 
   const selectedStep = React.useMemo(() => (steps.length ? stepMap.get(selectedStepKey) || steps[0] : null), [steps, selectedStepKey, stepMap]);
-  const isGuideEventOpen =
-    navigationSignal?.source === 'guide-event' &&
-    !!selectedStep &&
-    (selectedStep?.dec?.personId === navigationSignal?.targetId || selectedStep?.dec?.id === navigationSignal?.targetId);
-
   const modeBar = (
     <div className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-[#e5e5e5] bg-[#f8f8f7] p-4 text-[13px] text-[#787774] dark:border-neutral-700 dark:bg-neutral-800/50 dark:text-neutral-300 no-print">
       <div className="flex items-center gap-2">

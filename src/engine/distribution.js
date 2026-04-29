@@ -103,45 +103,31 @@ export const assignHeirShare = (
 
   const effectiveRelation = heir.relation === 'sibling' ? (heir._origRelation || 'son') : heir.relation;
 
-  if (law === '1979') {
-    if (effectiveRelation === 'daughter') {
-      if (!isMarriedAtDate(heir, distributionDate, { isBefore })) {
-        return { shareWeight: 1.0, exclusionReason: '', modifierReason };
-      }
-      modifierReason = heir.relation === 'sibling'
-        ? '자매 출가녀 감산 (남자의 1/4)'
-        : '출가녀 감산 (남자의 1/4)';
-      return { shareWeight: 0.25, exclusionReason: '', modifierReason };
-    }
+  const isSibling = heir.relation === 'sibling';
 
-    if (effectiveRelation === 'son') {
-      if (heir.relation !== 'sibling' && canApplyHojuBonus({ heir, law, context: hojuContext })) {
-        return { shareWeight: 1.5, exclusionReason: '', modifierReason: getHojuBonusReason({ context: hojuContext }) };
-      }
-      return { shareWeight: 1.0, exclusionReason: '', modifierReason };
+  if (effectiveRelation === 'son') {
+    if (!isSibling && canApplyHojuBonus({ heir, law, context: hojuContext })) {
+      return { shareWeight: 1.5, exclusionReason: '', modifierReason: getHojuBonusReason({ context: hojuContext }) };
     }
-
     return { shareWeight: 1.0, exclusionReason: '', modifierReason };
   }
 
   if (effectiveRelation === 'daughter') {
-    if (!isMarriedAtDate(heir, distributionDate, { isBefore })) {
-      modifierReason = heir.relation === 'sibling'
-        ? '자매 여자 감산 (남자의 1/2)'
-        : '여자 감산 (남자의 1/2)';
+    const married = isMarriedAtDate(heir, distributionDate, { isBefore });
+
+    if (law === '1979') {
+      if (!married) return { shareWeight: 1.0, exclusionReason: '', modifierReason };
+      modifierReason = isSibling ? '자매 출가녀 감산 (남자의 1/4)' : '출가녀 감산 (남자의 1/4)';
+      return { shareWeight: 0.25, exclusionReason: '', modifierReason };
+    }
+
+    // 1960 era
+    if (!married) {
+      modifierReason = isSibling ? '자매 여자 감산 (남자의 1/2)' : '여자 감산 (남자의 1/2)';
       return { shareWeight: 0.5, exclusionReason: '', modifierReason };
     }
-    modifierReason = heir.relation === 'sibling'
-      ? '자매 출가녀 감산 (남자의 1/4)'
-      : '출가녀 감산 (남자의 1/4)';
+    modifierReason = isSibling ? '자매 출가녀 감산 (남자의 1/4)' : '출가녀 감산 (남자의 1/4)';
     return { shareWeight: 0.25, exclusionReason: '', modifierReason };
-  }
-
-  if (effectiveRelation === 'son') {
-    if (heir.relation !== 'sibling' && canApplyHojuBonus({ heir, law, context: hojuContext })) {
-      return { shareWeight: 1.5, exclusionReason: '', modifierReason: getHojuBonusReason({ context: hojuContext }) };
-    }
-    return { shareWeight: 1.0, exclusionReason: '', modifierReason };
   }
 
   return { shareWeight: 1.0, exclusionReason: '', modifierReason };
