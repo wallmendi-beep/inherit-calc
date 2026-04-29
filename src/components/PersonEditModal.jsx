@@ -132,15 +132,15 @@ export default function PersonEditModal({
 
   return (
     <div
-      className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm animate-in fade-in duration-150"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div
-        className="flex max-h-[90vh] w-full max-w-[456px] flex-col overflow-hidden rounded-xl border border-[#e9e9e7] bg-white shadow-2xl dark:border-neutral-600 dark:bg-neutral-800"
+        className="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-xl border border-[#e9e9e7] bg-white shadow-2xl dark:border-neutral-600 dark:bg-neutral-800"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-[#e9e9e7] px-5 py-3 dark:border-neutral-600">
-          <span className="text-[13px] font-bold text-[#37352f] dark:text-neutral-100">사건 검토</span>
+          <span className="text-[13px] font-bold text-[#37352f] dark:text-neutral-100">{node.name ? `${node.name} 검토` : '사건 검토'}</span>
           <button
             type="button"
             onClick={onClose}
@@ -240,7 +240,7 @@ export default function PersonEditModal({
               {needsNextOrderFemaleReview ? (
                 <>
                   <li>여성 형제자매의 혼인·복적·동일가적 여부가 결과를 바꿀 수 있습니다.</li>
-                  <li>이 단계는 정문자 자신을 다시 입력하는 것이 아니라, 다음 순위 상속인을 검토하는 단계입니다.</li>
+                  <li>이 단계는 {node.name || '이 사람'} 자신을 다시 입력하는 것이 아니라, 다음 순위 상속인을 검토하는 단계입니다.</li>
                 </>
               ) : null}
               {needsHojuReview ? (

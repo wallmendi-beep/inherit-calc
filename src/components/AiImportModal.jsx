@@ -15,7 +15,7 @@ export default function AiImportModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-150">
       <div className="bg-white dark:bg-neutral-800 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] border border-[#e9e9e7] dark:border-neutral-600">
         <div className="px-6 py-4 border-b border-[#e9e9e7] dark:border-neutral-600 flex justify-between items-center transition-colors">
           <h2 className="text-[16px] font-bold text-[#37352f] dark:text-neutral-100 flex items-center gap-2">
@@ -89,7 +89,7 @@ export default function AiImportModal({
             onClick={() => onSubmit(aiInputText)}
             className="px-5 py-2 bg-[#37352f] dark:bg-neutral-100 hover:bg-[#201f1c] dark:hover:bg-white text-white dark:text-[#37352f] rounded-md font-bold shadow-md transition-all text-[13px] flex items-center gap-2"
           >
-            직접 입력 실행
+            입력 실행
           </button>
         </div>
       </div>
