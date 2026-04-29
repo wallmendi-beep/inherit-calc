@@ -707,7 +707,7 @@ function App() {
                   </button>
                 ))}
               </div>
-              <div className={`border border-[#e9e9e7] dark:border-neutral-700 rounded-xl shadow-sm min-h-[600px] bg-white dark:bg-neutral-800 flex flex-col relative z-0 ${activeTab === 'tree' ? 'p-5' : 'p-10'}`}>
+              <div className={`border border-[#e9e9e7] dark:border-neutral-600 rounded-xl shadow-sm min-h-[600px] bg-white dark:bg-neutral-800 flex flex-col relative z-0 ${activeTab === 'tree' ? 'p-5' : 'p-10'}`}>
                 {activeTab === 'input' && (
                   <InputPanel
                     tree={tree} activeDeceasedTab={activeDeceasedTab} activeTabObj={activeTabObj} getBriefingInfo={getBriefingInfo}

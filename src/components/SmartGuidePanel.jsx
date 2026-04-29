@@ -7,8 +7,8 @@ const GuideCheckButton = ({ label, onClick, tone = 'neutral' }) => (
     onClick={onClick}
     className={`shrink-0 rounded-md border px-2 py-1 text-[11px] font-medium transition-colors ${
       tone === 'event'
-        ? 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-300'
-        : 'border-neutral-200 text-slate-500 hover:bg-neutral-100 hover:text-slate-700 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800'
+        ? 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-900/40 dark:text-blue-300'
+        : 'border-neutral-200 text-slate-500 hover:bg-neutral-100 hover:text-slate-700 dark:border-neutral-600 dark:text-neutral-300 dark:hover:bg-neutral-800'
     }`}
     title={label}
   >
@@ -24,7 +24,7 @@ function GuideSectionTitle({ children, count, open, onToggle }) {
       onClick={hasToggle ? onToggle : undefined}
       className={`flex w-full items-center justify-between ${hasToggle ? 'cursor-pointer' : 'cursor-default'}`}
     >
-      <h3 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-neutral-400">
+      <h3 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-neutral-300">
         {children}
         {count !== undefined && (
           <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-600 dark:bg-neutral-700 dark:text-neutral-300">
@@ -33,7 +33,7 @@ function GuideSectionTitle({ children, count, open, onToggle }) {
         )}
       </h3>
       {hasToggle && (
-        <span className="text-[11px] text-slate-400 dark:text-neutral-500">
+        <span className="text-[11px] text-slate-400 dark:text-neutral-400">
           {open ? '접기' : '펼치기'}
         </span>
       )}
@@ -47,7 +47,7 @@ function ProgressBar({ completed, total }) {
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between text-[11px]">
-        <span className="font-medium text-slate-500 dark:text-neutral-400">필수 항목 진행률</span>
+        <span className="font-medium text-slate-500 dark:text-neutral-300">필수 항목 진행률</span>
         <span className={`font-bold ${completed === total ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
           {completed}/{total}
         </span>
@@ -133,8 +133,8 @@ export default function SmartGuidePanel({
           onClick={() => setShowNavigator(true)}
           className={`fixed right-4 top-[92px] z-50 inline-flex items-center gap-2 rounded-full border px-3 py-2 text-[12px] font-bold shadow-lg transition-all ${
             hasUrgentSignals
-              ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-900/40 dark:bg-amber-950/60 dark:text-amber-300'
-              : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200'
+              ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-900/40 dark:bg-amber-950/60 dark:text-amber-200'
+              : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-200'
           }`}
           title={hasUrgentSignals ? '확인이 필요한 가이드가 있습니다.' : '가이드 펼치기'}
         >
@@ -154,23 +154,23 @@ export default function SmartGuidePanel({
           )}
 
           {noSurvivors && (
-            <section className="rounded-lg border border-slate-200 bg-slate-50 p-4 shadow-sm dark:border-neutral-700 dark:bg-neutral-800/50">
+            <section className="rounded-lg border border-slate-200 bg-slate-50 p-4 shadow-sm dark:border-neutral-600 dark:bg-neutral-800/90">
               <div className="text-[13px] font-bold text-slate-800 dark:text-neutral-100">
                 최종 생존 상속인이 없습니다.
               </div>
-              <div className="mt-1 text-[12px] leading-relaxed text-slate-500 dark:text-neutral-400">
+              <div className="mt-1 text-[12px] leading-relaxed text-slate-500 dark:text-neutral-300">
                 모든 상속인이 제외되었거나 사망 상태입니다. 입력 데이터를 다시 확인하고 실제 상속인을 추가해 주세요.
               </div>
             </section>
           )}
 
           {!hasActionItems && !noSurvivors && (
-            <section className="flex h-40 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white text-center dark:border-neutral-700 dark:bg-neutral-900/40">
-              <span className="text-2xl font-bold text-[#1e56a0] dark:text-blue-400">이상 없음</span>
+            <section className="flex h-40 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white text-center dark:border-neutral-600 dark:bg-neutral-900/80">
+              <span className="text-2xl font-bold text-[#1e56a0] dark:text-blue-300">이상 없음</span>
               <p className="mt-2 text-sm font-medium text-slate-600 dark:text-neutral-300">
                 가계도 검증이 완료되었습니다.
               </p>
-              <p className="mt-1 text-xs text-slate-400 dark:text-neutral-500">
+              <p className="mt-1 text-xs text-slate-400 dark:text-neutral-400">
                 사건 검토 및 계산 결과를 확인해 주세요.
               </p>
             </section>
@@ -192,14 +192,14 @@ export default function SmartGuidePanel({
                     <button
                       type="button"
                       onClick={() => handleNavigate(item.targetTabId || item.personId || item.id)}
-                      className="w-full rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-left transition-all hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800/50"
+                      className="w-full rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-left transition-all hover:bg-neutral-100 dark:border-neutral-600 dark:bg-neutral-800/90"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <div className="text-[12.5px] font-bold text-slate-800 dark:text-neutral-100">
                             {item.name || '확인이 필요한 인물'}
                           </div>
-                          <div className="mt-0.5 text-[11.5px] font-medium leading-relaxed text-slate-600 dark:text-neutral-400">
+                          <div className="mt-0.5 text-[11.5px] font-medium leading-relaxed text-slate-600 dark:text-neutral-300">
                             {item.text}
                           </div>
                         </div>
@@ -225,7 +225,7 @@ export default function SmartGuidePanel({
                           if (target) handleNavigate(target);
                         }}
                         disabled={!target}
-                        className={`w-full rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-left dark:border-neutral-700 dark:bg-neutral-800/50 ${
+                        className={`w-full rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-left dark:border-neutral-600 dark:bg-neutral-800/90 ${
                           target ? 'transition-all hover:bg-neutral-100' : 'cursor-default'
                         }`}
                       >
@@ -258,8 +258,8 @@ export default function SmartGuidePanel({
                       <div
                         className={`w-full rounded-lg border p-3 shadow-sm transition-all ${
                           isSubstitutionGuide
-                            ? 'border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-950/20'
-                            : 'border-neutral-200 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800/50'
+                            ? 'border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-900/30'
+                            : 'border-neutral-200 bg-neutral-50 dark:border-neutral-600 dark:bg-neutral-800/90'
                         } ${
                           !isDeleteAction
                             ? isSubstitutionGuide
@@ -338,7 +338,7 @@ export default function SmartGuidePanel({
                     <button
                       type="button"
                       onClick={() => handleGuideNavigate(guide)}
-                      className="w-full rounded-lg border border-neutral-200 bg-neutral-50 p-3 pr-10 text-left shadow-sm transition-all hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800/40"
+                      className="w-full rounded-lg border border-neutral-200 bg-neutral-50 p-3 pr-10 text-left shadow-sm transition-all hover:bg-neutral-100 dark:border-neutral-600 dark:bg-neutral-800/80"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <span className="text-[11.5px] font-medium leading-relaxed text-slate-700 dark:text-neutral-200">
@@ -386,7 +386,7 @@ export default function SmartGuidePanel({
                       onClick={() => {
                         if (reason.id) handleNavigate(reason.id);
                       }}
-                      className="w-full rounded-xl border border-neutral-200 bg-neutral-100 p-4 text-left text-slate-800 shadow-sm transition-all hover:bg-neutral-200 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+                      className="w-full rounded-xl border border-neutral-200 bg-neutral-100 p-4 text-left text-slate-800 shadow-sm transition-all hover:bg-neutral-200 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-200"
                     >
                       <span className="block text-[12px] font-medium leading-relaxed">
                         {reason.text || reason}
@@ -409,7 +409,7 @@ export default function SmartGuidePanel({
                       onClick={() => {
                         if (hint.targetTabId) handleNavigate(hint.targetTabId);
                       }}
-                      className="w-full rounded-xl border border-neutral-200 bg-neutral-50/70 p-3 text-left transition-all hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900/40"
+                      className="w-full rounded-xl border border-neutral-200 bg-neutral-50/70 p-3 text-left transition-all hover:bg-neutral-100 dark:border-neutral-600 dark:bg-neutral-900/80"
                     >
                       <span className="text-[11.5px] font-medium leading-relaxed text-slate-700 dark:text-neutral-200">
                         {hint.text}
@@ -438,7 +438,7 @@ export default function SmartGuidePanel({
                       <button
                         type="button"
                         onClick={() => handleNavigate(resolveGuideTarget(guide))}
-                        className="w-full rounded-lg border border-neutral-200 bg-neutral-50/60 p-3 text-left transition-all hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-800/30"
+                        className="w-full rounded-lg border border-neutral-200 bg-neutral-50/60 p-3 text-left transition-all hover:bg-neutral-100 dark:border-neutral-600 dark:bg-neutral-800/30"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <span className="text-[11.5px] font-medium leading-relaxed text-slate-500 dark:text-neutral-300">
@@ -461,13 +461,13 @@ export default function SmartGuidePanel({
           )}
 
           {showAutoCalcNotice && (
-            <section className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50/50 p-4 dark:border-neutral-700 dark:bg-neutral-800/20">
+            <section className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50/50 p-4 dark:border-neutral-600 dark:bg-neutral-800/20">
               <GuideSectionTitle>자동 분배 참고</GuideSectionTitle>
               <ul className="mt-2 space-y-1.5">
                 {autoCalculatedNames.map((item, index) => (
                   <li key={index} className="flex items-center justify-between text-[12px]">
                     <span className="font-bold text-slate-800 dark:text-neutral-100">{item.name}</span>
-                    <div className="flex items-center gap-1.5 font-bold text-blue-600 dark:text-blue-400">
+                    <div className="flex items-center gap-1.5 font-bold text-blue-600 dark:text-blue-300">
                       <span>{item.target}</span>
                     </div>
                   </li>

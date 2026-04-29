@@ -5,7 +5,7 @@ import { IconX } from './Icons';
 function InfoRow({ label, children }) {
   return (
     <div className="flex items-start gap-3">
-      <span className="w-[72px] shrink-0 pt-[2px] text-[11px] font-bold text-[#9a9994] dark:text-neutral-500">
+      <span className="w-[72px] shrink-0 pt-[2px] text-[11px] font-bold text-[#9a9994] dark:text-neutral-400">
         {label}
       </span>
       <div className="min-w-0 flex-1 text-[13px] text-[#37352f] dark:text-neutral-200">{children}</div>
@@ -15,7 +15,7 @@ function InfoRow({ label, children }) {
 
 function Surface({ children, className = '' }) {
   return (
-    <div className={`rounded-lg border border-[#e5e5e5] bg-[#fafaf9] px-3.5 py-3 dark:border-neutral-700 dark:bg-neutral-900/40 ${className}`}>
+    <div className={`rounded-lg border border-[#e5e5e5] bg-[#fafaf9] px-3.5 py-3 dark:border-neutral-600 dark:bg-neutral-900/80 ${className}`}>
       {children}
     </div>
   );
@@ -26,12 +26,12 @@ function Badge({ children, tone = 'neutral' }) {
     tone === 'emerald'
       ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
       : tone === 'amber'
-        ? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300'
+        ? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/40 dark:bg-amber-900/40 dark:text-amber-200'
         : tone === 'blue'
-          ? 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-300'
+          ? 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/40 dark:bg-blue-900/40 dark:text-blue-300'
           : tone === 'brown'
             ? 'border-[#8a7c69] bg-[#5f564b] text-[#f5f1ea] dark:border-[#6f6457] dark:bg-[#4e463d]'
-            : 'border-[#ddd9d1] bg-white text-[#6b655d] dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300';
+            : 'border-[#ddd9d1] bg-white text-[#6b655d] dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-300';
 
   return <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-bold ${toneClass}`}>{children}</span>;
 }
@@ -136,10 +136,10 @@ export default function PersonEditModal({
       onClick={onClose}
     >
       <div
-        className="flex max-h-[90vh] w-full max-w-[456px] flex-col overflow-hidden rounded-xl border border-[#e9e9e7] bg-white shadow-2xl dark:border-neutral-700 dark:bg-neutral-800"
+        className="flex max-h-[90vh] w-full max-w-[456px] flex-col overflow-hidden rounded-xl border border-[#e9e9e7] bg-white shadow-2xl dark:border-neutral-600 dark:bg-neutral-800"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-[#e9e9e7] px-5 py-3 dark:border-neutral-700">
+        <div className="flex items-center justify-between border-b border-[#e9e9e7] px-5 py-3 dark:border-neutral-600">
           <span className="text-[13px] font-bold text-[#37352f] dark:text-neutral-100">사건 검토</span>
           <button
             type="button"
@@ -153,7 +153,7 @@ export default function PersonEditModal({
         <div className="flex-1 space-y-3.5 overflow-y-auto px-5 py-4">
           <Surface className="border-[#e8e2d7] bg-[#fbf7ef]">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[12px] font-black text-[#7a6240] dark:text-amber-300">
+              <span className="text-[12px] font-black text-[#7a6240] dark:text-amber-200">
                 {sourceEventName ? `${sourceEventName} 사건 검토` : '현재 사건 검토'}
               </span>
               {sourceEventDate ? (
@@ -173,7 +173,7 @@ export default function PersonEditModal({
                 <button
                   type="button"
                   onClick={() => { onOpenInTreeTab(node.personId || node.id); }}
-                  className="text-[15px] font-bold text-blue-700 underline underline-offset-2 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-200 transition-colors text-left"
+                  className="text-[15px] font-bold text-blue-700 underline underline-offset-2 hover:text-blue-900 dark:text-blue-300 dark:hover:text-blue-200 transition-colors text-left"
                 >
                   {node.name || '이름 미상'}
                 </button>
@@ -184,7 +184,7 @@ export default function PersonEditModal({
 
             <InfoRow label="관계">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-neutral-400 dark:text-neutral-500">{parentName}의</span>
+                <span className="text-neutral-400 dark:text-neutral-400">{parentName}의</span>
                 <span className="font-bold">{relationLabelMap[node.relation] || node.relation || '미지정'}</span>
               </div>
             </InfoRow>
@@ -210,7 +210,7 @@ export default function PersonEditModal({
                   <Badge tone={node.isSameRegister !== false ? 'emerald' : 'neutral'}>
                     {node.isSameRegister !== false ? '동일가적' : '비동일가적'}
                   </Badge>
-                  <span className="text-[11.5px] text-neutral-500 dark:text-neutral-400">
+                  <span className="text-[11.5px] text-neutral-500 dark:text-neutral-300">
                     혼인일 {formatDateLabel(node.marriageDate)} / 복적일 {formatDateLabel(node.restoreDate)}
                   </span>
                 </div>
@@ -219,7 +219,7 @@ export default function PersonEditModal({
 
             {isSpouseType ? (
               <InfoRow label="배우자 상태">
-                <span className="text-[11.5px] text-neutral-500 dark:text-neutral-400">
+                <span className="text-[11.5px] text-neutral-500 dark:text-neutral-300">
                   이혼일 {formatDateLabel(node.divorceDate)} / 재혼일 {formatDateLabel(node.remarriageDate)}
                 </span>
               </InfoRow>
@@ -235,7 +235,7 @@ export default function PersonEditModal({
           </Surface>
 
           <Surface className="space-y-2.5">
-            <div className="text-[11px] font-bold text-[#9a9994] dark:text-neutral-500">이번 사건에서 볼 것</div>
+            <div className="text-[11px] font-bold text-[#9a9994] dark:text-neutral-400">이번 사건에서 볼 것</div>
             <ul className="space-y-1.5 text-[11.5px] leading-relaxed text-[#6b655d] dark:text-neutral-300">
               {needsNextOrderFemaleReview ? (
                 <>
@@ -277,11 +277,11 @@ export default function PersonEditModal({
           </Surface>
         </div>
 
-        <div className="flex items-center justify-between border-t border-[#e9e9e7] bg-[#f7f7f5]/50 px-5 py-3 dark:border-neutral-700 dark:bg-neutral-900/30">
+        <div className="flex items-center justify-between border-t border-[#e9e9e7] bg-[#f7f7f5]/50 px-5 py-3 dark:border-neutral-600 dark:bg-neutral-900/70">
           <button
             type="button"
             onClick={onOpenInInputTab}
-            className="text-[12px] text-[#787774] underline underline-offset-2 transition-colors hover:text-[#37352f] dark:text-neutral-400 dark:hover:text-neutral-200"
+            className="text-[12px] text-[#787774] underline underline-offset-2 transition-colors hover:text-[#37352f] dark:text-neutral-300 dark:hover:text-neutral-200"
           >
             입력 탭에서 수정하기 →
           </button>

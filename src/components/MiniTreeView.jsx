@@ -138,7 +138,7 @@ export default function MiniTreeView({
         </div>
       </div>
       {isExpanded && hasHeirs && (
-        <div className="ml-1.5 border-l border-[#e9e9e7] pl-1.5 pb-1 transition-colors dark:border-neutral-700">
+        <div className="ml-1.5 border-l border-[#e9e9e7] pl-1.5 pb-1 transition-colors dark:border-neutral-600">
           {node.heirs.map((heir, index) => (
             <MiniTreeView
               key={heir.id || index}

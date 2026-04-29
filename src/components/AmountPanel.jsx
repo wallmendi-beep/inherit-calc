@@ -53,8 +53,8 @@ export default function AmountPanel({
 
   return (
     <div className="space-y-5 animate-in fade-in slide-in-from-bottom-2 duration-500">
-      <div className="flex items-center gap-4 p-4 bg-[#f8f9fa] dark:bg-neutral-900/40 rounded-xl border border-[#e9e9e7] dark:border-neutral-700">
-        <span className="text-[13px] font-bold text-[#787774] dark:text-neutral-400 whitespace-nowrap shrink-0">상속재산가액</span>
+      <div className="flex items-center gap-4 p-4 bg-[#f8f9fa] dark:bg-neutral-900/80 rounded-xl border border-[#e9e9e7] dark:border-neutral-600">
+        <span className="text-[13px] font-bold text-[#787774] dark:text-neutral-300 whitespace-nowrap shrink-0">상속재산가액</span>
         <div className="flex items-center gap-2 flex-1">
           <input
             type="text"
@@ -68,7 +68,7 @@ export default function AmountPanel({
           />
           <span className="text-[13px] text-neutral-500 font-medium">원</span>
           {amountCalculations && (
-            <span className="text-[12px] text-[#787774] dark:text-neutral-400 ml-2">
+            <span className="text-[12px] text-[#787774] dark:text-neutral-300 ml-2">
               간주상속재산: <span className="font-bold text-[#37352f] dark:text-neutral-200 font-mono">{(amountCalculations?.deemedEstate ?? 0).toLocaleString()}</span> 원
             </span>
           )}
@@ -76,11 +76,11 @@ export default function AmountPanel({
       </div>
 
       {orderedRows.length === 0 ? (
-        <div className="py-16 text-center text-neutral-500 dark:text-neutral-500 text-[14px]">상속인이 없습니다.</div>
+        <div className="py-16 text-center text-neutral-500 dark:text-neutral-400 text-[14px]">상속인이 없습니다.</div>
       ) : (
-        <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 overflow-hidden shadow-sm">
+        <div className="rounded-xl border border-neutral-200 dark:border-neutral-600 overflow-hidden shadow-sm">
           <table className="w-full text-[13px] border-collapse">
-            <thead className="bg-neutral-50 dark:bg-neutral-900/50 text-neutral-500 dark:text-neutral-400 font-bold border-b border-neutral-200 dark:border-neutral-700">
+            <thead className="bg-neutral-50 dark:bg-neutral-900/90 text-neutral-500 dark:text-neutral-300 font-bold border-b border-neutral-200 dark:border-neutral-600">
               <tr>
                 <th className="px-4 py-3 text-center w-[22%]">상속인</th>
                 <th className="px-4 py-3 text-center w-[14%]">법정지분</th>
@@ -93,8 +93,8 @@ export default function AmountPanel({
               {orderedRows.map((item, idx) => {
                 if (item.type === 'header') {
                   return (
-                    <tr key={`hdr-${idx}`} className="bg-[#fcfcfb] dark:bg-neutral-800/40">
-                      <td colSpan="5" className="px-4 py-2 text-left text-[#504f4c] dark:text-neutral-400 text-[12px]">
+                    <tr key={`hdr-${idx}`} className="bg-[#fcfcfb] dark:bg-neutral-800/80">
+                      <td colSpan="5" className="px-4 py-2 text-left text-[#504f4c] dark:text-neutral-300 text-[12px]">
                         [{item.ancestor.name}] {formatKorDate(item.ancestor.deathDate)} 사망에 따른 {item.label}
                       </td>
                     </tr>
@@ -105,9 +105,9 @@ export default function AmountPanel({
                 return (
                   <tr key={res.personId} className="hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/30 transition-colors">
                     <td className="px-4 py-2.5 text-center font-bold text-neutral-800 dark:text-neutral-200">{res.name}</td>
-                    <td className="px-4 py-2.5 text-center font-mono text-[#504f4c] dark:text-neutral-400">{res.un} / {res.ud}</td>
-                    <td className="px-3 py-2">{renderAmtInput(res.personId, specialBenefits, setSpecialBenefits, 'text-neutral-600 dark:text-neutral-400', 'focus:ring-neutral-300')}</td>
-                    <td className="px-3 py-2">{renderAmtInput(res.personId, contributions, setContributions, 'text-neutral-600 dark:text-neutral-400', 'focus:ring-neutral-300')}</td>
+                    <td className="px-4 py-2.5 text-center font-mono text-[#504f4c] dark:text-neutral-300">{res.un} / {res.ud}</td>
+                    <td className="px-3 py-2">{renderAmtInput(res.personId, specialBenefits, setSpecialBenefits, 'text-neutral-600 dark:text-neutral-300', 'focus:ring-neutral-300')}</td>
+                    <td className="px-3 py-2">{renderAmtInput(res.personId, contributions, setContributions, 'text-neutral-600 dark:text-neutral-300', 'focus:ring-neutral-300')}</td>
                     <td className="px-4 py-2.5 text-right font-mono font-bold text-[15px] text-neutral-900 dark:text-neutral-100">
                       {(res?.finalAmount ?? 0).toLocaleString()} <span className="text-[12px] font-normal text-neutral-400">원</span>
                     </td>
@@ -115,9 +115,9 @@ export default function AmountPanel({
                 );
               })}
             </tbody>
-            <tfoot className="bg-[#f8f9fa] dark:bg-neutral-900/50 border-t-2 border-[#d4d4d4] dark:border-neutral-600">
+            <tfoot className="bg-[#f8f9fa] dark:bg-neutral-900/90 border-t-2 border-[#d4d4d4] dark:border-neutral-600">
               <tr>
-                <td colSpan="4" className="px-4 py-3 text-right text-[13px] font-bold text-[#787774] dark:text-neutral-400">합계:</td>
+                <td colSpan="4" className="px-4 py-3 text-right text-[13px] font-bold text-[#787774] dark:text-neutral-300">합계:</td>
                 <td className="px-4 py-3 text-right font-mono font-bold text-[16px] text-[#37352f] dark:text-neutral-200">
                   {amountCalculations?.totalDistributed?.toLocaleString() ?? '0'} <span className="text-[12px] font-normal text-neutral-400">원</span>
                 </td>

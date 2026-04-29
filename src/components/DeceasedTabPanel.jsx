@@ -74,7 +74,7 @@ const DeceasedTabPanel = ({
                   ? 'bg-[#fee2e2] dark:bg-red-900/20 border-[#fecaca] dark:border-red-800/50'
                   : isSpouse
                     ? 'bg-[#eff6ff] dark:bg-blue-900/20 border-[#bfdbfe] dark:border-blue-800/50'
-                    : 'bg-white dark:bg-neutral-800 border-[#d4d4d4] dark:border-neutral-700'
+                    : 'bg-white dark:bg-neutral-800 border-[#d4d4d4] dark:border-neutral-600'
                 }`}
             >
               {/* 성명 */}
@@ -86,7 +86,7 @@ const DeceasedTabPanel = ({
                   onKeyDown={onKeyDown}
                   onChange={e => onUpdatePerson(heir.id, 'name', e.target.value)}
                   onFocus={e => e.target.select()}
-                  className="w-20 px-2 py-1.5 text-[14px] font-bold text-[#0b6e99] dark:text-blue-400 outline-none bg-transparent"
+                  className="w-20 px-2 py-1.5 text-[14px] font-bold text-[#0b6e99] dark:text-blue-300 outline-none bg-transparent"
                 />
               </div>
 
@@ -167,7 +167,7 @@ const DeceasedTabPanel = ({
         <button
           type="button"
           onClick={handleAddNewHeir}
-          className="flex items-center gap-1.5 text-[13px] font-bold text-[#504f4c] dark:text-neutral-400 border border-[#d4d4d4] dark:border-neutral-600 hover:bg-[#f1f1ef] dark:hover:bg-neutral-700 px-3 py-1.5 rounded transition-colors shadow-sm"
+          className="flex items-center gap-1.5 text-[13px] font-bold text-[#504f4c] dark:text-neutral-300 border border-[#d4d4d4] dark:border-neutral-600 hover:bg-[#f1f1ef] dark:hover:bg-neutral-700 px-3 py-1.5 rounded transition-colors shadow-sm"
         >
           <IconUserPlus className="w-4 h-4" /> 새 상속인 추가
         </button>

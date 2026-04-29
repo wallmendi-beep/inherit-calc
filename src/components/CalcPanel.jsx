@@ -14,9 +14,9 @@ const buildIssueMap = (issues = []) => {
 };
 
 const NoticeCard = ({ notice }) => (
-  <div className="rounded-xl border border-[#e9e9e7] bg-[#f8f8f7] px-4 py-3 dark:border-neutral-700 dark:bg-neutral-800/40">
+  <div className="rounded-xl border border-[#e9e9e7] bg-[#f8f8f7] px-4 py-3 dark:border-neutral-600 dark:bg-neutral-800/80">
     <div className="text-[13px] font-semibold text-[#37352f] dark:text-neutral-100">{notice.title}</div>
-    <div className="mt-1 text-[12px] text-[#787774] dark:text-neutral-400">{notice.basis}</div>
+    <div className="mt-1 text-[12px] text-[#787774] dark:text-neutral-300">{notice.basis}</div>
   </div>
 );
 
@@ -54,10 +54,10 @@ export default function CalcPanelFinal({ calcSteps, issues = [], handleNavigate,
       )}
 
       <div className="mb-4 flex items-center justify-between gap-3">
-        <div className="text-[13px] text-[#787774] dark:text-neutral-500">
+        <div className="text-[13px] text-[#787774] dark:text-neutral-400">
           각 상속 단계에서 지분이 어떻게 산정되었는지 순서대로 보여주는 계산 상세입니다.
         </div>
-        <div className="flex items-center gap-2 rounded-full border border-[#e5e5e5] bg-white px-3 py-1.5 shadow-sm focus-within:ring-2 focus-within:ring-blue-100 dark:border-neutral-700 dark:bg-neutral-800">
+        <div className="flex items-center gap-2 rounded-full border border-[#e5e5e5] bg-white px-3 py-1.5 shadow-sm focus-within:ring-2 focus-within:ring-blue-100 dark:border-neutral-600 dark:bg-neutral-800">
           <svg className="h-4 w-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
@@ -95,13 +95,13 @@ export default function CalcPanelFinal({ calcSteps, issues = [], handleNavigate,
               </div>
 
               <table className="w-full border-collapse text-[13px]">
-                <thead className="bg-[#fcfcfb] dark:bg-neutral-800/40">
+                <thead className="bg-[#fcfcfb] dark:bg-neutral-800/80">
                   <tr>
-                    <th className="w-[15%] border border-[#e9e9e7] p-2 text-center font-medium text-[#787774] dark:border-neutral-700">이름</th>
-                    <th className="w-[12%] border border-[#e9e9e7] p-2 text-center font-medium text-[#787774] dark:border-neutral-700">관계</th>
-                    <th className="w-[25%] border border-[#e9e9e7] p-2 text-center font-medium text-[#787774] dark:border-neutral-700">계산식</th>
-                    <th className="w-[18%] border border-[#e9e9e7] p-2 text-center font-medium text-[#787774] dark:border-neutral-700">계산 결과</th>
-                    <th className="w-[30%] border border-[#e9e9e7] p-2 pl-4 text-left font-medium text-[#787774] dark:border-neutral-700">비고</th>
+                    <th className="w-[15%] border border-[#e9e9e7] p-2 text-center font-medium text-[#787774] dark:border-neutral-600">이름</th>
+                    <th className="w-[12%] border border-[#e9e9e7] p-2 text-center font-medium text-[#787774] dark:border-neutral-600">관계</th>
+                    <th className="w-[25%] border border-[#e9e9e7] p-2 text-center font-medium text-[#787774] dark:border-neutral-600">계산식</th>
+                    <th className="w-[18%] border border-[#e9e9e7] p-2 text-center font-medium text-[#787774] dark:border-neutral-600">계산 결과</th>
+                    <th className="w-[30%] border border-[#e9e9e7] p-2 pl-4 text-left font-medium text-[#787774] dark:border-neutral-600">비고</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -126,7 +126,7 @@ export default function CalcPanelFinal({ calcSteps, issues = [], handleNavigate,
 
                     return (
                       <tr key={`calc-dist-${distIndex}`} className={`${matchesName(dist.h?.name) && normalizedSearchQuery ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''} hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20`}>
-                        <td className="border border-[#e9e9e7] p-2 text-center font-medium dark:border-neutral-700">
+                        <td className="border border-[#e9e9e7] p-2 text-center font-medium dark:border-neutral-600">
                           <button
                             type="button"
                             onClick={() => handleNavigate && handleNavigate(personIssues[0]?.targetTabId || personKey)}
@@ -135,31 +135,31 @@ export default function CalcPanelFinal({ calcSteps, issues = [], handleNavigate,
                               personIssues.length > 0
                                 ? 'cursor-pointer text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300'
                                 : hojuApplied
-                                  ? 'cursor-pointer text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300'
+                                  ? 'cursor-pointer text-blue-600 hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-300'
                                   : 'cursor-pointer text-[#37352f] hover:text-blue-700 dark:text-neutral-200 dark:hover:text-blue-300'
                             }`}
                           >
                             <span className="underline-offset-2 group-hover:underline">{dist.h.name}</span>
                             {personIssues.length > 0 && (
-                              <span className="inline-flex items-center rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-black text-red-700 dark:bg-red-900/30 dark:text-red-300">
+                              <span className="inline-flex items-center rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-black text-red-700 dark:bg-red-900/50 dark:text-red-300">
                                 경고
                               </span>
                             )}
-                            <span className="hidden text-[10px] font-bold text-[#787774] group-hover:inline dark:text-neutral-500">
+                            <span className="hidden text-[10px] font-bold text-[#787774] group-hover:inline dark:text-neutral-400">
                               수정
                             </span>
                           </button>
                         </td>
-                          <td className="border border-[#e9e9e7] p-2 text-center text-[#787774] dark:border-neutral-700">
+                          <td className="border border-[#e9e9e7] p-2 text-center text-[#787774] dark:border-neutral-600">
                            {getRelStr(dist.h._origRelation || dist.h.relation, step.dec.deathDate) || '상속인'}
                           </td>
-                        <td className="border border-[#e9e9e7] p-2 text-center text-[#787774] dark:border-neutral-700">
+                        <td className="border border-[#e9e9e7] p-2 text-center text-[#787774] dark:border-neutral-600">
                           {step.inN}/{step.inD} × {displayInnerN}/{innerLCM}
                         </td>
-                        <td className="border border-[#e9e9e7] p-2 text-center font-medium dark:border-neutral-700">
+                        <td className="border border-[#e9e9e7] p-2 text-center font-medium dark:border-neutral-600">
                           {displayOuterN}/{outerLCM}
                         </td>
-                        <td className="border border-[#e9e9e7] p-2 pl-4 text-left text-[#787774] dark:border-neutral-700">
+                        <td className="border border-[#e9e9e7] p-2 pl-4 text-left text-[#787774] dark:border-neutral-600">
                           {memo.join(', ')}
                         </td>
                       </tr>

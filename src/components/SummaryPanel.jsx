@@ -66,22 +66,22 @@ const PathView = ({ calcSteps, tree, issues, handleNavigate, searchQuery }) => {
 
   if (results.length === 0) {
     return (
-      <div className="py-12 text-center text-[13px] text-[#787774] dark:text-neutral-400">
+      <div className="py-12 text-center text-[13px] text-[#787774] dark:text-neutral-300">
         최종 생존 상속인이 없습니다.
       </div>
     );
   }
 
   return (
-    <div className="mb-4 text-[13px] text-[#787774] dark:text-neutral-500">
+    <div className="mb-4 text-[13px] text-[#787774] dark:text-neutral-400">
       <p className="mb-4">최종 생존 상속인이 어떤 경로로 지분을 취득했는지 정리한 결과표입니다.</p>
       <table className="w-full border-collapse text-[13px]">
-        <thead className="bg-[#fcfcfb] dark:bg-neutral-800/40">
+        <thead className="bg-[#fcfcfb] dark:bg-neutral-800/80">
           <tr>
-            <th className="w-[18%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-700">최종 상속인</th>
-            <th className="w-[52%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-700">지분 취득 경로</th>
-            <th className="w-[15%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-700">최종 합계</th>
-            <th className="w-[15%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-700">통분 지분</th>
+            <th className="w-[18%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-600">최종 상속인</th>
+            <th className="w-[52%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-600">지분 취득 경로</th>
+            <th className="w-[15%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-600">최종 합계</th>
+            <th className="w-[15%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-600">통분 지분</th>
           </tr>
         </thead>
         <tbody>
@@ -97,18 +97,18 @@ const PathView = ({ calcSteps, tree, issues, handleNavigate, searchQuery }) => {
 
             return (
               <tr key={`path-${result.personId}`} className={`align-top ${matchesName(result.name) && normalizedSearchQuery ? 'bg-yellow-50 dark:bg-yellow-900/20' : ''} hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20`}>
-                <td className="border border-[#e9e9e7] p-2.5 text-center font-medium dark:border-neutral-700">
+                <td className="border border-[#e9e9e7] p-2.5 text-center font-medium dark:border-neutral-600">
                   <button
                     type="button"
                     onClick={() => handleNavigate && handleNavigate(personIssues[0]?.targetTabId || result.personId)}
                     title="입력 탭에서 이 사람 정보 수정"
-                    className={`group inline-flex cursor-pointer items-center gap-1 font-medium transition-colors hover:text-blue-700 dark:hover:text-blue-300 ${personIssues.length > 0 ? 'text-red-600 dark:text-red-400' : hojuApplied ? 'text-blue-600 dark:text-blue-400' : 'text-[#37352f] dark:text-neutral-200'}`}
+                    className={`group inline-flex cursor-pointer items-center gap-1 font-medium transition-colors hover:text-blue-700 dark:hover:text-blue-300 ${personIssues.length > 0 ? 'text-red-600 dark:text-red-400' : hojuApplied ? 'text-blue-600 dark:text-blue-300' : 'text-[#37352f] dark:text-neutral-200'}`}
                   >
                     <span className="underline-offset-2 group-hover:underline">{result.name}</span>
                     {personIssues.length > 0 && (
-                      <span className="inline-flex items-center rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-black text-red-700 dark:bg-red-900/30 dark:text-red-300">경고</span>
+                      <span className="inline-flex items-center rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-black text-red-700 dark:bg-red-900/50 dark:text-red-300">경고</span>
                     )}
-                    <span className="hidden text-[10px] font-bold text-[#787774] group-hover:inline dark:text-neutral-500">수정</span>
+                    <span className="hidden text-[10px] font-bold text-[#787774] group-hover:inline dark:text-neutral-400">수정</span>
                   </button>
                   <span className="ml-1 font-normal text-[#787774]">[{getRelStr(result.relation, tree.deathDate)}]</span>
                   {personIssues.length > 0 && (
@@ -116,24 +116,24 @@ const PathView = ({ calcSteps, tree, issues, handleNavigate, searchQuery }) => {
                   )}
                   {isMultiSource && <span className="mt-0.5 block text-[10px] font-bold text-[#787774]">복수 경로</span>}
                 </td>
-                <td className="border border-[#e9e9e7] p-2.5 text-left dark:border-neutral-700">
+                <td className="border border-[#e9e9e7] p-2.5 text-left dark:border-neutral-600">
                   {result.sources.map((source, index) => (
-                    <div key={`${result.personId}-src-${index}`} className={`flex items-baseline gap-1 ${index > 0 ? 'mt-1.5 border-t border-dashed border-[#e9e9e7] pt-1.5 dark:border-neutral-700' : ''}`}>
+                    <div key={`${result.personId}-src-${index}`} className={`flex items-baseline gap-1 ${index > 0 ? 'mt-1.5 border-t border-dashed border-[#e9e9e7] pt-1.5 dark:border-neutral-600' : ''}`}>
                       <span className="shrink-0 font-medium text-[#37352f] dark:text-neutral-200">{source.n}/{source.d}</span>
-                      <span className="text-[12px] text-[#787774] dark:text-neutral-500">
+                      <span className="text-[12px] text-[#787774] dark:text-neutral-400">
                         망 {source.decName}의 {getRelStr(source.relation, source.decDeathDate) || '상속인'} &lt;{lawLabel(source.lawEra)}&gt;
                         {source.modifier ? ` (${source.modifier})` : ''}
                       </span>
                     </div>
                   ))}
                   {isMultiSource && (
-                    <div className="mt-1.5 border-t border-[#e9e9e7] pt-1.5 text-[12px] font-medium text-[#504f4c] dark:border-neutral-700 dark:text-neutral-400">
+                    <div className="mt-1.5 border-t border-[#e9e9e7] pt-1.5 text-[12px] font-medium text-[#504f4c] dark:border-neutral-600 dark:text-neutral-300">
                       = {result.sources.map((s) => `${s.n}/${s.d}`).join(' + ')} = <span className="font-bold text-[#37352f] dark:text-neutral-200">{total.n}/{total.d}</span>
                     </div>
                   )}
                 </td>
-                <td className="border border-[#e9e9e7] p-2.5 text-center font-medium dark:border-neutral-700">{total.n} / {total.d}</td>
-                <td className="border border-[#e9e9e7] p-2.5 text-center font-medium dark:border-neutral-700">{unifiedN} / {commonD}</td>
+                <td className="border border-[#e9e9e7] p-2.5 text-center font-medium dark:border-neutral-600">{total.n} / {total.d}</td>
+                <td className="border border-[#e9e9e7] p-2.5 text-center font-medium dark:border-neutral-600">{unifiedN} / {commonD}</td>
               </tr>
             );
           })}
@@ -155,9 +155,9 @@ const buildIssueMap = (issues = []) => {
 };
 
 const NoticeCard = ({ notice }) => (
-  <div className="rounded-xl border border-[#e9e9e7] bg-[#f8f8f7] px-4 py-3 dark:border-neutral-700 dark:bg-neutral-800/40">
+  <div className="rounded-xl border border-[#e9e9e7] bg-[#f8f8f7] px-4 py-3 dark:border-neutral-600 dark:bg-neutral-800/80">
     <div className="text-[13px] font-semibold text-[#37352f] dark:text-neutral-100">{notice.title}</div>
-    <div className="mt-1 text-[12px] text-[#787774] dark:text-neutral-400">{notice.basis}</div>
+    <div className="mt-1 text-[12px] text-[#787774] dark:text-neutral-300">{notice.basis}</div>
   </div>
 );
 
@@ -312,16 +312,16 @@ export default function SummaryPanelFixed({
             : 'hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/20'
         }`}
       >
-        <td className="border border-[#e9e9e7] p-2.5 text-left font-medium dark:border-neutral-700" style={{ paddingLeft }}>
+        <td className="border border-[#e9e9e7] p-2.5 text-left font-medium dark:border-neutral-600" style={{ paddingLeft }}>
           <button
             type="button"
             onClick={() => handleNavigate ? handleNavigate(navigateTarget) : null}
             title="입력 탭에서 이 사람 정보 수정"
-            className={`${personIssues.length > 0 ? 'text-red-600 dark:text-red-400' : hojuApplied ? 'text-blue-600 dark:text-blue-400' : 'text-[#37352f] dark:text-neutral-200'} group inline-flex cursor-pointer items-center gap-1 font-medium transition-colors hover:text-blue-600 dark:hover:text-blue-400`}
+            className={`${personIssues.length > 0 ? 'text-red-600 dark:text-red-400' : hojuApplied ? 'text-blue-600 dark:text-blue-300' : 'text-[#37352f] dark:text-neutral-200'} group inline-flex cursor-pointer items-center gap-1 font-medium transition-colors hover:text-blue-600 dark:hover:text-blue-400`}
           >
             <span className="underline-offset-2 group-hover:underline">{share.name}</span>
             {personIssues.length > 0 && (
-              <span className="inline-flex items-center rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-black text-red-700 dark:bg-red-900/30 dark:text-red-300">
+              <span className="inline-flex items-center rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-black text-red-700 dark:bg-red-900/50 dark:text-red-300">
                 경고
               </span>
             )}
@@ -334,18 +334,18 @@ export default function SummaryPanelFixed({
             </span>
           ))}
         </td>
-        <td className="border border-[#e9e9e7] p-2.5 text-center text-[#504f4c] dark:border-neutral-700">{share.n} / {share.d}</td>
-        <td className="border border-[#e9e9e7] p-2.5 text-center font-medium dark:border-neutral-700">{share.un} / {share.ud}</td>
+        <td className="border border-[#e9e9e7] p-2.5 text-center text-[#504f4c] dark:border-neutral-600">{share.n} / {share.d}</td>
+        <td className="border border-[#e9e9e7] p-2.5 text-center font-medium dark:border-neutral-600">{share.un} / {share.ud}</td>
       </tr>
     );
   };
 
   const renderGroup = (group, depth) => (
     <React.Fragment key={`summary-group-${group.ancestor.id}`}>
-      <tr className="bg-[#fcfcfb] dark:bg-neutral-800/40">
+      <tr className="bg-[#fcfcfb] dark:bg-neutral-800/80">
         <td
           colSpan={3}
-          className="border border-[#e9e9e7] p-2.5 text-left text-[#504f4c] dark:border-neutral-700 dark:text-neutral-400"
+          className="border border-[#e9e9e7] p-2.5 text-left text-[#504f4c] dark:border-neutral-600 dark:text-neutral-300"
           style={{ paddingLeft: `${12 + depth * 16}px` }}
         >
           [{group.ancestor.name}] {formatKorDate(group.ancestor.deathDate)} 사망으로 인한 {group.type} 그룹
@@ -403,7 +403,7 @@ export default function SummaryPanelFixed({
             <IconList className="h-5 w-5 text-[#787774]" />
             지분 요약
           </h2>
-          <div className="flex items-center gap-1 rounded-full border border-[#dcdcd9] bg-[#f1f1ef] px-1.5 py-1 dark:border-neutral-700 dark:bg-neutral-800">
+          <div className="flex items-center gap-1 rounded-full border border-[#dcdcd9] bg-[#f1f1ef] px-1.5 py-1 dark:border-neutral-600 dark:bg-neutral-800">
             <button
               type="button"
               onClick={() => setViewMode('structure')}
@@ -419,7 +419,7 @@ export default function SummaryPanelFixed({
               취득 경로
             </button>
           </div>
-          <div className="flex items-center gap-2 rounded-full border border-[#e5e5e5] bg-white px-3 py-1.5 shadow-sm focus-within:ring-2 focus-within:ring-blue-100 dark:border-neutral-700 dark:bg-neutral-800">
+          <div className="flex items-center gap-2 rounded-full border border-[#e5e5e5] bg-white px-3 py-1.5 shadow-sm focus-within:ring-2 focus-within:ring-blue-100 dark:border-neutral-600 dark:bg-neutral-800">
             <svg className="h-4 w-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
@@ -445,7 +445,7 @@ export default function SummaryPanelFixed({
 
       {viewMode === 'structure' && (<>
         {hasMissingHeir && (
-          <div className="mb-4 flex items-center rounded-lg border border-[#e9e9e7] border-l-4 border-l-neutral-300 bg-[#fbfbfb] p-3 shadow-sm transition-all duration-300 dark:border-neutral-700 dark:bg-neutral-800/40">
+          <div className="mb-4 flex items-center rounded-lg border border-[#e9e9e7] border-l-4 border-l-neutral-300 bg-[#fbfbfb] p-3 shadow-sm transition-all duration-300 dark:border-neutral-600 dark:bg-neutral-800/80">
             <span className="text-[13px] font-bold text-[#37352f] dark:text-neutral-200">
               직접 입력되지 않은 후속 상속인이 있는 상태입니다. 일부는 차순위 자동 분배로 처리될 수 있으므로 검토가 필요합니다.
             </span>
@@ -467,22 +467,22 @@ export default function SummaryPanelFixed({
         )}
 
       <table className="w-full border-collapse text-[13px]">
-        <thead className="bg-[#fcfcfb] dark:bg-neutral-800/40">
+        <thead className="bg-[#fcfcfb] dark:bg-neutral-800/80">
           <tr>
-            <th className="w-[40%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-700">상속인 성명</th>
-            <th className="w-[30%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-700">{hasMissingHeir ? '현재 지분' : '최종 지분'}</th>
-            <th className="w-[30%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-700">통분 지분</th>
+            <th className="w-[40%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-600">상속인 성명</th>
+            <th className="w-[30%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-600">{hasMissingHeir ? '현재 지분' : '최종 지분'}</th>
+            <th className="w-[30%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-600">통분 지분</th>
           </tr>
         </thead>
         <tbody>
           {visibleTopDirect.map((share) => renderShareRow(share, 0))}
           {visibleTopGroups.map((group) => renderGroup(group, 0))}
         </tbody>
-        <tfoot className="bg-[#fcfcfb] dark:bg-neutral-800/40">
+        <tfoot className="bg-[#fcfcfb] dark:bg-neutral-800/80">
           <tr>
-            <td className="border border-[#e9e9e7] p-2.5 text-right font-medium text-[#787774] dark:border-neutral-700">합계 검증</td>
-            <td className="border border-[#e9e9e7] p-2.5 text-center font-medium dark:border-neutral-700">{totalSumN} / {totalSumD}</td>
-            <td className="border border-[#e9e9e7] p-2.5 text-left text-[12.5px] dark:border-neutral-700">
+            <td className="border border-[#e9e9e7] p-2.5 text-right font-medium text-[#787774] dark:border-neutral-600">합계 검증</td>
+            <td className="border border-[#e9e9e7] p-2.5 text-center font-medium dark:border-neutral-600">{totalSumN} / {totalSumD}</td>
+            <td className="border border-[#e9e9e7] p-2.5 text-left text-[12.5px] dark:border-neutral-600">
               {totalSumN === 0 && <span className="font-bold text-[#787774]">최종 생존 상속인이 없습니다.</span>}
               {totalSumN > 0 && sumVal === targetVal && <span className="text-[#504f4c] dark:text-neutral-300">법정상속분 합계와 일치합니다.</span>}
               {totalSumN > 0 && sumVal !== targetVal && <span className="font-bold text-red-500">지분 합계가 일치하지 않습니다.</span>}

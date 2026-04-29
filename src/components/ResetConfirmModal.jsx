@@ -9,11 +9,11 @@ export default function ResetConfirmModal({ isOpen, onSaveAndReset, onResetOnly,
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-neutral-700 dark:bg-neutral-900"
+        className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-neutral-600 dark:bg-neutral-900"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="border-b border-slate-100 bg-gradient-to-r from-slate-50 to-blue-50 px-6 py-5 dark:border-neutral-800 dark:from-neutral-900 dark:to-neutral-800">
-          <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500 dark:text-neutral-400">
+          <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-slate-500 dark:text-neutral-300">
             Reset
           </div>
           <h2 className="mt-1 text-[22px] font-black text-slate-900 dark:text-neutral-100">새 작업 시작</h2>
@@ -46,7 +46,7 @@ export default function ResetConfirmModal({ isOpen, onSaveAndReset, onResetOnly,
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-[13px] font-bold text-slate-700 transition-colors hover:bg-slate-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
+            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-[13px] font-bold text-slate-700 transition-colors hover:bg-slate-50 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-neutral-800"
           >
             취소
           </button>
