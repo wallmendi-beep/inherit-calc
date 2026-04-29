@@ -9,7 +9,6 @@ import PrintReport from './components/PrintReport';
 import SummaryPanel from './components/SummaryPanel';
 import AmountPanel from './components/AmountPanel';
 import AcquisitionPanel from './components/AcquisitionPanel';
-import CalcPanel from './components/CalcPanel';
 import InputPanel from './components/InputPanel';
 import TreePanel from './components/TreePanel';
 import AiImportModal from './components/AiImportModal';
@@ -219,7 +218,7 @@ function App() {
     if (!nodeId) return;
     
     // 1. 단순 탭 이동 처리
-    const specialTabs = ['input', 'tree', 'calc', 'acquisition', 'summary', 'amount'];
+    const specialTabs = ['input', 'tree', 'acquisition', 'summary', 'amount'];
     if (specialTabs.includes(nodeId)) {
       setActiveTab(nodeId);
       return;
@@ -702,9 +701,9 @@ function App() {
                 }`}
             >
               <div className="flex items-end pl-[48px] gap-1 no-print relative z-20">
-                {['input', 'tree', 'calc', 'acquisition', 'summary', 'amount'].map(id => (
+                {['input', 'tree', 'acquisition', 'summary', 'amount'].map(id => (
                   <button key={id} onClick={() => handleTabChange(id)} className={`px-6 py-2.5 rounded-t-xl font-bold text-[14px] border-2 border-b-0 transition-all ${activeTab === id ? 'bg-white dark:bg-neutral-800 border-[#37352f] text-[#37352f]' : 'bg-transparent border-transparent text-[#9b9a97]'}`}>
-                    {id === 'input' ? '데이터 입력' : id === 'tree' ? '사건 검토' : id === 'calc' ? '계산 상세' : id === 'acquisition' ? '취득경로' : id === 'summary' ? '지분 요약' : '구체적 상속분'}
+                    {id === 'input' ? '데이터 입력' : id === 'tree' ? '사건 검토' : id === 'acquisition' ? '취득경로' : id === 'summary' ? '지분 요약' : '구체적 상속분'}
                   </button>
                 ))}
               </div>
@@ -751,15 +750,6 @@ function App() {
                       />
                     </div>
                   )}
-                {activeTab === 'calc' && (
-                  <CalcPanel
-                    calcSteps={calcSteps}
-                    issues={blockingIssues}
-                    handleNavigate={handleNavigate}
-                    searchQuery={searchQuery}
-                    setSearchQuery={setSearchQuery}
-                  />
-                )}
                 {activeTab === 'acquisition' && <AcquisitionPanel tree={tree} calcSteps={calcSteps} issues={blockingIssues} handleNavigate={handleNavigate} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />}
                 {activeTab === 'summary' && <SummaryPanel tree={tree} finalShares={finalShares} calcSteps={calcSteps} issues={blockingIssues} handleNavigate={handleNavigate} matchIds={matchIds} currentMatchIdx={currentMatchIdx} searchQuery={searchQuery} setSearchQuery={setSearchQuery} viewMode={summaryViewMode} setViewMode={setSummaryViewMode} />}
                 {activeTab === 'amount' && <AmountPanel tree={tree} finalShares={finalShares} amountCalculations={amountCalculations} propertyValue={propertyValue} setPropertyValue={setPropertyValue} specialBenefits={specialBenefits} setSpecialBenefits={setSpecialBenefits} contributions={contributions} setContributions={setContributions} />}

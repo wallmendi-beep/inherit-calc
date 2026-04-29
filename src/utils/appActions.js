@@ -35,7 +35,6 @@ export function printCurrentTab({ activeTab, tree, summaryViewMode = 'structure'
   const tabNames = {
     input: '가계도시뮬레이션',
     tree: '사건검토_산출내역',
-    calc: '상속지분_산출내역',
     acquisition: '취득경로표',
     summary: '법정상속분_요약표',
     amount: '구체적상속분_결과',
@@ -116,7 +115,7 @@ export function loadTreeFromJsonFile(file, {
           if (isAmountActive !== undefined) setIsAmountActive?.(isAmountActive);
         }
         
-        setActiveTab('calc'); // 모든 데이터가 있으므로 바로 계산 탭으로 이동
+        setActiveTab('tree'); // 불러오기 후 사건 검토 탭으로 이동
         return;
       }
 

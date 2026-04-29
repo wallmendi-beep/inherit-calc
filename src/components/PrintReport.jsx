@@ -54,7 +54,7 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
   }, [tree]);
   const hasMissingHeir = missingHeirNames.length > 0;
 
-  const dynamicReportTitle = hasMissingHeir && ['calc', 'acquisition', 'summary', 'amount'].includes(activeTab)
+  const dynamicReportTitle = hasMissingHeir && ['tree', 'acquisition', 'summary', 'amount'].includes(activeTab)
     ? `${reportTitle} [미완성]`
     : reportTitle;
 
