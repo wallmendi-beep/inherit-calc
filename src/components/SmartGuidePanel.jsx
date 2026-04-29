@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import ContextualDrawer from './ui/ContextualDrawer';
 
 const GuideCheckButton = ({ label, onClick, tone = 'neutral' }) => (
@@ -16,11 +16,49 @@ const GuideCheckButton = ({ label, onClick, tone = 'neutral' }) => (
   </button>
 );
 
-function GuideSectionTitle({ children }) {
+function GuideSectionTitle({ children, count, open, onToggle }) {
+  const hasToggle = onToggle !== undefined;
   return (
-    <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-neutral-400">
-      {children}
-    </h3>
+    <button
+      type="button"
+      onClick={hasToggle ? onToggle : undefined}
+      className={`flex w-full items-center justify-between ${hasToggle ? 'cursor-pointer' : 'cursor-default'}`}
+    >
+      <h3 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-neutral-400">
+        {children}
+        {count !== undefined && (
+          <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-600 dark:bg-neutral-700 dark:text-neutral-300">
+            {count}
+          </span>
+        )}
+      </h3>
+      {hasToggle && (
+        <span className="text-[11px] text-slate-400 dark:text-neutral-500">
+          {open ? '접기' : '펼치기'}
+        </span>
+      )}
+    </button>
+  );
+}
+
+function ProgressBar({ completed, total }) {
+  if (total === 0) return null;
+  const pct = Math.round((completed / total) * 100);
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between text-[11px]">
+        <span className="font-medium text-slate-500 dark:text-neutral-400">필수 항목 진행률</span>
+        <span className={`font-bold ${completed === total ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+          {completed}/{total}
+        </span>
+      </div>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-neutral-700">
+        <div
+          className={`h-full rounded-full transition-all duration-500 ${completed === total ? 'bg-emerald-500' : 'bg-amber-500'}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -61,6 +99,9 @@ export default function SmartGuidePanel({
     return 'neutral';
   };
 
+  const [mandatoryOpen, setMandatoryOpen] = useState(true);
+  const [recommendedOpen, setRecommendedOpen] = useState(true);
+
   const checkedSet = checkedGuideKeys || new Set();
   const warningsToShow = (warnings || []).filter((warning) => warning.code !== 'auto-sibling-redistribution');
   const visibleAuditActionItems = (auditActionItems || []).filter((item) => {
@@ -68,9 +109,10 @@ export default function SmartGuidePanel({
     return (item?.displayTargets || []).includes('guide');
   });
 
-  const mandatoryGuides = (smartGuides || []).filter(
-    (guide) => guide?.type === 'mandatory' && !checkedSet.has(guide?.uniqueKey),
-  );
+  const allMandatory = (smartGuides || []).filter((g) => g?.type === 'mandatory');
+  const completedMandatory = allMandatory.filter((g) => checkedSet.has(g?.uniqueKey)).length;
+
+  const mandatoryGuides = allMandatory.filter((guide) => !checkedSet.has(guide?.uniqueKey));
   const recommendedGuides = (smartGuides || []).filter(
     (guide) =>
       guide?.type === 'recommended' &&
@@ -107,6 +149,10 @@ export default function SmartGuidePanel({
 
       <ContextualDrawer isOpen={showNavigator} onClose={() => setShowNavigator(false)} title="스마트 가이드">
         <div className="space-y-6 p-5">
+          {allMandatory.length > 0 && (
+            <ProgressBar completed={completedMandatory} total={allMandatory.length} />
+          )}
+
           {noSurvivors && (
             <section className="rounded-lg border border-slate-200 bg-slate-50 p-4 shadow-sm dark:border-neutral-700 dark:bg-neutral-800/50">
               <div className="text-[13px] font-bold text-slate-800 dark:text-neutral-100">
@@ -128,6 +174,13 @@ export default function SmartGuidePanel({
                 사건 검토 및 계산 결과를 확인해 주세요.
               </p>
             </section>
+          )}
+
+          {allMandatory.length > 0 && mandatoryGuides.length === 0 && recommendedGuides.length > 0 && (
+            <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12px] font-medium text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300">
+              <span>✓</span>
+              <span>필수 항목이 모두 완료되었습니다. 권장 항목을 추가로 검토해 주세요.</span>
+            </div>
           )}
 
           {visibleAuditActionItems.length > 0 && (
@@ -189,8 +242,14 @@ export default function SmartGuidePanel({
 
           {mandatoryGuides.length > 0 && (
             <section className="space-y-3">
-              <GuideSectionTitle>우선 확인이 필요한 항목</GuideSectionTitle>
-              <ul className="space-y-2">
+              <GuideSectionTitle
+                count={mandatoryGuides.length}
+                open={mandatoryOpen}
+                onToggle={() => setMandatoryOpen((v) => !v)}
+              >
+                우선 확인이 필요한 항목
+              </GuideSectionTitle>
+              {mandatoryOpen && <ul className="space-y-2">
                 {mandatoryGuides.map((guide, index) => {
                   const isDeleteAction = guide.action === 'delete';
                   const isSubstitutionGuide = guide?.uniqueKey?.startsWith('grouped-missing-substitution-');
@@ -260,14 +319,20 @@ export default function SmartGuidePanel({
                     </li>
                   );
                 })}
-              </ul>
+              </ul>}
             </section>
           )}
 
           {recommendedGuides.length > 0 && (
             <section className="space-y-3">
-              <GuideSectionTitle>권장 가이드</GuideSectionTitle>
-              <ul className="space-y-2">
+              <GuideSectionTitle
+                count={recommendedGuides.length}
+                open={recommendedOpen}
+                onToggle={() => setRecommendedOpen((v) => !v)}
+              >
+                권장 가이드
+              </GuideSectionTitle>
+              {recommendedOpen && <ul className="space-y-2">
                 {recommendedGuides.map((guide, index) => (
                   <li key={`recommended-${index}`} className="group relative">
                     <button
@@ -306,7 +371,7 @@ export default function SmartGuidePanel({
                     </button>
                   </li>
                 ))}
-              </ul>
+              </ul>}
             </section>
           )}
 

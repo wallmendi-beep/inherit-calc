@@ -304,6 +304,8 @@ export default function HeirRow({
                     })}
                     className={`flex-1 bg-transparent text-[13px] font-bold outline-none ${isEffectivePredeceased ? 'text-[#787774] dark:text-neutral-400' : 'text-[#37352f] dark:text-neutral-100'}`}
                     placeholder="사망일자"
+                    compareDate={inheritedDate}
+                    compareLabel="피상속인 사망일"
                   />
                 ) : (
                   <span className="text-[13px] font-medium text-[#787774]">생존</span>

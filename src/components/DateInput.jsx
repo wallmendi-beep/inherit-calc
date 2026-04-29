@@ -10,6 +10,8 @@ const isValidCalendarDate = (str) => {
   return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d;
 };
 
+const isBefore = (a, b) => !!a && !!b && a < b;
+
 const format = (v) => {
   let val = v.replace(/\D/g, '').slice(0, 8);
   if (val.length > 6) return `${val.slice(0, 4)}-${val.slice(4, 6)}-${val.slice(6, 8)}`;
@@ -17,7 +19,16 @@ const format = (v) => {
   return val;
 };
 
-export const DateInput = ({ value, onChange, placeholder, className, onKeyDown, autoFocus }) => {
+export const DateInput = ({
+  value,
+  onChange,
+  placeholder,
+  className,
+  onKeyDown,
+  autoFocus,
+  compareDate,       // 비교 기준일 (예: 피상속인 사망일)
+  compareLabel,      // 비교 기준 레이블 (예: "피상속인 사망일")
+}) => {
   const [prevValue, setPrevValue] = useState(value);
   const [localValue, setLocalValue] = useState(value || '');
   const [isInvalid, setIsInvalid] = useState(false);
@@ -31,30 +42,32 @@ export const DateInput = ({ value, onChange, placeholder, className, onKeyDown, 
   const handleChange = (e) => {
     const formatted = format(e.target.value);
     setLocalValue(formatted);
-    // 입력 중에는 에러 표시 해제
     if (isInvalid) setIsInvalid(false);
   };
 
   const handleBlur = () => {
     if (!localValue) {
-      // 빈값은 유효 → 그대로 저장
       if (localValue !== (value || '')) onChange('');
       setIsInvalid(false);
       return;
     }
     if (localValue.length < 10) {
-      // 미완성 입력 → 에러 표시, 저장 안 함
       setIsInvalid(true);
       return;
     }
     if (!isValidCalendarDate(localValue)) {
-      // 형식은 맞지만 실제 없는 날짜 (예: 2024-02-30)
       setIsInvalid(true);
       return;
     }
     setIsInvalid(false);
     if (localValue !== (value || '')) onChange(localValue);
   };
+
+  const isPredeceased = !isInvalid &&
+    localValue.length === 10 &&
+    isValidCalendarDate(localValue) &&
+    compareDate &&
+    isBefore(localValue, compareDate);
 
   return (
     <div className="relative inline-block">
@@ -72,12 +85,21 @@ export const DateInput = ({ value, onChange, placeholder, className, onKeyDown, 
         spellCheck="false"
         placeholder={placeholder || "YYYY-MM-DD"}
         className={`${className} dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200 ${
-          isInvalid ? 'border-red-400 dark:border-red-500 bg-red-50 dark:bg-red-900/20' : ''
+          isInvalid
+            ? 'border-red-400 dark:border-red-500 bg-red-50 dark:bg-red-900/20'
+            : isPredeceased
+              ? 'border-blue-300 dark:border-blue-700'
+              : ''
         }`}
       />
       {isInvalid && (
         <div className="absolute left-0 top-full mt-0.5 z-50 whitespace-nowrap rounded bg-red-600 px-2 py-0.5 text-[11px] text-white shadow">
           올바른 날짜가 아닙니다
+        </div>
+      )}
+      {isPredeceased && (
+        <div className="absolute left-0 top-full mt-0.5 z-50 whitespace-nowrap rounded bg-blue-600 px-2 py-0.5 text-[11px] text-white shadow">
+          {compareLabel || '기준일'}보다 이름 → 선사망 처리
         </div>
       )}
     </div>
