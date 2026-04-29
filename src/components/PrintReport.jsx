@@ -32,7 +32,7 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
     tree:        '상속지분 산출 내역서',
     calc:        '상속지분 산출 내역서 (단계별)',
     acquisition: '법정 상속분 취득 경로표',
-    summary:     '법정 상속분 요약표',
+    summary:     '상속지분 요약표',
     amount:      '구체적 상속분 정산서',
   }[activeTab] || '상속지분 계산 보고서';
 
@@ -54,7 +54,7 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
   }, [tree]);
   const hasMissingHeir = missingHeirNames.length > 0;
 
-  const dynamicReportTitle = hasMissingHeir && ['tree', 'acquisition', 'summary', 'amount'].includes(activeTab)
+  const dynamicReportTitle = hasMissingHeir && ['tree', 'acquisition', 'summary'].includes(activeTab)
     ? `${reportTitle} [미완성]`
     : reportTitle;
 

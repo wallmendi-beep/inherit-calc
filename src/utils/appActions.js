@@ -36,8 +36,7 @@ export function printCurrentTab({ activeTab, tree, summaryViewMode = 'structure'
     input: '가계도시뮬레이션',
     tree: '사건검토_산출내역',
     acquisition: '취득경로표',
-    summary: '법정상속분_요약표',
-    amount: '구체적상속분_결과',
+    summary: '상속지분_요약표',
   };
 
   const currentTabName = tabNames[activeTab] || '보고서';

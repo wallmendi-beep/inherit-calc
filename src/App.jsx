@@ -218,7 +218,7 @@ function App() {
     if (!nodeId) return;
     
     // 1. 단순 탭 이동 처리
-    const specialTabs = ['input', 'tree', 'acquisition', 'summary', 'amount'];
+    const specialTabs = ['input', 'tree', 'acquisition', 'summary'];
     if (specialTabs.includes(nodeId)) {
       setActiveTab(nodeId);
       return;
@@ -701,9 +701,9 @@ function App() {
                 }`}
             >
               <div className="flex items-end pl-[48px] gap-1 no-print relative z-20">
-                {['input', 'tree', 'acquisition', 'summary', 'amount'].map(id => (
+                {['input', 'tree', 'acquisition', 'summary'].map(id => (
                   <button key={id} onClick={() => handleTabChange(id)} className={`px-6 py-2.5 rounded-t-xl font-bold text-[14px] border-2 border-b-0 transition-all ${activeTab === id ? 'bg-white dark:bg-neutral-800 border-[#37352f] text-[#37352f]' : 'bg-transparent border-transparent text-[#9b9a97]'}`}>
-                    {id === 'input' ? '데이터 입력' : id === 'tree' ? '사건 검토' : id === 'acquisition' ? '취득경로' : id === 'summary' ? '지분 요약' : '구체적 상속분'}
+                    {id === 'input' ? '데이터 입력' : id === 'tree' ? '사건 검토' : id === 'acquisition' ? '취득경로' : '상속지분'}
                   </button>
                 ))}
               </div>
@@ -751,8 +751,26 @@ function App() {
                     </div>
                   )}
                 {activeTab === 'acquisition' && <AcquisitionPanel tree={tree} calcSteps={calcSteps} issues={blockingIssues} handleNavigate={handleNavigate} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />}
-                {activeTab === 'summary' && <SummaryPanel tree={tree} finalShares={finalShares} calcSteps={calcSteps} issues={blockingIssues} handleNavigate={handleNavigate} matchIds={matchIds} currentMatchIdx={currentMatchIdx} searchQuery={searchQuery} setSearchQuery={setSearchQuery} viewMode={summaryViewMode} setViewMode={setSummaryViewMode} />}
-                {activeTab === 'amount' && <AmountPanel tree={tree} finalShares={finalShares} amountCalculations={amountCalculations} propertyValue={propertyValue} setPropertyValue={setPropertyValue} specialBenefits={specialBenefits} setSpecialBenefits={setSpecialBenefits} contributions={contributions} setContributions={setContributions} />}
+                {activeTab === 'summary' && (
+                  <div className="space-y-6">
+                    <SummaryPanel tree={tree} finalShares={finalShares} calcSteps={calcSteps} issues={blockingIssues} handleNavigate={handleNavigate} matchIds={matchIds} currentMatchIdx={currentMatchIdx} searchQuery={searchQuery} setSearchQuery={setSearchQuery} viewMode={summaryViewMode} setViewMode={setSummaryViewMode} />
+                    <div className="border-t border-[#e9e9e7] dark:border-neutral-600 pt-4">
+                      <button
+                        type="button"
+                        onClick={() => setIsAmountActive(v => !v)}
+                        className={`flex w-full items-center justify-between rounded-xl border px-5 py-3 text-left text-[14px] font-bold transition-all ${isAmountActive ? 'border-[#3b5f8a] bg-[#f0f6ff] text-[#3b5f8a] dark:border-blue-700 dark:bg-blue-950/30 dark:text-blue-300' : 'border-[#e9e9e7] bg-white text-[#37352f] hover:bg-[#f7f7f5] dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-200'}`}
+                      >
+                        <span>구체적 상속분 산정</span>
+                        <span className="text-[12px] font-normal text-[#787774] dark:text-neutral-400">{isAmountActive ? '접기 ▲' : '펼치기 ▼'}</span>
+                      </button>
+                      {isAmountActive && (
+                        <div className="mt-3">
+                          <AmountPanel tree={tree} finalShares={finalShares} amountCalculations={amountCalculations} propertyValue={propertyValue} setPropertyValue={setPropertyValue} specialBenefits={specialBenefits} setSpecialBenefits={setSpecialBenefits} contributions={contributions} setContributions={setContributions} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
