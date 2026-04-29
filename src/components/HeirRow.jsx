@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { IconMenu, IconTrash2 } from './Icons';
@@ -23,7 +23,6 @@ const SPECIAL_LABELS = {
 
 export default function HeirRow({
   node,
-  finalShares,
   handleUpdate,
   removeHeir,
   inheritedDate,
@@ -35,17 +34,6 @@ export default function HeirRow({
   isHighlighted,
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: node.id });
-
-  const calcShare = useMemo(() => {
-    if (!finalShares) return null;
-    const direct = (finalShares.direct || []).find((share) => share.personId === node.personId);
-    if (direct) return direct;
-    for (const group of finalShares.subGroups || []) {
-      const subShare = (group.shares || []).find((share) => share.personId === node.personId);
-      if (subShare) return subShare;
-    }
-    return null;
-  }, [finalShares, node.personId]);
 
   const lawEra = getLawEra(inheritedDate);
   const isSpouseType = ['wife', 'husband', 'spouse'].includes(node.relation);
@@ -116,12 +104,6 @@ export default function HeirRow({
   }, [isPredeceasedActive, node.id]);
 
   const isToggleVisuallyOn = isPredeceasedActive || !isToggleOff || blocksHusbandSubstitution;
-  const displayN = isEffectivePredeceased && isToggleOff && (!node.heirs || node.heirs.length === 0)
-    ? 0
-    : (calcShare ? calcShare.n : (node.shareN || 0));
-  const displayD = isEffectivePredeceased && isToggleOff && (!node.heirs || node.heirs.length === 0)
-    ? 1
-    : (calcShare ? calcShare.d : (node.shareD || 1));
 
   const dndStyle = {
     transform: CSS.Transform.toString(transform),
@@ -258,18 +240,41 @@ export default function HeirRow({
             </div>
 
             <div className="ml-[30px] w-[76px] shrink-0">
-              <select
-                value={node.relation}
-                onChange={(e) => handleUpdate(node.id, 'relation', e.target.value)}
-                className="w-full cursor-pointer bg-transparent text-[15px] font-normal text-[#787774] outline-none dark:text-neutral-400"
-              >
-                {!isParentFemale && <option value="wife">{lawEra === '1991' ? RELATION_OPTIONS.wife.modern : RELATION_OPTIONS.wife.legacy}</option>}
-                {!isParentMale && <option value="husband">{lawEra === '1991' ? RELATION_OPTIONS.husband.modern : RELATION_OPTIONS.husband.legacy}</option>}
-                <option value="son">{lawEra === '1991' ? RELATION_OPTIONS.son.modern : RELATION_OPTIONS.son.legacy}</option>
-                <option value="daughter">{lawEra === '1991' ? RELATION_OPTIONS.daughter.modern : RELATION_OPTIONS.daughter.legacy}</option>
-                <option value="parent">직계존속</option>
-                <option value="sibling">형제자매</option>
-              </select>
+              {(() => {
+                const isRelationInvalid =
+                  (node.relation === 'wife' && isParentFemale) ||
+                  (node.relation === 'husband' && isParentMale);
+                return (
+                  <div className="relative">
+                    <select
+                      value={node.relation}
+                      onChange={(e) => handleUpdate(node.id, 'relation', e.target.value)}
+                      className={`w-full cursor-pointer bg-transparent text-[15px] font-normal outline-none dark:text-neutral-400 ${
+                        isRelationInvalid
+                          ? 'text-red-500 dark:text-red-400'
+                          : 'text-[#787774]'
+                      }`}
+                    >
+                      {isRelationInvalid && (
+                        <option value={node.relation} disabled>
+                          {RELATION_OPTIONS[node.relation]?.[lawEra === '1991' ? 'modern' : 'legacy']} ⚠
+                        </option>
+                      )}
+                      {!isParentFemale && <option value="wife">{lawEra === '1991' ? RELATION_OPTIONS.wife.modern : RELATION_OPTIONS.wife.legacy}</option>}
+                      {!isParentMale && <option value="husband">{lawEra === '1991' ? RELATION_OPTIONS.husband.modern : RELATION_OPTIONS.husband.legacy}</option>}
+                      <option value="son">{lawEra === '1991' ? RELATION_OPTIONS.son.modern : RELATION_OPTIONS.son.legacy}</option>
+                      <option value="daughter">{lawEra === '1991' ? RELATION_OPTIONS.daughter.modern : RELATION_OPTIONS.daughter.legacy}</option>
+                      <option value="parent">직계존속</option>
+                      <option value="sibling">형제자매</option>
+                    </select>
+                    {isRelationInvalid && (
+                      <div className="absolute left-0 top-full mt-0.5 z-50 whitespace-nowrap rounded bg-red-600 px-2 py-0.5 text-[11px] text-white shadow">
+                        관계 재검토 필요
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="ml-[30px] flex w-[150px] shrink-0 items-center text-[15px]">
@@ -299,6 +304,8 @@ export default function HeirRow({
                     })}
                     className={`flex-1 bg-transparent text-[13px] font-bold outline-none ${isEffectivePredeceased ? 'text-[#787774] dark:text-neutral-400' : 'text-[#37352f] dark:text-neutral-100'}`}
                     placeholder="사망일자"
+                    compareDate={inheritedDate}
+                    compareLabel="피상속인 사망일"
                   />
                 ) : (
                   <span className="text-[13px] font-medium text-[#787774]">생존</span>

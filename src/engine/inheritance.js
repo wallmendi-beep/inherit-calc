@@ -9,6 +9,7 @@ import { assignHeirShare, determineActiveRank } from './distribution.js';
 import { auditInheritanceResult } from './inheritanceAudit.js';
 import { findGlobalSuccessors, findHeirsByName } from './successorSearch.js';
 import {
+  buildEngineWarning,
   buildIneligibleSubstitutionWarning,
   buildInheritanceCycleWarning,
   buildMissingPrimaryHojuWarning,
@@ -30,25 +31,7 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
     return person.personId || person.id || `${person.name || ''}::${person.relation || ''}`;
   };
 
-  const pushWarning = ({
-    code = 'engine-warning',
-    severity = 'warning',
-    blocking = false,
-    id = null,
-    personId = null,
-    targetTabId = null,
-    text = '',
-  }) => {
-    warnings.push({
-      code,
-      severity,
-      blocking,
-      id,
-      personId,
-      targetTabId: targetTabId || personId || id || null,
-      text,
-    });
-  };
+  const pushWarning = (params) => warnings.push(buildEngineWarning(params));
 
   const getHojuBonusContext = ({ node, isSubstitution, parentDecName }) => {
     const relation = node?.relation || '';
@@ -101,7 +84,6 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
     }));
   };
 
-  //  parentPersonId를 추가하여 현재 어떤 탭(부모)을 처리 중인지 추적합니다.
   const traverse = (node, inN, inD, inheritedDate, visitedIds = [], parentDecName = '피상속인') => {
     if (visitedIds.includes(node.id)) {
       pushWarning(buildInheritanceCycleWarning({ node }));
@@ -127,7 +109,6 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
 
     const law = getLawEra(distributionDate); 
 
-    //  최종 진화: 1순위 가지 멸절 시 2순위/3순위로의 자동 이전을 완벽하게 제어하는 스마트 필터
     const isRenounced = (h, contextDate) => isRenouncedHeir(h, contextDate, {
       isBefore,
       isSpouseRelation,
@@ -170,8 +151,7 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
       if (node.id !== 'root' && node.isDeceased && node.deathDate && isBefore(node.deathDate, inheritedDate)) {
         const activeHeirs = (node.heirs || []).filter(h => !h.isExcluded);
         if (activeHeirs.length === 0) {
-          // [v4.12] 하위 데이터가 없으면 전역 추적을 시작하므로 경고를 경감하거나 자동 배분됨을 안내
-          // warnings.push({ id: node.id, text: `[${node.name}] 사망(${node.deathDate})에 따른 하위 상속인 정보가 없습니다.` });
+          // 하위 데이터가 없으면 전역 계보 추적 엔진이 자동 처리함
         }
       }
     }
@@ -234,9 +214,8 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
       }
     }
 
-    // [v4.12] 전역 계보 추적 엔진: 여전히 상속인이 없다면 법정 순위(부모/형제)로 자동 이전
-    // ※ successorStatus === 'confirmed_no_substitute_heirs': 사용자가 명시적으로 "후속 상속인 없음"을
-    //   확정한 경우 자동 탐색을 건너뜀. 이를 무시하면 엔진이 형제자매를 자동 배분하여 의도치 않은 결과 발생.
+    // successorStatus === 'confirmed_no_substitute_heirs' 시 자동 탐색 건너뜀:
+    // 엔진이 형제자매를 자동 배분하여 의도치 않은 결과가 발생할 수 있기 때문
     if (targetHeirs.length === 0 && !isSubstitution && node.id !== 'root' && !isRenounced(node, inheritedDate) && node.successorStatus !== 'confirmed_no_substitute_heirs') {
       const globalSuccessors = findGlobalSuccessors(tree, node).filter(h => !isRenounced(h, distributionDate));
       if (globalSuccessors.length > 0) {
@@ -341,8 +320,7 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
         } else {
           const [sn, sd] = math.simplify(h.r * 100, total * 100);
           const [nn, nd] = math.multiply(inN, inD, sn, sd);
-          // rSnap: 계산 시점의 h.r 스냅샷 보존 (이후 traverse가 h.r을 덮어써도 merge에서 올바른 값 사용)
-          if (step) step.dists.push({ h, n: nn, d: nd, sn, sd, rSnap: h.r, mod: h.modifierReason });
+              if (step) step.dists.push({ h, n: nn, d: nd, sn, sd, rSnap: h.r, mod: h.modifierReason });
           childrenToTraverse.push({ h, nn, nd });
         }
       });
@@ -432,7 +410,6 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
 
   const subGroups = Object.values(subMap).sort((a, b) => a.order - b.order);
   
-  //  중복 에러 제거 (객체 형태 지원)
   const uniqueWarnings = dedupeWarnings(warnings);
 
   const finalShares = { direct: directShares, subGroups: subGroups };
@@ -475,7 +452,7 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
     blockingIssues,
     repairHints,
     integrity,
-    warnings: uniqueWarnings, //  업그레이드된 에러 배열 내보내기
+    warnings: uniqueWarnings,
     appliedLaws: Array.from(appliedLaws).sort()
   };
 };

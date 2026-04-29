@@ -22,8 +22,6 @@ export default function InputPanel({
   handleRootUpdate,
   handleDragEnd,
   sensors,
-  setAiTargetId,
-  setIsAiModalOpen,
   isMainQuickActive,
   setIsMainQuickActive,
   mainQuickVal,
@@ -46,12 +44,6 @@ export default function InputPanel({
   const showCurrentHojuToggle =
     currentLawEra !== '1991' &&
     (isRootNode || ['son', 'husband'].includes(currentNode?.relation));
-  const suggestHojuSelection =
-    showCurrentHojuToggle &&
-    !isRootNode &&
-    !currentNode?.isHoju &&
-    ['son', 'husband'].includes(currentNode?.relation) &&
-    nodeHeirs.length > 0;
   const requiresHojuReview =
     currentLawEra !== '1991' &&
     (isRootNode || ['son', 'husband'].includes(currentNode?.relation));
@@ -70,65 +62,6 @@ export default function InputPanel({
     return findParentNode(tree, currentNode.id, currentNode.personId) || activeTabObj?.parentNode || null;
   }, [isRootNode, currentNode, tree, activeTabObj, findParentNode]);
   const parentHeirsForGuide = resolvedParentNode?.heirs || [];
-  const isEligibleAtCurrentStep = (person) => {
-    if (!person || person.isExcluded) return false;
-    if (!person.isDeceased) return true;
-    if (!person.deathDate || !currentNode?.deathDate) return false;
-    return !isBefore(person.deathDate, currentNode.deathDate);
-  };
-  const isStickyExcluded = (person) => (
-    ['lost', 'disqualified', 'remarried', 'renounce', 'blocked_husband_substitution'].includes(person?.exclusionOption || '')
-  );
-  const collectSubstituteDisplayNames = (person, visited = new Set()) => {
-    if (!person || visited.has(person.id)) return [];
-    visited.add(person.id);
-    const names = [];
-    (person.heirs || []).forEach((heir) => {
-      if (!heir || isStickyExcluded(heir)) return;
-      if (!heir.isDeceased && !heir.isExcluded) {
-        if (heir.name?.trim()) names.push(heir.name.trim());
-        return;
-      }
-      if ((heir.heirs || []).length > 0) {
-        names.push(...collectSubstituteDisplayNames(heir, visited));
-      }
-    });
-    return Array.from(new Set(names));
-  };
-
-  const spouseEmptyStateGuide = React.useMemo(() => {
-    if (!currentNode || !['wife', 'husband', 'spouse'].includes(currentNode.relation)) return null;
-    if (currentNode.relation === 'wife') {
-      return {
-        title: `[${currentNode.name || '해당 배우자'}]에게만 있는 추가 자녀가 있는지 확인해 주세요.`,
-        body: `1991년 이전 사건에서는 [${resolvedParentNode?.name || '상위 사건'}]의 자녀들이 [${currentNode.name || '해당 배우자'}] 사건의 상속인으로 반영됩니다. ${currentNode.name || '해당 배우자'}에게만 있는 별도의 자녀가 있으면 추가로 입력해 주세요.`,
-        confirmHelper: `추가 자녀가 없으면 '추가 상속인 없음'으로 정리하면 됩니다.`,
-      };
-    }
-    if (currentNode.relation === 'husband') {
-      return {
-        title: `[${currentNode.name || '해당 배우자'}] 사건의 자녀 범위를 확인해 주세요.`,
-        body: `아래의 상속인은 [${resolvedParentNode?.name || '상위 사건'}] 사건 기준 자녀 목록입니다. [${currentNode.name || '해당 배우자'}]의 상속인이 아닌 사람이 있으면 선택해 주세요.`,
-        confirmHelper: `자녀 범위를 확인한 뒤, 남는 상속인이 없으면 다음 순위 상속인 입력 여부를 검토해 주세요.`,
-      };
-    }
-    return {
-      title: `[${currentNode.name || '해당 배우자'}] 사건의 후속 상속 구성을 확인해 주세요.`,
-      body: `현재 사건에서 [${currentNode.name || '해당 배우자'}]에게 연결될 후속 상속인이 더 있는지 확인해 주세요. 더 입력할 사람이 없으면 '추가 상속인 없음'으로 정리하면 됩니다.`,
-      confirmHelper: `이 배우자 사건에서 더 입력할 후속 상속인이 없으면 현재 상태를 확정합니다.`,
-    };
-  }, [currentNode, resolvedParentNode]);
-
-  const [excludedSpouseChildMap, setExcludedSpouseChildMap] = React.useState({});
-  const parentChildCandidates = React.useMemo(
-    () => parentHeirsForGuide.filter((person) => ['son', 'daughter'].includes(person.relation)),
-    [parentHeirsForGuide]
-  );
-  const getSpouseCandidateKey = React.useCallback(
-    (person) => person?.personId || person?.id || '',
-    []
-  );
-  const excludedSpouseChildIds = excludedSpouseChildMap[currentNode?.id || ''] || [];
   const reviewTargetNodeIds = React.useMemo(
     () => new Set((reviewContext?.targetNodeIds || []).filter(Boolean)),
     [reviewContext]
@@ -147,42 +80,6 @@ export default function InputPanel({
     }, 150);
     return () => clearTimeout(timer);
   }, [reviewTargetNodeIds, activeDeceasedTab]);
-
-  const isLegacyWifeReinheritance =
-    !!currentNode && currentNode.relation === 'wife' && currentLawEra !== '1991' &&
-    !!resolvedParentNode && resolvedParentNode.id !== 'root';
-  const isHusbandReinheritanceGuide =
-    !!currentNode && currentNode.relation === 'husband' &&
-    !!resolvedParentNode && resolvedParentNode.id !== 'root';
-  const showSpouseComparisonPanel =
-    ['wife', 'husband', 'spouse'].includes(currentNode?.relation) &&
-    parentChildCandidates.length > 0 && !!resolvedParentNode;
-  const areAllHusbandCandidatesExcluded =
-    isHusbandReinheritanceGuide && parentChildCandidates.length > 0 &&
-    excludedSpouseChildIds.length === parentChildCandidates.length;
-
-  const toggleExcludedSpouseChild = React.useCallback((personId) => {
-    if (!currentNode?.id || !personId) return;
-    setExcludedSpouseChildMap((prev) => {
-      const current = new Set(prev[currentNode.id] || []);
-      if (current.has(personId)) current.delete(personId);
-      else current.add(personId);
-      return { ...prev, [currentNode.id]: Array.from(current) };
-    });
-  }, [currentNode]);
-
-  const clearExcludedSpouseChildren = React.useCallback(() => {
-    if (!currentNode?.id) return;
-    setExcludedSpouseChildMap((prev) => ({ ...prev, [currentNode.id]: [] }));
-  }, [currentNode]);
-
-  const excludeAllSpouseChildren = React.useCallback(() => {
-    if (!currentNode?.id) return;
-    setExcludedSpouseChildMap((prev) => ({
-      ...prev,
-      [currentNode.id]: parentChildCandidates.map((person) => getSpouseCandidateKey(person)).filter(Boolean),
-    }));
-  }, [currentNode, parentChildCandidates, getSpouseCandidateKey]);
 
   const getEmptyStateGuide = () => {
     if (currentNode?.successorStatus) {
@@ -617,7 +514,6 @@ export default function InputPanel({
                     <HeirRow
                       key={h.id}
                       node={h}
-                      finalShares={finalShares}
                       level={1}
                       handleUpdate={handleUpdate}
                       removeHeir={removeHeir}

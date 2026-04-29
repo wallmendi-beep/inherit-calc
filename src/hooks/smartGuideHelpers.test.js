@@ -11,7 +11,7 @@ describe('smartGuideHelpers', () => {
         { parentName: '이성우', spouseRelation: 'wife' },
         ['노금례']
       )
-    ).toBe('[노금례] 사건의 추가 자녀 여부를 확인해 주세요.');
+    ).toBe("후속 상속 미확정 — [노금례] 사건. 추가 자녀가 있으면 입력, 없으면 '없음 확정'을 눌러 주세요.");
   });
 
   it('builds a short direct guide for husband reinheritance', () => {
@@ -20,7 +20,7 @@ describe('smartGuideHelpers', () => {
         { parentName: '정순화', spouseRelation: 'husband' },
         ['이명우']
       )
-    ).toBe('[이명우] 사건의 자녀 범위를 확인해 주세요.');
+    ).toBe("후속 상속 미확정 — [이명우] 사건. 자녀 범위를 확인하고 입력해 주세요.");
   });
 
   it('detects missing stepchild inclusion guidance for pre-1991 wife cases', () => {
@@ -60,7 +60,7 @@ describe('smartGuideHelpers', () => {
     const entries = collectLegacyStepchildGuideEntries(tree);
 
     expect(entries).toHaveLength(1);
-    expect(entries[0].text).toContain('1991년 이전에는 계모자관계에 따라 [노금례] 사건의 상속인에 포함될 수 있으니 확인 바랍니다.');
+    expect(entries[0].text).toContain('구법상 [노금례] 사건의 상속인에 포함될 수 있습니다.');
     expect(entries[0].targetTabId).toBe('root');
   });
 });
