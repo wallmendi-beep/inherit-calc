@@ -12,7 +12,7 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
   // 1. 공통 헤더 제목 매핑
   const reportTitle = {
     input: '상속인 명부 및 가계 연혁',
-    tree: '상속인 명부 및 가계 연혁',
+    tree: '상속지분 산출 내역서 (사건별)',
     calc: '상속지분 산출 내역서 (단계별)',
     result: '상속지분 취득 경로 및 최종 결과표',
     summary: summaryViewMode === 'path' ? '법정 상속분 취득 경로표' : '법정 상속분 요약표',
@@ -121,10 +121,10 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
       </table>
 
       {/* ========================================== */}
-      {/* 탭 1: 가계도 (상속인 명부 형태) */}
+      {/* 탭 1-A: 데이터 입력 — 상속인 명부 */}
       {/* ========================================== */}
-      {(activeTab === 'input' || activeTab === 'tree') && (
-        <div className="mb-8"> {/* 🌟 전체 박스의 페이지 넘김 방지 옵션 제거 (용지 낭비 해결) */}
+      {activeTab === 'input' && (
+        <div className="mb-8">
           <table className="w-full border-collapse border border-black text-[11px]">
             <thead className="bg-gray-100 text-center font-bold">
               <tr>
@@ -138,7 +138,6 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
             </thead>
             <tbody>
               {flatHeirs.map(h => (
-                // 🌟 tr(행) 단위로만 안 잘리게 break-inside-avoid 적용
                 <tr key={h.id} className="border-b border-gray-400 break-inside-avoid">
                   <td className="border border-black py-1.5 px-2 text-center text-gray-600">{h.prefix}</td>
                   <td className="border border-black py-1.5 px-2" style={{ paddingLeft: `${(h.depth * 12) + 8}px` }}>
@@ -157,7 +156,6 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
                     {!h.marriageDate && !h.remarriageDate && !h.divorceDate && !h.restoreDate && '-'}
                   </td>
                   <td className="border border-black py-1.5 px-2 text-center text-[10px]">
-                    {/* 🌟 번역기 적용 */}
                     {h.isExcluded ? <span className="text-red-600 font-bold">상속권 없음 ({translateExclusion(h.exclusionOption)})</span> : ''}
                     {h.isHoju ? <div className="text-blue-600 font-bold">호주상속인</div> : ''}
                     {h.isSameRegister === false ? <div className="text-orange-600">출가</div> : ''}
@@ -168,6 +166,90 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
           </table>
         </div>
       )}
+
+      {/* ========================================== */}
+      {/* 탭 1-B: 사건 검토 — STEP별 지분 산출표   */}
+      {/* ========================================== */}
+      {activeTab === 'tree' && calcSteps && calcSteps.length > 0 && (() => {
+        // 재상속/대습 사건이 있는 personId 집합
+        const continuationIds = new Set(
+          calcSteps.map(s => s.dec?.personId || s.dec?.id).filter(Boolean)
+        );
+        return (
+          <div className="space-y-6">
+            {calcSteps.map((s, i) => {
+              const era = getLawEra(s.dec?.deathDate);
+              const activeDists = (s.dists || []).filter(d => !d.ex && d.n > 0);
+              const excludedDists = (s.dists || []).filter(d => d.ex || d.n === 0);
+              const innerLCM = activeDists.reduce((acc, d) => (d.sd ? math.lcm(acc, d.sd) : acc), 1);
+              return (
+                <div key={`tree-step-${i}`} className="break-inside-avoid">
+                  {/* STEP 헤더 */}
+                  <div className="mb-1.5 flex flex-wrap items-baseline gap-3 border-b-2 border-black pb-1">
+                    <span className="text-[11px] font-bold text-gray-500">STEP {i + 1}</span>
+                    <span className="text-[13px] font-black">망 {s.dec?.name}</span>
+                    <span className="text-[11px] text-gray-600">{formatKorDate(s.dec?.deathDate)} 사망</span>
+                    <span className="text-[11px] font-bold">지분 {s.inN}/{s.inD}</span>
+                    <span className="rounded border border-gray-400 px-1.5 py-0.5 text-[10px] font-bold text-gray-600">{lawLabel(era)}</span>
+                  </div>
+                  {/* 산출 표 */}
+                  <table className="w-full border-collapse border border-black text-[11px]">
+                    <thead className="bg-gray-100 text-center font-bold">
+                      <tr>
+                        <th className="border border-black py-1.5 px-2 w-[15%]">상속인</th>
+                        <th className="border border-black py-1.5 px-2 w-[11%]">관계</th>
+                        <th className="border border-black py-1.5 px-2 w-[24%]">계산식</th>
+                        <th className="border border-black py-1.5 px-2 w-[15%]">취득 지분</th>
+                        <th className="border border-black py-1.5 px-2 w-[35%]">산정 사유</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {/* 취득자 */}
+                      {activeDists.map((d, di) => {
+                        const pid = d.h?.personId || d.h?.id;
+                        const isContinued = pid && continuationIds.has(pid);
+                        const isPredeceased = d.h?.deathDate && s.dec?.deathDate &&
+                          d.h.deathDate < s.dec.deathDate;
+                        const continuationLabel = isContinued
+                          ? (isPredeceased ? '→ 대습상속 개시' : '→ 재상속 개시')
+                          : '';
+                        const innerScale = innerLCM && d.sd && innerLCM !== d.sd ? innerLCM / d.sd : 1;
+                        const formula = `${s.inN}/${s.inD} × ${(d.sn || 0) * innerScale}/${innerLCM || d.sd || 1}`;
+                        const reasons = [];
+                        if (d.mod) reasons.push(d.mod);
+                        if (continuationLabel) reasons.push(continuationLabel);
+                        return (
+                          <tr key={`a-${di}`} className="break-inside-avoid">
+                            <td className="border border-black py-1.5 px-2 text-center font-bold">{d.h?.name}</td>
+                            <td className="border border-black py-1.5 px-2 text-center">{getRelStr(d.h?.relation, s.dec?.deathDate)}</td>
+                            <td className="border border-black py-1.5 px-2 text-center font-mono">{formula}</td>
+                            <td className="border border-black py-1.5 px-2 text-center font-bold">{d.n}/{d.d}</td>
+                            <td className="border border-black py-1.5 px-2 text-left">
+                              {reasons.length > 0 ? reasons.join('  ') : '균분'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {/* 상속권 없음 */}
+                      {excludedDists.map((d, di) => (
+                        <tr key={`e-${di}`} className="break-inside-avoid bg-gray-50 text-gray-400">
+                          <td className="border border-black py-1.5 px-2 text-center line-through">{d.h?.name}</td>
+                          <td className="border border-black py-1.5 px-2 text-center">{getRelStr(d.h?.relation, s.dec?.deathDate)}</td>
+                          <td className="border border-black py-1.5 px-2 text-center">—</td>
+                          <td className="border border-black py-1.5 px-2 text-center">—</td>
+                          <td className="border border-black py-1.5 px-2 text-left text-[10px]">
+                            상속권 없음 ({translateExclusion(d.ex) || '제외'})
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
 
       {/* ========================================== */}
       {/* 탭 2: 계산표 (단계별 산출) */}
