@@ -133,6 +133,31 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       if (node.heirs) node.heirs.forEach(checkDuplicateSpouseGuide);
     };
 
+    // 보조 함수 6-1: 재혼 배우자 자녀 범위 점검
+    const checkRemarriedSpouseChildrenGuide = (node) => {
+      const spouses = (node.heirs || []).filter(
+        (h) => ['wife', 'husband', 'spouse'].includes(h.relation) && h.remarriageDate
+      );
+      spouses.forEach((spouse) => {
+        const hasChildren = (spouse.heirs || []).some(
+          (h) => ['son', 'daughter'].includes(h.relation)
+        );
+        if (!hasChildren) return;
+        const key = `remarried-children-${spouse.personId || spouse.id}`;
+        if (!uniqueGuidesMap.has(key)) {
+          uniqueGuidesMap.set(key, {
+            id: spouse.id,
+            uniqueKey: key,
+            targetTabId: spouse.personId || spouse.id,
+            type: 'recommended',
+            navigationMode: 'event',
+            text: `재혼 자녀 범위 확인 — [${spouse.name || '해당 배우자'}]은 재혼 이력이 있습니다. 입력된 자녀가 현재 배우자와의 자녀인지 확인해 주세요.`,
+          });
+        }
+      });
+      if (node.heirs) node.heirs.forEach(checkRemarriedSpouseChildrenGuide);
+    };
+
     // 보조 함수 6: 노드별 가이드 생성 (메인 루프)
     const checkGuideNode = (node, parentDate) => {
       const parentNode = findParentNodeInHook(tree, node.id);
@@ -256,6 +281,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
     checkStructuralError(tree);
     checkIndependentExclusionGuide(tree);
     checkDuplicateSpouseGuide(tree);
+    checkRemarriedSpouseChildrenGuide(tree);
     if (tree.heirs) tree.heirs.forEach(h => checkGuideNode(h, tree.deathDate));
 
     collectLegacyStepchildGuideEntries(tree).forEach((entry) => {

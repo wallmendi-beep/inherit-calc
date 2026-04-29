@@ -362,6 +362,16 @@ export default function InputPanel({
           </div>
 
           <div className="px-10 pb-10 pt-6 bg-white dark:bg-neutral-800 rounded-b-xl border border-t-0 border-[#f1f1ef] dark:border-neutral-700/50">
+            {currentNodeIssues.filter(i => i.blocking && i.code !== 'inheritance-cycle').length > 0 && (
+              <div className="mb-4 space-y-1.5">
+                {currentNodeIssues.filter(i => i.blocking && i.code !== 'inheritance-cycle').map((issue, idx) => (
+                  <div key={idx} className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300">
+                    <span className="mt-0.5 shrink-0 font-bold">⚠</span>
+                    <span className="font-medium leading-snug">{issue.text}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             {isMainQuickActive && (
               <div className="mb-4 p-4 rounded-lg bg-[#fcfcfb] dark:bg-neutral-800/50 border border-[#e9e9e7] dark:border-neutral-700">
                 <div className="flex flex-col gap-2">
