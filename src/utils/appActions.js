@@ -34,9 +34,10 @@ function sanitizeKorFilePart(str, fallback) {
 export function printCurrentTab({ activeTab, tree, summaryViewMode = 'structure' }) {
   const tabNames = {
     input: '가계도시뮬레이션',
-    tree: '사건검토_상속인명부',
+    tree: '사건검토_산출내역',
     calc: '상속지분_산출내역',
-    summary: summaryViewMode === 'path' ? '법정상속분_취득경로표' : '법정상속분_요약표',
+    acquisition: '취득경로표',
+    summary: '법정상속분_요약표',
     amount: '구체적상속분_결과',
   };
 

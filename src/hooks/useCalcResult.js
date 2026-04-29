@@ -26,7 +26,7 @@ function preprocessTree(n, parentDate, parentNode, visited = new Set()) {
 export function useCalcResult(tree, propertyValue, activeTab) {
   return useMemo(() => {
     const calcTree = preprocessTree(tree, tree.deathDate, null);
-    const shouldBuildCalcSteps = ['tree', 'calc', 'summary', 'amount'].includes(activeTab);
+    const shouldBuildCalcSteps = ['tree', 'calc', 'summary', 'amount', 'acquisition'].includes(activeTab);
     const result = calculateInheritance(calcTree, propertyValue, { includeCalcSteps: shouldBuildCalcSteps });
     const shouldBuildCompare = ['calc', 'summary'].includes(activeTab);
     const compareTree = shouldBuildCompare ? stripHojuBonusInputs(calcTree) : null;

@@ -14,8 +14,8 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
     input: '상속인 명부 및 가계 연혁',
     tree: '상속지분 산출 내역서 (사건별)',
     calc: '상속지분 산출 내역서 (단계별)',
-    result: '상속지분 취득 경로 및 최종 결과표',
-    summary: summaryViewMode === 'path' ? '법정 상속분 취득 경로표' : '법정 상속분 요약표',
+    acquisition: '법정 상속분 취득 경로표',
+    summary: '법정 상속분 요약표',
     amount: '구체적 상속분 (금액) 정산서'
   }[activeTab] || '상속지분 계산 보고서';
 
@@ -338,9 +338,9 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
       )}
 
       {/* ========================================== */}
-      {/* 탭 4-B: 법정 상속분 요약 (취득 경로) */}
+      {/* 취득경로 탭 / 요약 경로형 — 공통 인쇄 섹션 */}
       {/* ========================================== */}
-      {activeTab === 'summary' && summaryViewMode === 'path' && resultGroups.length > 0 && (() => {
+      {(activeTab === 'acquisition' || (activeTab === 'summary' && summaryViewMode === 'path')) && resultGroups.length > 0 && (() => {
         const commonD = resultGroups.reduce((acc, r) => {
           const total = r.sources.reduce((s, src) => { const [nn, nd] = math.add(s.n, s.d, src.n, src.d); return { n: nn, d: nd }; }, { n: 0, d: 1 });
           return total.n > 0 ? math.lcm(acc, total.d) : acc;
