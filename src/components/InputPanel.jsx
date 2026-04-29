@@ -273,7 +273,7 @@ export default function InputPanel({
         {getLawEra(tree.deathDate) !== '1991' && (
           <div className="shrink-0 flex items-center gap-2">
             <label className="text-[12px] text-[#787774] dark:text-neutral-300 font-bold whitespace-nowrap">호주</label>
-            <input type="checkbox" disabled={!isRootNode} checked={isRootNode ? tree.isHoju !== false : false} onChange={(e) => handleRootUpdate('isHoju', e.target.checked)} className="w-3.5 h-3.5 cursor-pointer accent-neutral-500" />
+            <input type="checkbox" disabled={!isRootNode} checked={tree.isHoju !== false} onChange={(e) => handleRootUpdate('isHoju', e.target.checked)} className="w-3.5 h-3.5 cursor-pointer accent-neutral-500" />
           </div>
         )}
         <div className="shrink-0 flex items-center gap-2">
