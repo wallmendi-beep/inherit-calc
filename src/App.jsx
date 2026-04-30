@@ -751,7 +751,7 @@ function App() {
                       />
                     </div>
                   )}
-                {activeTab === 'acquisition' && <AcquisitionPanel tree={tree} calcSteps={calcSteps} issues={blockingIssues} handleNavigate={handleNavigate} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />}
+                {activeTab === 'acquisition' && <AcquisitionPanel tree={tree} calcSteps={calcSteps} finalShares={finalShares} issues={blockingIssues} handleNavigate={handleNavigate} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />}
                 {activeTab === 'summary' && (
                   <div className="space-y-6">
                     <SummaryPanel tree={tree} finalShares={finalShares} calcSteps={calcSteps} issues={blockingIssues} handleNavigate={handleNavigate} matchIds={matchIds} currentMatchIdx={currentMatchIdx} searchQuery={searchQuery} setSearchQuery={setSearchQuery} viewMode={summaryViewMode} setViewMode={setSummaryViewMode} />

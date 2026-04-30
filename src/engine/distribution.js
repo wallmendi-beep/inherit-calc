@@ -117,16 +117,16 @@ export const assignHeirShare = (
 
     if (law === '1979') {
       if (!married) return { shareWeight: 1.0, exclusionReason: '', modifierReason };
-      modifierReason = isSibling ? '자매 출가녀 감산 (남자의 1/4)' : '출가녀 감산 (남자의 1/4)';
+      modifierReason = '출가녀 감산 (남자의 1/4)';
       return { shareWeight: 0.25, exclusionReason: '', modifierReason };
     }
 
     // 1960 era
     if (!married) {
-      modifierReason = isSibling ? '자매 여자 감산 (남자의 1/2)' : '여자 감산 (남자의 1/2)';
+      modifierReason = '여자 감산 (남자의 1/2)';
       return { shareWeight: 0.5, exclusionReason: '', modifierReason };
     }
-    modifierReason = isSibling ? '자매 출가녀 감산 (남자의 1/4)' : '출가녀 감산 (남자의 1/4)';
+    modifierReason = '출가녀 감산 (남자의 1/4)';
     return { shareWeight: 0.25, exclusionReason: '', modifierReason };
   }
 
