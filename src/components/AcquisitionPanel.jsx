@@ -87,11 +87,11 @@ export default function AcquisitionPanel({ calcSteps = [], tree, issues = [], ha
     <section className="w-full space-y-4 text-[#37352f] dark:text-neutral-200">
       {/* 검색 */}
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[13px] text-[#787774] dark:text-neutral-300">
-          최종 생존 상속인별 지분 취득 경로입니다.
+        <p className="text-[12px] text-[#787774] dark:text-neutral-300">
+          최종 생존 상속인별 지분 취득 경로 · 총 {results.length}명
         </p>
         <div className="flex items-center gap-2 rounded-full border border-[#e5e5e5] bg-white px-3 py-1.5 shadow-sm focus-within:ring-2 focus-within:ring-blue-100 dark:border-neutral-600 dark:bg-neutral-800">
-          <svg className="h-4 w-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="h-3.5 w-3.5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input
@@ -99,13 +99,13 @@ export default function AcquisitionPanel({ calcSteps = [], tree, issues = [], ha
             placeholder="이름 검색"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-20 border-none bg-transparent text-[13px] outline-none transition-all focus:w-32 dark:text-neutral-200"
+            className="w-20 border-none bg-transparent text-[12px] outline-none transition-all focus:w-28 dark:text-neutral-200"
           />
         </div>
       </div>
 
-      {/* 카드 목록 */}
-      <div className="space-y-3">
+      {/* 카드 2열 그리드 */}
+      <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-2">
         {results.map((result) => {
           const total = result.sources.reduce(
             (sum, s) => { const [nn, nd] = math.add(sum.n, sum.d, s.n, s.d); return { n: nn, d: nd }; },
@@ -119,16 +119,18 @@ export default function AcquisitionPanel({ calcSteps = [], tree, issues = [], ha
           return (
             <div
               key={result.personId}
-              className="rounded-xl border border-[#e9e9e7] bg-white px-5 py-4 shadow-sm dark:border-neutral-600 dark:bg-neutral-900/95"
+              className="rounded-xl border border-[#e9e9e7] bg-white shadow-sm dark:border-neutral-600 dark:bg-neutral-900/95"
             >
-              {/* 헤더: 이름 + 최종 지분 */}
-              <div className="flex items-baseline justify-between gap-3">
-                <div className="flex flex-wrap items-baseline gap-2">
+              {/* 3열: 이름 | 취득경로 | 지분 */}
+              <div className="grid grid-cols-[auto_1fr_auto] items-start gap-0">
+
+                {/* 왼쪽: 이름·관계 */}
+                <div className="flex flex-col gap-1 px-3.5 py-3 pr-3">
                   <Tag tone="default">{getRelStr(result.relation, tree?.deathDate)}</Tag>
                   <button
                     type="button"
                     onClick={() => handleNavigate && handleNavigate(result.personId)}
-                    className={`text-[17px] font-black transition-colors hover:text-blue-700 dark:hover:text-blue-300 ${
+                    className={`text-left text-[14px] font-black leading-snug transition-colors hover:text-blue-700 dark:hover:text-blue-300 ${
                       personIssues.length > 0
                         ? 'text-red-600 dark:text-red-400'
                         : hojuApplied
@@ -139,47 +141,51 @@ export default function AcquisitionPanel({ calcSteps = [], tree, issues = [], ha
                     {result.name}
                   </button>
                   {personIssues.length > 0 && (
-                    <span className="inline-flex items-center rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-black text-red-700 dark:bg-red-900/50 dark:text-red-300">
+                    <span className="inline-flex w-fit items-center rounded-full bg-red-100 px-1.5 py-0.5 text-[9px] font-black text-red-700 dark:bg-red-900/50 dark:text-red-300">
                       경고
                     </span>
                   )}
-                  {isMultiSource && (
-                    <span className="text-[11px] text-[#9b9a97] dark:text-neutral-400">복수 경로</span>
-                  )}
                 </div>
-                <div className="shrink-0 text-right">
-                  <div className="text-[22px] font-black text-[#3f5f8a] dark:text-blue-300">
+
+                {/* 중간: 취득경로 */}
+                <div className="border-l border-r border-dashed border-[#eeece8] px-3 py-3 dark:border-neutral-700">
+                  <div className="space-y-1">
+                    {result.sources.map((source, idx) => (
+                      <div key={idx} className="flex flex-wrap items-baseline gap-1 text-[11.5px]">
+                        <span className="shrink-0 text-[#c0bdb9] dark:text-neutral-500">↳</span>
+                        <span className="font-bold text-[#3f5f8a] dark:text-blue-300">{source.n}/{source.d}</span>
+                        <span className="text-[#6a6964] dark:text-neutral-300">
+                          망 {source.decName}의 {getRelStr(source.relation, source.decDeathDate) || '상속인'}
+                        </span>
+                        <Tag>{lawLabel(source.lawEra)}</Tag>
+                        {source.modifier && (
+                          <span className="text-[10px] text-[#9b9a97] dark:text-neutral-400">({source.modifier})</span>
+                        )}
+                      </div>
+                    ))}
+                    {isMultiSource && (
+                      <div className="mt-1 border-t border-dashed border-[#e9e9e7] pt-1 text-[11px] text-[#6a6964] dark:border-neutral-700 dark:text-neutral-400">
+                        = {result.sources.map((s) => `${s.n}/${s.d}`).join(' + ')} = <span className="font-bold text-[#37352f] dark:text-neutral-200">{total.n}/{total.d}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 오른쪽: 최종 지분 */}
+                <div className="flex flex-col items-end justify-center px-3.5 py-3 pl-3">
+                  <div className="text-[18px] font-black text-[#3f5f8a] dark:text-blue-300 leading-none">
                     {total.n}/{total.d}
                   </div>
                   {commonD !== total.d && (
-                    <div className="text-[11px] font-medium text-[#9b9a97] dark:text-neutral-400">
+                    <div className="mt-0.5 text-[10px] font-medium text-[#9b9a97] dark:text-neutral-400">
                       통분 {unifiedN}/{commonD}
                     </div>
                   )}
+                  {isMultiSource && (
+                    <div className="mt-1 text-[9px] text-[#b0ada8] dark:text-neutral-500">복수경로</div>
+                  )}
                 </div>
-              </div>
 
-              {/* 취득 경로 */}
-              <div className="mt-3 space-y-1.5 border-t border-[#f1f1ef] pt-3 dark:border-neutral-700">
-                {result.sources.map((source, idx) => (
-                  <div key={idx} className="flex flex-wrap items-baseline gap-1.5 text-[12.5px]">
-                    <span className="shrink-0 text-[#c0bdb9] dark:text-neutral-500">↳</span>
-                    <span className="font-bold text-[#3f5f8a] dark:text-blue-300">{source.n}/{source.d}</span>
-                    <span className="text-[#6a6964] dark:text-neutral-300">
-                      망 {source.decName}의 {getRelStr(source.relation, source.decDeathDate) || '상속인'}
-                    </span>
-                    <Tag>{lawLabel(source.lawEra)}</Tag>
-                    {source.modifier && (
-                      <span className="text-[11px] text-[#9b9a97] dark:text-neutral-400">({source.modifier})</span>
-                    )}
-                  </div>
-                ))}
-                {isMultiSource && (
-                  <div className="mt-1 border-t border-dashed border-[#e9e9e7] pt-1.5 text-[12px] text-[#6a6964] dark:border-neutral-700 dark:text-neutral-400">
-                    = {result.sources.map((s) => `${s.n}/${s.d}`).join(' + ')}{' '}
-                    = <span className="font-bold text-[#37352f] dark:text-neutral-200">{total.n}/{total.d}</span>
-                  </div>
-                )}
               </div>
             </div>
           );

@@ -36,7 +36,7 @@ export const collectLegacyStepchildGuideEntries = (tree) => {
           node.relation === 'wife'
             ? node
             : (node.heirs || []).find((sibling) => sibling.id !== child.id && ['wife', 'spouse'].includes(sibling.relation)) || node;
-        const wifeEstateDate = wifeReferenceNode?.deathDate || node.deathDate || tree.deathDate;
+        const wifeEstateDate = node.deathDate || tree.deathDate;
         if (getLawEra(wifeEstateDate) === '1991') {
           walk(child);
           return;

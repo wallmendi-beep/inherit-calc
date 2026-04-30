@@ -216,7 +216,7 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
 
     // successorStatus === 'confirmed_no_substitute_heirs' 시 자동 탐색 건너뜀:
     // 엔진이 형제자매를 자동 배분하여 의도치 않은 결과가 발생할 수 있기 때문
-    if (targetHeirs.length === 0 && !isSubstitution && node.id !== 'root' && !isRenounced(node, inheritedDate) && node.successorStatus !== 'confirmed_no_substitute_heirs') {
+    if (targetHeirs.length === 0 && !isSubstitution && node.id !== 'root' && !isRenounced(node, inheritedDate) && node.successorStatus !== 'confirmed_no_substitute_heirs' && !isSpouseRelation(node.relation)) {
       const globalSuccessors = findGlobalSuccessors(tree, node).filter(h => !isRenounced(h, distributionDate));
       if (globalSuccessors.length > 0) {
         // 구민법 시대에 출가녀 감산 대상 자매가 있으면 이름 목록 추가

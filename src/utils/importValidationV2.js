@@ -12,22 +12,50 @@ const buildIssue = (node, issue) => ({
   ...issue,
 });
 
-// 트리 전체에서 personId 중복 노드를 수집
+// 배우자 탭 간 동일 자녀(personId 기준) 이중 입력 감지
+// - 같은 조상의 여러 배우자 탭 아래 동일 personId 자녀가 등록된 경우만 플래그
+// - 여러 계통에서 정상적으로 상속받는 경우(다른 조상 계통)는 무시
 const collectDuplicatePersonIds = (tree) => {
-  const seen = {};
-  const walk = (node) => {
-    if (!node) return;
-    const pid = node.personId;
-    if (pid && node.id !== 'root') {
-      if (!seen[pid]) seen[pid] = { name: node.name, count: 0, nodeId: node.id };
-      seen[pid].count += 1;
+  const duplicates = [];
+
+  const checkNode = (node) => {
+    const activeSpouses = (node.heirs || []).filter(
+      (h) => SPOUSE_RELATIONS.has(h.relation) && !h.isExcluded
+    );
+    if (activeSpouses.length > 1) {
+      const spouseChildMaps = activeSpouses.map((spouse) => ({
+        spouse,
+        childIds: new Map(
+          (spouse.heirs || [])
+            .filter((c) => c.personId)
+            .map((c) => [c.personId, c])
+        ),
+      }));
+
+      const seen = new Set();
+      spouseChildMaps.forEach(({ childIds }) => {
+        childIds.forEach((child, pid) => {
+          const inOther = spouseChildMaps.some(
+            (other) => other.childIds !== childIds && other.childIds.has(pid)
+          );
+          if (inOther && !seen.has(pid)) {
+            seen.add(pid);
+            duplicates.push({
+              personId: pid,
+              name: child.name,
+              nodeId: child.id,
+              count: spouseChildMaps.filter((s) => s.childIds.has(pid)).length,
+            });
+          }
+        });
+      });
     }
-    (node.heirs || []).forEach(walk);
+
+    (node.heirs || []).forEach(checkNode);
   };
-  walk(tree);
-  return Object.entries(seen)
-    .filter(([, v]) => v.count > 1)
-    .map(([pid, v]) => ({ personId: pid, name: v.name, nodeId: v.nodeId, count: v.count }));
+
+  checkNode(tree);
+  return duplicates;
 };
 
 export const collectImportValidationIssues = (tree) => {

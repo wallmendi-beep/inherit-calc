@@ -29,6 +29,7 @@ export default function SidebarTreePanel({
   guideStatusMap = {},
   handleResizeMouseDown = () => {},
   removeHeir = () => {},
+  onPrintTree = () => {},
 }) {
   if (!sidebarOpen) return null;
 
@@ -53,34 +54,45 @@ export default function SidebarTreePanel({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 rounded-xl border border-[#e9e9e7] bg-white px-3 py-2 shadow-[0_1px_0_rgba(255,255,255,0.9)] dark:border-neutral-600 dark:bg-neutral-800">
-            <svg className="h-3.5 w-3.5 shrink-0 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              type="text"
-              placeholder="상속인 검색"
-              value={sidebarSearchQuery}
-              onChange={(e) => setSidebarSearchQuery(e.target.value)}
-              className="min-w-0 flex-1 bg-transparent text-[12px] text-[#37352f] outline-none placeholder:text-neutral-400 dark:text-neutral-200"
-            />
-            {matchCount > 0 && (
-              <div className="flex shrink-0 items-center gap-1">
-                <span className="text-[10px] font-medium text-neutral-400">
-                  {sidebarCurrentMatchIdx + 1}/{matchCount}
-                </span>
-                <button onClick={handleSidebarPrevMatch} className="rounded p-0.5 text-neutral-400 transition-colors hover:bg-[#f0f0ee] hover:text-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200" title="이전 결과">
-                  <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 15l7-7 7 7" />
-                  </svg>
-                </button>
-                <button onClick={handleSidebarNextMatch} className="rounded p-0.5 text-neutral-400 transition-colors hover:bg-[#f0f0ee] hover:text-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200" title="다음 결과">
-                  <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-              </div>
-            )}
+          <div className="flex items-center gap-1.5">
+            <div className="flex flex-1 items-center gap-2 rounded-xl border border-[#e9e9e7] bg-white px-3 py-2 shadow-[0_1px_0_rgba(255,255,255,0.9)] dark:border-neutral-600 dark:bg-neutral-800">
+              <svg className="h-3.5 w-3.5 shrink-0 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                placeholder="상속인 검색"
+                value={sidebarSearchQuery}
+                onChange={(e) => setSidebarSearchQuery(e.target.value)}
+                className="min-w-0 flex-1 bg-transparent text-[12px] text-[#37352f] outline-none placeholder:text-neutral-400 dark:text-neutral-200"
+              />
+              {matchCount > 0 && (
+                <div className="flex shrink-0 items-center gap-1">
+                  <span className="text-[10px] font-medium text-neutral-400">
+                    {sidebarCurrentMatchIdx + 1}/{matchCount}
+                  </span>
+                  <button onClick={handleSidebarPrevMatch} className="rounded p-0.5 text-neutral-400 transition-colors hover:bg-[#f0f0ee] hover:text-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200" title="이전 결과">
+                    <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 15l7-7 7 7" />
+                    </svg>
+                  </button>
+                  <button onClick={handleSidebarNextMatch} className="rounded p-0.5 text-neutral-400 transition-colors hover:bg-[#f0f0ee] hover:text-neutral-600 dark:hover:bg-neutral-700 dark:hover:text-neutral-200" title="다음 결과">
+                    <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+            </div>
+            <button
+              onClick={onPrintTree}
+              title="가계도 인쇄"
+              className="flex shrink-0 items-center justify-center rounded-xl border border-[#e9e9e7] bg-white p-2 text-neutral-400 shadow-[0_1px_0_rgba(255,255,255,0.9)] transition-colors hover:border-[#d7d5cf] hover:bg-[#f3f2ef] hover:text-neutral-600 dark:border-neutral-600 dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:hover:text-neutral-200"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6v-8z" />
+              </svg>
+            </button>
           </div>
         </div>
 

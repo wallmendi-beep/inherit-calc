@@ -97,11 +97,6 @@ export const DateInput = ({
           올바른 날짜가 아닙니다
         </div>
       )}
-      {isPredeceased && (
-        <div className="absolute left-0 top-full mt-0.5 z-50 whitespace-nowrap rounded bg-blue-600 px-2 py-0.5 text-[11px] text-white shadow">
-          {compareLabel || '기준일'}보다 이름 → 선사망 처리
-        </div>
-      )}
     </div>
   );
 };

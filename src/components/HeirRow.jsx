@@ -316,8 +316,8 @@ export default function HeirRow({
             <div className="ml-[10px] flex w-[180px] shrink-0 items-center gap-1.5">
               {(isEffectivePredeceased && isToggleOff && !isPredeceasedActive) ? (
                 <div className="flex shrink-0 items-center gap-1.5">
-                  <div className="flex h-[26px] w-[80px] shrink-0 items-center justify-center rounded-full border border-[#e5e5e5] bg-[#f8f8f7] shadow-sm dark:border-neutral-600 dark:bg-neutral-800">
-                    <span className="text-[11px] font-normal text-[#a3a3a3] dark:text-neutral-300">
+                  <div className="flex h-[26px] w-[80px] shrink-0 items-center justify-center rounded-full border border-blue-200 bg-blue-50 shadow-sm dark:border-blue-800/60 dark:bg-blue-950/30">
+                    <span className="text-[11px] font-medium text-blue-500 dark:text-blue-300">
                       선사망
                     </span>
                   </div>
@@ -339,8 +339,8 @@ export default function HeirRow({
                   )}
                 </div>
               ) : (isToggleOff && isSpouseType && isPreDeceasedCondition && !isPredeceasedActive) ? (
-                <div className="flex h-[26px] w-[150px] shrink-0 items-center justify-center rounded-full border border-neutral-200 bg-neutral-100 shadow-sm dark:border-neutral-600 dark:bg-neutral-800">
-                  <span className="text-[11px] font-normal text-neutral-500 dark:text-neutral-300">배우자 선사망 (상속권 없음)</span>
+                <div className="flex h-[26px] w-[150px] shrink-0 items-center justify-center rounded-full border border-blue-200 bg-blue-50 shadow-sm dark:border-blue-800/60 dark:bg-blue-950/30">
+                  <span className="text-[11px] font-medium text-blue-500 dark:text-blue-300">배우자 선사망 (상속권 없음)</span>
                 </div>
               ) : (isToggleOff && !isPredeceasedActive && !blocksHusbandSubstitution) ? (
                 <div className="group/select relative w-[120px] rounded border border-[#e5e5e5] bg-[#f8f8f7] px-2.5 py-1 transition-colors hover:border-neutral-300 dark:border-neutral-600 dark:bg-neutral-800">
