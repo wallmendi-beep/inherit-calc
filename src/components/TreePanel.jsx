@@ -170,14 +170,14 @@ const createGraphNode = ({ key, x, y, width, height, title, subtitle, dateLabel 
   isRoot,
 });
 
-const estimateCardHeight = (hasBranch) => hasBranch ? 80 : 54;
+const estimateCardHeight = (hasBranch) => hasBranch ? 80 : 58;
 
 const buildEventLayout = (step, stepMap, commonD, innerCommonD) => {
   const activeDists = (step.dists || []).filter((d) => !d.ex && d.n > 0);
   const spouseDists = activeDists.filter((d) => ['wife', 'husband', 'spouse'].includes(d.h?.relation));
   const heirDists = activeDists.filter((d) => !['wife', 'husband', 'spouse'].includes(d.h?.relation));
 
-  const rootW = 156;
+  const rootW = 162;
   const rootH = 76;
   const cardW = 162;
   const leftColX = 16;
@@ -321,6 +321,9 @@ const OrthogonalEdges = ({ layout }) => {
 const PersonNodeCard = ({ node, onNavigate, onOpenEvent }) => {
   const relationLabel = node.subtitle || '상속인';
   const hasBranch = Boolean(node.relatedStep && node.branchLabel);
+  const rootDeathMeta = [node.dateLabel, node.tags?.some((tag) => tag.label === '호주') ? '호주' : '']
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <div
@@ -328,15 +331,26 @@ const PersonNodeCard = ({ node, onNavigate, onOpenEvent }) => {
       style={{ left: `${node.x}px`, top: `${node.y}px`, width: `${node.width}px`, minHeight: `${node.height}px` }}
     >
       {node.isRoot ? (
-        <div>
-          <div className="text-[9px] font-bold text-[#9a9994] dark:text-neutral-400">망</div>
-          <div className="text-[13px] font-black text-[#37352f] dark:text-neutral-100">{node.title.replace(/^망\s*/, '')}</div>
-          {node.share && (
-            <div className="mt-0.5 text-[11px] font-bold text-[#3f5f8a] dark:text-blue-300">
-              지분 {node.share.finalShare}
+        <>
+          <div className="flex items-start justify-between gap-1.5">
+            <div className="min-w-0">
+              <div className="text-[9px] font-bold text-[#9a9994] dark:text-neutral-400">{relationLabel}</div>
+              <div className="block max-w-full truncate text-[13px] font-black text-[#37352f] dark:text-neutral-100">
+                {node.title}
+              </div>
+            </div>
+            {node.share && (
+              <div className="shrink-0 text-[15px] font-black text-[#3f5f8a] dark:text-blue-300">
+                {node.share.finalShare}
+              </div>
+            )}
+          </div>
+          {rootDeathMeta && (
+            <div className="mt-1 text-[10.5px] font-medium leading-snug text-[#787774] dark:text-neutral-400">
+              {rootDeathMeta}
             </div>
           )}
-        </div>
+        </>
       ) : (
         <>
           <div className="flex items-start justify-between gap-1.5">
@@ -406,18 +420,13 @@ const NarrativeBlock = ({ step, stepMap, era }) => {
                 <div className="flex items-baseline gap-2 flex-wrap">
                   <span className="text-[15px] font-black text-[#37352f] dark:text-neutral-100">{dist.h?.name}</span>
                   <span className="text-[12px] text-[#787774] dark:text-neutral-300">({relStr})</span>
-                  {dist.h?.deathDate && (
-                    <span className="text-[12px] text-[#787774] dark:text-neutral-300">
-                      · {formatKorDate(dist.h.deathDate)} 사망
-                    </span>
-                  )}
                 </div>
                 <div className="mt-1 text-[13px] leading-snug text-[#6a6964] dark:text-neutral-300">
                   {modText} → 최종 <span className="font-bold text-[#3f5f8a] dark:text-blue-300">{dist.n}/{dist.d}</span> 취득
                 </div>
                 {continuation && (
                   <div className="mt-1 text-[12px] font-medium text-[#5a7fa8] dark:text-blue-300">
-                    └→ {continuation.type} 개시 ({continuation.date}) · 다음 사건으로 이어짐
+                    └ {continuation.date} 사망 · {continuation.type} 개시
                   </div>
                 )}
               </div>
@@ -438,17 +447,17 @@ const NarrativeBlock = ({ step, stepMap, era }) => {
               ? '선사망 — 적격 대습상속인 없어 상속권 소멸'
               : (dist.ex || '상속권 없음');
             return (
-              <div key={`narrative-excl-${i}`} className="rounded-xl border border-[#ede9e5] bg-[#faf9f7] px-3.5 py-2.5 opacity-70 dark:border-neutral-700 dark:bg-neutral-900/40">
+              <div key={`narrative-excl-${i}`} className="rounded-xl border-2 border-[#b8b8b2] bg-[#f0f0ed] px-3.5 py-2.5 shadow-sm ring-1 ring-white/80 dark:border-neutral-500 dark:bg-neutral-800 dark:ring-neutral-700/70">
                 <div className="flex items-baseline gap-2 flex-wrap">
-                  <span className="text-[15px] font-medium text-[#787774] line-through dark:text-neutral-400">{dist.h?.name}</span>
-                  <span className="text-[12px] text-[#9b9a97] dark:text-neutral-500">({relStr})</span>
+                  <span className="text-[15px] font-bold text-[#4f4e49] dark:text-neutral-200">{dist.h?.name}</span>
+                  <span className="text-[12px] font-semibold text-[#5f5d57] dark:text-neutral-300">({relStr})</span>
                   {dist.h?.deathDate && (
-                    <span className="text-[12px] text-[#9b9a97] dark:text-neutral-500">
+                    <span className="text-[12px] font-medium text-[#6f6d66] dark:text-neutral-300">
                       · {formatKorDate(dist.h.deathDate)} 사망
                     </span>
                   )}
                 </div>
-                <div className="mt-1 text-[12px] text-[#9b9a97] dark:text-neutral-400">{reason}</div>
+                <div className="mt-1 text-[12px] font-medium text-[#5f5d57] dark:text-neutral-300">{reason}</div>
               </div>
             );
           })}

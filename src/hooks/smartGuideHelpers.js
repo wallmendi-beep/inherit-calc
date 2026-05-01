@@ -19,9 +19,9 @@ export const buildSpouseDirectGuideText = (group, names) => {
 export const buildLegacyStepchildReviewGuide = (wifeNode, husbandNode, missingChildNames) => {
   if (missingChildNames.length === 0) return null;
   if (missingChildNames.length === 1) {
-    return `계모자 관계 확인 — [${missingChildNames[0]}]이 [${husbandNode.name || '남편'}]의 자녀로 입력됨. 구법상 [${wifeNode.name || '처'}] 사건의 상속인에 포함될 수 있습니다.`;
+    return `계모자 관계 확인 — [${wifeNode.name || '처'}]의 배우자 [${husbandNode.name || '남편'}]에게 자녀 [${missingChildNames[0]}]이 입력되어 있습니다. [${missingChildNames[0]}]은 [${wifeNode.name || '처'}]와 계모자 관계일 수 있으므로, 구법상 [${wifeNode.name || '처'}] 사건의 상속인 포함 여부를 확인해 주세요.`;
   }
-  return `계모자 관계 확인 — [${wifeNode.name || '처'}] 사건 미포함 자녀([${husbandNode.name || '남편'}]): [${missingChildNames.join('], [')}]. 구법상 상속인에 포함될 수 있습니다.`;
+  return `계모자 관계 확인 — [${wifeNode.name || '처'}]의 배우자 [${husbandNode.name || '남편'}]에게 자녀 [${missingChildNames.join('], [')}]이 입력되어 있습니다. 이들은 [${wifeNode.name || '처'}]와 계모자 관계일 수 있으므로, 구법상 [${wifeNode.name || '처'}] 사건의 상속인 포함 여부를 확인해 주세요.`;
 };
 
 export const collectLegacyStepchildGuideEntries = (tree) => {
@@ -59,9 +59,15 @@ export const collectLegacyStepchildGuideEntries = (tree) => {
           );
           entries.push({
             key: `legacy-stepchild-${node.personId || node.id}-${child.personId || child.id}`,
-            targetTabId: node.personId || node.id || 'root',
+            targetTabId: child.personId || child.id || node.personId || node.id || 'root',
+            relatedEventTabId: node.personId || node.id || 'root',
             personId: child.personId || child.id,
+            targetNodeId: missingChildren[0]?.id || missingChildren[0]?.personId,
+            targetNodeIds: missingChildren
+              .flatMap((grandChild) => [grandChild.id, grandChild.personId])
+              .filter(Boolean),
             text: buildLegacyStepchildReviewGuide(wifeReferenceNode, child, missingChildNames),
+            actionLabel: missingChildNames.length === 1 ? `${missingChildNames[0]} 위치 보기` : '자녀 위치 보기',
           });
         }
       }

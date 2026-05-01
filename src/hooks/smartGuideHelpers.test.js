@@ -60,7 +60,10 @@ describe('smartGuideHelpers', () => {
     const entries = collectLegacyStepchildGuideEntries(tree);
 
     expect(entries).toHaveLength(1);
-    expect(entries[0].text).toContain('구법상 [노금례] 사건의 상속인에 포함될 수 있습니다.');
-    expect(entries[0].targetTabId).toBe('root');
+    expect(entries[0].text).toContain('[노금례]의 배우자 [이성우]에게 자녀 [이상조]이 입력되어 있습니다.');
+    expect(entries[0].text).toContain('구법상 [노금례] 사건의 상속인 포함 여부를 확인해 주세요.');
+    expect(entries[0].targetTabId).toBe('husband-1');
+    expect(entries[0].relatedEventTabId).toBe('root');
+    expect(entries[0].targetNodeIds).toContain('child-1');
   });
 });

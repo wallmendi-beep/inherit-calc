@@ -1,7 +1,6 @@
 ﻿import { isBefore } from '../engine/utils';
 import { isSpouseRelation } from '../engine/eligibility';
 
-const SPOUSE_RELATIONS = new Set(['wife', 'husband', 'spouse']);
 const VALID_RELATIONS = new Set(['wife', 'husband', 'spouse', 'son', 'daughter', 'parent', 'sibling']);
 
 const buildIssue = (node, issue) => ({
@@ -21,7 +20,7 @@ const collectDuplicatePersonIds = (tree) => {
 
   const checkNode = (node) => {
     const activeSpouses = (node.heirs || []).filter(
-      (h) => SPOUSE_RELATIONS.has(h.relation) && !h.isExcluded
+      (h) => isSpouseRelation(h.relation) && !h.isExcluded
     );
     if (activeSpouses.length > 1) {
       const spouseChildMaps = activeSpouses.map((spouse) => ({
@@ -140,7 +139,7 @@ export const collectImportValidationIssues = (tree) => {
     }
 
     const activeSpouses = (node.heirs || []).filter((heir) => {
-      if (!SPOUSE_RELATIONS.has(heir.relation)) return false;
+      if (!isSpouseRelation(heir.relation)) return false;
       if (heir.isExcluded) return false;
       if (heir.isDeceased && heir.deathDate && node.deathDate && isBefore(heir.deathDate, node.deathDate)) return false;
       return true;

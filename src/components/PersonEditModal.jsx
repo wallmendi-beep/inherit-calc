@@ -114,14 +114,25 @@ export default function PersonEditModal({
         : '추가 상속인 없음 확정'
     : null;
 
+  const spouseReviewReason = () => {
+    const name = node.name || '해당 배우자';
+    if (isWifeReinheritanceReview) {
+      return lawEra !== '1991'
+        ? `${name} 사건은 처의 재상속 검토 단계입니다. 상위 사건 자녀가 자동으로 반영되므로, ${name}에게만 있는 별도 자녀가 있으면 추가하고 상속인이 아닌 사람이 있으면 제외해 주세요.`
+        : `${name} 사건은 처의 재상속 검토 단계입니다. 상위 사건 자녀를 기준으로 확인하되, 1991년 이후에는 배우자의 자녀라는 이유만으로 상속인이 되지 않으므로 직접 자녀 또는 양자가 아닌 사람은 제외해 주세요.`;
+    }
+    if (isHusbandReinheritanceReview) {
+      return `${name} 사건은 남편의 재상속 검토 단계입니다. 상위 사건 자녀를 기준으로 확인하되, ${name}의 직접 자녀 또는 양자가 아닌 사람은 제외하고 별도 자녀가 있으면 추가해 주세요.`;
+    }
+    return `${name} 사건은 배우자 재상속 검토 단계입니다. 자동으로 이어진 자녀 목록을 이번 사건의 상속인 범위에 맞게 확인해 주세요.`;
+  };
+
   const reviewReason = needsNextOrderFemaleReview
     ? `${sourceEventName || '현재'} 사건은 차순위 상속 검토 대상입니다. 여성 형제자매의 혼인·복적·동일가적 여부가 결과를 바꿀 수 있습니다.`
     : needsHojuReview
       ? `${node.name || '해당 인물'} 사건은 호주상속 검토 단계입니다. 1차 상속인 중 호주상속인을 지정해야 합니다.`
-      : isWifeReinheritanceReview
-        ? `${node.name || '해당 배우자'} 사건은 배우자 재상속 검토 단계입니다. 상위 사건에서 이어진 자녀 목록과 별도로, ${node.name || '해당 배우자'}에게만 있는 자녀가 있는지 먼저 확인해 주세요.`
-        : isHusbandReinheritanceReview
-          ? `${node.name || '해당 배우자'} 사건은 배우자 재상속 검토 단계입니다. 현재 자녀 범위를 먼저 확인하고, 자녀가 없으면 직계존속 순서를 검토해 주세요.`
+      : isSpouseReinheritanceReview
+        ? spouseReviewReason()
       : isReinheritanceReview
         ? `${node.name || '해당 인물'}는 이 사건에서 지분을 받은 뒤 다시 사망했습니다. 다음 상속 단계가 올바르게 이어지는지 확인해 주세요.`
         : hasAnyConfirmedNoSuccessors
@@ -251,14 +262,16 @@ export default function PersonEditModal({
               ) : null}
               {isWifeReinheritanceReview ? (
                 <>
-                  <li>현재 화면의 자녀 목록은 상위 사건에서 이어진 정보일 수 있으니, 그대로 이 처의 상속인이라고 단정하지 말아야 합니다.</li>
-                  <li>이 처에게만 있는 별도의 자녀가 있으면 추가로 입력하고, 없으면 추가 상속인 없음으로 정리하면 됩니다.</li>
+                  <li>현재 자녀 목록은 상위 사건 기준으로 자동 반영된 목록입니다.</li>
+                  <li>{lawEra !== '1991' ? `구법상 남편의 자녀가 ${node.name || '해당 처'} 사건의 상속인으로 반영될 수 있습니다.` : `1991년 이후에는 배우자의 자녀라는 이유만으로 ${node.name || '해당 처'}의 상속인이 되지 않습니다.`}</li>
+                  <li>{node.name || '해당 처'}의 직접 자녀 또는 양자가 아닌 사람은 제외하고, 별도 자녀가 있으면 추가해 주세요.</li>
                 </>
               ) : null}
               {isHusbandReinheritanceReview ? (
                 <>
-                  <li>현재 표시된 자녀들이 모두 이 남편의 자녀인지 먼저 확인해 주세요.</li>
-                  <li>남편의 자녀가 아닌 사람은 삭제하거나 제외 처리하고, 자녀가 없으면 그다음 직계존속 여부를 검토해 주세요.</li>
+                  <li>현재 자녀 목록은 상위 사건 기준으로 자동 반영된 목록입니다.</li>
+                  <li>{node.name || '해당 남편'}의 직접 자녀 또는 양자가 아닌 사람은 제외해 주세요.</li>
+                  <li>{node.name || '해당 남편'}에게만 있는 별도 자녀가 있으면 추가해 주세요.</li>
                 </>
               ) : null}
               {isReinheritanceReview && !isSpouseReinheritanceReview ? (

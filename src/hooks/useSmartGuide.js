@@ -291,8 +291,12 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
         id: entry.personId,
         uniqueKey: entry.key,
         type: 'recommended',
-        navigationMode: 'event',
+        navigationMode: entry.navigationMode || 'auto',
         targetTabId: entry.targetTabId,
+        targetNodeId: entry.targetNodeId,
+        targetNodeIds: entry.targetNodeIds || [],
+        relatedEventTabId: entry.relatedEventTabId,
+        actionLabel: entry.actionLabel,
         text: entry.text,
       });
     });

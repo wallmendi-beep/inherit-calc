@@ -2,6 +2,7 @@ import React from 'react';
 import { math, getRelStr } from '../engine/utils';
 import { buildHojuBonusPersonMap } from '../utils/hojuBonusNotice';
 import PathView from './PathView';
+import LineagePathTree from './LineagePathTree';
 
 const lawLabel = (era) => {
   if (era === '1960') return '구민법';
@@ -197,7 +198,7 @@ export default function AcquisitionPanel({
     return total.n > 0 ? math.lcm(acc, total.d) : acc;
   }, 1);
 
-  if (allResults.length === 0) {
+  if (allResults.length === 0 && viewMode !== 'lineage') {
     return (
       <div className="flex h-60 items-center justify-center text-[14px] text-[#787774] dark:text-neutral-300">
         표시할 상속인이 없습니다.
@@ -227,6 +228,13 @@ export default function AcquisitionPanel({
               className={`rounded-full px-3 py-1.5 text-[12px] font-bold transition-colors ${viewMode === 'table' ? 'bg-[#37352f] text-white dark:bg-neutral-100 dark:text-neutral-900' : 'text-[#787774] hover:bg-[#efefed] dark:text-neutral-300 dark:hover:bg-neutral-700'}`}
             >
               표로 보기
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('lineage')}
+              className={`rounded-full px-3 py-1.5 text-[12px] font-bold transition-colors ${viewMode === 'lineage' ? 'bg-[#37352f] text-white dark:bg-neutral-100 dark:text-neutral-900' : 'text-[#787774] hover:bg-[#efefed] dark:text-neutral-300 dark:hover:bg-neutral-700'}`}
+            >
+              계통 트리
             </button>
           </div>
           <div className="flex items-center gap-2 rounded-full border border-[#e5e5e5] bg-white px-3 py-1.5 shadow-sm focus-within:ring-2 focus-within:ring-blue-100 dark:border-neutral-600 dark:bg-neutral-800">
@@ -271,6 +279,12 @@ export default function AcquisitionPanel({
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {viewMode === 'lineage' && (
+        <div className="no-print">
+          <LineagePathTree calcSteps={calcSteps} handleNavigate={handleNavigate} searchQuery={searchQuery} />
         </div>
       )}
 

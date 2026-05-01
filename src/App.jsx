@@ -32,6 +32,8 @@ import { SortableContext, arrayMove, sortableKeyboardCoordinates } from '@dnd-ki
 
 const CHANGELOG_LIMIT = 300;
 const CHANGELOG_STORAGE_KEY = 'inheritance-calc-action-log-v1';
+const SIDEBAR_MIN_WIDTH = 250;
+const SIDEBAR_MAX_WIDTH = 600;
 
 const buildImportIssueSignature = (issues = []) =>
   issues
@@ -144,6 +146,10 @@ function App() {
     else document.documentElement.classList.remove('dark');
     localStorage.setItem('darkMode', isDarkMode);
   }, [isDarkMode]);
+
+  useEffect(() => {
+    setSidebarOpen(activeTab !== 'tree');
+  }, [activeTab]);
 
   const handleTabChange = (tabId) => {
     if (tabId === activeTab) return;
@@ -325,7 +331,7 @@ function App() {
     const startWidth = sidebarWidth;
     const handleMouseMove = (moveE) => {
       const deltaX = moveE.clientX - startX;
-      setSidebarWidth(Math.max(180, Math.min(600, startWidth + deltaX)));
+      setSidebarWidth(Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, startWidth + deltaX)));
     };
     const handleMouseUp = () => {
       document.removeEventListener('mousemove', handleMouseMove);
@@ -648,6 +654,8 @@ function App() {
     URL.revokeObjectURL(url);
   };
 
+  const effectiveSidebarWidth = Math.max(SIDEBAR_MIN_WIDTH, sidebarWidth);
+
   return (
     <>
       <PrintReport tree={tree} activeTab={activeTab} activeDeceasedTab={activeDeceasedTab} finalShares={finalShares} calcSteps={calcSteps} amountCalculations={amountCalculations} propertyValue={propertyValue} />
@@ -685,16 +693,15 @@ function App() {
           zoomLevel={zoomLevel} setZoomLevel={setZoomLevel} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode}
         />
         <SidebarTreePanel
-          sidebarOpen={sidebarOpen} sidebarWidth={sidebarWidth} tree={tree} handleNavigate={handleNavigate}
+          sidebarOpen={sidebarOpen} sidebarWidth={effectiveSidebarWidth} tree={tree} handleNavigate={handleNavigate}
           sidebarSearchQuery={sidebarSearchQuery} setSidebarSearchQuery={setSidebarSearchQuery}
           sidebarMatchIds={sidebarMatchIds} sidebarCurrentMatchIdx={sidebarCurrentMatchIdx}
           handleSidebarPrevMatch={handleSidebarPrevMatch} handleSidebarNextMatch={handleSidebarNextMatch}
           sidebarToggleSignal={sidebarToggleSignal} setSidebarToggleSignal={setSidebarToggleSignal}
           handleResizeMouseDown={handleResizeMouseDown}
           removeHeir={removeHeir}
-          onPrintTree={() => printCurrentTab({ activeTab: 'input', tree })}
         />
-        <main className={`flex-1 flex w-full transition-all duration-300 ${sidebarOpen ? 'justify-start' : 'justify-center'}`} style={{ paddingLeft: sidebarOpen ? (sidebarWidth + 10) : 0, paddingRight: showNavigator ? (navigatorWidth + 10) : 0 }}>
+        <main className={`flex-1 flex w-full transition-all duration-300 ${sidebarOpen ? 'justify-start' : 'justify-center'}`} style={{ paddingLeft: sidebarOpen ? (effectiveSidebarWidth + 10) : 0, paddingRight: showNavigator ? (navigatorWidth + 10) : 0 }}>
           <div style={{ zoom: zoomLevel, width: '100%', display: 'flex', justifyContent: (sidebarOpen || showNavigator) ? 'flex-start' : 'center' }}>
             <div
                 className={`flex flex-col shrink-0 mt-6 print-compact relative z-10 transition-all duration-300 ${

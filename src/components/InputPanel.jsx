@@ -131,16 +131,16 @@ export default function InputPanel({
 
     if (currentNode?.relation === 'wife') {
       return {
-        title: '아직 직접 입력된 후속 상속인이 없습니다.',
-        body: `1991년 이전 사건에서는 상위 사건의 자녀들이 [${currentNode?.name || '처'}] 사건의 기본 상속인으로 반영됩니다. [${currentNode?.name || '처'}]에게만 있는 별도의 고유 자녀가 있으면 추가해 주세요.`,
+        title: '상위 사건 자녀를 자동으로 불러올 수 있습니다.',
+        body: `불러온 목록은 앞선 사건 기준 자녀입니다. ${currentLawEra !== '1991' ? `구법상 남편의 자녀가 [${currentNode?.name || '처'}] 사건의 상속인으로 반영될 수 있습니다.` : `1991년 이후에는 배우자의 자녀라는 이유만으로 [${currentNode?.name || '처'}]의 상속인이 되지 않습니다.`} 이번 사건의 상속인 범위에 맞게 추가하거나 제외해 주세요.`,
       };
     }
 
     if (currentNode?.relation === 'husband') {
       const isOldEra = currentLawEra !== '1991';
       return {
-        title: '아직 직접 입력된 후속 상속인이 없습니다.',
-        body: `불러오기를 통해 상위 사건의 자녀를 가져온 뒤, [${currentNode?.name || '남편'}]의 상속인이 아닌 자녀는 삭제해 주세요.${isOldEra ? ' (1991년 이전 사망한 남편은 기본적으로 호주 자격이 전제됩니다.)' : ''}`,
+        title: '상위 사건 자녀를 자동으로 불러올 수 있습니다.',
+        body: `불러온 목록은 앞선 사건 기준 자녀입니다. [${currentNode?.name || '남편'}]의 직접 자녀 또는 양자가 아닌 사람은 제외하고, 별도 자녀가 있으면 추가해 주세요.${isOldEra ? ' 1991년 이전 사망한 남편은 호주상속 여부도 함께 확인해 주세요.' : ''}`,
       };
     }
 
@@ -179,6 +179,19 @@ export default function InputPanel({
   };
 
   const emptyStateGuide = getEmptyStateGuide();
+  const getSpouseAutoFillGuide = () => {
+    const spouseName = currentNode?.name || '배우자';
+    if (currentNode?.relation === 'wife') {
+      return currentLawEra !== '1991'
+        ? `구법상 남편의 자녀가 [${spouseName}] 사건의 상속인으로 반영될 수 있습니다. [${spouseName}]에게만 있는 별도 자녀가 있으면 추가하고, 상속인이 아닌 사람이 있으면 제외해 주세요.`
+        : `1991년 이후 사건에서는 배우자의 자녀라는 이유만으로 [${spouseName}]의 상속인이 되지 않습니다. [${spouseName}]의 직접 자녀 또는 양자가 아닌 사람은 제외해 주세요.`;
+    }
+    if (currentNode?.relation === 'husband') {
+      const hojuText = currentLawEra !== '1991' ? ' 1991년 이전 사망한 남편은 호주상속 여부도 함께 확인해 주세요.' : '';
+      return `[${spouseName}]의 직접 자녀 또는 양자가 아닌 사람은 제외하고, [${spouseName}]에게만 있는 별도 자녀가 있으면 추가해 주세요.${hojuText}`;
+    }
+    return `이번 배우자의 직접 자녀 또는 양자가 아닌 사람은 제외하고, 별도 자녀가 있으면 추가해 주세요.`;
+  };
   const compareDateForCurrentNode = resolvedParentNode?.deathDate || tree?.deathDate || '';
   const isCurrentPredeceased =
     !!(currentNode?.deathDate && compareDateForCurrentNode && isBefore(currentNode.deathDate, compareDateForCurrentNode));
@@ -459,22 +472,21 @@ export default function InputPanel({
                     <span className="text-[#37352f] dark:text-neutral-200 font-bold text-[13.5px]">
                       [{resolvedParentNode?.name || '상위 피상속인'}]의 자녀들을 자동으로 불러왔습니다.
                     </span>
-                    {currentNode?.relation === 'wife' ? (
-                      <span className="text-[#787774] dark:text-neutral-300 text-[12px] mt-1">
-                        [{currentNode?.name || '처'}]에게만 있는 별도의 고유 자녀가 있으면 추가해 주세요.
-                      </span>
-                    ) : (
+                    <span className="text-[#787774] dark:text-neutral-300 text-[12px] mt-1">
+                      이 목록은 앞선 사건 기준 자녀이므로, 이번 사건의 상속인 범위를 확인해 주세요.
+                    </span>
+                    <span className="text-[#787774] dark:text-neutral-300 text-[12px] mt-1">
+                      {getSpouseAutoFillGuide()}
+                    </span>
+                    {currentNode?.relation === 'husband' ? (
                       <>
-                        <span className="text-[#787774] dark:text-neutral-300 text-[12px] mt-1">
-                          [{currentNode?.name || '남편'}]의 고유자녀가 아닌 사람은 삭제해 주세요.
-                        </span>
                         {!nodeHeirs.some((h) => h.isHoju) && (
                           <span className="text-red-500 font-bold text-[12.5px] mt-1">
                             [{currentNode?.name || '남편'}]은 호주 입니다. 호주상속을 받는 자를 선택해주세요.
                           </span>
                         )}
                       </>
-                    )}
+                    ) : null}
                   </div>
                   <div className="ml-4 flex flex-col justify-center shrink-0 border-l border-[#e9e9e7] dark:border-neutral-600 pl-4">
                     <button
@@ -484,6 +496,9 @@ export default function InputPanel({
                     >
                       추가 상속인 없음
                     </button>
+                    <span className="mt-1.5 max-w-[116px] text-center text-[10.5px] leading-snug text-[#787774] dark:text-neutral-300">
+                      자동으로 불러온 사람 외에 더 추가할 상속인이 없으면 확정
+                    </span>
                   </div>
                 </div>
               )}
