@@ -127,3 +127,9 @@ body {
 .dark input[type="radio"] {
   accent-color: #60a5fa;
 }
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

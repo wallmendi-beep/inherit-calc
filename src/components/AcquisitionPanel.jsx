@@ -1,6 +1,7 @@
 import React from 'react';
 import { math, getRelStr } from '../engine/utils';
 import { buildHojuBonusPersonMap } from '../utils/hojuBonusNotice';
+import PathView from './PathView';
 
 const lawLabel = (era) => {
   if (era === '1960') return '구민법';
@@ -100,7 +101,17 @@ const HeirCard = ({ result, commonD, issueMap, hojuBonusMap, handleNavigate, tre
   );
 };
 
-export default function AcquisitionPanel({ calcSteps = [], finalShares = null, tree, issues = [], handleNavigate, searchQuery = '', setSearchQuery = () => {} }) {
+export default function AcquisitionPanel({
+  calcSteps = [],
+  finalShares = null,
+  tree,
+  issues = [],
+  handleNavigate,
+  searchQuery = '',
+  setSearchQuery = () => {},
+  viewMode = 'card',
+  setViewMode = () => {},
+}) {
   const issueMap = React.useMemo(() => {
     const map = new Map();
     (issues || []).forEach((issue) => {
@@ -136,7 +147,7 @@ export default function AcquisitionPanel({ calcSteps = [], finalShares = null, t
         map.get(pid).sources.push({
           decName: step.dec?.name,
           decDeathDate: step.dec?.deathDate,
-          relation: dist.h._origRelation || dist.h.relation,
+          relation: dist.h.relation,
           lawEra: step.lawEra,
           modifier: dist.mod || '',
           n: dist.n,
@@ -197,50 +208,75 @@ export default function AcquisitionPanel({ calcSteps = [], finalShares = null, t
   return (
     <section className="w-full space-y-5 text-[#37352f] dark:text-neutral-200">
       {/* 검색 */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="no-print flex items-center justify-between gap-3">
         <p className="text-[12px] text-[#787774] dark:text-neutral-300">
           최종 생존 상속인별 지분 취득 경로 · 총 {allResults.length}명
         </p>
-        <div className="flex items-center gap-2 rounded-full border border-[#e5e5e5] bg-white px-3 py-1.5 shadow-sm focus-within:ring-2 focus-within:ring-blue-100 dark:border-neutral-600 dark:bg-neutral-800">
-          <svg className="h-3.5 w-3.5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <input
-            type="text"
-            placeholder="이름 검색"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-20 border-none bg-transparent text-[12px] outline-none transition-all focus:w-28 dark:text-neutral-200"
-          />
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 rounded-full border border-[#dcdcd9] bg-[#f1f1ef] px-1.5 py-1 w-fit dark:border-neutral-600 dark:bg-neutral-800">
+            <button
+              type="button"
+              onClick={() => setViewMode('card')}
+              className={`rounded-full px-3 py-1.5 text-[12px] font-bold transition-colors ${viewMode === 'card' ? 'bg-[#37352f] text-white dark:bg-neutral-100 dark:text-neutral-900' : 'text-[#787774] hover:bg-[#efefed] dark:text-neutral-300 dark:hover:bg-neutral-700'}`}
+            >
+              카드로 보기
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={`rounded-full px-3 py-1.5 text-[12px] font-bold transition-colors ${viewMode === 'table' ? 'bg-[#37352f] text-white dark:bg-neutral-100 dark:text-neutral-900' : 'text-[#787774] hover:bg-[#efefed] dark:text-neutral-300 dark:hover:bg-neutral-700'}`}
+            >
+              표로 보기
+            </button>
+          </div>
+          <div className="flex items-center gap-2 rounded-full border border-[#e5e5e5] bg-white px-3 py-1.5 shadow-sm focus-within:ring-2 focus-within:ring-blue-100 dark:border-neutral-600 dark:bg-neutral-800">
+            <svg className="h-3.5 w-3.5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="이름 검색"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-20 border-none bg-transparent text-[12px] outline-none transition-all focus:w-28 dark:text-neutral-200"
+            />
+          </div>
         </div>
       </div>
 
-      {/* 그룹별 렌더링 */}
-      {groups.map((group, gi) => (
-        <div key={gi} className="space-y-2.5">
-          {group.label && (
-            <div className="flex items-center gap-2 px-1">
-              <div className="h-px flex-1 bg-[#e9e9e7] dark:bg-neutral-700" />
-              <span className="shrink-0 text-[11px] font-bold text-[#9b9a97] dark:text-neutral-400">{group.label}</span>
-              <span className="shrink-0 text-[10px] text-[#b8b6b2] dark:text-neutral-500">{group.members.length}명</span>
-              <div className="h-px flex-1 bg-[#e9e9e7] dark:bg-neutral-700" />
+      {viewMode === 'card' && (
+        <div className="no-print space-y-5">
+          {groups.map((group, gi) => (
+            <div key={gi} className="space-y-2.5">
+              {group.label && (
+                <div className="flex items-center gap-2 px-1">
+                  <div className="h-px flex-1 bg-[#e9e9e7] dark:bg-neutral-700" />
+                  <span className="shrink-0 text-[11px] font-bold text-[#9b9a97] dark:text-neutral-400">{group.label}</span>
+                  <span className="shrink-0 text-[10px] text-[#b8b6b2] dark:text-neutral-500">{group.members.length}명</span>
+                  <div className="h-px flex-1 bg-[#e9e9e7] dark:bg-neutral-700" />
+                </div>
+              )}
+              <div className="grid grid-cols-1 gap-2 xl:grid-cols-2">
+                {group.members.map((result) => (
+                  <HeirCard
+                    key={result.personId}
+                    result={result}
+                    commonD={commonD}
+                    issueMap={issueMap}
+                    hojuBonusMap={hojuBonusMap}
+                    handleNavigate={handleNavigate}
+                    tree={tree}
+                  />
+                ))}
+              </div>
             </div>
-          )}
-          <div className="grid grid-cols-1 gap-2 xl:grid-cols-2">
-            {group.members.map((result) => (
-              <HeirCard
-                key={result.personId}
-                result={result}
-                commonD={commonD}
-                issueMap={issueMap}
-                hojuBonusMap={hojuBonusMap}
-                handleNavigate={handleNavigate}
-                tree={tree}
-              />
-            ))}
-          </div>
+          ))}
         </div>
-      ))}
+      )}
+
+      <div className={viewMode === 'table' ? '' : 'hidden print:block'}>
+        <PathView calcSteps={calcSteps} tree={tree} issues={issues} handleNavigate={handleNavigate} searchQuery={searchQuery} />
+      </div>
     </section>
   );
 }

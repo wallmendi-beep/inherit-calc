@@ -178,7 +178,7 @@ const buildEventLayout = (step, stepMap, commonD, innerCommonD) => {
   const heirDists = activeDists.filter((d) => !['wife', 'husband', 'spouse'].includes(d.h?.relation));
 
   const rootW = 156;
-  const rootH = 64;
+  const rootH = 76;
   const cardW = 162;
   const leftColX = 16;
   const topY = 36;
@@ -200,6 +200,7 @@ const buildEventLayout = (step, stepMap, commonD, innerCommonD) => {
       { label: `상속지분 ${step.inN}/${step.inD}`, tone: 'blue' },
       ...(step.dec?.isHoju ? [{ label: '호주', tone: 'blue' }] : []),
     ],
+    share: { finalShare: `${step.inN}/${step.inD}` },
     isRoot: true,
   });
 

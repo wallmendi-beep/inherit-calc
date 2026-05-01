@@ -54,7 +54,7 @@ function App() {
   const [isDirty, setIsDirty] = useState(false);
   const [changeLog, setChangeLog] = useState([]);
   const [treeViewMode, setTreeViewMode] = useState('flow');
-  const [summaryViewMode, setSummaryViewMode] = useState('structure');
+  const [acquisitionViewMode, setAcquisitionViewMode] = useState('card');
   const [navigationSignal, setNavigationSignal] = useState(null);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1.0);
@@ -650,7 +650,7 @@ function App() {
 
   return (
     <>
-      <PrintReport tree={tree} activeTab={activeTab} activeDeceasedTab={activeDeceasedTab} finalShares={finalShares} calcSteps={calcSteps} amountCalculations={amountCalculations} propertyValue={propertyValue} summaryViewMode={summaryViewMode} />
+      <PrintReport tree={tree} activeTab={activeTab} activeDeceasedTab={activeDeceasedTab} finalShares={finalShares} calcSteps={calcSteps} amountCalculations={amountCalculations} propertyValue={propertyValue} />
       <div className="w-full min-h-screen relative flex flex-col items-start pb-24 transition-colors duration-200 bg-[#f7f7f5] dark:bg-neutral-900 min-w-[1280px] print:hidden">
         <SmartGuidePanel
           showNavigator={showNavigator} setShowNavigator={setShowNavigator} navigatorWidth={navigatorWidth}
@@ -681,7 +681,7 @@ function App() {
             setIsDirty(false);
           }}
           handleExcelExport={handleExcelExport}
-          handlePrint={() => printCurrentTab({ activeTab, tree, summaryViewMode })}
+          handlePrint={() => printCurrentTab({ activeTab, tree })}
           zoomLevel={zoomLevel} setZoomLevel={setZoomLevel} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode}
         />
         <SidebarTreePanel
@@ -692,7 +692,7 @@ function App() {
           sidebarToggleSignal={sidebarToggleSignal} setSidebarToggleSignal={setSidebarToggleSignal}
           handleResizeMouseDown={handleResizeMouseDown}
           removeHeir={removeHeir}
-          onPrintTree={() => printCurrentTab({ activeTab: 'input', tree, summaryViewMode })}
+          onPrintTree={() => printCurrentTab({ activeTab: 'input', tree })}
         />
         <main className={`flex-1 flex w-full transition-all duration-300 ${sidebarOpen ? 'justify-start' : 'justify-center'}`} style={{ paddingLeft: sidebarOpen ? (sidebarWidth + 10) : 0, paddingRight: showNavigator ? (navigatorWidth + 10) : 0 }}>
           <div style={{ zoom: zoomLevel, width: '100%', display: 'flex', justifyContent: (sidebarOpen || showNavigator) ? 'flex-start' : 'center' }}>
@@ -751,10 +751,10 @@ function App() {
                       />
                     </div>
                   )}
-                {activeTab === 'acquisition' && <AcquisitionPanel tree={tree} calcSteps={calcSteps} finalShares={finalShares} issues={blockingIssues} handleNavigate={handleNavigate} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />}
+                {activeTab === 'acquisition' && <AcquisitionPanel tree={tree} calcSteps={calcSteps} finalShares={finalShares} issues={blockingIssues} handleNavigate={handleNavigate} searchQuery={searchQuery} setSearchQuery={setSearchQuery} viewMode={acquisitionViewMode} setViewMode={setAcquisitionViewMode} />}
                 {activeTab === 'summary' && (
                   <div className="space-y-6">
-                    <SummaryPanel tree={tree} finalShares={finalShares} calcSteps={calcSteps} issues={blockingIssues} handleNavigate={handleNavigate} matchIds={matchIds} currentMatchIdx={currentMatchIdx} searchQuery={searchQuery} setSearchQuery={setSearchQuery} viewMode={summaryViewMode} setViewMode={setSummaryViewMode} />
+                    <SummaryPanel tree={tree} finalShares={finalShares} calcSteps={calcSteps} issues={blockingIssues} handleNavigate={handleNavigate} matchIds={matchIds} currentMatchIdx={currentMatchIdx} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
                     <div className="border-t border-[#e9e9e7] dark:border-neutral-600 pt-4">
                       <button
                         type="button"
@@ -832,4 +832,3 @@ function App() {
 }
 
 export default App;
-

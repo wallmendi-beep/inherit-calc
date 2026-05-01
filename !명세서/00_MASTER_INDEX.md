@@ -32,6 +32,8 @@
 | 입력 정규화 | `IMPORT_PRECHECK_AND_REENTRY_RULES_2026-04-13.md`, `HEIR_IMPORT_SUBTREE_AND_CYCLE_PREVENTION_RULES_2026-04-13.md` | import 전처리, 트리 정규화, 중복/순환 방지 |
 | AI 입력 | `AI_RELIABILITY_AND_CORRECTION_PRINCIPLES_2026-04-14.md`, `IMPORT_GUIDE_FIRST_REVIEW_RULES_2026-04-13.md` | AI JSON 신뢰성, 허용 필드, 후속 검토 흐름 |
 | 가이드 UX | `SMART_GUIDE_OPERATION_RULES_2026-04-29.md` ⭐ | 가이드 전체 목록, 트리거, 텍스트, 네비게이션 동작 (최신) |
+| 판정 규칙 | `PREDECEASE_REINHERITANCE_JUDGMENT_AND_WARP_RULES.md` ⭐ | 선사망/후사망/대습/재상속 판정 기준 + 워프 네비게이션 SSOT (2026-05-01) |
+| 탭 구성 | `TAB_STRUCTURE_RULES.md` ⭐ | 4탭 역할 정의, 취득경로 뷰 모드, 인쇄 규칙 SSOT (2026-05-01) |
 | 감사(audit) | `CORE_LOGIC_SPECS.md`, `src/engine/logic_map.md` | 최종 결과 무결성 검사, 경고/가이드 분리 |
 
 ---

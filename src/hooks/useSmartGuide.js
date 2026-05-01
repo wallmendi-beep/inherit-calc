@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { getLawEra, isBefore } from '../engine/utils';
 import { auditInheritanceResult } from '../engine/inheritanceAudit';
+import { isSpouseRelation } from '../engine/eligibility';
 import { buildSpouseDirectGuideText, collectLegacyStepchildGuideEntries } from './smartGuideHelpers';
 
 // 트리가 없을 때는 항상 같은 기본 상태 참조를 반환한다.
@@ -115,7 +116,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
     // 보조 함수 5: 중복 배우자 점검
     const checkDuplicateSpouseGuide = (node) => {
       const spouses = (node.heirs || []).filter((h) => {
-        if (!['wife', 'husband', 'spouse'].includes(h.relation)) return false;
+        if (!isSpouseRelation(h.relation)) return false;
         if (h.isExcluded === true) return false;
         if (h.isDeceased && h.deathDate && node.deathDate && isBefore(h.deathDate, node.deathDate)) return false;
         return true;
@@ -198,7 +199,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
           const compareDate = parentDate || tree.deathDate;
           const isPre = compareDate ? isBefore(node.deathDate, compareDate) : false;
           const isChild = ['son', 'daughter'].includes(node.relation);
-          const isSpouse = ['wife', 'husband', 'spouse'].includes(node.relation);
+          const isSpouse = isSpouseRelation(node.relation);
 
           if (isPre) {
             if (isChild) {
@@ -312,8 +313,11 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
     groupedDirectMissingMap.forEach((group, key) => {
       const uniqueNames = Array.from(new Set(group.names));
       if (uniqueNames.length === 0) return;
-      // 배우자 단독상속 그룹이 아니면 항상 부모(피상속인) 사건 탭으로 이동해야 올바른 위치에서 입력 가능합니다.
-      const navTarget = group.isSpouseGroup ? group.firstTargetTabId : group.targetTabId;
+      // 단일 인원 or 배우자 그룹 → 본인 사건 탭
+      // 복수 비-배우자 → 부모 사건 탭 (여러 명 동시 확인)
+      const navTarget = (group.isSpouseGroup || uniqueNames.length === 1)
+        ? group.firstTargetTabId
+        : group.targetTabId;
       uniqueGuidesMap.set(`grouped-direct-missing-${key}`, {
         id: navTarget, uniqueKey: `grouped-direct-missing-${key}`, targetTabId: navTarget, type: 'mandatory', navigationMode: 'event',
         text: group.isSpouseGroup

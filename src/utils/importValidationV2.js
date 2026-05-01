@@ -1,4 +1,5 @@
 ﻿import { isBefore } from '../engine/utils';
+import { isSpouseRelation } from '../engine/eligibility';
 
 const SPOUSE_RELATIONS = new Set(['wife', 'husband', 'spouse']);
 const VALID_RELATIONS = new Set(['wife', 'husband', 'spouse', 'son', 'daughter', 'parent', 'sibling']);
@@ -128,7 +129,7 @@ export const collectImportValidationIssues = (tree) => {
     }
 
     const isPredeceased = !!(node.deathDate && inheritedDate && isBefore(node.deathDate, inheritedDate));
-    const isSpouse = SPOUSE_RELATIONS.has(node.relation);
+    const isSpouse = isSpouseRelation(node.relation);
     const hasHeirs = (node.heirs || []).length > 0;
 
     if (node.id !== 'root' && node.isDeceased && !hasHeirs && !node.successorStatus && !(isSpouse && isPredeceased)) {
