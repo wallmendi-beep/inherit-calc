@@ -67,7 +67,7 @@ export const collectLegacyStepchildGuideEntries = (tree) => {
               .flatMap((grandChild) => [grandChild.id, grandChild.personId])
               .filter(Boolean),
             text: buildLegacyStepchildReviewGuide(wifeReferenceNode, child, missingChildNames),
-            actionLabel: missingChildNames.length === 1 ? `${missingChildNames[0]} 위치 보기` : '자녀 위치 보기',
+            actionLabel: '확인',
           });
         }
       }
