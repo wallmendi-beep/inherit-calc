@@ -38,15 +38,7 @@ export default function InputPanel({
     return !!currentNode && !!target && (target === currentNode.personId || target === currentNode.id);
   });
   const isRootNode = currentNode && currentNode.id === 'root';
-  const canAutoFill = !isRootNode && ['wife', 'husband', 'son', 'daughter'].includes(currentNode?.relation);
-  const inheritedDate = currentNode?.deathDate || tree.deathDate;
-  const currentLawEra = getLawEra(inheritedDate);
-  const showCurrentHojuToggle =
-    currentLawEra !== '1991' &&
-    (isRootNode || ['son', 'husband'].includes(currentNode?.relation));
-  const requiresHojuReview =
-    currentLawEra !== '1991' &&
-    (isRootNode || ['son', 'husband'].includes(currentNode?.relation));
+  const canAutoFillBase = !isRootNode && ['wife', 'husband', 'son', 'daughter'].includes(currentNode?.relation);
   const findParentNode = React.useCallback((root, targetId, targetPersonId, visited = new Set()) => {
     if (!root || visited.has(root.id)) return null;
     visited.add(root.id);
@@ -61,6 +53,23 @@ export default function InputPanel({
     if (isRootNode || !currentNode) return null;
     return findParentNode(tree, currentNode.id, currentNode.personId) || activeTabObj?.parentNode || null;
   }, [isRootNode, currentNode, tree, activeTabObj, findParentNode]);
+  const inheritedDate = currentNode?.deathDate || resolvedParentNode?.deathDate || tree.deathDate;
+  const currentLawEra = getLawEra(inheritedDate);
+  const isSpouseType = ['wife', 'husband', 'spouse'].includes(currentNode?.relation);
+  const isLegacyHusbandSubstitutionContext =
+    currentNode?.relation === 'husband' &&
+    currentLawEra !== '1991' &&
+    !!resolvedParentNode &&
+    resolvedParentNode.id !== 'root';
+  const showCurrentHojuToggle =
+    currentLawEra !== '1991' &&
+    (isRootNode || ['son', 'husband'].includes(currentNode?.relation)) &&
+    !isLegacyHusbandSubstitutionContext;
+  const requiresHojuReview =
+    currentLawEra !== '1991' &&
+    (isRootNode || ['son', 'husband'].includes(currentNode?.relation)) &&
+    !isLegacyHusbandSubstitutionContext;
+  const canAutoFill = canAutoFillBase && !isLegacyHusbandSubstitutionContext;
   const parentHeirsForGuide = resolvedParentNode?.heirs || [];
   const reviewTargetNodeIds = React.useMemo(
     () => new Set((reviewContext?.targetNodeIds || []).filter(Boolean)),
@@ -137,6 +146,12 @@ export default function InputPanel({
     }
 
     if (currentNode?.relation === 'husband') {
+      if (isLegacyHusbandSubstitutionContext) {
+        return {
+          title: '구법상 사위 대습상속 검토 대상입니다.',
+          body: `[${currentNode?.name || '남편'}]은 [${resolvedParentNode?.name || '처'}]의 남편으로 입력되어 있습니다. 1991년 이전 대습상속 사건에서는 사위가 대습상속인이 아니므로, 직접 자녀만 대습상속인으로 남겨 주세요.`,
+        };
+      }
       const isOldEra = currentLawEra !== '1991';
       return {
         title: '상위 사건 자녀를 자동으로 불러올 수 있습니다.',
@@ -187,6 +202,9 @@ export default function InputPanel({
         : `1991년 이후 사건에서는 배우자의 자녀라는 이유만으로 [${spouseName}]의 상속인이 되지 않습니다. [${spouseName}]의 직접 자녀 또는 양자가 아닌 사람은 제외해 주세요.`;
     }
     if (currentNode?.relation === 'husband') {
+      if (isLegacyHusbandSubstitutionContext) {
+        return `[${spouseName}]은 [${resolvedParentNode?.name || '처'}]의 남편으로 입력되어 있으나, 1991년 이전 대습상속 사건에서는 사위가 대습상속인이 아닙니다. [${resolvedParentNode?.name || '처'}]의 직접 자녀만 남기고, 후혼 가족은 별도 가족관계로 확인해 주세요.`;
+      }
       const hojuText = currentLawEra !== '1991' ? ' 1991년 이전 사망한 남편은 호주상속 여부도 함께 확인해 주세요.' : '';
       return `[${spouseName}]의 직접 자녀 또는 양자가 아닌 사람은 제외하고, [${spouseName}]에게만 있는 별도 자녀가 있으면 추가해 주세요.${hojuText}`;
     }
@@ -256,13 +274,18 @@ export default function InputPanel({
 
   const autoFilledTabs = React.useRef(new Set());
   React.useEffect(() => {
-    if (activeDeceasedTab !== 'root' && currentNode && ['wife', 'husband', 'spouse'].includes(currentNode.relation)) {
+    if (
+      activeDeceasedTab !== 'root' &&
+      currentNode &&
+      isSpouseType &&
+      !isLegacyHusbandSubstitutionContext
+    ) {
       if (nodeHeirs.length === 0 && !autoFilledTabs.current.has(activeDeceasedTab)) {
         handleAutoFill(true);
         autoFilledTabs.current.add(activeDeceasedTab);
       }
     }
-  }, [activeDeceasedTab, currentNode?.relation, nodeHeirs.length]);
+  }, [activeDeceasedTab, currentNode?.relation, isSpouseType, isLegacyHusbandSubstitutionContext, nodeHeirs.length]);
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-400 flex flex-col flex-1">
@@ -465,20 +488,24 @@ export default function InputPanel({
             )}
 
             {nodeHeirs.length > 0 &&
-              ['wife', 'husband', 'spouse'].includes(currentNode?.relation) &&
+              isSpouseType &&
               currentNode?.successorStatus !== 'confirmed_no_additional_heirs' && (
-                <div className="flex p-4 bg-[#f8f8f7] dark:bg-neutral-800/80 border border-[#e9e9e7] dark:border-neutral-600 rounded-lg mb-4 shadow-sm relative">
-                  <div className="flex-1 flex flex-col justify-center text-center gap-1">
+                <div className="flex items-start p-4 bg-[#f8f8f7] dark:bg-neutral-800/80 border border-[#e9e9e7] dark:border-neutral-600 rounded-lg mb-4 shadow-sm relative">
+                  <div className="flex-1 flex flex-col justify-center text-left gap-1">
                     <span className="text-[#37352f] dark:text-neutral-200 font-bold text-[13.5px]">
-                      [{resolvedParentNode?.name || '상위 피상속인'}]의 자녀들을 자동으로 불러왔습니다.
+                      {isLegacyHusbandSubstitutionContext
+                        ? '구법상 사위 대습상속 검토'
+                        : `[${resolvedParentNode?.name || '상위 피상속인'}]의 자녀들을 자동으로 불러왔습니다.`}
                     </span>
                     <span className="text-[#787774] dark:text-neutral-300 text-[12px] mt-1">
-                      이 목록은 앞선 사건 기준 자녀이므로, 이번 사건의 상속인 범위를 확인해 주세요.
+                      {isLegacyHusbandSubstitutionContext
+                        ? '이 목록은 후혼 가족관계 확인용입니다. 이번 대습상속 사건의 상속인 범위와 분리해 검토해 주세요.'
+                        : '이 목록은 앞선 사건 기준 자녀이므로, 이번 사건의 상속인 범위를 확인해 주세요.'}
                     </span>
                     <span className="text-[#787774] dark:text-neutral-300 text-[12px] mt-1">
                       {getSpouseAutoFillGuide()}
                     </span>
-                    {currentNode?.relation === 'husband' ? (
+                    {currentNode?.relation === 'husband' && !isLegacyHusbandSubstitutionContext ? (
                       <>
                         {!nodeHeirs.some((h) => h.isHoju) && (
                           <span className="text-red-500 font-bold text-[12.5px] mt-1">
@@ -494,10 +521,12 @@ export default function InputPanel({
                       onClick={() => handleUpdate(currentNode.id, 'successorStatus', 'confirmed_no_additional_heirs')}
                       className="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-700 shadow-sm transition-colors hover:bg-neutral-50 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-200 whitespace-nowrap"
                     >
-                      추가 상속인 없음
+                      {isLegacyHusbandSubstitutionContext ? '관계 검토 완료' : '추가 상속인 없음'}
                     </button>
                     <span className="mt-1.5 max-w-[116px] text-center text-[10.5px] leading-snug text-[#787774] dark:text-neutral-300">
-                      자동으로 불러온 사람 외에 더 추가할 상속인이 없으면 확정
+                      {isLegacyHusbandSubstitutionContext
+                        ? '이번 사건 상속인 범위와 분리해 확인했으면 확정'
+                        : '자동으로 불러온 사람 외에 더 추가할 상속인이 없으면 확정'}
                     </span>
                   </div>
                 </div>

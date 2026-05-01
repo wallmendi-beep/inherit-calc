@@ -88,6 +88,7 @@ export default function PersonEditModal({
   const isSpouseReinheritanceReview = isSpouseType && !!node.isDeceased;
   const isWifeReinheritanceReview = isSpouseReinheritanceReview && node.relation === 'wife';
   const isHusbandReinheritanceReview = isSpouseReinheritanceReview && node.relation === 'husband';
+  const parentName = parentNode?.name || '피상속인';
 
   const relationLabelMap = {
     wife: lawEra === '1991' ? '배우자' : '처',
@@ -127,8 +128,10 @@ export default function PersonEditModal({
     return `${name} 사건은 배우자 재상속 검토 단계입니다. 자동으로 이어진 자녀 목록을 이번 사건의 상속인 범위에 맞게 확인해 주세요.`;
   };
 
-  const reviewReason = needsNextOrderFemaleReview
-    ? `${sourceEventName || '현재'} 사건은 차순위 상속 검토 대상입니다. 여성 형제자매의 혼인·복적·동일가적 여부가 결과를 바꿀 수 있습니다.`
+  const reviewReason = blocksHusbandSubstitution
+    ? `${node.name || '해당 남편'}은 [${parentName}]의 남편으로 입력되어 있으나, 1991년 이전 대습상속 사건에서는 사위가 대습상속인이 아닙니다. 후혼 가족이 함께 입력되어 있다면 이번 사건의 상속인 범위와 분리해 확인해 주세요.`
+    : needsNextOrderFemaleReview
+      ? `${sourceEventName || '현재'} 사건은 차순위 상속 검토 대상입니다. 여성 형제자매의 혼인·복적·동일가적 여부가 결과를 바꿀 수 있습니다.`
     : needsHojuReview
       ? `${node.name || '해당 인물'} 사건은 호주상속 검토 단계입니다. 1차 상속인 중 호주상속인을 지정해야 합니다.`
       : isSpouseReinheritanceReview
@@ -138,8 +141,6 @@ export default function PersonEditModal({
         : hasAnyConfirmedNoSuccessors
           ? `${node.name || '해당 인물'} 자신을 다시 확정하는 단계가 아니라, ${sourceEventName || '현재'} 사건에서 이 사람과 연결된 흐름을 점검하는 단계입니다.`
           : `${sourceEventName || '현재'} 사건에서 이 사람의 사건별 상태를 확인하는 단계입니다.`;
-
-  const parentName = parentNode?.name || '피상속인';
 
   return (
     <div
@@ -248,6 +249,13 @@ export default function PersonEditModal({
           <Surface className="space-y-2.5">
             <div className="text-[11px] font-bold text-[#9a9994] dark:text-neutral-400">이번 사건에서 볼 것</div>
             <ul className="space-y-1.5 text-[11.5px] leading-relaxed text-[#6b655d] dark:text-neutral-300">
+              {blocksHusbandSubstitution ? (
+                <>
+                  <li>1991년 이전 대습상속 사건에서는 사위가 대습상속인이 아닙니다.</li>
+                  <li>{parentName}의 직접 자녀 또는 적격 대습상속인만 이번 사건의 상속인으로 남겨 주세요.</li>
+                  <li>후혼 배우자나 그 자녀가 입력되어 있으면 별도 가족관계 참고정보로 보고, 이번 사건에서는 제외 여부를 확인해 주세요.</li>
+                </>
+              ) : null}
               {needsNextOrderFemaleReview ? (
                 <>
                   <li>여성 형제자매의 혼인·복적·동일가적 여부가 결과를 바꿀 수 있습니다.</li>
@@ -260,14 +268,14 @@ export default function PersonEditModal({
                   <li>1차 상속인 중 누구를 호주상속으로 볼지 입력 탭에서 지정해 주세요.</li>
                 </>
               ) : null}
-              {isWifeReinheritanceReview ? (
+              {isWifeReinheritanceReview && !blocksHusbandSubstitution ? (
                 <>
                   <li>현재 자녀 목록은 상위 사건 기준으로 자동 반영된 목록입니다.</li>
                   <li>{lawEra !== '1991' ? `구법상 남편의 자녀가 ${node.name || '해당 처'} 사건의 상속인으로 반영될 수 있습니다.` : `1991년 이후에는 배우자의 자녀라는 이유만으로 ${node.name || '해당 처'}의 상속인이 되지 않습니다.`}</li>
                   <li>{node.name || '해당 처'}의 직접 자녀 또는 양자가 아닌 사람은 제외하고, 별도 자녀가 있으면 추가해 주세요.</li>
                 </>
               ) : null}
-              {isHusbandReinheritanceReview ? (
+              {isHusbandReinheritanceReview && !blocksHusbandSubstitution ? (
                 <>
                   <li>현재 자녀 목록은 상위 사건 기준으로 자동 반영된 목록입니다.</li>
                   <li>{node.name || '해당 남편'}의 직접 자녀 또는 양자가 아닌 사람은 제외해 주세요.</li>
