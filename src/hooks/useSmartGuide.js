@@ -160,7 +160,9 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
     };
 
     // 보조 함수 6: 노드별 가이드 생성 (메인 루프)
-    const checkGuideNode = (node, parentDate) => {
+    const getNodeKey = (node, fallback = 'root') => node?.personId || node?.id || fallback;
+
+    const checkGuideNode = (node, contextDate = tree.deathDate, contextNode = tree) => {
       const parentNode = findParentNodeInHook(tree, node.id);
       const parentTabId = parentNode ? parentNode.personId : 'root';
       const effectiveDate = node.deathDate || tree.deathDate;
@@ -196,21 +198,23 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       if ((node.isDeceased || node.id === 'root') && !isHardExcluded) {
         const activeHeirs = (node.heirs || []).filter(h => !h.isExcluded);
         if (node.id !== 'root' && node.isDeceased && node.deathDate && activeHeirs.length === 0 && !hasConfirmedNoSuccessors) {
-          const compareDate = parentNode?.deathDate || parentDate || tree.deathDate;
+          const compareDate = contextDate || tree.deathDate;
           const isPre = compareDate ? isBefore(node.deathDate, compareDate) : false;
           const isChild = ['son', 'daughter'].includes(node.relation);
           const isSpouse = isSpouseRelation(node.relation);
 
           if (isPre) {
             if (isChild) {
-              const groupKey = parentNode?.personId || parentNode?.id || 'root';
+              const groupKey = getNodeKey(contextNode);
               const current = groupedPredeceasedMissingMap.get(groupKey) || {
-                parentName: parentNode?.name || tree.name || '현재 계보',
+                parentName: contextNode?.name || tree.name || '현재 계보',
+                branchName: parentNode?.name || '',
                 targetTabId: groupKey,
                 firstTargetTabId: node.personId || node.id,
                 names: [],
                 nodeIds: [],
               };
+              if (!current.branchName && parentNode?.name) current.branchName = parentNode.name;
               current.names.push(node.name || '이름 미상');
               // node.id와 personId 모두 저장해 InputPanel에서 양쪽으로 매칭 가능하게 함
               if (node.id) current.nodeIds.push(node.id);
@@ -218,12 +222,12 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
               groupedPredeceasedMissingMap.set(groupKey, current);
             }
           } else {
-            const contextName = parentNode?.name || tree.name || '현재 계보';
+            const contextName = contextNode?.name || tree.name || '현재 계보';
             const spouseGroupKey = isSpouse ? `${node.relation || 'spouse'}` : 'general';
-            const groupKey = `${parentNode?.personId || parentNode?.id || 'root'}:${spouseGroupKey}`;
+            const groupKey = `${getNodeKey(node)}:${spouseGroupKey}`;
             const current = groupedDirectMissingMap.get(groupKey) || {
               parentName: contextName,
-              targetTabId: parentNode?.personId || parentNode?.id || 'root',
+              targetTabId: getNodeKey(contextNode),
               firstTargetTabId: node.personId || node.id,
               names: [],
               isSpouseGroup: isSpouse,
@@ -273,8 +277,14 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       }
 
       if (node.heirs) {
-        const nextParentDate = node.deathDate || parentDate;
-        node.heirs.forEach(h => checkGuideNode(h, nextParentDate));
+        const startsOwnEvent = node.id !== 'root'
+          && node.isDeceased
+          && node.deathDate
+          && contextDate
+          && !isBefore(node.deathDate, contextDate);
+        const nextContextDate = startsOwnEvent ? node.deathDate : contextDate;
+        const nextContextNode = startsOwnEvent ? node : contextNode;
+        node.heirs.forEach(h => checkGuideNode(h, nextContextDate, nextContextNode));
       }
     };
 
@@ -283,7 +293,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
     checkIndependentExclusionGuide(tree);
     checkDuplicateSpouseGuide(tree);
     checkRemarriedSpouseChildrenGuide(tree);
-    if (tree.heirs) tree.heirs.forEach(h => checkGuideNode(h, tree.deathDate));
+    if (tree.heirs) tree.heirs.forEach(h => checkGuideNode(h, tree.deathDate, tree));
 
     collectLegacyStepchildGuideEntries(tree).forEach((entry) => {
       if (uniqueGuidesMap.has(entry.key)) return;
@@ -307,10 +317,13 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       if (uniqueNames.length === 0) return;
       // 대습상속 누락의 경우 항상 부모(피상속인) 사건 탭으로 이동해야 하위 대습상속인을 입력할 수 있습니다.
       const navTarget = group.targetTabId;
+      const branchText = group.branchName && group.branchName !== group.parentName
+        ? `의 ${group.branchName} 계통 선사망자`
+        : '의 선사망자';
       uniqueGuidesMap.set(`grouped-missing-substitution-${key}`, {
         id: key, uniqueKey: `grouped-missing-substitution-${key}`, targetTabId: navTarget, type: 'mandatory', navigationMode: 'event',
         targetNodeIds: group.nodeIds || [],
-        text: `대습상속 미확정 — [${group.parentName}] 사건의 선사망자: [${uniqueNames.join('], [')}]. 대습상속인 입력 또는 '없음 확정'을 눌러 주세요.`,
+        text: `대습상속 미확정 — [${group.parentName}] 사건${branchText}: [${uniqueNames.join('], [')}]. 대습상속인 입력 또는 '없음 확정'을 눌러 주세요.`,
       });
     });
 

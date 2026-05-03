@@ -101,7 +101,7 @@ export const collectImportValidationIssues = (tree) => {
     });
   }
 
-  const walk = (node, inheritedDate = tree?.deathDate || '') => {
+  const walk = (node, contextDate = tree?.deathDate || '') => {
     if (!node) return;
 
     if (node.id !== 'root') {
@@ -127,11 +127,11 @@ export const collectImportValidationIssues = (tree) => {
       }));
     }
 
-    const isPredeceased = !!(node.deathDate && inheritedDate && isBefore(node.deathDate, inheritedDate));
+    const isPredeceased = !!(node.deathDate && contextDate && isBefore(node.deathDate, contextDate));
     const isSpouse = isSpouseRelation(node.relation);
     const hasHeirs = (node.heirs || []).length > 0;
 
-    if (node.id !== 'root' && node.isDeceased && !hasHeirs && !node.successorStatus && !(isSpouse && isPredeceased)) {
+    if (node.id !== 'root' && node.isDeceased && !hasHeirs && !node.successorStatus && !isPredeceased) {
       issues.push(buildIssue(node, {
         code: 'missing-descendants',
         message: `후속 상속 미확정 — [${node.name || '이름 미상'}]. 후속 상속인 입력 또는 '없음 확정'을 눌러 주세요.`,
@@ -169,9 +169,14 @@ export const collectImportValidationIssues = (tree) => {
       }
     });
 
+    const startsOwnEvent = node.id !== 'root'
+      && node.isDeceased
+      && node.deathDate
+      && contextDate
+      && !isBefore(node.deathDate, contextDate);
+    const nextContextDate = startsOwnEvent ? node.deathDate : contextDate;
     (node.heirs || []).forEach((child) => {
-      const nextInheritedDate = node.deathDate || inheritedDate;
-      walk(child, nextInheritedDate);
+      walk(child, nextContextDate);
     });
   };
 

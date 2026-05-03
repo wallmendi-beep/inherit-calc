@@ -1,8 +1,8 @@
 # 선사망/후사망/재상속/대습상속 판정 규칙 및 워프 네비게이션 기준
 
 작성일: 2026-05-01  
-관련 파일: `src/hooks/useSmartGuide.js`, `src/engine/eligibility.js`,  
-`src/utils/importValidationV2.js`, `src/App.jsx` (handleGuideNavigate)
+최종 업데이트: 2026-05-03 (v4.80 - 사건 맥락 기준 판정 반영)  
+관련 파일: `src/hooks/useSmartGuide.js`, `src/utils/importValidationV2.js`, `src/engine/inheritance.js`, `src/App.jsx`
 
 ---
 
@@ -10,246 +10,144 @@
 
 | 용어 | 정의 |
 |---|---|
-| **선사망자** | 해당 사건의 피상속인보다 먼저 사망한 상속인 |
-| **후사망자** | 해당 사건의 피상속인보다 나중에 사망한 상속인 (재상속 대상) |
-| **대습상속** | 선사망한 자녀·형제자매 대신 그 직계비속·배우자가 상속에 들어오는 구조 |
-| **재상속** | 후사망한 상속인이 자기 지분을 받은 후, 그 지분이 자신의 상속인에게 다시 넘어가는 구조 |
-| **compareDate** | 선사망/후사망을 판정할 때 비교 기준이 되는 날짜 = 직접 부모 노드(피상속인)의 사망일 |
+| 선사망자 | 현재 상속 사건의 피상속인보다 먼저 사망한 상속인 |
+| 후사망자 | 현재 상속 사건의 피상속인보다 나중에 사망한 상속인 |
+| 대습상속 | 선사망한 자녀·형제자매 대신 그 직계비속·배우자가 상속에 들어오는 구조 |
+| 재상속 | 후사망한 상속인이 자기 지분을 받은 뒤, 그 지분이 자신의 상속인에게 다시 넘어가는 구조 |
+| contextDate | 선사망/후사망 비교 기준이 되는 현재 상속 사건의 기준일 |
+| contextNode | 현재 상속 사건의 피상속인 노드 |
 
 ---
 
-## 2. 판정 기준: 선사망 vs 후사망
+## 2. 사건 맥락 기준 판정
 
-### 2.1 compareDate 계산 규칙
-
-`checkGuideNode` 순회 시 `compareDate`는 **직접 부모 노드(현재 사건의 피상속인)의 사망일**을 우선한다.
-
-```
-compareDate = parentNode.deathDate || parentDate || tree.deathDate
-nextParentDate = node.deathDate || parentDate
-```
-
-따라서 정문자(김명수의 배우자)를 평가할 때:
-
-```
-김혁조(1967) → 김명수(1972) → 정문자
-compareDate for 정문자 = 김명수 사망일 1972
-```
-
-구수명 가지처럼 더 늦게 사망한 조상이 중간에 있더라도, 정문자 판정 기준은 김명수 사건이므로 김명수 사망일 1972년이어야 한다. 조상 중 최대 사망일을 누적하면 후사망자인 정문자가 선사망자로 오판되어 `대습상속 미확정`과 `후속 상속 미확정` 가이드가 동시에 뜰 수 있다.
-
-### 2.2 관계별 판정 표
-
-| 관계 | isPre (선사망) | isChild | 판정 결과 |
-|---|---|---|---|
-| son / daughter | true | true | **대습상속 대상** → grouped-missing-substitution |
-| son / daughter | false | true | **재상속 대상** → grouped-direct-missing (비-배우자) |
-| wife / husband / spouse | true | false | **선사망 배우자** → 가이드 없음 (상속 제외됨) |
-| wife / husband / spouse | false | false | **후사망 배우자** → grouped-direct-missing (배우자 그룹) |
-| sibling | true | false | ※ 현행: 가이드 없음 (선사망 형제자매는 isChild=false로 처리됨) |
-| sibling | false | false | **재상속 대상** → grouped-direct-missing |
-
-> **주의**: 관계 식별은 `isSpouseRelation()` 함수를 통해야 한다. hardcoded 배열(`['wife', 'husband', 'spouse']`)만 사용하면 한국어 관계명 또는 edge case에서 오판 발생.
-
----
-
-## 3. 배우자 관계 식별 일관성 규칙
-
-배우자 여부를 판단하는 코드가 두 곳에 있으며, **반드시 동일한 기준**을 사용해야 한다.
-
-### 3.1 올바른 기준 (eligibility.js)
+`useSmartGuide()`와 `importValidationV2()`는 계산 엔진의 `inheritedDate -> distributionDate` 전이와 같은 방식으로 사건 맥락을 유지한다.
 
 ```js
-// eligibility.js
-export const isSpouseRelation = (relation) => (
-  ['wife', 'husband', 'spouse', '처', '남편', '배우자'].includes(relation)
-);
-```
+contextDate = 현재 상속 사건의 기준일;
+contextNode = 현재 상속 사건의 피상속인;
 
-### 3.2 현재 버그 위치
-
-`useSmartGuide.js`의 `checkGuideNode` 내부:
-```js
-// 잘못된 코드 (한국어 관계명 미지원)
-const isSpouse = ['wife', 'husband', 'spouse'].includes(node.relation);
-```
-
-`importValidationV2.js`:
-```js
-// 잘못된 코드
-const SPOUSE_RELATIONS = new Set(['wife', 'husband', 'spouse']);
-const isSpouse = SPOUSE_RELATIONS.has(node.relation);
-```
-
-### 3.3 수정 방향
-
-모든 파일에서 `isSpouseRelation()` import 후 통일 사용.
-
-```js
-import { isSpouseRelation } from '../engine/eligibility';
-// ...
-const isSpouse = isSpouseRelation(node.relation);
-```
-
----
-
-## 4. 가이드 생성 조건 (checkGuideNode 기준)
-
-아래 **모든 조건**을 동시에 만족할 때만 가이드가 생성된다.
-
-```
-node.id !== 'root'
-&& node.isDeceased === true
-&& node.deathDate (값 있음)
-&& activeHeirs.length === 0  (제외 여부 불문 하위 상속인 없음)
-&& !hasConfirmedNoSuccessors (successorStatus 미확정)
-```
-
-### 4.1 대습상속 가이드 (grouped-missing-substitution)
-
-추가 조건:
-- `isPre = true` (compareDate보다 먼저 사망)
-- `isChild = true` (relation이 son 또는 daughter)
-
-생성되는 가이드:
-```
-대습상속 미확정 — [{부모이름}] 사건의 선사망자: [{이름1}, {이름2}]. 대습상속인 입력 또는 '없음 확정'을 눌러 주세요.
-```
-
-### 4.2 후속 상속 가이드 (grouped-direct-missing)
-
-추가 조건:
-- `isPre = false` (compareDate 이후 사망)
-
-생성되는 가이드:
-- 배우자 단독(isSpouseGroup=true, 단일): `후속 상속 미확정 — [{배우자이름}] 사건. 추가 자녀가 있으면 입력, 없으면 '없음 확정'을 눌러 주세요.`
-- 일반(isSpouseGroup=false): `후속 상속 미확정 — [{부모이름}] 사건: [{이름1}, {이름2}]. 후속 상속인 입력 또는 '없음 확정'을 눌러 주세요.`
-
-### 4.3 선사망 배우자 — 후속상속 가이드 없음
-
-조건: `isPre = true` AND `isSpouseRelation = true`
-
-이 경우 배우자는 이미 상속 제외 처리됨. 후속상속 입력 가이드는 불필요하다.
-단, `importValidationV2`에서 `missing-descendants` 이슈가 생성되지 않도록 `isSpouse && isPredeceased` 조건으로 차단해야 함.
-
-예외적으로, 선사망 배우자 또는 구법상 대습권 없는 사위/며느리 아래에 다른 배우자·자녀가 입력되어 있으면 이는 후속상속 가이드가 아니라 **AI 입력 검수용 가족관계 확인 가이드**로 처리한다.
-
-대표 케이스:
-
-```
-윤숙자 사망: 1970-06-13
-윤숙자의 남편: 조창제
-조창제의 후혼 배우자: 이옥지 (1973-12-06 혼인)
-조창제와 이옥지의 자녀: 조상욱 (1974년생)
-```
-
-이 경우 조상욱은 윤숙자 사망 당시 출생자 또는 태아가 아니므로 윤숙자 사건의 대습상속인으로 자동 확정하지 않는다. 출생일 필드가 없는 현재 UI에서는 `후혼 가족관계 확인` 가이드로 사용자 검토를 요구한다.
-
----
-
-## 5. 중복 가이드 방지 규칙
-
-동일 personId에 대해 `grouped-missing-substitution`과 `grouped-direct-missing`이 **동시에 생성되어서는 안 된다**.
-
-현재 버그 원인:
-- `isSpouseRelation()` 불일치로 배우자가 비-배우자로 오판
-- 결과적으로 grouped-direct-missing(비-배우자)에 들어감
-- 별도로 importValidationV2 issue도 생성되어 두 카드가 표시
-
-방지 방법:
-1. `isSpouseRelation()` 통일 사용 (근본 원인 제거)
-2. (안전망) grouped-direct-missing 최종 생성 전, 같은 이름이 grouped-missing-substitution에 이미 있으면 제외
-
----
-
-## 6. 워프(네비게이션) 기준
-
-가이드 카드를 클릭했을 때 어디로 이동해야 하는지의 SSOT.
-
-| 가이드 유형 | 이동 대상 | 이동 탭 | 이유 |
-|---|---|---|---|
-| **대습상속 미확정** (grouped-missing-substitution) | **부모 사건 탭** (parentNode.personId) | tree 탭 (event 모드) | 부모 탭에서 선사망자 행의 '없음 확정' 버튼에 접근 가능 |
-| **후속 상속 미확정 — 배우자** (grouped-direct-missing, isSpouseGroup=true) | **배우자 본인 탭** (spouse.personId) | tree 탭 (event 모드) | 배우자 본인의 재상속 사건 탭에서 후속 상속인 입력/확정 |
-| **후속 상속 미확정 — 비-배우자 단일** (grouped-direct-missing, 1명) | **본인 탭** (node.personId) | tree 탭 (event 모드) | 본인의 재상속 사건 탭에서 후속 상속인 입력/확정 |
-| **후속 상속 미확정 — 비-배우자 복수** (grouped-direct-missing, n명) | **부모 사건 탭** (parentNode.personId) | tree 탭 (event 모드) | 복수 인원 → 부모 탭에서 여러 명 동시 확인 |
-
-### 6.1 현재 버그 (워프 위치)
-
-`grouped-direct-missing` 비-배우자 케이스의 navTarget:
-```js
-// 현재 (잘못됨)
-const navTarget = group.isSpouseGroup ? group.firstTargetTabId : group.targetTabId;
-// → 비-배우자 단일 케이스에서 group.targetTabId = 부모.personId로 이동 (틀림)
-```
-
-올바른 로직:
-```js
-// 수정 후
-const navTarget = (group.isSpouseGroup || group.names.length === 1)
-  ? group.firstTargetTabId   // 단일 or 배우자 → 본인 탭
-  : group.targetTabId;       // 복수 → 부모 탭
-```
-
----
-
-## 7. importValidationV2 판정 기준 (보조 시스템)
-
-`importValidationV2.js`는 전체 트리를 별도로 순회하며 `missing-descendants` 이슈를 생성한다.
-
-### 7.1 inheritedDate 계산 방식
-
-```js
-const nextInheritedDate = node.deathDate || inheritedDate;
-```
-
-이는 직접 부모의 사망일을 기준으로 한다. checkGuideNode의 MAX 방식과 다르며, **더 엄밀하게 직계 부모 기준으로 판정**한다.
-
-### 7.2 선사망 배우자 제외 규칙
-
-```js
-// 조건: 배우자(isSpouse)이면서 피상속인보다 먼저 사망(isPredeceased)한 경우 → issue 미생성
-if (!(isSpouse && isPredeceased)) {
-  issues.push(buildIssue(node, { code: 'missing-descendants', ... }));
+if (node.deathDate >= contextDate) {
+  // 지분을 받은 뒤 사망한 사람: 재상속 사건으로 전환
+  nextContextDate = node.deathDate;
+  nextContextNode = node;
+} else {
+  // 현재 사건보다 먼저 사망한 사람: 대습/배제 검토이므로 사건 맥락 유지
+  nextContextDate = contextDate;
+  nextContextNode = contextNode;
 }
 ```
 
-이 조건도 `isSpouseRelation()`으로 통일해야 함.
+직접 부모 사망일만 쓰거나, 조상 중 가장 늦은 사망일만 누적하면 안 된다. 같은 인물도 어느 사건 흐름에서 검토되는지에 따라 재상속 대상이 될 수도 있고 선사망 배제/대습 검토 대상이 될 수도 있다.
 
-### 7.3 동시존재 원칙 검토
+정문자 예시:
 
-출생일 필드가 없기 때문에 현재 엔진은 대습상속인의 출생시점을 자동 확정하지 않는다. 다만 대습상속인 후보의 부모 혼인일이 피상속인 사망일보다 뒤인 경우, 상속개시 당시 출생자 또는 태아였는지 확인하는 권장 가이드를 띄울 수 있다.
+```text
+김혁조(1967) -> 김명수(1972) -> 정문자(1986)
+정문자는 김명수 사건에서는 후사망자이므로 재상속/후속상속 검토 대상
 
-원칙:
-
-- 피상속인 사망 당시 출생자 또는 태아가 아니면 상속인이 될 수 없다.
-- 혼인일이 사망일 이후라는 사실만으로 자동 배제하지 않는다. 혼인 전 출생, 인지, 입양 가능성이 있기 때문이다.
-- 사망일 이후 상당 기간이 지난 후혼 배우자와의 자녀로 보이면 `post-marriage-family` 가이드로 분리한다.
+구수명(1990) -> 김명수(1972) -> 정문자(1986)
+정문자는 구수명 사건에서는 선사망자이므로 생존 상속인으로 표시하지 않음
+필요하면 김명수 계통의 대습상속인 입력 또는 '없음 확정'으로 정리
+```
 
 ---
 
-## 8. 테스트 케이스 (김명수 사건 기준)
+## 3. 가이드 생성 조건
 
-### 8.1 정문자 시나리오
+아래 조건을 모두 만족할 때만 누락 가이드를 생성한다.
 
-| 항목 | 올바른 상황 | 현재 버그 원인 |
-|---|---|---|
-| 정문자의 관계 | 'wife' (김명수의 배우자) | isSpouseRelation 체크 불일치로 비-배우자 처리 |
-| 정문자의 사망일 | 김명수 사후 사망 (후사망) | isPre 판정 자체는 올바름 |
-| 생성되어야 할 가이드 | 배우자 후속상속 가이드 1개 | 비-배우자 형식 가이드 + import 이슈 2개 |
-| 워프 이동 대상 | 정문자 본인 사건 탭 | 김명수 사건 탭 (오류) |
-
-### 8.2 올바른 정문자 가이드
-
-```
-후속 상속 미확정 — [정문자] 사건. 추가 자녀가 있으면 입력, 없으면 '없음 확정'을 눌러 주세요.
+```text
+node.id !== 'root'
+node.isDeceased === true
+node.deathDate 있음
+activeHeirs.length === 0
+successorStatus 미확정
 ```
 
-클릭 시 → 정문자 본인 사건 탭 (tree 탭, event 모드)
+### 3.1 대습상속 미확정
+
+추가 조건:
+- `node.deathDate < contextDate`
+- `relation`이 `son` 또는 `daughter`
+
+문구:
+
+```text
+대습상속 미확정 — [구수명] 사건의 김명수 계통 선사망자: [정문자]. 대습상속인 입력 또는 '없음 확정'을 눌러 주세요.
+```
+
+같은 사건의 직접 자녀라면 계통 문구 없이 표시한다.
+
+```text
+대습상속 미확정 — [김혁조] 사건의 선사망자: [OOO]. ...
+```
+
+### 3.2 후속 상속 미확정
+
+추가 조건:
+- `node.deathDate >= contextDate`
+
+문구:
+
+```text
+후속 상속 미확정 — [김명수] 사건: [정문자]. 후속 상속인 입력 또는 '없음 확정'을 눌러 주세요.
+```
+
+배우자 단독 가이드는 배우자별 문구 helper를 사용한다.
+
+### 3.3 선사망 배우자
+
+선사망 배우자는 현재 사건의 상속인이 아니므로 후속상속 가이드를 만들지 않는다. 단, 선사망 배우자 또는 구법상 대습권 없는 사위/며느리 아래에 후혼 배우자·자녀가 입력되어 있으면 후속상속이 아니라 AI 입력 검수용 가족관계 확인 가이드로 처리한다.
 
 ---
 
-## 9. 변경 이력
+## 4. 중복 가이드 방지
+
+동일 personId라도 서로 다른 사건 맥락에서는 서로 다른 가이드가 나올 수 있다.
+
+- 김혁조 -> 김명수 사건: 정문자 후사망, 후속상속 검토
+- 구수명 사건: 정문자 선사망, 생존 상속인 아님. 대습상속인 입력 또는 없음 확정 검토
+
+다만 같은 사건 맥락에서 동일 personId가 `대습상속 미확정`과 `후속 상속 미확정`으로 동시에 뜨면 오류다.
+
+방지 원칙:
+- 그룹 키는 personId 단독이 아니라 사건 맥락(contextNode/contextDate)을 포함한다.
+- import 검증의 `missing-descendants`는 후사망자에게만 생성한다.
+- 선사망자는 SmartGuide의 대습상속 검토 카드가 담당한다.
+- 배우자 여부는 항상 `isSpouseRelation()`으로 판정한다.
+
+---
+
+## 5. 워프 기준
+
+| 가이드 유형 | 이동 대상 | 이동 탭 | 이유 |
+|---|---|---|---|
+| 대습상속 미확정 | contextNode 사건 또는 입력 하이라이트 | 사건 검토/데이터 입력 | 현재 사건에서 선사망자의 대습상속인 또는 없음 확정을 검토 |
+| 후속 상속 미확정 - 단일 | 사망자 본인 사건 | 사건 검토 | 본인 재상속 사건에서 후속 상속인 입력/확정 |
+| 후속 상속 미확정 - 복수 | contextNode 사건 | 사건 검토 | 같은 사건 내 여러 후사망자를 한 번에 확인 |
+
+---
+
+## 6. importValidationV2 보조 규칙
+
+`importValidationV2.js`는 전체 트리를 순회하지만, 사건 맥락 전이는 SmartGuide와 동일하게 한다.
+
+```js
+const isPredeceased = node.deathDate && contextDate && isBefore(node.deathDate, contextDate);
+
+if (node.isDeceased && !hasHeirs && !node.successorStatus && !isPredeceased) {
+  issues.push(missingDescendantsIssue);
+}
+```
+
+선사망자는 generic `후속 상속 미확정` import issue를 만들지 않는다. 이 구분이 없으면 정문자처럼 구수명 사건에서는 이미 선사망으로 배제되어야 할 사람이 후속상속 카드에도 다시 표시된다.
+
+---
+
+## 7. 변경 이력
 
 | 날짜 | 내용 |
 |---|---|
 | 2026-05-01 | 초안 작성 — 선사망/후사망 판정 기준, 워프 규칙 SSOT, 배우자 관계 식별 일관성 문제 문서화 |
+| 2026-05-03 | v4.80 — 직접 부모 사망일 기준을 폐기하고 사건 맥락(contextDate/contextNode) 기준으로 재정리 |
