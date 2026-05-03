@@ -196,7 +196,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       if ((node.isDeceased || node.id === 'root') && !isHardExcluded) {
         const activeHeirs = (node.heirs || []).filter(h => !h.isExcluded);
         if (node.id !== 'root' && node.isDeceased && node.deathDate && activeHeirs.length === 0 && !hasConfirmedNoSuccessors) {
-          const compareDate = parentDate || tree.deathDate;
+          const compareDate = parentNode?.deathDate || parentDate || tree.deathDate;
           const isPre = compareDate ? isBefore(node.deathDate, compareDate) : false;
           const isChild = ['son', 'daughter'].includes(node.relation);
           const isSpouse = isSpouseRelation(node.relation);
@@ -273,7 +273,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       }
 
       if (node.heirs) {
-        const nextParentDate = (node.deathDate && parentDate && isBefore(parentDate, node.deathDate)) ? node.deathDate : parentDate;
+        const nextParentDate = node.deathDate || parentDate;
         node.heirs.forEach(h => checkGuideNode(h, nextParentDate));
       }
     };

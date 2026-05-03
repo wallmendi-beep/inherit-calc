@@ -22,20 +22,21 @@
 
 ### 2.1 compareDate 계산 규칙
 
-`checkGuideNode` 순회 시 `parentDate`는 **조상 중 최대 사망일**로 누적된다.
+`checkGuideNode` 순회 시 `compareDate`는 **직접 부모 노드(현재 사건의 피상속인)의 사망일**을 우선한다.
 
 ```
-nextParentDate = MAX(parentDate, node.deathDate)
+compareDate = parentNode.deathDate || parentDate || tree.deathDate
+nextParentDate = node.deathDate || parentDate
 ```
 
 따라서 정문자(김명수의 배우자)를 평가할 때:
 
 ```
 김혁조(1967) → 김명수(1972) → 정문자
-compareDate for 정문자 = MAX(1967, 1972) = 1972
+compareDate for 정문자 = 김명수 사망일 1972
 ```
 
-이 방식은 일반적으로 올바른 결과를 준다. 단, 하위 계보에서 복잡한 다중 경로가 있을 경우 의도치 않게 더 이른 날짜를 기준으로 판정할 수 있으므로 주의.
+구수명 가지처럼 더 늦게 사망한 조상이 중간에 있더라도, 정문자 판정 기준은 김명수 사건이므로 김명수 사망일 1972년이어야 한다. 조상 중 최대 사망일을 누적하면 후사망자인 정문자가 선사망자로 오판되어 `대습상속 미확정`과 `후속 상속 미확정` 가이드가 동시에 뜰 수 있다.
 
 ### 2.2 관계별 판정 표
 
