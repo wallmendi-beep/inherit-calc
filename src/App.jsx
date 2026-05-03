@@ -364,6 +364,29 @@ function App() {
 
     setPersonEditModal(null);
 
+    if (navigationMode === 'input') {
+      if (activeTab !== 'input') setActiveTab('input');
+      if (guide.targetTabId && guide.targetTabId !== activeDeceasedTab) {
+        setActiveDeceasedTab(guide.targetTabId);
+      }
+      setReviewContext({
+        guideKey: guide.uniqueKey,
+        guideText: guide.text,
+        targetNodeIds: guide.targetNodeIds || [guide.targetNodeId].filter(Boolean),
+      });
+      setTimeout(() => {
+        const nodeIds = (guide.targetNodeIds || [guide.targetNodeId]).filter(Boolean);
+        for (const id of nodeIds) {
+          const el = document.querySelector(`[data-node-id="${id}"]`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            break;
+          }
+        }
+      }, 400);
+      return;
+    }
+
     if (hasTargetNodes) {
       if (activeTab !== 'input') setActiveTab('input');
       if (guide.targetTabId && guide.targetTabId !== activeDeceasedTab) {

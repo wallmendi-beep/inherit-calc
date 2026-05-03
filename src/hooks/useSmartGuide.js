@@ -216,9 +216,15 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
                 firstTargetTabId: node.personId || node.id,
                 names: [],
                 nodeIds: [],
+                items: [],
               };
               if (!current.branchName && parentNode?.name) current.branchName = parentNode.name;
               current.names.push(node.name || '이름 미상');
+              current.items.push({
+                name: node.name || '이름 미상',
+                nodeId: node.id || '',
+                personId: node.personId || '',
+              });
               // node.id와 personId 모두 저장해 InputPanel에서 양쪽으로 매칭 가능하게 함
               if (node.id) current.nodeIds.push(node.id);
               if (node.personId && node.personId !== node.id) current.nodeIds.push(node.personId);
@@ -234,10 +240,13 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
               firstTargetTabId: node.personId || node.id,
               firstTargetNodeId: node.id || node.personId,
               names: [],
+              nodeIds: [],
               isSpouseGroup: isSpouse,
               spouseRelation: isSpouse ? node.relation : null,
             };
             current.names.push(node.name || '이름 미상');
+            if (node.id) current.nodeIds.push(node.id);
+            if (node.personId && node.personId !== node.id) current.nodeIds.push(node.personId);
             if (node.id) directMissingPersonKeys.add(node.id);
             if (node.personId) directMissingPersonKeys.add(node.personId);
             groupedDirectMissingMap.set(groupKey, current);
@@ -320,8 +329,17 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
 
     // 수집된 가이드 처리
     groupedPredeceasedMissingMap.forEach((group, key) => {
-      const uniqueNames = Array.from(new Set(group.names));
+      const rawItems = Array.isArray(group.items) && group.items.length > 0
+        ? group.items
+        : (group.names || []).map((name) => ({ name, nodeId: '', personId: '' }));
+      const filteredItems = rawItems.filter((item) => (
+        !directMissingPersonKeys.has(item.nodeId) && !directMissingPersonKeys.has(item.personId)
+      ));
+      const uniqueNames = Array.from(new Set(filteredItems.map((item) => item.name)));
       if (uniqueNames.length === 0) return;
+      const targetNodeIds = Array.from(new Set(
+        filteredItems.flatMap((item) => [item.nodeId, item.personId]).filter(Boolean)
+      ));
       // 대습상속 누락의 경우 항상 부모(피상속인) 사건 탭으로 이동해야 하위 대습상속인을 입력할 수 있습니다.
       const navTarget = group.targetTabId;
       const branchText = group.branchName && group.branchName !== group.parentName
@@ -330,7 +348,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       uniqueGuidesMap.set(`grouped-missing-substitution-${key}`, {
         id: key, uniqueKey: `grouped-missing-substitution-${key}`, targetTabId: navTarget, type: 'mandatory', navigationMode: 'event',
         relatedEventTabId: group.contextTabId,
-        targetNodeIds: group.nodeIds || [],
+        targetNodeIds,
         text: `대습상속 미확정 — [${group.parentName}] 사건${branchText}: [${uniqueNames.join('], [')}]. 대습상속인 입력 또는 '없음 확정'을 눌러 주세요.`,
       });
     });
@@ -348,8 +366,9 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
         uniqueKey: `grouped-direct-missing-${key}`,
         targetTabId: navTarget,
         targetNodeId: uniqueNames.length === 1 ? group.firstTargetNodeId : undefined,
+        targetNodeIds: uniqueNames.length === 1 ? (group.nodeIds || []) : [],
         type: 'mandatory',
-        navigationMode: 'event',
+        navigationMode: 'input',
         text: group.isSpouseGroup
           ? buildSpouseDirectGuideText(group, uniqueNames)
           : `후속 상속 미확정 — [${group.parentName}] 사건: [${uniqueNames.join('], [')}]. 후속 상속인 입력 또는 '없음 확정'을 눌러 주세요.`,
