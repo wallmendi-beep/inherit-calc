@@ -56,6 +56,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
     const groupedPredeceasedMissingMap = new Map();
     const groupedDirectMissingMap = new Map();
     const groupedNextOrderFemaleMap = new Map();
+    const directMissingPersonKeys = new Set();
     let noSurvivors = false;
 
     // 보조 함수 1: 부모 노드 탐색
@@ -236,6 +237,8 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
               spouseRelation: isSpouse ? node.relation : null,
             };
             current.names.push(node.name || '이름 미상');
+            if (node.id) directMissingPersonKeys.add(node.id);
+            if (node.personId) directMissingPersonKeys.add(node.personId);
             groupedDirectMissingMap.set(groupKey, current);
           }
         }
@@ -365,6 +368,12 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       if (issue.code === 'missing-descendants' && linkedNode && (((linkedNode.heirs || []).length > 0) || !!linkedNode.successorStatus)) {
         return;
       }
+      if (
+        issue.code === 'missing-descendants' &&
+        (directMissingPersonKeys.has(issue.personId) || directMissingPersonKeys.has(issue.nodeId))
+      ) {
+        return;
+      }
       const isLegacyHojuInputCase = issue.code === 'missing-descendants' && linkedNode && !linkedNode.successorStatus && getLawEra(linkedNode.deathDate || tree.deathDate) !== '1991' && ['son', 'husband'].includes(linkedNode.relation);
       const personKey = issue.personId || issue.nodeId || 'root';
       const key = `import-${issue.code}-${personKey}`;
@@ -384,6 +393,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
     // 엔진 경고 → SmartGuide 변환 (auto-sibling-redistribution)
     (warnings || []).forEach((warning) => {
       if (warning.code !== 'auto-sibling-redistribution') return;
+      if (directMissingPersonKeys.has(warning.personId) || directMissingPersonKeys.has(warning.targetTabId || warning.id)) return;
       const linkedNode = findNodeInHook(tree, warning.personId, warning.targetTabId || warning.id);
       const warningText = linkedNode && ['wife', 'husband', 'spouse'].includes(linkedNode.relation)
         ? linkedNode.relation === 'wife'

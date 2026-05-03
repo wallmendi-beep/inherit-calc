@@ -70,8 +70,6 @@ export default function SmartGuidePanel({
   activeTab = 'input',
   warnings = [],
   smartGuides = [],
-  hiddenGuideKeys = new Set(),
-  dismissGuide = () => {},
   checkedGuideKeys = new Set(),
   toggleGuideChecked = () => {},
   confirmedGuides = [],
@@ -117,7 +115,6 @@ export default function SmartGuidePanel({
   const recommendedGuides = (smartGuides || []).filter(
     (guide) =>
       guide?.type === 'recommended' &&
-      !(hiddenGuideKeys || new Set()).has(guide?.uniqueKey) &&
       !checkedSet.has(guide?.uniqueKey),
   );
 
@@ -335,11 +332,11 @@ export default function SmartGuidePanel({
               </GuideSectionTitle>
               {recommendedOpen && <ul className="space-y-2">
                 {recommendedGuides.map((guide, index) => (
-                  <li key={`recommended-${index}`} className="group relative">
+                  <li key={`recommended-${index}`}>
                     <button
                       type="button"
                       onClick={() => handleGuideNavigate(guide)}
-                      className="w-full rounded-lg border border-neutral-200 bg-neutral-50 p-3 pr-10 text-left shadow-sm transition-all hover:bg-neutral-100 dark:border-neutral-600 dark:bg-neutral-800/80"
+                      className="w-full rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-left shadow-sm transition-all hover:bg-neutral-100 dark:border-neutral-600 dark:bg-neutral-800/80"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <span className="text-[11.5px] font-medium leading-relaxed text-slate-700 dark:text-neutral-200">
@@ -358,17 +355,6 @@ export default function SmartGuidePanel({
                           }}
                         />
                       </div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        dismissGuide(guide.uniqueKey);
-                      }}
-                      className="absolute right-2 top-2 rounded-full p-1 text-slate-300 opacity-0 transition-all hover:text-slate-600 group-hover:opacity-100 dark:hover:text-neutral-300"
-                      title="숨기기"
-                    >
-                      ✕
                     </button>
                   </li>
                 ))}
