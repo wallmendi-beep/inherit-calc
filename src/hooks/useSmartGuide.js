@@ -205,11 +205,13 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
 
           if (isPre) {
             if (isChild) {
-              const groupKey = getNodeKey(contextNode);
+              const parentKey = getNodeKey(parentNode);
+              const groupKey = `${getNodeKey(contextNode)}:${parentKey}`;
               const current = groupedPredeceasedMissingMap.get(groupKey) || {
                 parentName: contextNode?.name || tree.name || '현재 계보',
                 branchName: parentNode?.name || '',
-                targetTabId: groupKey,
+                targetTabId: parentKey,
+                contextTabId: getNodeKey(contextNode),
                 firstTargetTabId: node.personId || node.id,
                 names: [],
                 nodeIds: [],
@@ -322,6 +324,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
         : '의 선사망자';
       uniqueGuidesMap.set(`grouped-missing-substitution-${key}`, {
         id: key, uniqueKey: `grouped-missing-substitution-${key}`, targetTabId: navTarget, type: 'mandatory', navigationMode: 'event',
+        relatedEventTabId: group.contextTabId,
         targetNodeIds: group.nodeIds || [],
         text: `대습상속 미확정 — [${group.parentName}] 사건${branchText}: [${uniqueNames.join('], [')}]. 대습상속인 입력 또는 '없음 확정'을 눌러 주세요.`,
       });
