@@ -54,12 +54,18 @@ export default function SummaryPanelFixed({
       }
     };
 
-    const collectFromTree = (node, inheritedDate = tree?.deathDate || '') => {
+    const collectFromTree = (node, contextDate = tree?.deathDate || '') => {
       if (!node) return;
-      if (isMissingHeirNode(node, inheritedDate)) {
+      if (isMissingHeirNode(node, contextDate)) {
         register(node.name, node.personId || node.id);
       }
-      (node.heirs || []).forEach((child) => collectFromTree(child, node.deathDate || inheritedDate));
+      const startsOwnEvent = node.id !== 'root'
+        && node.isDeceased
+        && node.deathDate
+        && contextDate
+        && !isBefore(node.deathDate, contextDate);
+      const nextContextDate = startsOwnEvent ? node.deathDate : contextDate;
+      (node.heirs || []).forEach((child) => collectFromTree(child, nextContextDate));
     };
 
     collectFromTree(tree, tree?.deathDate || '');
@@ -82,7 +88,7 @@ export default function SummaryPanelFixed({
   (finalShares.subGroups || []).forEach((group) => group.shares.forEach((share) => shareByPersonId.set(share.personId, share)));
 
   const printedPersonIds = new Set();
-  const buildGroups = (node, parentDeathDate) => {
+  const buildGroups = (node, contextDate) => {
     const directShares = [];
     const subGroups = [];
     const seenInThisGroup = new Set();
@@ -100,8 +106,11 @@ export default function SummaryPanelFixed({
         return;
       }
 
-      const type = heir.deathDate && isBefore(heir.deathDate, parentDeathDate) ? '대습상속' : '재상속';
-      const child = buildGroups(heir, heir.deathDate || parentDeathDate);
+      const type = heir.deathDate && isBefore(heir.deathDate, contextDate) ? '대습상속' : '재상속';
+      const nextContextDate = heir.deathDate && contextDate && !isBefore(heir.deathDate, contextDate)
+        ? heir.deathDate
+        : contextDate;
+      const child = buildGroups(heir, nextContextDate);
       if (child.directShares.length > 0 || child.subGroups.length > 0) {
         subGroups.push({ ancestor: heir, type, ...child });
       }
@@ -128,7 +137,10 @@ export default function SummaryPanelFixed({
     }
 
     const type = heir.deathDate && isBefore(heir.deathDate, tree.deathDate) ? '대습상속' : '재상속';
-    const child = buildGroups(heir, heir.deathDate || tree.deathDate);
+    const nextContextDate = heir.deathDate && tree.deathDate && !isBefore(heir.deathDate, tree.deathDate)
+      ? heir.deathDate
+      : tree.deathDate;
+    const child = buildGroups(heir, nextContextDate);
     if (child.directShares.length > 0 || child.subGroups.length > 0) {
       topGroups.push({ ancestor: heir, type, ...child });
     }

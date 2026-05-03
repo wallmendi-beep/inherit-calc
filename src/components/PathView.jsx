@@ -39,9 +39,10 @@ export default function PathView({ calcSteps, tree, issues, handleNavigate, sear
           sources: [],
         });
       }
+      const eventDate = step.distributionDate || step.dec?.deathDate;
       heirMap.get(personId).sources.push({
         decName: step.dec.name,
-        decDeathDate: step.dec.deathDate,
+        decDeathDate: eventDate,
         relation: dist.h._origRelation || dist.h.relation,
         lawEra: step.lawEra,
         modifier: dist.mod || '',

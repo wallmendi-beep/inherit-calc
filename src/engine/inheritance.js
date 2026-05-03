@@ -311,7 +311,17 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
     });
 
     if (total > 0) {
-      const step = includeCalcSteps ? { dec: node, inN, inD, dists: [], lawEra: law, parentDecName } : null;
+      const step = includeCalcSteps ? {
+        dec: node,
+        inN,
+        inD,
+        dists: [],
+        lawEra: law,
+        parentDecName,
+        inheritedDate,
+        distributionDate,
+        isSubstitution,
+      } : null;
       const childrenToTraverse = [];
 
       targetHeirs.forEach(h => {

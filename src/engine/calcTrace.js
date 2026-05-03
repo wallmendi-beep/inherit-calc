@@ -3,6 +3,9 @@ export const toSourceBreakdown = (step, { getPersonKey }) => ({
   lawEra: step.lawEra,
   inN: step.inN,
   inD: step.inD,
+  inheritedDate: step.inheritedDate || '',
+  distributionDate: step.distributionDate || step.dec?.deathDate || '',
+  isSubstitution: !!step.isSubstitution,
   dists: (step.dists || []).map((dist) => ({
     personId: getPersonKey(dist.h),
     name: dist.h?.name || '',
@@ -19,23 +22,27 @@ export const toSourceBreakdown = (step, { getPersonKey }) => ({
 export const mergeCalcSteps = (steps, { getPersonKey, math }) => {
   const mergedSteps = [];
   const stepByPersonId = {};
+  const stepByTraceKey = {};
 
   steps.forEach((step) => {
     const personKey = getPersonKey(step.dec);
+    const traceDate = step.distributionDate || step.dec?.deathDate || '';
+    const traceKey = `${personKey}::${traceDate}::${step.isSubstitution ? 'sub' : 'own'}`;
     if (!personKey || step.dec?.id === 'root') {
       mergedSteps.push(step);
       return;
     }
 
-    if (!stepByPersonId[personKey]) {
+    if (!stepByTraceKey[traceKey]) {
       step.mergeSources = [{ from: step.parentDecName || '피상속인', n: step.inN, d: step.inD }];
       step.sourceBreakdowns = [toSourceBreakdown(step, { getPersonKey })];
-      stepByPersonId[personKey] = step;
+      stepByTraceKey[traceKey] = step;
+      if (!stepByPersonId[personKey]) stepByPersonId[personKey] = step;
       mergedSteps.push(step);
       return;
     }
 
-    const existing = stepByPersonId[personKey];
+    const existing = stepByTraceKey[traceKey];
     existing.mergeSources.push({ from: step.parentDecName || '피상속인', n: step.inN, d: step.inD });
     existing.sourceBreakdowns = existing.sourceBreakdowns || [];
     existing.sourceBreakdowns.push(toSourceBreakdown(step, { getPersonKey }));

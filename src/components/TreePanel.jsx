@@ -2,7 +2,26 @@ import React from 'react';
 import TreeReportNode from './TreeReportNode';
 import { formatKorDate, getLawEra, getRelStr, isBefore, math } from '../engine/utils';
 
-const getStepKey = (step, index) => step?.dec?.personId || step?.dec?.id || `step-${index}`;
+const getStepEventDate = (step) => step?.distributionDate || step?.dec?.deathDate || '';
+const getPersonKey = (person) => person?.personId || person?.id || null;
+const getStepLookupKey = (person, eventDate) => `${getPersonKey(person) || ''}::${eventDate || ''}`;
+const getStepKey = (step, index) => {
+  const personKey = getPersonKey(step?.dec) || `step-${index}`;
+  return `${personKey}::${getStepEventDate(step)}`;
+};
+
+const getContinuationEventDate = (step, heir) => {
+  const eventDate = getStepEventDate(step);
+  if (!heir?.deathDate) return '';
+  return eventDate && isBefore(heir.deathDate, eventDate) ? eventDate : heir.deathDate;
+};
+
+const findRelatedStep = (stepMap, step, heir) => {
+  const personKey = getPersonKey(heir);
+  if (!personKey) return null;
+  const eventDate = getContinuationEventDate(step, heir);
+  return stepMap.get(`${personKey}::${eventDate}`) || stepMap.get(personKey) || null;
+};
 
 const lawEraLabel = (era) => {
   if (era === '1960') return '1960년 제정 민법 적용';
@@ -21,7 +40,8 @@ const buildStepTree = (steps) => {
       const parentKey = getStepKey(parentStep, pi);
       const isChild = (parentStep.dists || []).some((d) => {
         const pid = d.h?.personId || d.h?.id;
-        return pid === step.dec?.personId || pid === step.dec?.id;
+        if (!(pid === step.dec?.personId || pid === step.dec?.id)) return false;
+        return getContinuationEventDate(parentStep, d.h) === getStepEventDate(step);
       });
       if (isChild && !parentOf.has(childKey)) parentOf.set(childKey, parentKey);
     });
@@ -85,7 +105,9 @@ const EventNavItem = ({ step, index, active, onClick }) => (
         <div className={`truncate text-[13px] font-black ${active ? 'text-[#2d4a6e] dark:text-blue-200' : 'text-[#37352f] dark:text-neutral-200'}`}>
           망 {step.dec?.name}
         </div>
-        <div className="mt-0.5 text-[11px] text-[#9b9a97] dark:text-neutral-400">{formatKorDate(step.dec?.deathDate)}</div>
+        <div className="mt-0.5 text-[11px] text-[#9b9a97] dark:text-neutral-400">
+          {formatKorDate(getStepEventDate(step))}{step.isSubstitution ? ' 기준' : ''}
+        </div>
         <div className="mt-2 flex flex-wrap gap-1.5">
           <Tag tone="blue">상속지분 {step.inN}/{step.inD}</Tag>
           <Tag>{(step.dists || []).filter((d) => !d.ex && d.n > 0).length}명 분배</Tag>
@@ -136,17 +158,18 @@ const getReviewNotes = (step, activeDists) => {
     const sources = step.inflows.map((flow) => `${flow.from} ${flow.n}/${flow.d}`).join(' + ');
     notes.push(`복수 경로 유입: ${sources}`);
   }
-  const era = step.dec?.deathDate ? getLawEra(step.dec.deathDate) : '1991';
+  const eventDate = getStepEventDate(step);
+  const era = eventDate ? getLawEra(eventDate) : '1991';
   if (era !== '1991' && activeDists.some((d) => typeof d.mod === 'string' && d.mod.includes('호주'))) {
     notes.push('이번 사건에는 호주상속 판단이 반영된 상속인이 있습니다.');
   }
   if (era !== '1991' && activeDists.some((d) => d.h?.relation === 'daughter' || (d.h?.relation === 'sibling' && d.h?._origRelation === 'daughter'))) {
     notes.push('여성 상속인의 동일가적/비동일가적 상태가 결과를 바꿀 수 있습니다.');
   }
-  if (activeDists.some((d) => d.h?.deathDate && isBefore(d.h.deathDate, step.dec?.deathDate))) {
+  if (activeDists.some((d) => d.h?.deathDate && isBefore(d.h.deathDate, eventDate))) {
     notes.push('선사망 상속인이 있어 대습상속 검토가 함께 필요합니다.');
   }
-  if (activeDists.some((d) => d.h?.deathDate && !isBefore(d.h.deathDate, step.dec?.deathDate))) {
+  if (activeDists.some((d) => d.h?.deathDate && !isBefore(d.h.deathDate, eventDate))) {
     notes.push('지분을 받은 뒤 다시 사망한 상속인이 있어 재상속 검토가 이어집니다.');
   }
   return notes;
@@ -195,7 +218,9 @@ const buildEventLayout = (step, stepMap, commonD, innerCommonD) => {
     height: rootH,
     title: `망 ${step.dec?.name}`,
     subtitle: '피상속인',
-    dateLabel: `${formatKorDate(step.dec?.deathDate)} 사망`,
+    dateLabel: step.isSubstitution
+      ? `${formatKorDate(getStepEventDate(step))} 기준`
+      : `${formatKorDate(step.dec?.deathDate)} 사망`,
     tags: [
       { label: `상속지분 ${step.inN}/${step.inD}`, tone: 'blue' },
       ...(step.dec?.isHoju ? [{ label: '호주', tone: 'blue' }] : []),
@@ -204,7 +229,8 @@ const buildEventLayout = (step, stepMap, commonD, innerCommonD) => {
     isRoot: true,
   });
 
-  const stepEra = step.dec?.deathDate ? getLawEra(step.dec.deathDate) : '1991';
+  const eventDate = getStepEventDate(step);
+  const stepEra = eventDate ? getLawEra(eventDate) : '1991';
 
   // 배우자 카드: 누적 y 계산
   let spouseY = topY + rootH + verticalGap;
@@ -220,12 +246,12 @@ const buildEventLayout = (step, stepMap, commonD, innerCommonD) => {
       width: cardW,
       height: cardH,
       title: dist.h?.name,
-      subtitle: getRelStr(dist.h?.relation, step.dec?.deathDate) || '배우자',
+      subtitle: getRelStr(dist.h?.relation, eventDate) || '배우자',
       tags,
       share,
       dist,
-      relatedStep: stepMap.get(dist.h?.personId) || stepMap.get(dist.h?.id) || null,
-      branchLabel: dist.h?.deathDate ? (isBefore(dist.h.deathDate, step.dec?.deathDate) ? '대습상속 ->' : '재상속 ->') : '',
+      relatedStep: findRelatedStep(stepMap, step, dist.h),
+      branchLabel: dist.h?.deathDate ? (isBefore(dist.h.deathDate, eventDate) ? '대습상속 ->' : '재상속 ->') : '',
       eventDateNote: dist.h?.deathDate ? `${formatKorDate(dist.h.deathDate)} 사망` : '',
     });
     spouseY += cardH + verticalGap;
@@ -246,12 +272,12 @@ const buildEventLayout = (step, stepMap, commonD, innerCommonD) => {
       width: cardW,
       height: cardH,
       title: dist.h?.name,
-      subtitle: getRelStr(dist.h?.relation, step.dec?.deathDate) || '상속인',
+      subtitle: getRelStr(dist.h?.relation, eventDate) || '상속인',
       tags,
       share,
       dist,
-      relatedStep: stepMap.get(dist.h?.personId) || stepMap.get(dist.h?.id) || null,
-      branchLabel: dist.h?.deathDate ? (isBefore(dist.h.deathDate, step.dec?.deathDate) ? '대습상속 ->' : '재상속 ->') : '',
+      relatedStep: findRelatedStep(stepMap, step, dist.h),
+      branchLabel: dist.h?.deathDate ? (isBefore(dist.h.deathDate, eventDate) ? '대습상속 ->' : '재상속 ->') : '',
       eventDateNote: dist.h?.deathDate ? `${formatKorDate(dist.h.deathDate)} 사망` : '',
     });
     heirY += cardH + heirGap;
@@ -390,12 +416,12 @@ const PersonNodeCard = ({ node, onNavigate, onOpenEvent }) => {
 const NarrativeBlock = ({ step, stepMap, era }) => {
   const activeDists = (step.dists || []).filter((d) => !d.ex && d.n > 0);
   const excludedDists = (step.dists || []).filter((d) => (d.ex || d.n === 0) && d.h?.name?.trim());
+  const eventDate = getStepEventDate(step);
 
   const getContinuation = (dist) => {
-    const pid = dist.h?.personId || dist.h?.id;
-    const relatedStep = pid ? stepMap.get(pid) : null;
+    const relatedStep = findRelatedStep(stepMap, step, dist.h);
     if (!relatedStep || !dist.h?.deathDate) return null;
-    const isPredeceased = isBefore(dist.h.deathDate, step.dec?.deathDate);
+    const isPredeceased = isBefore(dist.h.deathDate, eventDate);
     return { type: isPredeceased ? '대습상속' : '재상속', date: formatKorDate(dist.h.deathDate) };
   };
 
@@ -413,7 +439,7 @@ const NarrativeBlock = ({ step, stepMap, era }) => {
           <div className="text-[10px] font-bold uppercase tracking-wider text-[#9b9a97] dark:text-neutral-400">취득자 ({activeDists.length}명)</div>
           {activeDists.map((dist, i) => {
             const continuation = getContinuation(dist);
-            const relStr = getRelStr(dist.h?.relation, step.dec?.deathDate) || dist.h?.relation || '상속인';
+            const relStr = getRelStr(dist.h?.relation, eventDate) || dist.h?.relation || '상속인';
             const modText = dist.mod ? dist.mod : '균분';
             return (
               <div key={`narrative-active-${i}`} className="rounded-xl border border-[#e4e2de] bg-white px-3.5 py-2.5 dark:border-neutral-700 dark:bg-neutral-800/60">
@@ -439,10 +465,9 @@ const NarrativeBlock = ({ step, stepMap, era }) => {
         <div className="space-y-2">
           <div className="text-[10px] font-bold uppercase tracking-wider text-[#9b9a97] dark:text-neutral-400">상속권 없음 ({excludedDists.length}명)</div>
           {excludedDists.map((dist, i) => {
-            const relStr = getRelStr(dist.h?.relation, step.dec?.deathDate) || dist.h?.relation || '상속인';
-            const pid = dist.h?.personId || dist.h?.id;
-            const hasRelatedStep = !!(pid && stepMap.get(pid));
-            const isPredeceased = dist.h?.deathDate && isBefore(dist.h.deathDate, step.dec?.deathDate);
+            const relStr = getRelStr(dist.h?.relation, eventDate) || dist.h?.relation || '상속인';
+            const hasRelatedStep = !!findRelatedStep(stepMap, step, dist.h);
+            const isPredeceased = dist.h?.deathDate && isBefore(dist.h.deathDate, eventDate);
             const reason = isPredeceased && !hasRelatedStep
               ? '선사망 — 적격 대습상속인 없어 상속권 소멸'
               : (dist.ex || '상속권 없음');
@@ -471,7 +496,8 @@ const EventGraphView = ({ step, stepMap, onNavigate, onOpenEvent }) => {
   const activeDists = (step.dists || []).filter((d) => !d.ex && d.n > 0);
   const commonD = activeDists.reduce((lcm, d) => math.lcm(lcm, d.d || 1), 1);
   const innerCommonD = activeDists.reduce((lcm, d) => math.lcm(lcm, d.sd || 1), 1);
-  const era = step.dec?.deathDate ? getLawEra(step.dec.deathDate) : '';
+  const eventDate = getStepEventDate(step);
+  const era = eventDate ? getLawEra(eventDate) : '';
   const layout = React.useMemo(() => buildEventLayout(step, stepMap, commonD, innerCommonD), [step, stepMap, commonD, innerCommonD]);
 
   return (
@@ -483,7 +509,9 @@ const EventGraphView = ({ step, stepMap, onNavigate, onOpenEvent }) => {
             <span className="text-[12px] font-black text-[#9b9a97] dark:text-neutral-400">피상속인 망</span>
             <span className="text-[20px] font-black tracking-tight text-[#37352f] dark:text-neutral-100">{step.dec?.name}</span>
           </div>
-          <div className="text-[12px] font-bold text-[#787774] dark:text-neutral-300">{formatKorDate(step.dec?.deathDate)} 사망</div>
+          <div className="text-[12px] font-bold text-[#787774] dark:text-neutral-300">
+            {step.isSubstitution ? `${formatKorDate(eventDate)} 기준` : `${formatKorDate(step.dec?.deathDate)} 사망`}
+          </div>
           {step.dec?.isHoju && <Tag tone="blue">호주</Tag>}
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
@@ -617,8 +645,15 @@ export default function TreePanel({
     steps.forEach((step, i) => {
       const key = getStepKey(step, i);
       map.set(key, step);
-      if (step.dec?.personId) map.set(step.dec.personId, step);
-      if (step.dec?.id) map.set(step.dec.id, step);
+      const eventDate = getStepEventDate(step);
+      if (step.dec?.personId) {
+        map.set(getStepLookupKey(step.dec, eventDate), step);
+        if (!map.has(step.dec.personId)) map.set(step.dec.personId, step);
+      }
+      if (step.dec?.id) {
+        map.set(`${step.dec.id}::${eventDate}`, step);
+        if (!map.has(step.dec.id)) map.set(step.dec.id, step);
+      }
     });
     return map;
   }, [steps]);

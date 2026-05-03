@@ -129,7 +129,33 @@ successorStatus 미확정
 
 ---
 
-## 6. importValidationV2 보조 규칙
+## 6. 상세검토/취득경로 기준
+
+`calcSteps`는 UI 근거 표시의 SSOT이므로 계산 엔진이 사용한 사건 기준일을 잃으면 안 된다.
+
+각 step은 다음 값을 보존한다.
+
+```js
+{
+  inheritedDate,      // 이전 사건에서 넘어온 기준일
+  distributionDate,   // 이 step에서 실제 법 시기와 선후사망 판정에 사용한 기준일
+  isSubstitution,     // 선사망/결격 등으로 기존 사건 기준일을 유지한 대습 단계인지 여부
+}
+```
+
+상세검토/취득경로 탭은 다음 판단에 `step.dec.deathDate`가 아니라 `step.distributionDate`를 우선 사용한다.
+
+- 상속인 관계명 표시
+- 구법/현행법 라벨
+- 대습상속/재상속 연결 라벨
+- 다음 사건 찾기
+- 취득 경로의 출처 날짜
+
+같은 personId라도 `distributionDate`가 다르면 별도 step으로 유지한다.
+
+---
+
+## 7. importValidationV2 보조 규칙
 
 `importValidationV2.js`는 전체 트리를 순회하지만, 사건 맥락 전이는 SmartGuide와 동일하게 한다.
 
@@ -145,9 +171,10 @@ if (node.isDeceased && !hasHeirs && !node.successorStatus && !isPredeceased) {
 
 ---
 
-## 7. 변경 이력
+## 8. 변경 이력
 
 | 날짜 | 내용 |
 |---|---|
 | 2026-05-01 | 초안 작성 — 선사망/후사망 판정 기준, 워프 규칙 SSOT, 배우자 관계 식별 일관성 문제 문서화 |
 | 2026-05-03 | v4.80 — 직접 부모 사망일 기준을 폐기하고 사건 맥락(contextDate/contextNode) 기준으로 재정리 |
+| 2026-05-03 | v4.81 — 상세검토/취득경로도 `distributionDate` 기준으로 정렬 |

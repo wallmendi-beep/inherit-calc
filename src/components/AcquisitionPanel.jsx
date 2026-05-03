@@ -145,9 +145,10 @@ export default function AcquisitionPanel({
             sources: [],
           });
         }
+        const eventDate = step.distributionDate || step.dec?.deathDate;
         map.get(pid).sources.push({
           decName: step.dec?.name,
-          decDeathDate: step.dec?.deathDate,
+          decDeathDate: eventDate,
           relation: dist.h.relation,
           lawEra: step.lawEra,
           modifier: dist.mod || '',

@@ -2,6 +2,20 @@ import React from 'react';
 import { formatKorDate, getRelStr, isBefore } from '../engine/utils';
 
 const getPersonKey = (person) => person?.personId || person?.id || null;
+const getStepEventDate = (step) => step?.distributionDate || step?.dec?.deathDate || '';
+const getStepMapKey = (personKey, eventDate) => `${personKey || ''}::${eventDate || ''}`;
+
+const getContinuationEventDate = (step, deathDate) => {
+  const eventDate = getStepEventDate(step);
+  if (!deathDate) return '';
+  return eventDate && isBefore(deathDate, eventDate) ? eventDate : deathDate;
+};
+
+const findNextStep = (stepByPersonId, step, dist) => {
+  if (!dist?.personId) return null;
+  const eventDate = getContinuationEventDate(step, dist.h?.deathDate || '');
+  return stepByPersonId.get(getStepMapKey(dist.personId, eventDate)) || stepByPersonId.get(dist.personId) || null;
+};
 
 const lawLabel = (era) => {
   if (era === '1960') return '구민법';
@@ -74,7 +88,7 @@ const branchMatches = (step, stepByPersonId, query, sourceName = null, inN = nul
   const breakdown = findSourceBreakdown(step, sourceName, inN, inD);
   return normalizeDists(step, breakdown).some((dist) => {
     if ((dist.name || '').toLowerCase().includes(query)) return true;
-    const nextStep = dist.personId ? stepByPersonId.get(dist.personId) : null;
+    const nextStep = findNextStep(stepByPersonId, step, dist);
     if (!nextStep) return false;
     return branchMatches(nextStep, stepByPersonId, query, step?.dec?.name, dist.n, dist.d, new Set(visited));
   });
@@ -91,7 +105,8 @@ const EventNode = ({
   visited = new Set(),
 }) => {
   const stepKey = getPersonKey(step?.dec) || 'root';
-  const visitKey = `${stepKey}:${sourceName || ''}:${incomingShare?.n || step?.inN}/${incomingShare?.d || step?.inD}`;
+  const eventDate = getStepEventDate(step);
+  const visitKey = `${stepKey}:${eventDate}:${sourceName || ''}:${incomingShare?.n || step?.inN}/${incomingShare?.d || step?.inD}`;
   const breakdown = findSourceBreakdown(step, sourceName, incomingShare?.n, incomingShare?.d);
   const dists = normalizeDists(step, breakdown).filter((dist) => !dist.ex && dist.n > 0);
   const isMerged = (step?.mergeSources || []).length > 1;
@@ -123,7 +138,7 @@ const EventNode = ({
               </span>
               {step?.dec?.deathDate && (
                 <span className="text-[12px] font-medium text-[#787774] dark:text-neutral-400">
-                  {formatKorDate(step.dec.deathDate)} 사망
+                  {step.isSubstitution ? `${formatKorDate(eventDate)} 기준` : `${formatKorDate(step.dec.deathDate)} 사망`}
                 </span>
               )}
             </div>
@@ -147,13 +162,13 @@ const EventNode = ({
 
         <div className="mt-3 space-y-2">
           {dists.map((dist) => {
-            const nextStep = dist.personId ? stepByPersonId.get(dist.personId) : null;
+            const nextStep = findNextStep(stepByPersonId, step, dist);
             const hasNext = !!nextStep;
             const deathDate = dist.h?.deathDate || nextStep?.dec?.deathDate || '';
-            const continuationType = deathDate && step?.dec?.deathDate && isBefore(deathDate, step.dec.deathDate)
+            const continuationType = deathDate && eventDate && isBefore(deathDate, eventDate)
               ? '대습상속'
               : '재상속';
-            const relation = getRelStr(dist.relation, step?.dec?.deathDate) || dist.relation || '상속인';
+            const relation = getRelStr(dist.relation, eventDate) || dist.relation || '상속인';
 
             return (
               <div key={`${stepKey}-${dist.personId}-${dist.n}/${dist.d}`} className="space-y-2">
@@ -208,7 +223,9 @@ export default function LineagePathTree({ calcSteps = [], handleNavigate, search
     const map = new Map();
     steps.forEach((step) => {
       const key = getPersonKey(step.dec);
-      if (key) map.set(key, step);
+      if (!key) return;
+      map.set(getStepMapKey(key, getStepEventDate(step)), step);
+      if (!map.has(key)) map.set(key, step);
     });
     return map;
   }, [steps]);
