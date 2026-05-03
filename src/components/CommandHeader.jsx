@@ -50,7 +50,7 @@ export default function CommandHeader({
         <div className="flex min-w-0 items-center gap-3">
           <button
             type="button"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 md:hidden dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 md:hidden dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
             onClick={() => setSidebarOpen((prev) => !prev)}
             aria-label={sidebarOpen ? '가계도 닫기' : '가계도 열기'}
           >
@@ -63,7 +63,7 @@ export default function CommandHeader({
             <div className="truncate text-lg font-semibold tracking-tight text-slate-800 dark:text-neutral-100">
               상속분 계산기 <span className="text-indigo-600 dark:text-indigo-400">Pro</span>
             </div>
-            <div className="hidden truncate text-[11px] text-slate-400 lg:block dark:text-neutral-500">
+            <div className="hidden truncate text-[11px] text-slate-400 lg:block dark:text-neutral-400">
               {tree.caseNo || '사건번호 미입력'} · {tree.name || '피상속인 미입력'}
             </div>
           </div>
@@ -73,12 +73,12 @@ export default function CommandHeader({
           <div className="relative hidden sm:block">
             <HeaderButton
               onClick={() => toggleMenu('file')}
-              className="text-slate-600 hover:bg-slate-100 hover:text-slate-800 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+              className="text-slate-600 hover:bg-slate-100 hover:text-slate-800 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
             >
               파일
             </HeaderButton>
             {openMenu === 'file' && (
-              <div className="absolute right-0 top-11 z-[120] flex w-40 flex-col gap-1 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-neutral-700 dark:bg-neutral-800">
+              <div className="absolute right-0 top-11 z-[120] flex w-40 flex-col gap-1 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-neutral-600 dark:bg-neutral-800">
                 <label className="flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-[12px] font-bold text-slate-700 hover:bg-slate-50 dark:text-neutral-200 dark:hover:bg-neutral-700">
                   <IconFolderOpen className="h-3.5 w-3.5" /> 불러오기
                   <input
@@ -117,8 +117,8 @@ export default function CommandHeader({
             onClick={() => setShowNavigator((prev) => !prev)}
             className={`hidden sm:inline-flex ${
               hasActionItems
-                ? 'text-amber-700 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-950/30'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-800 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100'
+                ? 'text-amber-700 hover:bg-amber-50 dark:text-amber-200 dark:hover:bg-amber-950/30'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-800 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-neutral-100'
             }`}
           >
             가이드
@@ -134,7 +134,7 @@ export default function CommandHeader({
               내보내기
             </HeaderButton>
             {openMenu === 'export' && (
-              <div className="absolute right-0 top-11 z-[120] flex w-36 flex-col gap-1 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-neutral-700 dark:bg-neutral-800">
+              <div className="absolute right-0 top-11 z-[120] flex w-36 flex-col gap-1 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-neutral-600 dark:bg-neutral-800">
                 <button
                   onClick={() => {
                     closeMenus();
@@ -174,8 +174,8 @@ export default function CommandHeader({
             onClick={() => setShowNavigator((prev) => !prev)}
             className={`inline-flex h-9 w-9 items-center justify-center rounded-md transition-colors sm:hidden ${
               hasActionItems
-                ? 'text-amber-700 hover:bg-amber-50 dark:text-amber-300 dark:hover:bg-amber-950/30'
-                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100'
+                ? 'text-amber-700 hover:bg-amber-50 dark:text-amber-200 dark:hover:bg-amber-950/30'
+                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-neutral-100'
             }`}
             title="가이드"
           >
@@ -187,7 +187,7 @@ export default function CommandHeader({
 
           <button
             onClick={() => setIsDarkMode(!isDarkMode)}
-            className="ml-1 inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+            className="ml-1 inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
             title={isDarkMode ? '라이트 모드' : '다크 모드'}
           >
             {isDarkMode ? <IconSun className="h-4 w-4 text-amber-300" /> : <IconMoon className="h-4 w-4" />}

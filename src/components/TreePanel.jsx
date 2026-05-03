@@ -2,7 +2,26 @@ import React from 'react';
 import TreeReportNode from './TreeReportNode';
 import { formatKorDate, getLawEra, getRelStr, isBefore, math } from '../engine/utils';
 
-const getStepKey = (step, index) => step?.dec?.personId || step?.dec?.id || `step-${index}`;
+const getStepEventDate = (step) => step?.distributionDate || step?.dec?.deathDate || '';
+const getPersonKey = (person) => person?.personId || person?.id || null;
+const getStepLookupKey = (person, eventDate) => `${getPersonKey(person) || ''}::${eventDate || ''}`;
+const getStepKey = (step, index) => {
+  const personKey = getPersonKey(step?.dec) || `step-${index}`;
+  return `${personKey}::${getStepEventDate(step)}`;
+};
+
+const getContinuationEventDate = (step, heir) => {
+  const eventDate = getStepEventDate(step);
+  if (!heir?.deathDate) return '';
+  return eventDate && isBefore(heir.deathDate, eventDate) ? eventDate : heir.deathDate;
+};
+
+const findRelatedStep = (stepMap, step, heir) => {
+  const personKey = getPersonKey(heir);
+  if (!personKey) return null;
+  const eventDate = getContinuationEventDate(step, heir);
+  return stepMap.get(`${personKey}::${eventDate}`) || stepMap.get(personKey) || null;
+};
 
 const lawEraLabel = (era) => {
   if (era === '1960') return '1960년 제정 민법 적용';
@@ -21,7 +40,8 @@ const buildStepTree = (steps) => {
       const parentKey = getStepKey(parentStep, pi);
       const isChild = (parentStep.dists || []).some((d) => {
         const pid = d.h?.personId || d.h?.id;
-        return pid === step.dec?.personId || pid === step.dec?.id;
+        if (!(pid === step.dec?.personId || pid === step.dec?.id)) return false;
+        return getContinuationEventDate(parentStep, d.h) === getStepEventDate(step);
       });
       if (isChild && !parentOf.has(childKey)) parentOf.set(childKey, parentKey);
     });
@@ -39,14 +59,14 @@ const relationTone = (relation) => {
 const Tag = ({ children, tone = 'default', className = '' }) => {
   const cls =
     tone === 'blue'
-      ? 'border-[#d7e5f9] bg-[#f0f6ff] text-[#3b5f8a] dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-300'
+      ? 'border-[#d7e5f9] bg-[#f0f6ff] text-[#3b5f8a] dark:border-blue-900/40 dark:bg-blue-900/40 dark:text-blue-300'
       : tone === 'amber'
-      ? 'border-[#eadfcb] bg-[#fbf6ed] text-[#7a6240] dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300'
+      ? 'border-[#eadfcb] bg-[#fbf6ed] text-[#7a6240] dark:border-amber-900/40 dark:bg-amber-900/30 dark:text-amber-200'
       : tone === 'green'
       ? 'border-[#cfe5d7] bg-[#f1faf4] text-[#2f6f4d] dark:border-green-900/40 dark:bg-green-950/20 dark:text-green-300'
       : tone === 'rose'
       ? 'border-[#ead7da] bg-[#fcf4f5] text-[#8a5a5f] dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-300'
-      : 'border-[#e4e2de] bg-[#f7f6f3] text-[#5d5b57] dark:border-neutral-700 dark:bg-neutral-800/60 dark:text-neutral-300';
+      : 'border-[#e4e2de] bg-[#f7f6f3] text-[#5d5b57] dark:border-neutral-600 dark:bg-neutral-800/60 dark:text-neutral-300';
 
   return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold ${cls} ${className}`}>{children}</span>;
 };
@@ -71,13 +91,13 @@ const EventNavItem = ({ step, index, active, onClick }) => (
     onClick={onClick}
     className={`w-full rounded-2xl border px-3 py-3 text-left transition-colors ${
       active
-        ? 'border-[#cfd9e8] bg-[#f0f6ff] dark:border-blue-900/40 dark:bg-blue-950/20'
+        ? 'border-[#cfd9e8] bg-[#f0f6ff] dark:border-blue-900/40 dark:bg-blue-900/30'
         : 'border-transparent bg-transparent hover:border-[#e4e2de] hover:bg-[#fafaf9] dark:hover:border-neutral-700 dark:hover:bg-neutral-900/40'
     }`}
   >
     <div className="flex items-start gap-3">
       <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-black ${
-        active ? 'bg-[#3b5f8a] text-white dark:bg-blue-600' : 'bg-[#e4e2de] text-[#787774] dark:bg-neutral-700 dark:text-neutral-400'
+        active ? 'bg-[#3b5f8a] text-white dark:bg-blue-600' : 'bg-[#e4e2de] text-[#787774] dark:bg-neutral-700 dark:text-neutral-300'
       }`}>
         {index + 1}
       </span>
@@ -85,7 +105,9 @@ const EventNavItem = ({ step, index, active, onClick }) => (
         <div className={`truncate text-[13px] font-black ${active ? 'text-[#2d4a6e] dark:text-blue-200' : 'text-[#37352f] dark:text-neutral-200'}`}>
           망 {step.dec?.name}
         </div>
-        <div className="mt-0.5 text-[11px] text-[#9b9a97] dark:text-neutral-500">{formatKorDate(step.dec?.deathDate)}</div>
+        <div className="mt-0.5 text-[11px] text-[#9b9a97] dark:text-neutral-400">
+          {formatKorDate(getStepEventDate(step))}{step.isSubstitution ? ' 기준' : ''}
+        </div>
         <div className="mt-2 flex flex-wrap gap-1.5">
           <Tag tone="blue">상속지분 {step.inN}/{step.inD}</Tag>
           <Tag>{(step.dists || []).filter((d) => !d.ex && d.n > 0).length}명 분배</Tag>
@@ -136,17 +158,18 @@ const getReviewNotes = (step, activeDists) => {
     const sources = step.inflows.map((flow) => `${flow.from} ${flow.n}/${flow.d}`).join(' + ');
     notes.push(`복수 경로 유입: ${sources}`);
   }
-  const era = step.dec?.deathDate ? getLawEra(step.dec.deathDate) : '1991';
+  const eventDate = getStepEventDate(step);
+  const era = eventDate ? getLawEra(eventDate) : '1991';
   if (era !== '1991' && activeDists.some((d) => typeof d.mod === 'string' && d.mod.includes('호주'))) {
     notes.push('이번 사건에는 호주상속 판단이 반영된 상속인이 있습니다.');
   }
   if (era !== '1991' && activeDists.some((d) => d.h?.relation === 'daughter' || (d.h?.relation === 'sibling' && d.h?._origRelation === 'daughter'))) {
     notes.push('여성 상속인의 동일가적/비동일가적 상태가 결과를 바꿀 수 있습니다.');
   }
-  if (activeDists.some((d) => d.h?.deathDate && isBefore(d.h.deathDate, step.dec?.deathDate))) {
+  if (activeDists.some((d) => d.h?.deathDate && isBefore(d.h.deathDate, eventDate))) {
     notes.push('선사망 상속인이 있어 대습상속 검토가 함께 필요합니다.');
   }
-  if (activeDists.some((d) => d.h?.deathDate && !isBefore(d.h.deathDate, step.dec?.deathDate))) {
+  if (activeDists.some((d) => d.h?.deathDate && !isBefore(d.h.deathDate, eventDate))) {
     notes.push('지분을 받은 뒤 다시 사망한 상속인이 있어 재상속 검토가 이어집니다.');
   }
   return notes;
@@ -170,29 +193,22 @@ const createGraphNode = ({ key, x, y, width, height, title, subtitle, dateLabel 
   isRoot,
 });
 
-// 배지 수·내용에 따라 카드 실제 높이를 추정
-const estimateCardHeight = (tags, hasBranch) => {
-  // 헤더 + dateLabel + 계산식 한 줄 = base
-  // 브랜치(재상속→) 행은 별도 추가
-  const tagCount = (tags || []).length;
-  const extraRows = tagCount >= 2 ? tagCount - 1 : 0;
-  const base = hasBranch ? 155 : 118;
-  return base + extraRows * 30;
-};
+const estimateCardHeight = (hasBranch) => hasBranch ? 80 : 58;
 
 const buildEventLayout = (step, stepMap, commonD, innerCommonD) => {
   const activeDists = (step.dists || []).filter((d) => !d.ex && d.n > 0);
   const spouseDists = activeDists.filter((d) => ['wife', 'husband', 'spouse'].includes(d.h?.relation));
   const heirDists = activeDists.filter((d) => !['wife', 'husband', 'spouse'].includes(d.h?.relation));
 
-  const rootW = 255;
-  const rootH = 110;
-  const cardW = 265;
-  const leftColX = 50;
-  const topY = 76;
-  const verticalGap = 28;
-  const heirsX = 500;
-  const heirGap = 20;
+  const rootW = 162;
+  const rootH = 76;
+  const cardW = 162;
+  const leftColX = 16;
+  const topY = 36;
+  const verticalGap = 10;
+  const heirsX = 310;
+  const heirGap = 8;
+  const busX = Math.round((leftColX + cardW + heirsX) / 2);
 
   const root = createGraphNode({
     key: 'root',
@@ -202,15 +218,19 @@ const buildEventLayout = (step, stepMap, commonD, innerCommonD) => {
     height: rootH,
     title: `망 ${step.dec?.name}`,
     subtitle: '피상속인',
-    dateLabel: `${formatKorDate(step.dec?.deathDate)} 사망`,
+    dateLabel: step.isSubstitution
+      ? `${formatKorDate(getStepEventDate(step))} 기준`
+      : `${formatKorDate(step.dec?.deathDate)} 사망`,
     tags: [
       { label: `상속지분 ${step.inN}/${step.inD}`, tone: 'blue' },
       ...(step.dec?.isHoju ? [{ label: '호주', tone: 'blue' }] : []),
     ],
+    share: { finalShare: `${step.inN}/${step.inD}` },
     isRoot: true,
   });
 
-  const stepEra = step.dec?.deathDate ? getLawEra(step.dec.deathDate) : '1991';
+  const eventDate = getStepEventDate(step);
+  const stepEra = eventDate ? getLawEra(eventDate) : '1991';
 
   // 배우자 카드: 누적 y 계산
   let spouseY = topY + rootH + verticalGap;
@@ -218,7 +238,7 @@ const buildEventLayout = (step, stepMap, commonD, innerCommonD) => {
     const share = buildShareInfo(step, dist, innerCommonD, commonD);
     const tags = getNodeBadges(dist, stepEra);
     const hasBranch = !!(dist.h?.deathDate);
-    const cardH = estimateCardHeight(tags, hasBranch);
+    const cardH = estimateCardHeight(hasBranch);
     const node = createGraphNode({
       key: dist.h?.personId || dist.h?.id || `spouse-${index}`,
       x: leftColX,
@@ -226,12 +246,12 @@ const buildEventLayout = (step, stepMap, commonD, innerCommonD) => {
       width: cardW,
       height: cardH,
       title: dist.h?.name,
-      subtitle: getRelStr(dist.h?.relation, step.dec?.deathDate) || '배우자',
+      subtitle: getRelStr(dist.h?.relation, eventDate) || '배우자',
       tags,
       share,
       dist,
-      relatedStep: stepMap.get(dist.h?.personId) || stepMap.get(dist.h?.id) || null,
-      branchLabel: dist.h?.deathDate ? (isBefore(dist.h.deathDate, step.dec?.deathDate) ? '대습상속 ->' : '재상속 ->') : '',
+      relatedStep: findRelatedStep(stepMap, step, dist.h),
+      branchLabel: dist.h?.deathDate ? (isBefore(dist.h.deathDate, eventDate) ? '대습상속 ->' : '재상속 ->') : '',
       eventDateNote: dist.h?.deathDate ? `${formatKorDate(dist.h.deathDate)} 사망` : '',
     });
     spouseY += cardH + verticalGap;
@@ -244,7 +264,7 @@ const buildEventLayout = (step, stepMap, commonD, innerCommonD) => {
     const share = buildShareInfo(step, dist, innerCommonD, commonD);
     const tags = getNodeBadges(dist, stepEra);
     const hasBranch = !!(dist.h?.deathDate);
-    const cardH = estimateCardHeight(tags, hasBranch);
+    const cardH = estimateCardHeight(hasBranch);
     const node = createGraphNode({
       key: dist.h?.personId || dist.h?.id || `heir-${index}`,
       x: heirsX,
@@ -252,12 +272,12 @@ const buildEventLayout = (step, stepMap, commonD, innerCommonD) => {
       width: cardW,
       height: cardH,
       title: dist.h?.name,
-      subtitle: getRelStr(dist.h?.relation, step.dec?.deathDate) || '상속인',
+      subtitle: getRelStr(dist.h?.relation, eventDate) || '상속인',
       tags,
       share,
       dist,
-      relatedStep: stepMap.get(dist.h?.personId) || stepMap.get(dist.h?.id) || null,
-      branchLabel: dist.h?.deathDate ? (isBefore(dist.h.deathDate, step.dec?.deathDate) ? '대습상속 ->' : '재상속 ->') : '',
+      relatedStep: findRelatedStep(stepMap, step, dist.h),
+      branchLabel: dist.h?.deathDate ? (isBefore(dist.h.deathDate, eventDate) ? '대습상속 ->' : '재상속 ->') : '',
       eventDateNote: dist.h?.deathDate ? `${formatKorDate(dist.h.deathDate)} 사망` : '',
     });
     heirY += cardH + heirGap;
@@ -269,9 +289,9 @@ const buildEventLayout = (step, stepMap, commonD, innerCommonD) => {
   const leftColBottom = lastSpouse ? lastSpouse.y + lastSpouse.height : root.y + rootH;
   const heirsBottom = lastHeir ? lastHeir.y + lastHeir.height : root.y + rootH;
 
-  const graphWidth = Math.max(1040, heirsX + cardW + 100);
-  const graphHeight = Math.max(leftColBottom, heirsBottom) + 80;
-  return { root, spouseNodes, heirNodes, graphWidth, graphHeight };
+  const graphWidth = heirsX + cardW + 24;
+  const graphHeight = Math.max(leftColBottom, heirsBottom) + 56;
+  return { root, spouseNodes, heirNodes, graphWidth, graphHeight, busX };
 };
 
 const EdgeLabel = ({ x, y, text }) => (
@@ -285,189 +305,237 @@ const OrthogonalEdges = ({ layout }) => {
   const rootRightX = layout.root.x + layout.root.width;
   const rootCenterY = layout.root.y + layout.root.height / 2;
   const spouseRightX = layout.spouseNodes.length > 0 ? layout.spouseNodes[0].x + layout.spouseNodes[0].width : rootRightX;
-  const busX = 430;
-  const heirsLeftX = layout.heirNodes.length > 0 ? layout.heirNodes[0].x : 0;
+  const { busX } = layout;
+
+  const heirCenterYs = layout.heirNodes.map((n) => n.y + n.height / 2);
+  const spouseCenterYs = layout.spouseNodes.map((n) => n.y + n.height / 2);
+  const allConnectedYs = [rootCenterY, ...heirCenterYs, ...spouseCenterYs];
+  const busTopY = Math.min(...allConnectedYs);
+  const busBottomY = Math.max(...allConnectedYs);
+
+  const stroke = { fill: 'none', stroke: '#cfd6de', strokeWidth: '1.4', strokeLinecap: 'round', strokeLinejoin: 'round' };
 
   return (
-    <svg className="absolute inset-0 h-full w-full" viewBox={`0 0 ${layout.graphWidth} ${layout.graphHeight}`} preserveAspectRatio="xMinYMin meet">
-      {layout.heirNodes.length > 0 && (
-        <>
-          <path d={`M ${rootRightX} ${rootCenterY} L ${busX} ${rootCenterY}`} fill="none" stroke="#cfd6de" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-          <path d={`M ${busX} ${rootCenterY} L ${busX} ${layout.heirNodes[layout.heirNodes.length - 1].y + layout.heirNodes[layout.heirNodes.length - 1].height / 2}`} fill="none" stroke="#cfd6de" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-        </>
+    <svg className="graph-edge absolute inset-0 h-full w-full" viewBox={`0 0 ${layout.graphWidth} ${layout.graphHeight}`} preserveAspectRatio="xMinYMin meet">
+      {/* 피상속인 → busX 수평선 */}
+      <path d={`M ${rootRightX} ${rootCenterY} L ${busX} ${rootCenterY}`} {...stroke} />
+
+      {/* 수직 버스: 피상속인·배우자·자녀 모두를 포괄하는 범위 */}
+      {(layout.heirNodes.length > 0 || layout.spouseNodes.length > 0) && busTopY < busBottomY && (
+        <path d={`M ${busX} ${busTopY} L ${busX} ${busBottomY}`} {...stroke} />
       )}
 
+      {/* busX → 각 상속인 수평 가지 */}
       {layout.heirNodes.map((node) => {
         const centerY = node.y + node.height / 2;
-        const labelX = (busX + heirsLeftX) / 2;
         return (
-          <g key={`heir-edge-${node.key}`}>
-            <path d={`M ${busX} ${centerY} L ${node.x} ${centerY}`} fill="none" stroke="#cfd6de" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-            <EdgeLabel x={labelX} y={centerY - 16} text={node.share.innerShare} />
-          </g>
+          <path key={`heir-edge-${node.key}`} d={`M ${busX} ${centerY} L ${node.x} ${centerY}`} {...stroke} />
         );
       })}
 
+      {/* 배우자 카드 오른쪽 → busX 수평선 */}
       {layout.spouseNodes.map((node) => {
-        const startX = spouseRightX;
         const startY = node.y + node.height / 2;
-        const targetX = heirsLeftX ? busX : node.x + node.width + 100;
         return (
-          <g key={`spouse-edge-${node.key}`}>
-            {layout.heirNodes.length > 0 && (
-              <>
-                <path d={`M ${startX} ${startY} L ${busX} ${startY}`} fill="none" stroke="#cfd6de" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-                <EdgeLabel x={(startX + busX) / 2} y={startY - 16} text={node.share.innerShare} />
-              </>
-            )}
-          </g>
+          <path key={`spouse-edge-${node.key}`} d={`M ${spouseRightX} ${startY} L ${busX} ${startY}`} {...stroke} />
         );
       })}
     </svg>
   );
 };
 
-const PersonNodeCard = ({ node, stepDate, onNavigate, onOpenEvent }) => {
-  const relationLabel = node.subtitle || getRelStr(node.dist?.h?.relation, stepDate) || '상속인';
+const PersonNodeCard = ({ node, onNavigate, onOpenEvent }) => {
+  const relationLabel = node.subtitle || '상속인';
   const hasBranch = Boolean(node.relatedStep && node.branchLabel);
+  const rootDeathMeta = [node.dateLabel, node.tags?.some((tag) => tag.label === '호주') ? '호주' : '']
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <div
-      className="absolute rounded-2xl border border-[#ebeae7] bg-white px-4 py-3 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/95"
+      className="absolute rounded-lg border border-[#ebeae7] bg-white px-2.5 py-2 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/95"
       style={{ left: `${node.x}px`, top: `${node.y}px`, width: `${node.width}px`, minHeight: `${node.height}px` }}
     >
-      <div className="flex flex-wrap items-center gap-2">
-        <Tag tone={relationTone(node.dist?.h?.relation)}>{relationLabel}</Tag>
-        {node.isRoot ? (
-          <div className="flex items-baseline gap-1">
-            <span className="text-[11.5px] font-bold text-[#9a9994] dark:text-neutral-500">망</span>
-            <span className="text-[16px] font-black text-[#37352f] dark:text-neutral-100">{node.title.replace(/^망\s*/, '')}</span>
+      {node.isRoot ? (
+        <>
+          <div className="flex items-start justify-between gap-1.5">
+            <div className="min-w-0">
+              <div className="text-[9px] font-bold text-[#9a9994] dark:text-neutral-400">{relationLabel}</div>
+              <div className="block max-w-full truncate text-[13px] font-black text-[#37352f] dark:text-neutral-100">
+                {node.title}
+              </div>
+            </div>
+            {node.share && (
+              <div className="shrink-0 text-[15px] font-black text-[#3f5f8a] dark:text-blue-300">
+                {node.share.finalShare}
+              </div>
+            )}
           </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => onNavigate && onNavigate(node.dist?.h?.personId || node.dist?.h?.id)}
-            className="text-[15px] font-black text-[#37352f] transition-colors hover:text-blue-700 dark:text-neutral-100 dark:hover:text-blue-300"
-          >
-            {node.title}
-          </button>
-        )}
-        {node.tags.map((tag) => (
-          <Tag key={`${node.key}-${tag.label}`} tone={tag.tone}>{tag.label}</Tag>
-        ))}
+          {rootDeathMeta && (
+            <div className="mt-1 text-[10.5px] font-medium leading-snug text-[#787774] dark:text-neutral-400">
+              {rootDeathMeta}
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="flex items-start justify-between gap-1.5">
+            <div className="min-w-0">
+              <div className="text-[9px] font-bold text-[#9a9994] dark:text-neutral-400">{relationLabel}</div>
+              <button
+                type="button"
+                onClick={() => onNavigate && onNavigate(node.dist?.h?.personId || node.dist?.h?.id)}
+                className="text-[13px] font-black text-[#37352f] transition-colors hover:text-blue-700 dark:text-neutral-100 dark:hover:text-blue-300 truncate max-w-full block"
+              >
+                {node.title}
+              </button>
+            </div>
+            {node.share && (
+              <div className="shrink-0 text-[15px] font-black text-[#3f5f8a] dark:text-blue-300">
+                {node.share.finalShare}
+              </div>
+            )}
+          </div>
+          {hasBranch && (
+            <div className="mt-1 flex justify-end">
+              <button
+                type="button"
+                onClick={() => onOpenEvent && onOpenEvent(getStepKey(node.relatedStep))}
+                className="inline-flex items-center gap-1 rounded-full border border-[#ddd9cf] bg-[#fbf7ef] px-1.5 py-0.5 text-[9px] font-bold text-[#7a6544] hover:bg-[#f4eedf] dark:border-amber-900/40 dark:bg-amber-900/30 dark:text-amber-200"
+              >
+                {node.branchLabel}
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
+const NarrativeBlock = ({ step, stepMap, era }) => {
+  const activeDists = (step.dists || []).filter((d) => !d.ex && d.n > 0);
+  const excludedDists = (step.dists || []).filter((d) => (d.ex || d.n === 0) && d.h?.name?.trim());
+  const eventDate = getStepEventDate(step);
+
+  const getContinuation = (dist) => {
+    const relatedStep = findRelatedStep(stepMap, step, dist.h);
+    if (!relatedStep || !dist.h?.deathDate) return null;
+    const isPredeceased = isBefore(dist.h.deathDate, eventDate);
+    return { type: isPredeceased ? '대습상속' : '재상속', date: formatKorDate(dist.h.deathDate) };
+  };
+
+  if (activeDists.length === 0 && excludedDists.length === 0) return null;
+
+  return (
+    <div className="flex flex-col gap-3 h-full">
+      <div className="flex items-center gap-2">
+        <span className="text-[13px] font-black text-[#37352f] dark:text-neutral-100">계산 근거</span>
+        <Tag>{lawEraLabel(era)}</Tag>
       </div>
 
-      {node.dateLabel && <div className="mt-2 text-[11px] font-bold text-[#7c7a76] dark:text-neutral-400">{node.dateLabel}</div>}
-      {node.share && (
-        <div className="mt-3 rounded-xl bg-[#fafaf9] px-3 py-2 dark:bg-neutral-950/30">
-          <div className="flex items-baseline justify-between gap-2">
-            <div className="font-mono text-[11px] text-[#787774] dark:text-neutral-400">{node.share.formula}</div>
-            <div className="text-[15px] font-black text-[#3f5f8a] dark:text-blue-300 shrink-0">{node.share.finalShare}</div>
-          </div>
+      {activeDists.length > 0 && (
+        <div className="space-y-2">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-[#9b9a97] dark:text-neutral-400">취득자 ({activeDists.length}명)</div>
+          {activeDists.map((dist, i) => {
+            const continuation = getContinuation(dist);
+            const relStr = getRelStr(dist.h?.relation, eventDate) || dist.h?.relation || '상속인';
+            const modText = dist.mod ? dist.mod : '균분';
+            return (
+              <div key={`narrative-active-${i}`} className="rounded-xl border border-[#e4e2de] bg-white px-3.5 py-2.5 dark:border-neutral-700 dark:bg-neutral-800/60">
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <span className="text-[15px] font-black text-[#37352f] dark:text-neutral-100">{dist.h?.name}</span>
+                  <span className="text-[12px] text-[#787774] dark:text-neutral-300">({relStr})</span>
+                </div>
+                <div className="mt-1 text-[13px] leading-snug text-[#6a6964] dark:text-neutral-300">
+                  {modText} → 최종 <span className="font-bold text-[#3f5f8a] dark:text-blue-300">{dist.n}/{dist.d}</span> 취득
+                </div>
+                {continuation && (
+                  <div className="mt-1 text-[12px] font-medium text-[#5a7fa8] dark:text-blue-300">
+                    └ {continuation.date} 사망 · {continuation.type} 개시
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {hasBranch && (
-        <div className="mt-3 flex items-center justify-between gap-3">
-          <div className="text-[10px] text-[#8a8884] dark:text-neutral-400">{node.eventDateNote}</div>
-          <button
-            type="button"
-            onClick={() => onOpenEvent && onOpenEvent(getStepKey(node.relatedStep))}
-            className="inline-flex items-center gap-1 rounded-full border border-[#ddd9cf] bg-[#fbf7ef] px-2.5 py-1 text-[10px] font-bold text-[#7a6544] hover:bg-[#f4eedf] dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300"
-          >
-            {node.branchLabel}
-          </button>
+      {excludedDists.length > 0 && (
+        <div className="space-y-2">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-[#9b9a97] dark:text-neutral-400">상속권 없음 ({excludedDists.length}명)</div>
+          {excludedDists.map((dist, i) => {
+            const relStr = getRelStr(dist.h?.relation, eventDate) || dist.h?.relation || '상속인';
+            const hasRelatedStep = !!findRelatedStep(stepMap, step, dist.h);
+            const isPredeceased = dist.h?.deathDate && isBefore(dist.h.deathDate, eventDate);
+            const reason = isPredeceased && !hasRelatedStep
+              ? '선사망 — 적격 대습상속인 없어 상속권 소멸'
+              : (dist.ex || '상속권 없음');
+            return (
+              <div key={`narrative-excl-${i}`} className="rounded-xl border-2 border-[#b8b8b2] bg-[#f0f0ed] px-3.5 py-2.5 shadow-sm ring-1 ring-white/80 dark:border-neutral-500 dark:bg-neutral-800 dark:ring-neutral-700/70">
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <span className="text-[15px] font-bold text-[#4f4e49] dark:text-neutral-200">{dist.h?.name}</span>
+                  <span className="text-[12px] font-semibold text-[#5f5d57] dark:text-neutral-300">({relStr})</span>
+                  {dist.h?.deathDate && (
+                    <span className="text-[12px] font-medium text-[#6f6d66] dark:text-neutral-300">
+                      · {formatKorDate(dist.h.deathDate)} 사망
+                    </span>
+                  )}
+                </div>
+                <div className="mt-1 text-[12px] font-medium text-[#5f5d57] dark:text-neutral-300">{reason}</div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
   );
 };
 
-const useDragPan = () => {
-  const ref = React.useRef(null);
-  const dragState = React.useRef({ dragging: false, startX: 0, startY: 0, scrollLeft: 0, scrollTop: 0 });
-
-  const onMouseDown = React.useCallback((event) => {
-    const el = ref.current;
-    if (!el) return;
-    dragState.current = {
-      dragging: true,
-      startX: event.clientX,
-      startY: event.clientY,
-      scrollLeft: el.scrollLeft,
-      scrollTop: el.scrollTop,
-    };
-    el.style.cursor = 'grabbing';
-  }, []);
-
-  const onMouseMove = React.useCallback((event) => {
-    const el = ref.current;
-    if (!el || !dragState.current.dragging) return;
-    el.scrollLeft = dragState.current.scrollLeft - (event.clientX - dragState.current.startX);
-    el.scrollTop = dragState.current.scrollTop - (event.clientY - dragState.current.startY);
-  }, []);
-
-  const stopDragging = React.useCallback(() => {
-    const el = ref.current;
-    dragState.current.dragging = false;
-    if (el) el.style.cursor = 'grab';
-  }, []);
-
-  return { ref, onMouseDown, onMouseMove, onMouseUp: stopDragging, onMouseLeave: stopDragging };
-};
-
 const EventGraphView = ({ step, stepMap, onNavigate, onOpenEvent }) => {
   const activeDists = (step.dists || []).filter((d) => !d.ex && d.n > 0);
   const commonD = activeDists.reduce((lcm, d) => math.lcm(lcm, d.d || 1), 1);
   const innerCommonD = activeDists.reduce((lcm, d) => math.lcm(lcm, d.sd || 1), 1);
-  const notes = getReviewNotes(step, activeDists);
-  const era = step.dec?.deathDate ? getLawEra(step.dec.deathDate) : '';
+  const eventDate = getStepEventDate(step);
+  const era = eventDate ? getLawEra(eventDate) : '';
   const layout = React.useMemo(() => buildEventLayout(step, stepMap, commonD, innerCommonD), [step, stepMap, commonD, innerCommonD]);
+
   return (
-    <div className="space-y-5">
-      <div className="rounded-2xl border border-[#e4e2de] bg-[#f7f6f3] px-5 py-4 dark:border-neutral-700 dark:bg-neutral-800/40">
-        <div className="flex flex-wrap items-baseline gap-3">
-          <span className="text-[13px] font-black tracking-[0.08em] text-[#3b5f8a] dark:text-blue-400">사건 그래프</span>
+    <div className="space-y-4">
+      <div className="rounded-xl border border-[#e4e2de] bg-[#f7f6f3] px-4 py-3 dark:border-neutral-600 dark:bg-neutral-800/80">
+        <div className="flex flex-wrap items-baseline gap-2.5">
+          <span className="text-[12px] font-black tracking-[0.08em] text-[#3b5f8a] dark:text-blue-300">사건 그래프</span>
           <div className="flex items-baseline gap-1">
-            <span className="text-[13px] font-black text-[#9b9a97] dark:text-neutral-500">피상속인 망</span>
-            <span className="text-[22px] font-black tracking-tight text-[#37352f] dark:text-neutral-100">{step.dec?.name}</span>
+            <span className="text-[12px] font-black text-[#9b9a97] dark:text-neutral-400">피상속인 망</span>
+            <span className="text-[20px] font-black tracking-tight text-[#37352f] dark:text-neutral-100">{step.dec?.name}</span>
           </div>
-          <div className="text-[13px] font-bold text-[#787774] dark:text-neutral-400">{formatKorDate(step.dec?.deathDate)} 사망</div>
+          <div className="text-[12px] font-bold text-[#787774] dark:text-neutral-300">
+            {step.isSubstitution ? `${formatKorDate(eventDate)} 기준` : `${formatKorDate(step.dec?.deathDate)} 사망`}
+          </div>
           {step.dec?.isHoju && <Tag tone="blue">호주</Tag>}
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
           <Tag tone="blue">상속지분 {step.inN}/{step.inD}</Tag>
-          <Tag>{lawEraLabel(era)}</Tag>
           <Tag>{activeDists.length}명 분배</Tag>
         </div>
       </div>
 
-      {notes.length > 0 && (
-        <div className="rounded-2xl border border-[#ece8de] bg-[#fcfaf5] px-5 py-4 dark:border-neutral-700 dark:bg-neutral-900/30">
-          <div className="mb-2 text-[12px] font-black text-[#6b5c45] dark:text-amber-200">이번 사건에서 먼저 볼 것</div>
-          <ul className="space-y-1.5 text-[13px] leading-6 text-[#6a6964] dark:text-neutral-300">
-            {notes.map((note, index) => (
-              <li key={`${note}-${index}`} className="flex gap-2">
-                <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-[#c8ae7f] dark:bg-amber-400" />
-                <span>{note}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <div className="rounded-2xl border border-[#e9e9e7] bg-white p-5 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/50">
-        <div className="w-full rounded-xl bg-[#fcfcfb] dark:bg-neutral-950/20">
-          <div className="relative" style={{ width: `${layout.graphWidth}px`, height: `${layout.graphHeight}px` }}>
+      <div className="flex gap-4 items-start">
+        <div className="shrink-0 rounded-xl border border-[#e9e9e7] bg-white p-3 shadow-sm dark:border-neutral-600 dark:bg-neutral-900/90">
+          <div className="relative rounded-lg bg-[#fcfcfb] dark:bg-neutral-950/60" style={{ width: `${layout.graphWidth}px`, height: `${layout.graphHeight}px` }}>
             <OrthogonalEdges layout={layout} />
-            <PersonNodeCard node={layout.root} stepDate={step.dec?.deathDate} onNavigate={onNavigate} onOpenEvent={onOpenEvent} />
+            <PersonNodeCard node={layout.root} onNavigate={onNavigate} onOpenEvent={onOpenEvent} />
             {layout.spouseNodes.map((node) => (
-              <PersonNodeCard key={node.key} node={node} stepDate={step.dec?.deathDate} onNavigate={onNavigate} onOpenEvent={onOpenEvent} />
+              <PersonNodeCard key={node.key} node={node} onNavigate={onNavigate} onOpenEvent={onOpenEvent} />
             ))}
             {layout.heirNodes.map((node) => (
-              <PersonNodeCard key={node.key} node={node} stepDate={step.dec?.deathDate} onNavigate={onNavigate} onOpenEvent={onOpenEvent} />
+              <PersonNodeCard key={node.key} node={node} onNavigate={onNavigate} onOpenEvent={onOpenEvent} />
             ))}
           </div>
+        </div>
+
+        <div className="flex-1 min-w-0 rounded-xl border border-[#e9e9e7] bg-[#fafaf9] p-4 dark:border-neutral-600 dark:bg-neutral-900/70">
+          <NarrativeBlock step={step} stepMap={stepMap} era={era} />
         </div>
       </div>
     </div>
@@ -577,8 +645,15 @@ export default function TreePanel({
     steps.forEach((step, i) => {
       const key = getStepKey(step, i);
       map.set(key, step);
-      if (step.dec?.personId) map.set(step.dec.personId, step);
-      if (step.dec?.id) map.set(step.dec.id, step);
+      const eventDate = getStepEventDate(step);
+      if (step.dec?.personId) {
+        map.set(getStepLookupKey(step.dec, eventDate), step);
+        if (!map.has(step.dec.personId)) map.set(step.dec.personId, step);
+      }
+      if (step.dec?.id) {
+        map.set(`${step.dec.id}::${eventDate}`, step);
+        if (!map.has(step.dec.id)) map.set(step.dec.id, step);
+      }
     });
     return map;
   }, [steps]);
@@ -622,15 +697,10 @@ export default function TreePanel({
   }, [navigationSignal, viewMode, steps]);
 
   const selectedStep = React.useMemo(() => (steps.length ? stepMap.get(selectedStepKey) || steps[0] : null), [steps, selectedStepKey, stepMap]);
-  const isGuideEventOpen =
-    navigationSignal?.source === 'guide-event' &&
-    !!selectedStep &&
-    (selectedStep?.dec?.personId === navigationSignal?.targetId || selectedStep?.dec?.id === navigationSignal?.targetId);
-
   const modeBar = (
-    <div className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-[#e5e5e5] bg-[#f8f8f7] p-4 text-[13px] text-[#787774] dark:border-neutral-700 dark:bg-neutral-800/50 dark:text-neutral-300 no-print">
+    <div className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-[#e5e5e5] bg-[#f8f8f7] p-4 text-[13px] text-[#787774] dark:border-neutral-600 dark:bg-neutral-800/90 dark:text-neutral-300 no-print">
       <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1 rounded-full border border-[#dcdcd9] bg-[#f1f1ef] px-1.5 py-1 dark:border-neutral-700 dark:bg-neutral-800">
+        <div className="flex items-center gap-1 rounded-full border border-[#dcdcd9] bg-[#f1f1ef] px-1.5 py-1 dark:border-neutral-600 dark:bg-neutral-800">
           <ViewModeBtn active={viewMode === 'flow'} onClick={() => setViewMode('flow')}>사건 그래프</ViewModeBtn>
           <ViewModeBtn active={viewMode === 'tree'} onClick={() => setViewMode('tree')}>관계 트리</ViewModeBtn>
         </div>
@@ -659,7 +729,7 @@ export default function TreePanel({
     return (
       <div className="flex h-full min-h-0 animate-in fade-in flex-col py-2 duration-300">
         {modeBar}
-        <div className="overflow-hidden rounded-xl border border-[#e9e9e7] bg-white p-8 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/50">
+        <div className="overflow-hidden rounded-xl border border-[#e9e9e7] bg-white p-8 shadow-sm dark:border-neutral-600 dark:bg-neutral-900/90">
           <TreeReportNode node={tree} level={0} treeToggleSignal={treeToggleSignal} onDelete={removeHeir} navigationSignal={navigationSignal} />
         </div>
       </div>
@@ -671,7 +741,7 @@ export default function TreePanel({
       {modeBar}
 
       {reviewContext && selectedStep && (
-        <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-[12px] shadow-sm dark:border-blue-900/40 dark:bg-blue-950/30 no-print">
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-[12px] shadow-sm dark:border-blue-900/40 dark:bg-blue-900/40 no-print">
           <div className="min-w-0 flex-1">
             <span className="font-black text-blue-800 dark:text-blue-200">현재 검토 중: </span>
             <span className="font-bold text-blue-700 dark:text-blue-300">망 {selectedStep.dec?.name} 사건</span>
@@ -680,7 +750,7 @@ export default function TreePanel({
             <button
               type="button"
               onClick={() => onOpenInInput?.(selectedStep.dec?.personId || selectedStep.dec?.id)}
-              className="rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-[11px] font-bold text-blue-700 transition-colors hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/20 dark:text-blue-300"
+              className="rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-[11px] font-bold text-blue-700 transition-colors hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
             >
               입력 탭에서 수정
             </button>
@@ -696,7 +766,7 @@ export default function TreePanel({
       )}
 
       {steps.length === 0 || !selectedStep ? (
-        <div className="rounded-2xl border border-dashed border-[#d9d9d5] bg-white px-5 py-8 text-center text-[13px] text-[#787774] dark:border-neutral-700 dark:bg-neutral-900/30 dark:text-neutral-400">
+        <div className="rounded-2xl border border-dashed border-[#d9d9d5] bg-white px-5 py-8 text-center text-[13px] text-[#787774] dark:border-neutral-600 dark:bg-neutral-900/70 dark:text-neutral-300">
           아직 시뮬레이션할 사건이 없습니다. 입력 정보를 확인한 뒤 계산 상세 탭에서 결과를 만든 후 다시 확인해 주세요.
         </div>
       ) : (
@@ -710,9 +780,9 @@ export default function TreePanel({
             />
             <div
               ref={asideListRef}
-              className="flex-1 overflow-y-auto rounded-2xl border border-[#e9e9e7] bg-[#fbfbfa] p-2 dark:border-neutral-700 dark:bg-neutral-900/40 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+              className="flex-1 overflow-y-auto rounded-2xl border border-[#e9e9e7] bg-[#fbfbfa] p-2 dark:border-neutral-600 dark:bg-neutral-900/80 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
             >
-              <div className="mb-2 px-2 pt-1 text-[10px] font-black tracking-[0.07em] text-[#9b9a97] dark:text-neutral-500">
+              <div className="mb-2 px-2 pt-1 text-[10px] font-black tracking-[0.07em] text-[#9b9a97] dark:text-neutral-400">
                 사건 목록 ({steps.length})
               </div>
               {steps.map((step, i) => {
@@ -731,7 +801,7 @@ export default function TreePanel({
             </div>
           </aside>
 
-          <section className="rounded-2xl border border-[#e9e9e7] bg-white p-6 shadow-sm dark:border-neutral-700 dark:bg-neutral-900/50">
+          <section className="rounded-2xl border border-[#e9e9e7] bg-white p-6 shadow-sm dark:border-neutral-600 dark:bg-neutral-900/90">
             <EventGraphView
               step={selectedStep}
               stepMap={stepMap}

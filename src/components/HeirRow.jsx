@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { IconMenu, IconTrash2 } from './Icons';
@@ -23,7 +23,6 @@ const SPECIAL_LABELS = {
 
 export default function HeirRow({
   node,
-  finalShares,
   handleUpdate,
   removeHeir,
   inheritedDate,
@@ -35,17 +34,6 @@ export default function HeirRow({
   isHighlighted,
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: node.id });
-
-  const calcShare = useMemo(() => {
-    if (!finalShares) return null;
-    const direct = (finalShares.direct || []).find((share) => share.personId === node.personId);
-    if (direct) return direct;
-    for (const group of finalShares.subGroups || []) {
-      const subShare = (group.shares || []).find((share) => share.personId === node.personId);
-      if (subShare) return subShare;
-    }
-    return null;
-  }, [finalShares, node.personId]);
 
   const lawEra = getLawEra(inheritedDate);
   const isSpouseType = ['wife', 'husband', 'spouse'].includes(node.relation);
@@ -116,12 +104,6 @@ export default function HeirRow({
   }, [isPredeceasedActive, node.id]);
 
   const isToggleVisuallyOn = isPredeceasedActive || !isToggleOff || blocksHusbandSubstitution;
-  const displayN = isEffectivePredeceased && isToggleOff && (!node.heirs || node.heirs.length === 0)
-    ? 0
-    : (calcShare ? calcShare.n : (node.shareN || 0));
-  const displayD = isEffectivePredeceased && isToggleOff && (!node.heirs || node.heirs.length === 0)
-    ? 1
-    : (calcShare ? calcShare.d : (node.shareD || 1));
 
   const dndStyle = {
     transform: CSS.Transform.toString(transform),
@@ -149,7 +131,7 @@ export default function HeirRow({
 
   let shouldShowTabBtn = false;
   let tabBtnText = '재상속 >>';
-  let tabBtnClass = 'bg-transparent text-[#787774] border border-[#e9e9e7] hover:bg-blue-50/50 hover:text-blue-600 hover:border-blue-200 dark:border-neutral-700';
+  let tabBtnClass = 'bg-transparent text-[#787774] border border-[#e9e9e7] hover:bg-blue-50/50 hover:text-blue-600 hover:border-blue-200 dark:border-neutral-600';
   const canConfirmNoSubstituteHeirs =
     !!node.isDeceased &&
     !blocksHusbandSubstitution &&
@@ -162,25 +144,25 @@ export default function HeirRow({
   } else if (blocksHusbandSubstitution && node.isDeceased) {
     shouldShowTabBtn = true;
     tabBtnText = '재상속 >>';
-    tabBtnClass = 'bg-transparent text-[#787774] border border-[#e9e9e7] hover:bg-blue-50/50 hover:text-blue-600 hover:border-blue-200 dark:border-neutral-700';
+    tabBtnClass = 'bg-transparent text-[#787774] border border-[#e9e9e7] hover:bg-blue-50/50 hover:text-blue-600 hover:border-blue-200 dark:border-neutral-600';
   } else if (isToggleOff) {
     if (['lost', 'disqualified', 'remarried'].includes(effectiveExclusionOption)) {
       shouldShowTabBtn = true;
       tabBtnText = '대습상속 >>';
-      tabBtnClass = 'bg-transparent text-[#787774] border border-[#e9e9e7] hover:bg-emerald-50/50 hover:text-emerald-600 hover:border-emerald-200 dark:border-neutral-700';
+      tabBtnClass = 'bg-transparent text-[#787774] border border-[#e9e9e7] hover:bg-emerald-50/50 hover:text-emerald-600 hover:border-emerald-200 dark:border-neutral-600';
     } else if (isEffectivePredeceased && ['son', 'daughter', 'sibling'].includes(node.relation) && !isNoSubstituteConfirmed) {
       shouldShowTabBtn = true;
       tabBtnText = '대습상속 >>';
-      tabBtnClass = 'bg-transparent text-neutral-400 border border-neutral-300 border-dashed hover:bg-emerald-50/50 hover:text-emerald-600 hover:border-emerald-200 hover:border-solid dark:border-neutral-700';
+      tabBtnClass = 'bg-transparent text-neutral-400 border border-neutral-300 border-dashed hover:bg-emerald-50/50 hover:text-emerald-600 hover:border-emerald-200 hover:border-solid dark:border-neutral-600';
     }
   } else if (node.isDeceased) {
     shouldShowTabBtn = true;
     if (isEffectivePredeceased) {
       tabBtnText = '대습상속 >>';
-      tabBtnClass = 'bg-transparent text-[#787774] border border-[#e9e9e7] hover:bg-emerald-50/50 hover:text-emerald-600 hover:border-emerald-200 dark:border-neutral-700';
+      tabBtnClass = 'bg-transparent text-[#787774] border border-[#e9e9e7] hover:bg-emerald-50/50 hover:text-emerald-600 hover:border-emerald-200 dark:border-neutral-600';
     } else {
       tabBtnText = '재상속 >>';
-      tabBtnClass = 'bg-transparent text-[#787774] border border-[#e9e9e7] hover:bg-blue-50/50 hover:text-blue-600 hover:border-blue-200 dark:border-neutral-700';
+      tabBtnClass = 'bg-transparent text-[#787774] border border-[#e9e9e7] hover:bg-blue-50/50 hover:text-blue-600 hover:border-blue-200 dark:border-neutral-600';
     }
   }
 
@@ -201,8 +183,8 @@ export default function HeirRow({
           data-node-id={node.id}
           className={`group/row relative z-10 flex w-full flex-col rounded-md border transition-colors ${
             isHighlighted
-              ? 'border-blue-400 bg-blue-50/60 ring-2 ring-blue-300 ring-offset-1 dark:border-blue-500 dark:bg-blue-950/30 dark:ring-blue-600'
-              : 'border-[#e5e5e5] bg-white hover:bg-[#f8f8f7] dark:border-neutral-700 dark:bg-neutral-800 dark:hover:bg-neutral-700/50'
+              ? 'border-blue-400 bg-blue-50/60 ring-2 ring-blue-300 ring-offset-1 dark:border-blue-500 dark:bg-blue-900/40 dark:ring-blue-600'
+              : 'border-[#e5e5e5] bg-white hover:bg-[#f8f8f7] dark:border-neutral-600 dark:bg-neutral-800 dark:hover:bg-neutral-700/50'
           }`}
         >
           <div className="flex min-h-[52px] w-full items-center py-1">
@@ -258,18 +240,41 @@ export default function HeirRow({
             </div>
 
             <div className="ml-[30px] w-[76px] shrink-0">
-              <select
-                value={node.relation}
-                onChange={(e) => handleUpdate(node.id, 'relation', e.target.value)}
-                className="w-full cursor-pointer bg-transparent text-[15px] font-normal text-[#787774] outline-none dark:text-neutral-400"
-              >
-                {!isParentFemale && <option value="wife">{lawEra === '1991' ? RELATION_OPTIONS.wife.modern : RELATION_OPTIONS.wife.legacy}</option>}
-                {!isParentMale && <option value="husband">{lawEra === '1991' ? RELATION_OPTIONS.husband.modern : RELATION_OPTIONS.husband.legacy}</option>}
-                <option value="son">{lawEra === '1991' ? RELATION_OPTIONS.son.modern : RELATION_OPTIONS.son.legacy}</option>
-                <option value="daughter">{lawEra === '1991' ? RELATION_OPTIONS.daughter.modern : RELATION_OPTIONS.daughter.legacy}</option>
-                <option value="parent">직계존속</option>
-                <option value="sibling">형제자매</option>
-              </select>
+              {(() => {
+                const isRelationInvalid =
+                  (node.relation === 'wife' && isParentFemale) ||
+                  (node.relation === 'husband' && isParentMale);
+                return (
+                  <div className="relative">
+                    <select
+                      value={node.relation}
+                      onChange={(e) => handleUpdate(node.id, 'relation', e.target.value)}
+                      className={`w-full cursor-pointer bg-transparent text-[15px] font-normal outline-none dark:text-neutral-300 ${
+                        isRelationInvalid
+                          ? 'text-red-500 dark:text-red-400'
+                          : 'text-[#787774]'
+                      }`}
+                    >
+                      {isRelationInvalid && (
+                        <option value={node.relation} disabled>
+                          {RELATION_OPTIONS[node.relation]?.[lawEra === '1991' ? 'modern' : 'legacy']} ⚠
+                        </option>
+                      )}
+                      {!isParentFemale && <option value="wife">{lawEra === '1991' ? RELATION_OPTIONS.wife.modern : RELATION_OPTIONS.wife.legacy}</option>}
+                      {!isParentMale && <option value="husband">{lawEra === '1991' ? RELATION_OPTIONS.husband.modern : RELATION_OPTIONS.husband.legacy}</option>}
+                      <option value="son">{lawEra === '1991' ? RELATION_OPTIONS.son.modern : RELATION_OPTIONS.son.legacy}</option>
+                      <option value="daughter">{lawEra === '1991' ? RELATION_OPTIONS.daughter.modern : RELATION_OPTIONS.daughter.legacy}</option>
+                      <option value="parent">직계존속</option>
+                      <option value="sibling">형제자매</option>
+                    </select>
+                    {isRelationInvalid && (
+                      <div className="absolute left-0 top-full mt-0.5 z-50 whitespace-nowrap rounded bg-red-600 px-2 py-0.5 text-[11px] text-white shadow">
+                        관계 재검토 필요
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="ml-[30px] flex w-[150px] shrink-0 items-center text-[15px]">
@@ -297,8 +302,10 @@ export default function HeirRow({
                       isDeceased: node.isDeceased,
                       inheritedDate,
                     })}
-                    className={`flex-1 bg-transparent text-[13px] font-bold outline-none ${isEffectivePredeceased ? 'text-[#787774] dark:text-neutral-400' : 'text-[#37352f] dark:text-neutral-100'}`}
+                    className={`flex-1 bg-transparent text-[13px] font-bold outline-none ${isEffectivePredeceased ? 'text-[#787774] dark:text-neutral-300' : 'text-[#37352f] dark:text-neutral-100'}`}
                     placeholder="사망일자"
+                    compareDate={inheritedDate}
+                    compareLabel="피상속인 사망일"
                   />
                 ) : (
                   <span className="text-[13px] font-medium text-[#787774]">생존</span>
@@ -309,8 +316,8 @@ export default function HeirRow({
             <div className="ml-[10px] flex w-[180px] shrink-0 items-center gap-1.5">
               {(isEffectivePredeceased && isToggleOff && !isPredeceasedActive) ? (
                 <div className="flex shrink-0 items-center gap-1.5">
-                  <div className="flex h-[26px] w-[80px] shrink-0 items-center justify-center rounded-full border border-[#e5e5e5] bg-[#f8f8f7] shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
-                    <span className="text-[11px] font-normal text-[#a3a3a3] dark:text-neutral-400">
+                  <div className="flex h-[26px] w-[80px] shrink-0 items-center justify-center rounded-full border border-rose-200 bg-rose-50 shadow-sm dark:border-rose-900/50 dark:bg-rose-950/25">
+                    <span className="text-[11px] font-medium text-rose-600 dark:text-rose-300">
                       선사망
                     </span>
                   </div>
@@ -321,7 +328,7 @@ export default function HeirRow({
                       className={`flex h-[26px] shrink-0 items-center justify-center rounded-md border px-2.5 shadow-sm transition-all ${
                         isNoSubstituteConfirmed
                           ? 'border-[#8a7c69] bg-[#5f564b] text-[#f5f1ea] hover:bg-[#564d43] dark:border-[#6f6457] dark:bg-[#4e463d] dark:text-[#f3eee6]'
-                          : 'border-[#e9e9e7] bg-white text-[#787774] hover:bg-emerald-50/60 hover:text-emerald-700 hover:border-emerald-200 dark:border-neutral-700 dark:bg-neutral-800'
+                          : 'border-[#e9e9e7] bg-white text-[#787774] hover:bg-emerald-50/60 hover:text-emerald-700 hover:border-emerald-200 dark:border-neutral-600 dark:bg-neutral-800'
                       }`}
                       title={isNoSubstituteConfirmed ? '확정 해제' : '대습상속인 없음 확정'}
                     >
@@ -332,11 +339,11 @@ export default function HeirRow({
                   )}
                 </div>
               ) : (isToggleOff && isSpouseType && isPreDeceasedCondition && !isPredeceasedActive) ? (
-                <div className="flex h-[26px] w-[150px] shrink-0 items-center justify-center rounded-full border border-neutral-200 bg-neutral-100 shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
-                  <span className="text-[11px] font-normal text-neutral-500 dark:text-neutral-400">배우자 선사망 (상속권 없음)</span>
+                <div className="flex h-[26px] w-[150px] shrink-0 items-center justify-center rounded-full border border-rose-200 bg-rose-50 shadow-sm dark:border-rose-900/50 dark:bg-rose-950/25">
+                  <span className="text-[11px] font-medium text-rose-600 dark:text-rose-300">배우자 선사망 (상속권 없음)</span>
                 </div>
               ) : (isToggleOff && !isPredeceasedActive && !blocksHusbandSubstitution) ? (
-                <div className="group/select relative w-[120px] rounded border border-[#e5e5e5] bg-[#f8f8f7] px-2.5 py-1 transition-colors hover:border-neutral-300 dark:border-neutral-700 dark:bg-neutral-800">
+                <div className="group/select relative w-[120px] rounded border border-[#e5e5e5] bg-[#f8f8f7] px-2.5 py-1 transition-colors hover:border-neutral-300 dark:border-neutral-600 dark:bg-neutral-800">
                   <select
                     value={effectiveExclusionOption || 'renounce'}
                     onChange={(e) => handleUpdate(node.id, 'exclusionOption', e.target.value)}
@@ -358,7 +365,7 @@ export default function HeirRow({
                   {isSpouseType && (() => {
                     return (
                       <div className="flex shrink-0 items-center">
-                        <div className="flex h-[26px] w-[80px] shrink-0 items-center justify-center rounded-full border border-[#e9e9e7] bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-800">
+                        <div className="flex h-[26px] w-[80px] shrink-0 items-center justify-center rounded-full border border-[#e9e9e7] bg-white shadow-sm dark:border-neutral-600 dark:bg-neutral-800">
                           <span className="text-[11px] font-bold text-neutral-600 dark:text-neutral-300">{spouseStatusLabel}</span>
                         </div>
                       </div>
@@ -393,7 +400,7 @@ export default function HeirRow({
               {((isSpouseType && inheritedDate !== rootDeathDate && !isPreDeceasedCondition) || node.relation === 'daughter') && (
                 <button
                   onClick={() => setIsHistoryModalOpen(true)}
-                  className={`flex h-[26px] w-[32px] shrink-0 items-center justify-center rounded-md border shadow-sm transition-colors ${hasMeaningfulHistoryData ? 'border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:border-blue-800/50 dark:bg-blue-900/30 dark:text-blue-400' : 'border-[#e9e9e7] bg-white text-neutral-400 hover:bg-[#f7f7f5] dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-500'}`}
+                  className={`flex h-[26px] w-[32px] shrink-0 items-center justify-center rounded-md border shadow-sm transition-colors ${hasMeaningfulHistoryData ? 'border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:border-blue-800/50 dark:bg-blue-900/30 dark:text-blue-300' : 'border-[#e9e9e7] bg-white text-neutral-400 hover:bg-[#f7f7f5] dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-400'}`}
                   title="상세 인적 사항 입력"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="h-4 w-4"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" /></svg>

@@ -24,7 +24,7 @@ const sanitizeAiFacts = (node, isRoot = true) => {
 };
 
 /**
- * [v4.60] 파일명으로 사용할 수 없는 문자를 제거합니다.
+ * 파일명으로 사용할 수 없는 문자를 제거합니다.
  */
 function sanitizeKorFilePart(str, fallback) {
   if (!str) return fallback;
@@ -34,10 +34,9 @@ function sanitizeKorFilePart(str, fallback) {
 export function printCurrentTab({ activeTab, tree, summaryViewMode = 'structure' }) {
   const tabNames = {
     input: '가계도시뮬레이션',
-    tree: '사건검토_상속인명부',
-    calc: '상속지분_산출내역',
-    summary: summaryViewMode === 'path' ? '법정상속분_취득경로표' : '법정상속분_요약표',
-    amount: '구체적상속분_결과',
+    tree: '사건검토_산출내역',
+    acquisition: '취득경로표',
+    summary: '상속지분_요약표',
   };
 
   const currentTabName = tabNames[activeTab] || '보고서';
@@ -56,7 +55,7 @@ export function saveFactTreeToFile(tree, scenarioData = null) {
   let exportData;
 
   if (isCaseSnapshot) {
-    // [v4.60] 사건번호가 있는 경우 전체 상태 스냅샷 저장
+    // 사건번호가 있는 경우 전체 상태 스냅샷 저장
     exportData = {
       type: 'inheritance-case-snapshot',
       version: 'v4.60',
@@ -89,7 +88,6 @@ export function saveFactTreeToFile(tree, scenarioData = null) {
 export function loadTreeFromJsonFile(file, { 
   setTree, 
   setActiveTab, 
-  setImportIssues,
   setPropertyValue,
   setSpecialBenefits,
   setContributions,
@@ -102,7 +100,7 @@ export function loadTreeFromJsonFile(file, {
     try {
       const data = JSON.parse(event.target.result);
 
-      // [v4.60] 스냅샷 형식인 경우
+      // 스냅샷 형식인 경우
       if (data.type === 'inheritance-case-snapshot' && data.vault) {
         const normalized = normalizeImportedTree(data.vault);
         setTree(normalized);
@@ -116,14 +114,13 @@ export function loadTreeFromJsonFile(file, {
           if (isAmountActive !== undefined) setIsAmountActive?.(isAmountActive);
         }
         
-        setActiveTab('calc'); // 모든 데이터가 있으므로 바로 계산 탭으로 이동
+        setActiveTab('tree'); // 불러오기 후 사건 검토 탭으로 이동
         return;
       }
 
       // 기존 방식 호환
       if (data.id === 'root' || (Array.isArray(data.heirs) && data.name !== undefined)) {
         const normalized = normalizeImportedTree(data);
-        const issues = []; // 기존 방식은 검증 이슈를 새로 수집하지 않고 빈 배열 전달 (불러오기 직후 watcher에서 처리됨)
         setTree(normalized);
         setActiveTab('input');
       } else if (data.people && Array.isArray(data.people)) {
@@ -249,7 +246,7 @@ export function ingestAiJsonInput({
     } else {
       alert('AI 상속인 자동 입력이 완료되었습니다.');
     }
-  } catch (e) {
+  } catch {
     alert('JSON 형식이 올바르지 않습니다. AI 응답에서 JSON 코드블록만 복사해 주세요.');
   }
 }

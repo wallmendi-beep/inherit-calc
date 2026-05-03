@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { getLawEra, isBefore } from '../engine/utils';
 import { auditInheritanceResult } from '../engine/inheritanceAudit';
+import { isSpouseRelation } from '../engine/eligibility';
 import { buildSpouseDirectGuideText, collectLegacyStepchildGuideEntries } from './smartGuideHelpers';
 
 // 트리가 없을 때는 항상 같은 기본 상태 참조를 반환한다.
@@ -23,7 +24,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
     }
     const isInputMode = activeTab === 'input';
 
-    // [v4.32] 珥덇린 ?곹깭(湲곗큹 ?뺣낫 誘몄엯?? 理쒖슦??媛?대뱶
+    // 초기 상태(기본 정보 미입력 시) 조기 반환
     if (!tree.name?.trim() || !tree.deathDate) {
       return {
         showGlobalWarning: false,
@@ -55,9 +56,10 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
     const groupedPredeceasedMissingMap = new Map();
     const groupedDirectMissingMap = new Map();
     const groupedNextOrderFemaleMap = new Map();
+    const directMissingPersonKeys = new Set();
     let noSurvivors = false;
 
-    // ?ы띁 ?⑥닔 1: 遺紐??몃뱶 李얘린
+    // 보조 함수 1: 부모 노드 탐색
     const findParentNodeInHook = (root, targetId) => {
       if (root.heirs && root.heirs.some(h => h.id === targetId)) return root;
       if (root.heirs) {
@@ -69,7 +71,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       return null;
     };
 
-    // ?ы띁 ?⑥닔 2: ?뱀젙 ?몃뱶 李얘린
+    // 보조 함수 2: 특정 노드 탐색
     const findNodeInHook = (root, targetPersonId, targetNodeId) => {
       if (!root) return null;
       if ((targetPersonId && root.personId === targetPersonId) || (targetNodeId && root.id === targetNodeId)) return root;
@@ -89,7 +91,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
             uniqueKey: `struct-err-${h.id}`,
             type: 'mandatory',
             navigationMode: 'event',
-            text: `[${h.name || '이름 미상'}]이(가) [${node.name || '부모'}]의 하위 위치에 '부모/형제' 관계로 입력되어 있습니다. 해당 위치로 이동해 관계를 확인한 뒤 수정하거나 삭제해 주세요.`,
+            text: `관계 오류 — [${h.name || '이름 미상'}]이 [${node.name || '부모'}] 아래에 '부모/형제'로 잘못 입력되어 있습니다. 관계를 수정하거나 삭제해 주세요.`,
             targetTabId: node.personId || node.id || 'root',
             targetNodeIds: [h.id, h.personId].filter(Boolean),
             targetNodeId: h.id,
@@ -99,23 +101,23 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       if (node.heirs) node.heirs.forEach(checkStructuralError);
     };
 
-    // ?ы띁 ?⑥닔 4: 媛쒕퀎 ?쒖쇅 ?곹깭 ?덈궡
+    // 보조 함수 4: 독립 제외 상태 점검
     const checkIndependentExclusionGuide = (node) => {
       const isPredeceased = node.deathDate && tree.deathDate && isBefore(node.deathDate, tree.deathDate);
       if (node.id !== 'root' && node.isExcluded && ['renounce', 'disqualified'].includes(node.exclusionOption) && !isPredeceased) {
         const optionText = node.exclusionOption === 'renounce' ? '상속포기' : '상속결격';
         uniqueGuidesMap.set(`indep-excl-${node.personId}`, {
           id: node.id, uniqueKey: `indep-excl-${node.personId}`, type: 'recommended',
-          text: `[${node.name}]은(는) ${optionText} 처리되었습니다. 동일인이 다른 사건에도 있으면 그 사건에서의 제외 여부를 다시 확인해 주세요.`
+          text: `${optionText} 확인 — [${node.name}]. 다른 사건에도 등장한다면 해당 사건에서도 제외 여부를 함께 검토해 주세요.`
         });
       }
       if (node.heirs) node.heirs.forEach(checkIndependentExclusionGuide);
     };
 
-    // ?ы띁 ?⑥닔 5: 以묐났 諛곗슦??寃??
+    // 보조 함수 5: 중복 배우자 점검
     const checkDuplicateSpouseGuide = (node) => {
       const spouses = (node.heirs || []).filter((h) => {
-        if (!['wife', 'husband', 'spouse'].includes(h.relation)) return false;
+        if (!isSpouseRelation(h.relation)) return false;
         if (h.isExcluded === true) return false;
         if (h.isDeceased && h.deathDate && node.deathDate && isBefore(h.deathDate, node.deathDate)) return false;
         return true;
@@ -127,14 +129,41 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
           uniqueKey: `multi-spouse-${node.personId || node.id}`,
           targetTabId: node.personId || node.id || 'root',
           type: 'mandatory',
-          text: `[${node.name || '이름 미상'}]에게 유효 배우자가 중복 입력되어 있습니다. 현재 배우자: [${spouseNames.join('], [')}]. 실제 상속받는 1명만 남기고 나머지는 제외 처리해 주세요.`,
+          text: `배우자 중복 — [${node.name || '이름 미상'}]: [${spouseNames.join('], [')}]. 실제 상속받는 1명만 남기고 나머지를 제외해 주세요.`,
         });
       }
       if (node.heirs) node.heirs.forEach(checkDuplicateSpouseGuide);
     };
 
-    // ?ы띁 ?⑥닔 6: ?몃뱶蹂?媛?대뱶 ?앹꽦 (硫붿씤 濡쒖쭅)
-    const checkGuideNode = (node, parentDate) => {
+    // 보조 함수 6-1: 재혼 배우자 자녀 범위 점검
+    const checkRemarriedSpouseChildrenGuide = (node) => {
+      const spouses = (node.heirs || []).filter(
+        (h) => ['wife', 'husband', 'spouse'].includes(h.relation) && h.remarriageDate
+      );
+      spouses.forEach((spouse) => {
+        const hasChildren = (spouse.heirs || []).some(
+          (h) => ['son', 'daughter'].includes(h.relation)
+        );
+        if (!hasChildren) return;
+        const key = `remarried-children-${spouse.personId || spouse.id}`;
+        if (!uniqueGuidesMap.has(key)) {
+          uniqueGuidesMap.set(key, {
+            id: spouse.id,
+            uniqueKey: key,
+            targetTabId: spouse.personId || spouse.id,
+            type: 'recommended',
+            navigationMode: 'event',
+            text: `재혼 자녀 범위 확인 — [${spouse.name || '해당 배우자'}]은 재혼 이력이 있습니다. 입력된 자녀가 현재 배우자와의 자녀인지 확인해 주세요.`,
+          });
+        }
+      });
+      if (node.heirs) node.heirs.forEach(checkRemarriedSpouseChildrenGuide);
+    };
+
+    // 보조 함수 6: 노드별 가이드 생성 (메인 루프)
+    const getNodeKey = (node, fallback = 'root') => node?.personId || node?.id || fallback;
+
+    const checkGuideNode = (node, contextDate = tree.deathDate, contextNode = tree) => {
       const parentNode = findParentNodeInHook(tree, node.id);
       const parentTabId = parentNode ? parentNode.personId : 'root';
       const effectiveDate = node.deathDate || tree.deathDate;
@@ -162,7 +191,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
             targetTabId: parentTabId,
             names: [],
           };
-          femaleCandidatesNeedingReview.forEach((candidate) => current.names.push(candidate.name || '?대쫫 誘몄긽'));
+          femaleCandidatesNeedingReview.forEach((candidate) => current.names.push(candidate.name || '이름 미상'));
           groupedNextOrderFemaleMap.set(groupKey, current);
         }
       }
@@ -170,47 +199,63 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       if ((node.isDeceased || node.id === 'root') && !isHardExcluded) {
         const activeHeirs = (node.heirs || []).filter(h => !h.isExcluded);
         if (node.id !== 'root' && node.isDeceased && node.deathDate && activeHeirs.length === 0 && !hasConfirmedNoSuccessors) {
-          const compareDate = parentDate || tree.deathDate;
+          const compareDate = contextDate || tree.deathDate;
           const isPre = compareDate ? isBefore(node.deathDate, compareDate) : false;
           const isChild = ['son', 'daughter'].includes(node.relation);
-          const isSpouse = ['wife', 'husband', 'spouse'].includes(node.relation);
+          const isSpouse = isSpouseRelation(node.relation);
 
           if (isPre) {
             if (isChild) {
-              const groupKey = parentNode?.personId || parentNode?.id || 'root';
+              const parentKey = getNodeKey(parentNode);
+              const groupKey = `${getNodeKey(contextNode)}:${parentKey}`;
               const current = groupedPredeceasedMissingMap.get(groupKey) || {
-                parentName: parentNode?.name || tree.name || '현재 계보',
-                targetTabId: groupKey,
+                parentName: contextNode?.name || tree.name || '현재 계보',
+                branchName: parentNode?.name || '',
+                targetTabId: parentKey,
+                contextTabId: getNodeKey(contextNode),
                 firstTargetTabId: node.personId || node.id,
                 names: [],
                 nodeIds: [],
+                items: [],
               };
+              if (!current.branchName && parentNode?.name) current.branchName = parentNode.name;
               current.names.push(node.name || '이름 미상');
+              current.items.push({
+                name: node.name || '이름 미상',
+                nodeId: node.id || '',
+                personId: node.personId || '',
+              });
               // node.id와 personId 모두 저장해 InputPanel에서 양쪽으로 매칭 가능하게 함
               if (node.id) current.nodeIds.push(node.id);
               if (node.personId && node.personId !== node.id) current.nodeIds.push(node.personId);
               groupedPredeceasedMissingMap.set(groupKey, current);
             }
           } else {
-            const contextName = parentNode?.name || tree.name || '현재 계보';
+            const contextName = contextNode?.name || tree.name || '현재 계보';
             const spouseGroupKey = isSpouse ? `${node.relation || 'spouse'}` : 'general';
-            const groupKey = `${parentNode?.personId || parentNode?.id || 'root'}:${spouseGroupKey}`;
+            const groupKey = `${getNodeKey(node)}:${spouseGroupKey}`;
             const current = groupedDirectMissingMap.get(groupKey) || {
               parentName: contextName,
-              targetTabId: parentNode?.personId || parentNode?.id || 'root',
+              targetTabId: getNodeKey(contextNode),
               firstTargetTabId: node.personId || node.id,
+              firstTargetNodeId: node.id || node.personId,
               names: [],
+              nodeIds: [],
               isSpouseGroup: isSpouse,
               spouseRelation: isSpouse ? node.relation : null,
             };
-            current.names.push(node.name || '?대쫫 誘몄긽');
+            current.names.push(node.name || '이름 미상');
+            if (node.id) current.nodeIds.push(node.id);
+            if (node.personId && node.personId !== node.id) current.nodeIds.push(node.personId);
+            if (node.id) directMissingPersonKeys.add(node.id);
+            if (node.personId) directMissingPersonKeys.add(node.personId);
             groupedDirectMissingMap.set(groupKey, current);
           }
         }
         if (node.id !== 'root' && node.isDeceased && !node.deathDate) {
           uniqueGuidesMap.set(`missing-death-date-${node.personId}`, {
             id: node.id, uniqueKey: `missing-death-date-${node.personId}`, targetTabId: parentTabId, type: 'mandatory',
-            text: `[${node.name || '이름 미상'}]은(는) 사망자로 표시되어 있지만 사망일이 없습니다.`
+            text: `사망일 누락 — [${node.name || '이름 미상'}]. 사망일을 입력해야 정확한 상속 계산이 가능합니다.`
           });
         }
 
@@ -220,7 +265,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
           const deathYear = (effectiveDate || '').slice(0, 4);
         uniqueGuidesMap.set(`missing-hoju-${node.personId}`, {
             id: node.id, uniqueKey: `missing-hoju-${node.personId}`, targetTabId: node.personId, type: 'mandatory', navigationMode: 'event',
-            text: `[${node.name || '이름 미상'}] 사건은 구법(${deathYear}년 사망) 적용 대상입니다. 1차 상속인 중 호주상속인을 지정해 주세요.`
+            text: `호주 미지정 — [${node.name || '이름 미상'}] 사건 (${deathYear}년, 구법 적용). 1차 상속인 중 호주상속인을 지정해 주세요.`
           });
         }
 
@@ -230,25 +275,32 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
             uniqueGuidesMap.set(`chained-hoju-${node.personId}`, {
               id: node.id, uniqueKey: `chained-hoju-${node.personId}`, type: 'recommended', navigationMode: 'event',
               targetTabId: node.personId,
-              text: `[${node.name || '해당 인물'}] 사건은 호주상속 검토 대상입니다. 1차 상속인의 호주상속/재산상속 구분을 확인해 주세요.`
+              text: `호주 연속 확인 — [${node.name || '해당 인물'}] 사건. 1차 상속인 중 호주상속인 지정 여부를 확인해 주세요.`
             });
           }
         }
 
         if (isLegacyFemale && !hasConfirmedNoSuccessors) {
-          if (!node.marriageDate && node.isSameRegister !== false) {
+          const hasDirectMissingGuide = directMissingPersonKeys.has(node.id) || directMissingPersonKeys.has(node.personId);
+          if (!hasDirectMissingGuide && !node.marriageDate && node.isSameRegister !== false) {
             uniqueGuidesMap.set(`verify-marriage-${node.personId}`, {
               id: node.id, uniqueKey: `verify-marriage-${node.personId}`, type: 'recommended',
               targetTabId: parentTabId,
-              text: `[${node.name || '이름 미상'}]은(는) 구법 적용 대상 여성 상속인입니다. 혼인 여부에 따라 결과가 달라질 수 있으니, 혼인·이혼·복적 정보를 확인해 주세요.`
+              text: `혼인 정보 확인 — [${node.name || '이름 미상'}] (구법 적용 여성). 혼인·이혼·복적 날짜를 입력하면 정확한 지분이 계산됩니다.`
             });
           }
         }
       }
 
       if (node.heirs) {
-        const nextParentDate = (node.deathDate && parentDate && isBefore(parentDate, node.deathDate)) ? node.deathDate : parentDate;
-        node.heirs.forEach(h => checkGuideNode(h, nextParentDate));
+        const startsOwnEvent = node.id !== 'root'
+          && node.isDeceased
+          && node.deathDate
+          && contextDate
+          && !isBefore(node.deathDate, contextDate);
+        const nextContextDate = startsOwnEvent ? node.deathDate : contextDate;
+        const nextContextNode = startsOwnEvent ? node : contextNode;
+        node.heirs.forEach(h => checkGuideNode(h, nextContextDate, nextContextNode));
       }
     };
 
@@ -256,7 +308,8 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
     checkStructuralError(tree);
     checkIndependentExclusionGuide(tree);
     checkDuplicateSpouseGuide(tree);
-    if (tree.heirs) tree.heirs.forEach(h => checkGuideNode(h, tree.deathDate));
+    checkRemarriedSpouseChildrenGuide(tree);
+    if (tree.heirs) tree.heirs.forEach(h => checkGuideNode(h, tree.deathDate, tree));
 
     collectLegacyStepchildGuideEntries(tree).forEach((entry) => {
       if (uniqueGuidesMap.has(entry.key)) return;
@@ -264,35 +317,61 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
         id: entry.personId,
         uniqueKey: entry.key,
         type: 'recommended',
-        navigationMode: 'event',
+        navigationMode: entry.navigationMode || 'auto',
         targetTabId: entry.targetTabId,
+        targetNodeId: entry.targetNodeId,
+        targetNodeIds: entry.targetNodeIds || [],
+        relatedEventTabId: entry.relatedEventTabId,
+        actionLabel: entry.actionLabel,
         text: entry.text,
       });
     });
 
-    // 洹몃９?붾맂 媛?대뱶??泥섎━
+    // 수집된 가이드 처리
     groupedPredeceasedMissingMap.forEach((group, key) => {
-      const uniqueNames = Array.from(new Set(group.names));
+      const rawItems = Array.isArray(group.items) && group.items.length > 0
+        ? group.items
+        : (group.names || []).map((name) => ({ name, nodeId: '', personId: '' }));
+      const filteredItems = rawItems.filter((item) => (
+        !directMissingPersonKeys.has(item.nodeId) && !directMissingPersonKeys.has(item.personId)
+      ));
+      const uniqueNames = Array.from(new Set(filteredItems.map((item) => item.name)));
       if (uniqueNames.length === 0) return;
+      const targetNodeIds = Array.from(new Set(
+        filteredItems.flatMap((item) => [item.nodeId, item.personId]).filter(Boolean)
+      ));
       // 대습상속 누락의 경우 항상 부모(피상속인) 사건 탭으로 이동해야 하위 대습상속인을 입력할 수 있습니다.
       const navTarget = group.targetTabId;
+      const branchText = group.branchName && group.branchName !== group.parentName
+        ? `의 ${group.branchName} 계통 선사망자`
+        : '의 선사망자';
       uniqueGuidesMap.set(`grouped-missing-substitution-${key}`, {
         id: key, uniqueKey: `grouped-missing-substitution-${key}`, targetTabId: navTarget, type: 'mandatory', navigationMode: 'event',
-        targetNodeIds: group.nodeIds || [],
-        text: `${group.parentName} 사건에서 선사망 상속인의 대습상속 검토가 필요합니다: [${uniqueNames.join('], [')}]. 대습상속인이 있으면 입력해 주세요. 없으면 '대습상속인 없음'을 클릭해 주세요.`,
+        relatedEventTabId: group.contextTabId,
+        targetNodeIds,
+        text: `대습상속 미확정 — [${group.parentName}] 사건${branchText}: [${uniqueNames.join('], [')}]. 대습상속인 입력 또는 '없음 확정'을 눌러 주세요.`,
       });
     });
 
     groupedDirectMissingMap.forEach((group, key) => {
       const uniqueNames = Array.from(new Set(group.names));
       if (uniqueNames.length === 0) return;
-      // 배우자 단독상속 그룹이 아니면 항상 부모(피상속인) 사건 탭으로 이동해야 올바른 위치에서 입력 가능합니다.
-      const navTarget = group.isSpouseGroup ? group.firstTargetTabId : group.targetTabId;
+      // 단일 인원 or 배우자 그룹 → 본인 사건 탭
+      // 복수 비-배우자 → 부모 사건 탭 (여러 명 동시 확인)
+      const navTarget = (group.isSpouseGroup || uniqueNames.length === 1)
+        ? group.firstTargetTabId
+        : group.targetTabId;
       uniqueGuidesMap.set(`grouped-direct-missing-${key}`, {
-        id: navTarget, uniqueKey: `grouped-direct-missing-${key}`, targetTabId: navTarget, type: 'mandatory', navigationMode: 'event',
+        id: navTarget,
+        uniqueKey: `grouped-direct-missing-${key}`,
+        targetTabId: navTarget,
+        targetNodeId: uniqueNames.length === 1 ? group.firstTargetNodeId : undefined,
+        targetNodeIds: uniqueNames.length === 1 ? (group.nodeIds || []) : [],
+        type: 'mandatory',
+        navigationMode: 'input',
         text: group.isSpouseGroup
           ? buildSpouseDirectGuideText(group, uniqueNames)
-          : `${group.parentName} 사건에서 후속 상속 검토가 필요한 사람이 있습니다: [${uniqueNames.join('], [')}]. 후속 상속인을 입력하거나 '후속 상속인 없음' 확정 버튼을 눌러 주세요.`, 
+          : `후속 상속 미확정 — [${group.parentName}] 사건: [${uniqueNames.join('], [')}]. 후속 상속인 입력 또는 '없음 확정'을 눌러 주세요.`,
       });
     });
 
@@ -301,7 +380,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       if (uniqueNames.length === 0) return;
       uniqueGuidesMap.set(`next-order-female-${key}`, {
         id: group.targetTabId, uniqueKey: `next-order-female-${key}`, targetTabId: group.targetTabId, type: 'recommended', navigationMode: 'event',
-        text: `${group.decedentName} 사건은 차순위 상속 검토가 필요합니다. 여성 형제자매 중 동일가적 여부 확인이 필요한 사람이 있습니다: [${uniqueNames.join('], [')}]. 미혼이 확실하면 동일가적으로 두고, 그렇지 않으면 혼인·이혼·복적 정보를 입력해 주세요.`, 
+        text: `차순위 여성 검토 — [${group.decedentName}] 사건: [${uniqueNames.join('], [')}]. 미혼이면 그대로, 혼인력이 있으면 날짜를 입력해 주세요.`,
       });
     });
 
@@ -309,10 +388,16 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       noSurvivors = true;
     }
 
-    // 遺덈윭?ㅺ린 ?댁뒋 泥섎━
+    // 가져오기 오류 처리
     (importIssues || []).forEach((issue) => {
       const linkedNode = findNodeInHook(tree, issue.personId, issue.nodeId);
       if (issue.code === 'missing-descendants' && linkedNode && (((linkedNode.heirs || []).length > 0) || !!linkedNode.successorStatus)) {
+        return;
+      }
+      if (
+        issue.code === 'missing-descendants' &&
+        (directMissingPersonKeys.has(issue.personId) || directMissingPersonKeys.has(issue.nodeId))
+      ) {
         return;
       }
       const isLegacyHojuInputCase = issue.code === 'missing-descendants' && linkedNode && !linkedNode.successorStatus && getLawEra(linkedNode.deathDate || tree.deathDate) !== '1991' && ['son', 'husband'].includes(linkedNode.relation);
@@ -320,19 +405,21 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       const key = `import-${issue.code}-${personKey}`;
       if (!uniqueGuidesMap.has(key)) {
         uniqueGuidesMap.set(key, {
-          id: issue.nodeId || personKey, uniqueKey: key, personId: issue.personId || '', targetTabId: issue.targetTabId || personKey, targetNodeId: issue.nodeId || '', name: issue.personName || null,
+          id: issue.nodeId || personKey, uniqueKey: key, personId: issue.personId || '', targetTabId: issue.targetTabId || personKey, targetNodeId: issue.nodeId || undefined, targetNodeIds: [issue.nodeId].filter(Boolean), name: issue.personName || null,
+          code: issue.code,
           type: issue.severity === 'error' ? 'mandatory' : 'recommended',
           navigationMode: isLegacyHojuInputCase ? 'event' : 'auto',
           text: isLegacyHojuInputCase
-            ? `[${issue.personName || linkedNode?.name || '이름 미상'}] 사건은 호주상속 검토가 필요합니다. 불러오기로 상속인을 확인한 뒤, 호주상속인을 지정해 주세요.`
-            : `${issue.message} 입력값을 확인하고 저장한 뒤 계속 진행해 주세요.`,
+            ? `호주상속 검토 — [${issue.personName || linkedNode?.name || '이름 미상'}] 사건. 상속인 확인 후 호주상속인을 지정해 주세요.`
+            : issue.message,
         });
       }
     });
 
-    // ?붿쭊 寃쎄퀬 ??SmartGuide ?듯빀 (auto-sibling-redistribution ??
+    // 엔진 경고 → SmartGuide 변환 (auto-sibling-redistribution)
     (warnings || []).forEach((warning) => {
       if (warning.code !== 'auto-sibling-redistribution') return;
+      if (directMissingPersonKeys.has(warning.personId) || directMissingPersonKeys.has(warning.targetTabId || warning.id)) return;
       const linkedNode = findNodeInHook(tree, warning.personId, warning.targetTabId || warning.id);
       const warningText = linkedNode && ['wife', 'husband', 'spouse'].includes(linkedNode.relation)
         ? linkedNode.relation === 'wife'

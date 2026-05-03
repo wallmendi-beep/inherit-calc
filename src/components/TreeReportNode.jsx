@@ -6,7 +6,7 @@ const TreeReportNode = ({ node, level, treeToggleSignal, rootDeathDate, onDelete
   const hasHeirs = node.heirs && node.heirs.length > 0;
   const [isExpanded, setIsExpanded] = useState(level === 0);
 
-  // [v4.61] 네비게이션 신호에 따른 자동 펼치기 로직
+  // 네비게이션 신호에 따른 자동 펼치기 로직
   useEffect(() => {
     if (!navigationSignal?.targetId || !hasHeirs) return;
     
@@ -69,16 +69,16 @@ const TreeReportNode = ({ node, level, treeToggleSignal, rootDeathDate, onDelete
 
   return (
     <div 
-      className={`relative ${level > 0 ? 'ml-5 pl-3.5 border-l border-[#e5e5e5] dark:border-neutral-700' : ''} py-0.5 transition-colors ${isStructuralError ? 'ring-2 ring-rose-500/50 bg-rose-50/30 rounded-lg' : ''}`}
+      className={`relative ${level > 0 ? 'ml-5 pl-3.5 border-l border-[#e5e5e5] dark:border-neutral-600' : ''} py-0.5 transition-colors ${isStructuralError ? 'ring-2 ring-rose-500/50 bg-rose-50/30 rounded-lg' : ''}`}
       data-node-id={node.id}
     >
       <div 
         onClick={() => { if (hasHeirs) setIsExpanded(!isExpanded); }}
         className={`flex items-center gap-1.5 w-fit py-1 px-1.5 rounded-md transition-all select-none ${hasHeirs ? 'cursor-pointer hover:bg-[#f8f8f7] dark:hover:bg-neutral-800' : ''}`}
       >
-        <div className={`flex items-center justify-center w-4 h-4 rounded ${hasHeirs ? 'bg-white dark:bg-neutral-900 border border-[#e5e5e5] dark:border-neutral-700' : ''}`}>
+        <div className={`flex items-center justify-center w-4 h-4 rounded ${hasHeirs ? 'bg-white dark:bg-neutral-900 border border-[#e5e5e5] dark:border-neutral-600' : ''}`}>
           {hasHeirs ? (
-            <IconChevronRight className={`w-3 h-3 text-[#a3a3a3] dark:text-neutral-500 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
+            <IconChevronRight className={`w-3 h-3 text-[#a3a3a3] dark:text-neutral-400 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
           ) : (
             <div className="w-1 h-1 rounded-full bg-[#d4d4d4] dark:bg-neutral-600" />
           )}
@@ -91,13 +91,13 @@ const TreeReportNode = ({ node, level, treeToggleSignal, rootDeathDate, onDelete
 
         <div className="flex items-center gap-1 ml-1 flex-wrap">
           {/* 🏷️ 신분 라벨 (크기 축소 및 회색 톤) */}
-          <span className="text-[11.5px] text-[#787774] dark:text-neutral-400 font-medium border border-[#e5e5e5] dark:border-neutral-700 bg-[#f8f8f7] dark:bg-neutral-800 px-1.5 py-0.5 rounded">
+          <span className="text-[11.5px] text-[#787774] dark:text-neutral-300 font-medium border border-[#e5e5e5] dark:border-neutral-600 bg-[#f8f8f7] dark:bg-neutral-800 px-1.5 py-0.5 rounded">
             {level === 0 ? '피상속인' : (getRelStr(node.relation, rootDeathDate || node.deathDate) || '자녀')}
           </span>
 
           {/* 💀 사망일자 (붉은색 제거, 회색 톤) */}
           {node.isDeceased && (
-            <span className="text-[12px] text-[#787774] dark:text-neutral-400 whitespace-nowrap ml-0.5">
+            <span className="text-[12px] text-[#787774] dark:text-neutral-300 whitespace-nowrap ml-0.5">
               {node.deathDate} 사망
             </span>
           )}

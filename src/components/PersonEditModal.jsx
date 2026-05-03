@@ -5,7 +5,7 @@ import { IconX } from './Icons';
 function InfoRow({ label, children }) {
   return (
     <div className="flex items-start gap-3">
-      <span className="w-[72px] shrink-0 pt-[2px] text-[11px] font-bold text-[#9a9994] dark:text-neutral-500">
+      <span className="w-[72px] shrink-0 pt-[2px] text-[11px] font-bold text-[#9a9994] dark:text-neutral-400">
         {label}
       </span>
       <div className="min-w-0 flex-1 text-[13px] text-[#37352f] dark:text-neutral-200">{children}</div>
@@ -15,7 +15,7 @@ function InfoRow({ label, children }) {
 
 function Surface({ children, className = '' }) {
   return (
-    <div className={`rounded-lg border border-[#e5e5e5] bg-[#fafaf9] px-3.5 py-3 dark:border-neutral-700 dark:bg-neutral-900/40 ${className}`}>
+    <div className={`rounded-lg border border-[#e5e5e5] bg-[#fafaf9] px-3.5 py-3 dark:border-neutral-600 dark:bg-neutral-900/80 ${className}`}>
       {children}
     </div>
   );
@@ -26,12 +26,12 @@ function Badge({ children, tone = 'neutral' }) {
     tone === 'emerald'
       ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
       : tone === 'amber'
-        ? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300'
+        ? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/40 dark:bg-amber-900/40 dark:text-amber-200'
         : tone === 'blue'
-          ? 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-300'
+          ? 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/40 dark:bg-blue-900/40 dark:text-blue-300'
           : tone === 'brown'
             ? 'border-[#8a7c69] bg-[#5f564b] text-[#f5f1ea] dark:border-[#6f6457] dark:bg-[#4e463d]'
-            : 'border-[#ddd9d1] bg-white text-[#6b655d] dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300';
+            : 'border-[#ddd9d1] bg-white text-[#6b655d] dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-300';
 
   return <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-bold ${toneClass}`}>{children}</span>;
 }
@@ -88,6 +88,7 @@ export default function PersonEditModal({
   const isSpouseReinheritanceReview = isSpouseType && !!node.isDeceased;
   const isWifeReinheritanceReview = isSpouseReinheritanceReview && node.relation === 'wife';
   const isHusbandReinheritanceReview = isSpouseReinheritanceReview && node.relation === 'husband';
+  const parentName = parentNode?.name || '피상속인';
 
   const relationLabelMap = {
     wife: lawEra === '1991' ? '배우자' : '처',
@@ -114,33 +115,44 @@ export default function PersonEditModal({
         : '추가 상속인 없음 확정'
     : null;
 
-  const reviewReason = needsNextOrderFemaleReview
-    ? `${sourceEventName || '현재'} 사건은 차순위 상속 검토 대상입니다. 여성 형제자매의 혼인·복적·동일가적 여부가 결과를 바꿀 수 있습니다.`
+  const spouseReviewReason = () => {
+    const name = node.name || '해당 배우자';
+    if (isWifeReinheritanceReview) {
+      return lawEra !== '1991'
+        ? `${name} 사건은 처의 재상속 검토 단계입니다. 상위 사건 자녀가 자동으로 반영되므로, ${name}에게만 있는 별도 자녀가 있으면 추가하고 상속인이 아닌 사람이 있으면 제외해 주세요.`
+        : `${name} 사건은 처의 재상속 검토 단계입니다. 상위 사건 자녀를 기준으로 확인하되, 1991년 이후에는 배우자의 자녀라는 이유만으로 상속인이 되지 않으므로 직접 자녀 또는 양자가 아닌 사람은 제외해 주세요.`;
+    }
+    if (isHusbandReinheritanceReview) {
+      return `${name} 사건은 남편의 재상속 검토 단계입니다. 상위 사건 자녀를 기준으로 확인하되, ${name}의 직접 자녀 또는 양자가 아닌 사람은 제외하고 별도 자녀가 있으면 추가해 주세요.`;
+    }
+    return `${name} 사건은 배우자 재상속 검토 단계입니다. 자동으로 이어진 자녀 목록을 이번 사건의 상속인 범위에 맞게 확인해 주세요.`;
+  };
+
+  const reviewReason = blocksHusbandSubstitution
+    ? `${node.name || '해당 남편'}은 [${parentName}]의 남편으로 입력되어 있으나, 1991년 이전 대습상속 사건에서는 사위가 대습상속인이 아닙니다. 후혼 가족이 함께 입력되어 있다면 이번 사건의 상속인 범위와 분리해 확인해 주세요.`
+    : needsNextOrderFemaleReview
+      ? `${sourceEventName || '현재'} 사건은 차순위 상속 검토 대상입니다. 여성 형제자매의 혼인·복적·동일가적 여부가 결과를 바꿀 수 있습니다.`
     : needsHojuReview
       ? `${node.name || '해당 인물'} 사건은 호주상속 검토 단계입니다. 1차 상속인 중 호주상속인을 지정해야 합니다.`
-      : isWifeReinheritanceReview
-        ? `${node.name || '해당 배우자'} 사건은 배우자 재상속 검토 단계입니다. 상위 사건에서 이어진 자녀 목록과 별도로, ${node.name || '해당 배우자'}에게만 있는 자녀가 있는지 먼저 확인해 주세요.`
-        : isHusbandReinheritanceReview
-          ? `${node.name || '해당 배우자'} 사건은 배우자 재상속 검토 단계입니다. 현재 자녀 범위를 먼저 확인하고, 자녀가 없으면 직계존속 순서를 검토해 주세요.`
+      : isSpouseReinheritanceReview
+        ? spouseReviewReason()
       : isReinheritanceReview
         ? `${node.name || '해당 인물'}는 이 사건에서 지분을 받은 뒤 다시 사망했습니다. 다음 상속 단계가 올바르게 이어지는지 확인해 주세요.`
         : hasAnyConfirmedNoSuccessors
           ? `${node.name || '해당 인물'} 자신을 다시 확정하는 단계가 아니라, ${sourceEventName || '현재'} 사건에서 이 사람과 연결된 흐름을 점검하는 단계입니다.`
           : `${sourceEventName || '현재'} 사건에서 이 사람의 사건별 상태를 확인하는 단계입니다.`;
 
-  const parentName = parentNode?.name || '피상속인';
-
   return (
     <div
-      className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm animate-in fade-in duration-150"
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div
-        className="flex max-h-[90vh] w-full max-w-[456px] flex-col overflow-hidden rounded-xl border border-[#e9e9e7] bg-white shadow-2xl dark:border-neutral-700 dark:bg-neutral-800"
+        className="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-xl border border-[#e9e9e7] bg-white shadow-2xl dark:border-neutral-600 dark:bg-neutral-800"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-[#e9e9e7] px-5 py-3 dark:border-neutral-700">
-          <span className="text-[13px] font-bold text-[#37352f] dark:text-neutral-100">사건 검토</span>
+        <div className="flex items-center justify-between border-b border-[#e9e9e7] px-5 py-3 dark:border-neutral-600">
+          <span className="text-[13px] font-bold text-[#37352f] dark:text-neutral-100">{node.name ? `${node.name} 검토` : '사건 검토'}</span>
           <button
             type="button"
             onClick={onClose}
@@ -153,7 +165,7 @@ export default function PersonEditModal({
         <div className="flex-1 space-y-3.5 overflow-y-auto px-5 py-4">
           <Surface className="border-[#e8e2d7] bg-[#fbf7ef]">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[12px] font-black text-[#7a6240] dark:text-amber-300">
+              <span className="text-[12px] font-black text-[#7a6240] dark:text-amber-200">
                 {sourceEventName ? `${sourceEventName} 사건 검토` : '현재 사건 검토'}
               </span>
               {sourceEventDate ? (
@@ -173,7 +185,7 @@ export default function PersonEditModal({
                 <button
                   type="button"
                   onClick={() => { onOpenInTreeTab(node.personId || node.id); }}
-                  className="text-[15px] font-bold text-blue-700 underline underline-offset-2 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-200 transition-colors text-left"
+                  className="text-[15px] font-bold text-blue-700 underline underline-offset-2 hover:text-blue-900 dark:text-blue-300 dark:hover:text-blue-200 transition-colors text-left"
                 >
                   {node.name || '이름 미상'}
                 </button>
@@ -184,7 +196,7 @@ export default function PersonEditModal({
 
             <InfoRow label="관계">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-neutral-400 dark:text-neutral-500">{parentName}의</span>
+                <span className="text-neutral-400 dark:text-neutral-400">{parentName}의</span>
                 <span className="font-bold">{relationLabelMap[node.relation] || node.relation || '미지정'}</span>
               </div>
             </InfoRow>
@@ -210,7 +222,7 @@ export default function PersonEditModal({
                   <Badge tone={node.isSameRegister !== false ? 'emerald' : 'neutral'}>
                     {node.isSameRegister !== false ? '동일가적' : '비동일가적'}
                   </Badge>
-                  <span className="text-[11.5px] text-neutral-500 dark:text-neutral-400">
+                  <span className="text-[11.5px] text-neutral-500 dark:text-neutral-300">
                     혼인일 {formatDateLabel(node.marriageDate)} / 복적일 {formatDateLabel(node.restoreDate)}
                   </span>
                 </div>
@@ -219,7 +231,7 @@ export default function PersonEditModal({
 
             {isSpouseType ? (
               <InfoRow label="배우자 상태">
-                <span className="text-[11.5px] text-neutral-500 dark:text-neutral-400">
+                <span className="text-[11.5px] text-neutral-500 dark:text-neutral-300">
                   이혼일 {formatDateLabel(node.divorceDate)} / 재혼일 {formatDateLabel(node.remarriageDate)}
                 </span>
               </InfoRow>
@@ -235,12 +247,19 @@ export default function PersonEditModal({
           </Surface>
 
           <Surface className="space-y-2.5">
-            <div className="text-[11px] font-bold text-[#9a9994] dark:text-neutral-500">이번 사건에서 볼 것</div>
+            <div className="text-[11px] font-bold text-[#9a9994] dark:text-neutral-400">이번 사건에서 볼 것</div>
             <ul className="space-y-1.5 text-[11.5px] leading-relaxed text-[#6b655d] dark:text-neutral-300">
+              {blocksHusbandSubstitution ? (
+                <>
+                  <li>1991년 이전 대습상속 사건에서는 사위가 대습상속인이 아닙니다.</li>
+                  <li>{parentName}의 직접 자녀 또는 적격 대습상속인만 이번 사건의 상속인으로 남겨 주세요.</li>
+                  <li>후혼 배우자나 그 자녀가 입력되어 있으면 별도 가족관계 참고정보로 보고, 이번 사건에서는 제외 여부를 확인해 주세요.</li>
+                </>
+              ) : null}
               {needsNextOrderFemaleReview ? (
                 <>
                   <li>여성 형제자매의 혼인·복적·동일가적 여부가 결과를 바꿀 수 있습니다.</li>
-                  <li>이 단계는 정문자 자신을 다시 입력하는 것이 아니라, 다음 순위 상속인을 검토하는 단계입니다.</li>
+                  <li>이 단계는 {node.name || '이 사람'} 자신을 다시 입력하는 것이 아니라, 다음 순위 상속인을 검토하는 단계입니다.</li>
                 </>
               ) : null}
               {needsHojuReview ? (
@@ -249,16 +268,18 @@ export default function PersonEditModal({
                   <li>1차 상속인 중 누구를 호주상속으로 볼지 입력 탭에서 지정해 주세요.</li>
                 </>
               ) : null}
-              {isWifeReinheritanceReview ? (
+              {isWifeReinheritanceReview && !blocksHusbandSubstitution ? (
                 <>
-                  <li>현재 화면의 자녀 목록은 상위 사건에서 이어진 정보일 수 있으니, 그대로 이 처의 상속인이라고 단정하지 말아야 합니다.</li>
-                  <li>이 처에게만 있는 별도의 자녀가 있으면 추가로 입력하고, 없으면 추가 상속인 없음으로 정리하면 됩니다.</li>
+                  <li>현재 자녀 목록은 상위 사건 기준으로 자동 반영된 목록입니다.</li>
+                  <li>{lawEra !== '1991' ? `구법상 남편의 자녀가 ${node.name || '해당 처'} 사건의 상속인으로 반영될 수 있습니다.` : `1991년 이후에는 배우자의 자녀라는 이유만으로 ${node.name || '해당 처'}의 상속인이 되지 않습니다.`}</li>
+                  <li>{node.name || '해당 처'}의 직접 자녀 또는 양자가 아닌 사람은 제외하고, 별도 자녀가 있으면 추가해 주세요.</li>
                 </>
               ) : null}
-              {isHusbandReinheritanceReview ? (
+              {isHusbandReinheritanceReview && !blocksHusbandSubstitution ? (
                 <>
-                  <li>현재 표시된 자녀들이 모두 이 남편의 자녀인지 먼저 확인해 주세요.</li>
-                  <li>남편의 자녀가 아닌 사람은 삭제하거나 제외 처리하고, 자녀가 없으면 그다음 직계존속 여부를 검토해 주세요.</li>
+                  <li>현재 자녀 목록은 상위 사건 기준으로 자동 반영된 목록입니다.</li>
+                  <li>{node.name || '해당 남편'}의 직접 자녀 또는 양자가 아닌 사람은 제외해 주세요.</li>
+                  <li>{node.name || '해당 남편'}에게만 있는 별도 자녀가 있으면 추가해 주세요.</li>
                 </>
               ) : null}
               {isReinheritanceReview && !isSpouseReinheritanceReview ? (
@@ -277,11 +298,11 @@ export default function PersonEditModal({
           </Surface>
         </div>
 
-        <div className="flex items-center justify-between border-t border-[#e9e9e7] bg-[#f7f7f5]/50 px-5 py-3 dark:border-neutral-700 dark:bg-neutral-900/30">
+        <div className="flex items-center justify-between border-t border-[#e9e9e7] bg-[#f7f7f5]/50 px-5 py-3 dark:border-neutral-600 dark:bg-neutral-900/70">
           <button
             type="button"
             onClick={onOpenInInputTab}
-            className="text-[12px] text-[#787774] underline underline-offset-2 transition-colors hover:text-[#37352f] dark:text-neutral-400 dark:hover:text-neutral-200"
+            className="text-[12px] text-[#787774] underline underline-offset-2 transition-colors hover:text-[#37352f] dark:text-neutral-300 dark:hover:text-neutral-200"
           >
             입력 탭에서 수정하기 →
           </button>

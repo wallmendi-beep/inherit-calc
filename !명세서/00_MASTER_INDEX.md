@@ -17,7 +17,7 @@
 | 트리 정규화 | `src/utils/treeDomain.js` | import 정규화, `personId`/`id` 보존, 중복/순환 대응, 기본값 정리 |
 | 앱 액션 | `src/utils/appActions.js` | AI 입력, 파일 저장/불러오기, import 후 정리 흐름 |
 | 스마트 가이드 | `src/hooks/useSmartGuide.js` | 경고/행동 유도/탭 이동용 가이드 생성 |
-| 검증 시나리오 | `src/engine/check_logic.js` | 사람이 읽는 예시 출력 기반 검증 스크립트 |
+| 스마트 가이드 규칙 | `!명세서/specs/SMART_GUIDE_OPERATION_RULES_2026-04-29.md` | 가이드 전체 운용 규칙 (마스터) |
 | 엔진 로직 맵 | `src/engine/logic_map.md` | 엔진/검산/가이드 연결 구조 설명 |
 
 ---
@@ -31,7 +31,9 @@
 | 법 규칙 | `!명세서/specs/CORE_LOGIC_SPECS.md`, `INHERITANCE_SHARE_RULES.md` | 시대별 상속분, 대습·재상속, 예외 규칙 |
 | 입력 정규화 | `IMPORT_PRECHECK_AND_REENTRY_RULES_2026-04-13.md`, `HEIR_IMPORT_SUBTREE_AND_CYCLE_PREVENTION_RULES_2026-04-13.md` | import 전처리, 트리 정규화, 중복/순환 방지 |
 | AI 입력 | `AI_RELIABILITY_AND_CORRECTION_PRINCIPLES_2026-04-14.md`, `IMPORT_GUIDE_FIRST_REVIEW_RULES_2026-04-13.md` | AI JSON 신뢰성, 허용 필드, 후속 검토 흐름 |
-| 가이드 UX | `GUIDE_RULES_AND_NAVIGATION.md`, `MISSING_HEIR_WARNING_LOGIC_SPEC.md` | mandatory/recommended 가이드, 이동 규칙, 누락 경고 |
+| 가이드 UX | `SMART_GUIDE_OPERATION_RULES_2026-04-29.md` ⭐ | 가이드 전체 목록, 트리거, 텍스트, 네비게이션 동작 (최신) |
+| 판정 규칙 | `PREDECEASE_REINHERITANCE_JUDGMENT_AND_WARP_RULES.md` ⭐ | 선사망/후사망/대습/재상속 판정 기준 + 워프 네비게이션 SSOT (2026-05-01) |
+| 탭 구성 | `TAB_STRUCTURE_RULES.md` ⭐ | 4탭 역할 정의, 취득경로 뷰 모드, 인쇄 규칙 SSOT (2026-05-01) |
 | 감사(audit) | `CORE_LOGIC_SPECS.md`, `src/engine/logic_map.md` | 최종 결과 무결성 검사, 경고/가이드 분리 |
 
 ---

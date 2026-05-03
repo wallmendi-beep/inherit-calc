@@ -180,4 +180,85 @@ describe('inheritance regression guardrails', () => {
     ]);
     expect(result.integrity.hasTotalMismatch).toBe(false);
   });
+
+  it('keeps calc steps separate when the same person is evaluated in different event contexts', () => {
+    const makeJung = (id) => ({
+      id,
+      personId: 'jung-mun-ja',
+      name: 'JungMunJa',
+      relation: 'daughter',
+      isDeceased: true,
+      deathDate: '1986-02-26',
+      heirs: [],
+    });
+    const tree = {
+      id: 'root',
+      personId: 'root',
+      name: 'KimHyukJo',
+      isDeceased: true,
+      deathDate: '1967-10-27',
+      heirs: [
+        {
+          id: 'kms-root',
+          personId: 'kim-myung-su',
+          name: 'KimMyungSu',
+          relation: 'daughter',
+          isDeceased: true,
+          deathDate: '1972-11-22',
+          heirs: [
+            makeJung('jung-root'),
+            { id: 'alive-root', personId: 'alive-root', name: 'AliveRoot', relation: 'son', isDeceased: false, heirs: [] },
+          ],
+        },
+        {
+          id: 'gu',
+          personId: 'gu-su-myeong',
+          name: 'GuSuMyeong',
+          relation: 'wife',
+          isDeceased: true,
+          deathDate: '1990-07-03',
+          heirs: [
+            {
+              id: 'kms-gu',
+              personId: 'kim-myung-su',
+              name: 'KimMyungSu',
+              relation: 'daughter',
+              isDeceased: true,
+              deathDate: '1972-11-22',
+              heirs: [
+                makeJung('jung-gu'),
+                { id: 'alive-gu', personId: 'alive-gu', name: 'AliveGu', relation: 'son', isDeceased: false, heirs: [] },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const result = calculateInheritance(tree, 0, { includeCalcSteps: true });
+    const kimMyungSuSteps = (result.calcSteps || []).filter((step) => step.dec?.personId === 'kim-myung-su');
+
+    expect(kimMyungSuSteps.map((step) => ({
+      from: step.parentDecName,
+      inheritedDate: step.inheritedDate,
+      distributionDate: step.distributionDate,
+      isSubstitution: step.isSubstitution,
+      dists: (step.dists || []).map((dist) => dist.h?.name),
+    }))).toEqual([
+      {
+        from: 'KimHyukJo',
+        inheritedDate: '1967-10-27',
+        distributionDate: '1972-11-22',
+        isSubstitution: false,
+        dists: ['JungMunJa', 'AliveRoot'],
+      },
+      {
+        from: 'GuSuMyeong',
+        inheritedDate: '1990-07-03',
+        distributionDate: '1990-07-03',
+        isSubstitution: true,
+        dists: ['AliveGu'],
+      },
+    ]);
+  });
 });
