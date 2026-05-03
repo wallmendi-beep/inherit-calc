@@ -232,6 +232,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
               parentName: contextName,
               targetTabId: getNodeKey(contextNode),
               firstTargetTabId: node.personId || node.id,
+              firstTargetNodeId: node.id || node.personId,
               names: [],
               isSpouseGroup: isSpouse,
               spouseRelation: isSpouse ? node.relation : null,
@@ -271,7 +272,8 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
         }
 
         if (isLegacyFemale && !hasConfirmedNoSuccessors) {
-          if (!node.marriageDate && node.isSameRegister !== false) {
+          const hasDirectMissingGuide = directMissingPersonKeys.has(node.id) || directMissingPersonKeys.has(node.personId);
+          if (!hasDirectMissingGuide && !node.marriageDate && node.isSameRegister !== false) {
             uniqueGuidesMap.set(`verify-marriage-${node.personId}`, {
               id: node.id, uniqueKey: `verify-marriage-${node.personId}`, type: 'recommended',
               targetTabId: parentTabId,
@@ -342,7 +344,12 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
         ? group.firstTargetTabId
         : group.targetTabId;
       uniqueGuidesMap.set(`grouped-direct-missing-${key}`, {
-        id: navTarget, uniqueKey: `grouped-direct-missing-${key}`, targetTabId: navTarget, type: 'mandatory', navigationMode: 'event',
+        id: navTarget,
+        uniqueKey: `grouped-direct-missing-${key}`,
+        targetTabId: navTarget,
+        targetNodeId: uniqueNames.length === 1 ? group.firstTargetNodeId : undefined,
+        type: 'mandatory',
+        navigationMode: 'event',
         text: group.isSpouseGroup
           ? buildSpouseDirectGuideText(group, uniqueNames)
           : `후속 상속 미확정 — [${group.parentName}] 사건: [${uniqueNames.join('], [')}]. 후속 상속인 입력 또는 '없음 확정'을 눌러 주세요.`,
