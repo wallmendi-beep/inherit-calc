@@ -33,7 +33,7 @@
 | AI 입력 | `AI_RELIABILITY_AND_CORRECTION_PRINCIPLES_2026-04-14.md`, `IMPORT_GUIDE_FIRST_REVIEW_RULES_2026-04-13.md` | AI JSON 신뢰성, 허용 필드, 후속 검토 흐름 |
 | 가이드 UX | `SMART_GUIDE_OPERATION_RULES_2026-04-29.md` ⭐ | 가이드 전체 목록, 트리거, 텍스트, 네비게이션 동작 (최신) |
 | 판정 규칙 | `PREDECEASE_REINHERITANCE_JUDGMENT_AND_WARP_RULES.md` ⭐ | 선사망/후사망/대습/재상속 판정 기준 + 워프 네비게이션 SSOT (2026-05-01) |
-| 탭 구성 | `TAB_STRUCTURE_RULES.md` ⭐ | 4탭 역할 정의, 사건 검토 보고서 사이드패널, 취득경로 뷰 모드, 인쇄 규칙 SSOT (2026-05-04) |
+| 탭 구성 | `TAB_STRUCTURE_RULES.md` ⭐ | 3탭 역할 정의, 사건 검토 보고서 사이드패널, 상속지분 취득합산/최종지분표 구조 SSOT (2026-05-04) |
 | 사건 검토 UX | `TAB_ROLE_DEFINITION_AND_TREE_SIMULATION_DRAFT_2026-04-13.md`, `history/v4.86_사건검토_보고서_사이드패널_설계노트.md` | 상속지분 마인드맵과 사건 보고서의 역할 분리, 보고서 표시 원칙 |
 | 감사(audit) | `CORE_LOGIC_SPECS.md`, `src/engine/logic_map.md` | 최종 결과 무결성 검사, 경고/가이드 분리 |
 

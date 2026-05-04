@@ -31,11 +31,10 @@ function sanitizeKorFilePart(str, fallback) {
   return str.replace(/[^a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ\s_-]/g, '').trim() || fallback;
 }
 
-export function printCurrentTab({ activeTab, tree, summaryViewMode = 'structure' }) {
+export function printCurrentTab({ activeTab, tree }) {
   const tabNames = {
     input: '가계도시뮬레이션',
     tree: '사건검토_산출내역',
-    acquisition: '취득경로표',
     summary: '상속지분_요약표',
   };
 
