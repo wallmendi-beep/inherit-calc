@@ -91,6 +91,13 @@ const buildResults = ({ calcSteps = [], finalShares = null, tree = null, query =
   })));
 };
 
+const getNameContext = (result, tree) => {
+  const relation = getRelStr(result?.relation, tree?.deathDate) || result?.relation || '';
+  const sourceNames = Array.from(new Set((result?.sources || []).map((source) => source.decName).filter(Boolean)));
+  const sourceText = sourceNames.length > 0 ? `${sourceNames.slice(0, 2).join(', ')} 사건` : '';
+  return [relation, sourceText].filter(Boolean).join(' · ');
+};
+
 const buildStepIndexes = (calcSteps = []) => {
   const steps = calcSteps.map((step, index) => ({ ...step, __index: index })).filter((step) => step?.dec);
   const byIndex = new Map(steps.map((step) => [step.__index, step]));
@@ -291,13 +298,19 @@ export default function AcquisitionSumPanel({
     () => buildResults({ calcSteps, finalShares, tree, query: searchQuery || '' }),
     [calcSteps, finalShares, tree, searchQuery]
   );
-  const multiResults = results.filter((result) => result.sources.length > 1);
   const [selectedPersonId, setSelectedPersonId] = React.useState('');
 
   const selected = results.find((result) => result.personId === selectedPersonId) || results[0] || null;
+  const lineagePathsByPersonId = React.useMemo(() => {
+    const map = new Map();
+    results.forEach((result) => {
+      map.set(result.personId, buildLineagePaths(calcSteps, result));
+    });
+    return map;
+  }, [calcSteps, results]);
   const lineagePaths = React.useMemo(
-    () => buildLineagePaths(calcSteps, selected),
-    [calcSteps, selected]
+    () => (selected ? lineagePathsByPersonId.get(selected.personId) || [] : []),
+    [lineagePathsByPersonId, selected]
   );
   React.useEffect(() => {
     if (!selected && selectedPersonId) {
@@ -309,9 +322,22 @@ export default function AcquisitionSumPanel({
     }
   }, [results, selected, selectedPersonId]);
 
-  const renderFormula = (result) => result.sources
-    .map((source) => `${source.decName} ${formatShare(source)}`)
-    .join(' + ');
+  const getLineagePaths = (result) => lineagePathsByPersonId.get(result.personId) || [];
+  const isMultiPath = (result) => getLineagePaths(result).length > 1;
+  const renderFormula = (result) => {
+    const paths = getLineagePaths(result);
+    if (paths.length > result.sources.length) {
+      return paths.map((path, index) => {
+        const names = path.cards.map((card) => card.name).filter(Boolean);
+        const finalShare = path.cards[path.cards.length - 1]?.share || path.source;
+        return `경로 ${index + 1} ${names.join('→')} ${formatShare(finalShare)}`;
+      }).join(' + ');
+    }
+    return result.sources
+      .map((source) => `${source.decName} ${formatShare(source)}`)
+      .join(' + ');
+  };
+  const multiResults = results.filter(isMultiPath);
 
   if (results.length === 0) {
     return (
@@ -352,7 +378,10 @@ export default function AcquisitionSumPanel({
                     className={`cursor-pointer transition-colors ${selected?.personId === result.personId ? 'bg-[#f0f6ff] dark:bg-blue-950/20' : 'hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/40'}`}
                     onClick={() => setSelectedPersonId(result.personId)}
                   >
-                    <td className="border border-[#e9e9e7] p-2.5 font-black dark:border-neutral-600">{result.name}</td>
+                    <td className="border border-[#e9e9e7] p-2.5 dark:border-neutral-600">
+                      <div className="font-black">{result.name}</div>
+                      <div className="mt-0.5 truncate text-[11px] font-medium text-[#9b9a97] dark:text-neutral-400">{getNameContext(result, tree)}</div>
+                    </td>
                     <td className="border border-[#e9e9e7] p-2.5 font-black text-[#3f5f8a] dark:border-neutral-600 dark:text-blue-300">{formatShare(result.total)}</td>
                     <td className="truncate border border-[#e9e9e7] p-2.5 font-bold text-[#504f4c] dark:border-neutral-600 dark:text-neutral-300">{renderFormula(result)}</td>
                   </tr>
@@ -383,12 +412,15 @@ export default function AcquisitionSumPanel({
                   className={`cursor-pointer transition-colors ${selected?.personId === result.personId ? 'bg-[#f0f6ff] dark:bg-blue-950/20' : 'hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/40'}`}
                   onClick={() => setSelectedPersonId(result.personId)}
                 >
-                  <td className="border border-[#e9e9e7] p-2.5 font-black dark:border-neutral-600">{result.name}</td>
+                  <td className="border border-[#e9e9e7] p-2.5 dark:border-neutral-600">
+                    <div className="font-black">{result.name}</div>
+                    <div className="mt-0.5 truncate text-[11px] font-medium text-[#9b9a97] dark:text-neutral-400">{getNameContext(result, tree)}</div>
+                  </td>
                   <td className="border border-[#e9e9e7] p-2.5 font-black text-[#3f5f8a] dark:border-neutral-600 dark:text-blue-300">{formatShare(result.total)}</td>
                   <td className="truncate border border-[#e9e9e7] p-2.5 font-bold text-[#504f4c] dark:border-neutral-600 dark:text-neutral-300">{renderFormula(result)}</td>
                   <td className="border border-[#e9e9e7] p-2.5 text-center dark:border-neutral-600">
-                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-black ${result.sources.length > 1 ? 'bg-[#fff5e6] text-[#8a5a1f] dark:bg-yellow-950/30 dark:text-yellow-300' : 'bg-[#f1f1ef] text-[#787774] dark:bg-neutral-800 dark:text-neutral-300'}`}>
-                      {result.sources.length > 1 ? '복수경로' : '단일경로'}
+                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-black ${isMultiPath(result) ? 'bg-[#fff5e6] text-[#8a5a1f] dark:bg-yellow-950/30 dark:text-yellow-300' : 'bg-[#f1f1ef] text-[#787774] dark:bg-neutral-800 dark:text-neutral-300'}`}>
+                      {isMultiPath(result) ? '복수경로' : '단일경로'}
                     </span>
                   </td>
                 </tr>
