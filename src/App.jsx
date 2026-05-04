@@ -8,7 +8,7 @@ import {
 import PrintReport from './components/PrintReport';
 import SummaryPanel from './components/SummaryPanel';
 import AmountPanel from './components/AmountPanel';
-import AcquisitionPanel from './components/AcquisitionPanel';
+import AcquisitionSumPanel from './components/AcquisitionSumPanel';
 import InputPanel from './components/InputPanel';
 import TreePanel from './components/TreePanel';
 import AiImportModal from './components/AiImportModal';
@@ -56,7 +56,7 @@ function App() {
   const [isDirty, setIsDirty] = useState(false);
   const [changeLog, setChangeLog] = useState([]);
   const [treeViewMode, setTreeViewMode] = useState('flow');
-  const [acquisitionViewMode, setAcquisitionViewMode] = useState('flow');
+  const [summaryViewMode, setSummaryViewMode] = useState('final');
   const [navigationSignal, setNavigationSignal] = useState(null);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1.0);
@@ -236,7 +236,7 @@ function App() {
     if (!nodeId) return;
     
     // 1. 단순 탭 이동 처리
-    const specialTabs = ['input', 'tree', 'acquisition', 'summary'];
+    const specialTabs = ['input', 'tree', 'summary'];
     if (specialTabs.includes(nodeId)) {
       setActiveTab(nodeId);
       return;
@@ -749,9 +749,9 @@ function App() {
                 }`}
             >
               <div className="flex items-end pl-[48px] gap-1 no-print relative z-20">
-                {['input', 'tree', 'acquisition', 'summary'].map(id => (
+                {['input', 'tree', 'summary'].map(id => (
                   <button key={id} onClick={() => handleTabChange(id)} className={`px-6 py-2.5 rounded-t-xl font-bold text-[14px] border-2 border-b-0 transition-all ${activeTab === id ? 'bg-white dark:bg-neutral-800 border-[#37352f] text-[#37352f]' : 'bg-transparent border-transparent text-[#9b9a97]'}`}>
-                    {id === 'input' ? '데이터 입력' : id === 'tree' ? '사건 검토' : id === 'acquisition' ? '취득경로' : '상속지분'}
+                    {id === 'input' ? '데이터 입력' : id === 'tree' ? '사건 검토' : '상속지분'}
                   </button>
                 ))}
               </div>
@@ -798,10 +798,31 @@ function App() {
                       />
                     </div>
                   )}
-                {activeTab === 'acquisition' && <AcquisitionPanel tree={tree} calcSteps={calcSteps} finalShares={finalShares} issues={blockingIssues} handleNavigate={handleNavigate} searchQuery={searchQuery} setSearchQuery={setSearchQuery} viewMode={acquisitionViewMode} setViewMode={setAcquisitionViewMode} />}
                 {activeTab === 'summary' && (
                   <div className="space-y-6">
-                    <SummaryPanel tree={tree} finalShares={finalShares} calcSteps={calcSteps} issues={blockingIssues} handleNavigate={handleNavigate} matchIds={matchIds} currentMatchIdx={currentMatchIdx} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+                    <div className="no-print flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-1 rounded-full border border-[#dcdcd9] bg-[#f1f1ef] px-1.5 py-1 dark:border-neutral-600 dark:bg-neutral-900">
+                        <button
+                          type="button"
+                          onClick={() => setSummaryViewMode('final')}
+                          className={`rounded-full px-3 py-1.5 text-[12px] font-bold transition-colors ${summaryViewMode === 'final' ? 'bg-[#37352f] text-white dark:bg-neutral-100 dark:text-neutral-900' : 'text-[#787774] hover:bg-[#efefed] dark:text-neutral-300 dark:hover:bg-neutral-700'}`}
+                        >
+                          최종지분
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSummaryViewMode('sum')}
+                          className={`rounded-full px-3 py-1.5 text-[12px] font-bold transition-colors ${summaryViewMode === 'sum' ? 'bg-[#37352f] text-white dark:bg-neutral-100 dark:text-neutral-900' : 'text-[#787774] hover:bg-[#efefed] dark:text-neutral-300 dark:hover:bg-neutral-700'}`}
+                        >
+                          취득합산
+                        </button>
+                      </div>
+                    </div>
+                    {summaryViewMode === 'final' ? (
+                      <SummaryPanel tree={tree} finalShares={finalShares} calcSteps={calcSteps} issues={blockingIssues} handleNavigate={handleNavigate} matchIds={matchIds} currentMatchIdx={currentMatchIdx} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+                    ) : (
+                      <AcquisitionSumPanel tree={tree} calcSteps={calcSteps} finalShares={finalShares} handleNavigate={handleNavigate} />
+                    )}
                     <div className="border-t border-[#e9e9e7] dark:border-neutral-600 pt-4">
                       <button
                         type="button"
