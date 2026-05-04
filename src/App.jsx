@@ -47,6 +47,26 @@ const buildImportIssueSignature = (issues = []) =>
     .sort()
     .join('||');
 
+const applySoftFocusCue = (element, duration = 1800) => {
+  if (!element) return;
+  const originalBg = element.style.backgroundColor;
+  const originalBoxShadow = element.style.boxShadow;
+  const originalTransition = element.style.transition;
+  const originalZIndex = element.style.zIndex;
+
+  element.style.transition = 'background-color 0.45s ease, box-shadow 0.45s ease';
+  element.style.backgroundColor = '#f7fbff';
+  element.style.boxShadow = '0 0 0 2px #d7e5f9';
+  element.style.zIndex = '20';
+
+  setTimeout(() => {
+    element.style.backgroundColor = originalBg;
+    element.style.boxShadow = originalBoxShadow;
+    element.style.transition = originalTransition;
+    element.style.zIndex = originalZIndex;
+  }, duration);
+};
+
 function App() {
 
   const { tree, setTree, setVault, undoTree, redoTree, canUndo, canRedo } = useVaultState();
@@ -56,7 +76,7 @@ function App() {
   const [isDirty, setIsDirty] = useState(false);
   const [changeLog, setChangeLog] = useState([]);
   const [treeViewMode, setTreeViewMode] = useState('flow');
-  const [summaryViewMode, setSummaryViewMode] = useState('final');
+  const [summaryViewMode, setSummaryViewMode] = useState('sum');
   const [navigationSignal, setNavigationSignal] = useState(null);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1.0);
@@ -307,23 +327,7 @@ function App() {
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         
-        // Tailwind 우선순위에 밀리지 않도록 인라인 스타일로 매우 강렬한 시각적 피드백 제공
-        const originalBg = element.style.backgroundColor;
-        const originalBoxShadow = element.style.boxShadow;
-        const originalTransform = element.style.transform;
-        
-        element.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-        element.style.backgroundColor = '#eff6ff'; // Tailwind blue-50 
-        element.style.boxShadow = '0 0 0 3px #1d4ed8, 0 8px 25px -5px rgba(29, 78, 216, 0.5)'; // 매우 굵은 파란 링 + 그림자
-        element.style.transform = 'scale(1.02)'; // 살짝 튀어나옴
-        element.style.zIndex = '50';
-        
-        setTimeout(() => {
-          element.style.backgroundColor = originalBg;
-          element.style.boxShadow = originalBoxShadow;
-          element.style.transform = originalTransform;
-          element.style.zIndex = '';
-        }, 1800);
+        applySoftFocusCue(element);
       }
     }, 150);
   };
@@ -428,33 +432,7 @@ function App() {
               firstScrolled = true;
             }
             
-            // 인라인 스타일로 확실한 시각적 피드백 제공
-            const origBg = el.style.backgroundColor;
-            const origShadow = el.style.boxShadow;
-            const origTransform = el.style.transform;
-            const origZIndex = el.style.zIndex;
-            const origTransition = el.style.transition;
-            
-            el.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-            el.style.backgroundColor = '#eff6ff';
-            el.style.boxShadow = '0 0 0 3px #1d4ed8, 0 8px 25px -5px rgba(29, 78, 216, 0.5)';
-            el.style.transform = 'scale(1.02)';
-            el.style.zIndex = '50';
-            
-            // 애니메이션 원복
-            setTimeout(() => {
-              try {
-                if (el) {
-                  el.style.backgroundColor = origBg;
-                  el.style.boxShadow = origShadow;
-                  el.style.transform = origTransform;
-                  el.style.zIndex = origZIndex;
-                  el.style.transition = origTransition;
-                }
-              } catch {
-                // DOM 요소가 언마운트된 경우 조용히 무시
-              }
-            }, 2500);
+            applySoftFocusCue(el);
           } catch (error) {
             console.error('Highlight DOM Error:', error);
           }
@@ -690,7 +668,7 @@ function App() {
   };
 
   const effectiveSidebarWidth = Math.max(SIDEBAR_MIN_WIDTH, sidebarWidth);
-  const showTreeSidebar = activeTab !== 'tree';
+  const showTreeSidebar = activeTab === 'input';
   const leftPanelOffset = showTreeSidebar ? (sidebarOpen ? effectiveSidebarWidth + 10 : 52) : 0;
 
   return (
@@ -742,10 +720,10 @@ function App() {
           />
         )}
         <main className={`flex-1 flex w-full transition-all duration-300 ${leftPanelOffset ? 'justify-start' : 'justify-center'}`} style={{ paddingLeft: leftPanelOffset, paddingRight: showNavigator ? (navigatorWidth + 10) : 0 }}>
-          <div style={{ zoom: activeTab === 'tree' ? 1 : zoomLevel, width: '100%', display: 'flex', justifyContent: (leftPanelOffset || showNavigator) ? 'flex-start' : 'center' }}>
+          <div style={{ zoom: ['tree', 'summary'].includes(activeTab) ? 1 : zoomLevel, width: '100%', display: 'flex', justifyContent: (leftPanelOffset || showNavigator) ? 'flex-start' : 'center' }}>
             <div
                 className={`flex flex-col shrink-0 mt-6 print-compact relative z-10 transition-all duration-300 ${
-                activeTab === 'tree' ? 'w-full px-2' : 'w-[1080px] min-w-[1080px] px-6'
+                ['tree', 'summary'].includes(activeTab) ? 'w-full px-2' : 'w-[1080px] min-w-[1080px] px-6'
                 }`}
             >
               <div className="flex items-end pl-[48px] gap-1 no-print relative z-20">
@@ -755,7 +733,7 @@ function App() {
                   </button>
                 ))}
               </div>
-              <div className={`border border-[#e9e9e7] dark:border-neutral-600 rounded-xl shadow-sm min-h-[600px] bg-white dark:bg-neutral-800 flex flex-col relative z-0 ${activeTab === 'tree' ? 'p-5' : 'p-10'}`}>
+              <div className={`border border-[#e9e9e7] dark:border-neutral-600 rounded-xl shadow-sm min-h-[600px] bg-white dark:bg-neutral-800 flex flex-col relative z-0 ${['tree', 'summary'].includes(activeTab) ? 'p-5' : 'p-10'}`}>
                 {activeTab === 'input' && (
                   <InputPanel
                     tree={tree} activeDeceasedTab={activeDeceasedTab} activeTabObj={activeTabObj} getBriefingInfo={getBriefingInfo}
@@ -800,15 +778,8 @@ function App() {
                   )}
                 {activeTab === 'summary' && (
                   <div className="space-y-6">
-                    <div className="no-print flex items-center justify-between gap-3">
+                    <div className="no-print flex items-center justify-start gap-3 pl-[360px]">
                       <div className="flex items-center gap-1 rounded-full border border-[#dcdcd9] bg-[#f1f1ef] px-1.5 py-1 dark:border-neutral-600 dark:bg-neutral-900">
-                        <button
-                          type="button"
-                          onClick={() => setSummaryViewMode('final')}
-                          className={`rounded-full px-3 py-1.5 text-[12px] font-bold transition-colors ${summaryViewMode === 'final' ? 'bg-[#37352f] text-white dark:bg-neutral-100 dark:text-neutral-900' : 'text-[#787774] hover:bg-[#efefed] dark:text-neutral-300 dark:hover:bg-neutral-700'}`}
-                        >
-                          최종지분
-                        </button>
                         <button
                           type="button"
                           onClick={() => setSummaryViewMode('sum')}
@@ -816,13 +787,25 @@ function App() {
                         >
                           취득합산
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => setSummaryViewMode('final')}
+                          className={`rounded-full px-3 py-1.5 text-[12px] font-bold transition-colors ${summaryViewMode === 'final' ? 'bg-[#37352f] text-white dark:bg-neutral-100 dark:text-neutral-900' : 'text-[#787774] hover:bg-[#efefed] dark:text-neutral-300 dark:hover:bg-neutral-700'}`}
+                        >
+                          최종지분표
+                        </button>
                       </div>
                     </div>
-                    {summaryViewMode === 'final' ? (
-                      <SummaryPanel tree={tree} finalShares={finalShares} calcSteps={calcSteps} issues={blockingIssues} handleNavigate={handleNavigate} matchIds={matchIds} currentMatchIdx={currentMatchIdx} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
-                    ) : (
-                      <AcquisitionSumPanel tree={tree} calcSteps={calcSteps} finalShares={finalShares} handleNavigate={handleNavigate} />
-                    )}
+                    <AcquisitionSumPanel
+                      tree={tree}
+                      calcSteps={calcSteps}
+                      finalShares={finalShares}
+                      handleNavigate={handleNavigate}
+                      viewMode={summaryViewMode}
+                      finalContent={(
+                        <SummaryPanel tree={tree} finalShares={finalShares} calcSteps={calcSteps} issues={blockingIssues} handleNavigate={handleNavigate} matchIds={matchIds} currentMatchIdx={currentMatchIdx} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+                      )}
+                    />
                     <div className="border-t border-[#e9e9e7] dark:border-neutral-600 pt-4">
                       <button
                         type="button"

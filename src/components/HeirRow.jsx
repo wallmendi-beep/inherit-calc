@@ -74,7 +74,6 @@ export default function HeirRow({
 
   useEffect(() => {
     if (!showPredeceasedWarning) return undefined;
-    setIsWarningClosing(false);
     const closeTimer = setTimeout(() => {
       setIsWarningClosing(true);
     }, 2700);
@@ -183,7 +182,7 @@ export default function HeirRow({
           data-node-id={node.id}
           className={`group/row relative z-10 flex w-full flex-col rounded-md border transition-colors ${
             isHighlighted
-              ? 'border-blue-400 bg-blue-50/60 ring-2 ring-blue-300 ring-offset-1 dark:border-blue-500 dark:bg-blue-900/40 dark:ring-blue-600'
+              ? 'border-[#bcd4f6] bg-[#f7fbff] shadow-[0_0_0_1px_#d7e5f9] dark:border-blue-900/60 dark:bg-blue-950/20 dark:shadow-[0_0_0_1px_rgba(59,130,246,0.28)]'
               : 'border-[#e5e5e5] bg-white hover:bg-[#f8f8f7] dark:border-neutral-600 dark:bg-neutral-800 dark:hover:bg-neutral-700/50'
           }`}
         >

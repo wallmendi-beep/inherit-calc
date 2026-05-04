@@ -1,13 +1,6 @@
 import React from 'react';
 import { math, getRelStr } from '../engine/utils';
 
-const lawLabel = (era) => {
-  if (era === '1960') return '구민법';
-  if (era === '1979') return '79년 민법';
-  if (era === '1991') return '현행민법';
-  return era || '';
-};
-
 const formatShare = (share) => `${share?.n ?? 0}/${share?.d ?? 1}`;
 const getPersonKey = (person) => person?.personId || person?.id || null;
 const getStepEventDate = (step) => step?.distributionDate || step?.dec?.deathDate || '';
@@ -242,6 +235,54 @@ const buildLineagePaths = (calcSteps, selected) => {
   });
 };
 
+const LineagePanel = ({
+  selected,
+  lineagePaths,
+  handleNavigate,
+}) => (
+  <aside className="w-[360px] shrink-0 border-r border-[#e9e9e7] bg-[#fbfbfa] p-4 dark:border-neutral-600 dark:bg-neutral-950/30">
+    {selected ? (
+      <div className="sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto pr-1">
+        <div className="border-b border-[#e9e9e7] pb-3 dark:border-neutral-700">
+          <div className="flex items-baseline justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => handleNavigate?.(selected.personId)}
+              className="min-w-0 truncate text-left text-[20px] font-black hover:text-blue-700 hover:underline dark:hover:text-blue-300"
+            >
+              {selected.name}
+            </button>
+            <span className="shrink-0 text-[18px] font-black text-[#3f5f8a] dark:text-blue-300">{formatShare(selected.total)}</span>
+          </div>
+          <div className="mt-1 text-[12px] text-[#787774] dark:text-neutral-400">최초 피상속인부터 선택자까지 내려온 취득 계보</div>
+        </div>
+
+        <div className="mt-4 space-y-4">
+          {lineagePaths.length > 0 ? (
+            lineagePaths.map((path, index) => (
+              <LineagePath
+                key={path.id}
+                path={path}
+                pathIndex={index}
+                showTitle={lineagePaths.length > 1}
+                handleNavigate={handleNavigate}
+              />
+            ))
+          ) : (
+            <div className="rounded-lg border border-dashed border-[#d9d6d0] bg-white p-3 text-[12px] text-[#787774] dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
+              표시할 취득 계보가 없습니다.
+            </div>
+          )}
+        </div>
+      </div>
+    ) : (
+      <div className="rounded-lg border border-dashed border-[#d9d6d0] bg-white p-4 text-[12px] text-[#787774] dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
+        상속인을 선택하면 취득 계보가 표시됩니다.
+      </div>
+    )}
+  </aside>
+);
+
 const LineagePath = ({ path, pathIndex, showTitle, handleNavigate }) => (
   <div className="space-y-2">
     {showTitle && (
@@ -269,16 +310,11 @@ const LineagePath = ({ path, pathIndex, showTitle, handleNavigate }) => (
                 {formatShare(card.share)}
               </span>
             </div>
-            <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-[#787774] dark:text-neutral-400">
-              <span>{card.label}</span>
-              {card.relation && <span>· {card.relation}</span>}
-              {lawLabel(card.lawEra) && <span>· {lawLabel(card.lawEra)}</span>}
-            </div>
           </div>
           {index < path.cards.length - 1 && (
-            <div className="flex items-center gap-2 pl-4 text-[11px] font-bold text-[#9b9a97] dark:text-neutral-500">
+            <div className="flex items-center justify-center gap-2 text-[11px] font-bold text-[#9b9a97] dark:text-neutral-500">
               <span className="h-4 w-px bg-[#d9d6d0] dark:bg-neutral-700" />
-              <span>아래로 승계</span>
+              <span>↓ {path.cards[index + 1]?.label || '취득'}</span>
             </div>
           )}
         </React.Fragment>
@@ -293,6 +329,8 @@ export default function AcquisitionSumPanel({
   tree = null,
   handleNavigate,
   searchQuery = '',
+  viewMode = 'sum',
+  finalContent = null,
 }) {
   const results = React.useMemo(
     () => buildResults({ calcSteps, finalShares, tree, query: searchQuery || '' }),
@@ -348,136 +386,99 @@ export default function AcquisitionSumPanel({
   }
 
   return (
-    <section className="grid grid-cols-[1fr_340px] gap-0 rounded-xl border border-[#e9e9e7] bg-white text-[#37352f] dark:border-neutral-600 dark:bg-neutral-900/95 dark:text-neutral-200">
-      <main className="space-y-6 p-5">
-        <div>
-          <h2 className="text-[18px] font-black">취득 합산</h2>
-          <p className="mt-1 text-[12px] text-[#787774] dark:text-neutral-400">
-            사건 검토에서 산출된 취득분을 최종 상속인별로 더해 보여줍니다.
-          </p>
-        </div>
+    <section className="flex min-h-[640px] overflow-visible rounded-xl border border-[#e9e9e7] bg-white text-[#37352f] dark:border-neutral-600 dark:bg-neutral-900/95 dark:text-neutral-200">
+      <LineagePanel
+        selected={selected}
+        lineagePaths={lineagePaths}
+        handleNavigate={handleNavigate}
+      />
 
-        {multiResults.length > 0 && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between px-1 text-[13px] font-black">
-              <span>복수경로 취득자</span>
-              <span className="text-[11px] font-bold text-[#9b9a97] dark:text-neutral-400">{multiResults.length}명</span>
-            </div>
-            <table className="w-full table-fixed border-collapse text-[13px]">
-              <thead className="bg-[#fcfcfb] dark:bg-neutral-800/80">
-                <tr>
-                  <th className="w-[18%] border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">상속인</th>
-                  <th className="w-[18%] border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">최종지분</th>
-                  <th className="border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">합산식</th>
-                </tr>
-              </thead>
-              <tbody>
-                {multiResults.map((result) => (
-                  <tr
-                    key={`multi-${result.personId}`}
-                    className={`cursor-pointer transition-colors ${selected?.personId === result.personId ? 'bg-[#f0f6ff] dark:bg-blue-950/20' : 'hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/40'}`}
-                    onClick={() => setSelectedPersonId(result.personId)}
-                  >
-                    <td className="border border-[#e9e9e7] p-2.5 dark:border-neutral-600">
-                      <div className="font-black">{result.name}</div>
-                      <div className="mt-0.5 truncate text-[11px] font-medium text-[#9b9a97] dark:text-neutral-400">{getNameContext(result, tree)}</div>
-                    </td>
-                    <td className="border border-[#e9e9e7] p-2.5 font-black text-[#3f5f8a] dark:border-neutral-600 dark:text-blue-300">{formatShare(result.total)}</td>
-                    <td className="truncate border border-[#e9e9e7] p-2.5 font-bold text-[#504f4c] dark:border-neutral-600 dark:text-neutral-300">{renderFormula(result)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <div className="flex items-center justify-between px-1 text-[13px] font-black">
-            <span>전체 취득자</span>
-            <span className="text-[11px] font-bold text-[#9b9a97] dark:text-neutral-400">{results.length}명</span>
-          </div>
-          <table className="w-full table-fixed border-collapse text-[13px]">
-            <thead className="bg-[#fcfcfb] dark:bg-neutral-800/80">
-              <tr>
-                <th className="w-[18%] border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">상속인</th>
-                <th className="w-[18%] border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">최종지분</th>
-                <th className="border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">취득 명세</th>
-                <th className="w-[14%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-600">구분</th>
-              </tr>
-            </thead>
-            <tbody>
-              {results.map((result) => (
-                <tr
-                  key={`sum-${result.personId}`}
-                  className={`cursor-pointer transition-colors ${selected?.personId === result.personId ? 'bg-[#f0f6ff] dark:bg-blue-950/20' : 'hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/40'}`}
-                  onClick={() => setSelectedPersonId(result.personId)}
-                >
-                  <td className="border border-[#e9e9e7] p-2.5 dark:border-neutral-600">
-                    <div className="font-black">{result.name}</div>
-                    <div className="mt-0.5 truncate text-[11px] font-medium text-[#9b9a97] dark:text-neutral-400">{getNameContext(result, tree)}</div>
-                  </td>
-                  <td className="border border-[#e9e9e7] p-2.5 font-black text-[#3f5f8a] dark:border-neutral-600 dark:text-blue-300">{formatShare(result.total)}</td>
-                  <td className="truncate border border-[#e9e9e7] p-2.5 font-bold text-[#504f4c] dark:border-neutral-600 dark:text-neutral-300">{renderFormula(result)}</td>
-                  <td className="border border-[#e9e9e7] p-2.5 text-center dark:border-neutral-600">
-                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-black ${isMultiPath(result) ? 'bg-[#fff5e6] text-[#8a5a1f] dark:bg-yellow-950/30 dark:text-yellow-300' : 'bg-[#f1f1ef] text-[#787774] dark:bg-neutral-800 dark:text-neutral-300'}`}>
-                      {isMultiPath(result) ? '복수경로' : '단일경로'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </main>
-
-      <aside className="border-l border-[#e9e9e7] bg-[#fbfbfa] p-4 dark:border-neutral-600 dark:bg-neutral-950/30">
-        {selected && (
-          <div className="sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto pr-1">
-            <div className="border-b border-[#e9e9e7] pb-3 dark:border-neutral-700">
-              <div className="flex items-baseline justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleNavigate?.(selected.personId)}
-                  className="min-w-0 truncate text-left text-[20px] font-black hover:text-blue-700 hover:underline dark:hover:text-blue-300"
-                >
-                  {selected.name}
-                </button>
-                <span className="shrink-0 text-[18px] font-black text-[#3f5f8a] dark:text-blue-300">{formatShare(selected.total)}</span>
-              </div>
-              <div className="mt-1 text-[12px] text-[#787774] dark:text-neutral-400">최초 피상속인부터 선택자까지 내려온 취득 계보</div>
+      <main className="min-w-0 flex-1 space-y-6 p-5">
+        {viewMode === 'final' ? (
+          finalContent
+        ) : (
+          <>
+            <div>
+              <h2 className="text-[18px] font-black">취득 합산</h2>
+              <p className="mt-1 text-[12px] text-[#787774] dark:text-neutral-400">
+                사건 검토에서 산출된 취득분을 최종 상속인별로 더해 보여줍니다.
+              </p>
             </div>
 
-            <div className="mt-4 space-y-4">
-              {lineagePaths.length > 0 ? (
-                lineagePaths.map((path, index) => (
-                  <LineagePath
-                    key={path.id}
-                    path={path}
-                    pathIndex={index}
-                    showTitle={lineagePaths.length > 1}
-                    handleNavigate={handleNavigate}
-                  />
-                ))
-              ) : (
-                <div className="rounded-lg border border-dashed border-[#d9d6d0] bg-white p-3 text-[12px] text-[#787774] dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
-                  표시할 취득 계보가 없습니다.
+            {multiResults.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between px-1 text-[13px] font-black">
+                  <span>복수경로 취득자</span>
+                  <span className="text-[11px] font-bold text-[#9b9a97] dark:text-neutral-400">{multiResults.length}명</span>
                 </div>
-              )}
-            </div>
-
-            <div className="mt-3 rounded-lg border-2 border-[#37352f] bg-white p-3 dark:border-neutral-100 dark:bg-neutral-900">
-              <div className="flex items-center justify-between text-[14px] font-black">
-                <span>합계</span>
-                <span>{formatShare(selected.total)}</span>
+                <table className="w-full table-fixed border-collapse text-[13px]">
+                  <thead className="bg-[#fcfcfb] dark:bg-neutral-800/80">
+                    <tr>
+                      <th className="w-[18%] border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">상속인</th>
+                      <th className="w-[18%] border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">최종지분</th>
+                      <th className="border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">합산식</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {multiResults.map((result) => (
+                      <tr
+                        key={`multi-${result.personId}`}
+                        className={`cursor-pointer transition-colors ${selected?.personId === result.personId ? 'bg-[#f0f6ff] dark:bg-blue-950/20' : 'hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/40'}`}
+                        onClick={() => setSelectedPersonId(result.personId)}
+                      >
+                        <td className="border border-[#e9e9e7] p-2.5 dark:border-neutral-600">
+                          <div className="font-black">{result.name}</div>
+                          <div className="mt-0.5 truncate text-[11px] font-medium text-[#9b9a97] dark:text-neutral-400">{getNameContext(result, tree)}</div>
+                        </td>
+                        <td className="border border-[#e9e9e7] p-2.5 font-black text-[#3f5f8a] dark:border-neutral-600 dark:text-blue-300">{formatShare(result.total)}</td>
+                        <td className="truncate border border-[#e9e9e7] p-2.5 font-bold text-[#504f4c] dark:border-neutral-600 dark:text-neutral-300">{renderFormula(result)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            </div>
+            )}
 
-            <div className="mt-3 rounded-lg border border-dashed border-[#d9d6d0] bg-[#f7f6f3] p-3 text-[12px] leading-relaxed text-[#787774] dark:border-neutral-700 dark:bg-neutral-900/60 dark:text-neutral-400">
-              여기서는 지분이 누구를 거쳐 내려왔는지만 표시합니다. 각 사건의 분배 판단은 사건 검토에서 확인합니다.
+            <div className="space-y-2">
+              <div className="flex items-center justify-between px-1 text-[13px] font-black">
+                <span>전체 취득자</span>
+                <span className="text-[11px] font-bold text-[#9b9a97] dark:text-neutral-400">{results.length}명</span>
+              </div>
+              <table className="w-full table-fixed border-collapse text-[13px]">
+                <thead className="bg-[#fcfcfb] dark:bg-neutral-800/80">
+                  <tr>
+                    <th className="w-[18%] border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">상속인</th>
+                    <th className="w-[18%] border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">최종지분</th>
+                    <th className="border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">취득 명세</th>
+                    <th className="w-[14%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-600">구분</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {results.map((result) => (
+                    <tr
+                      key={`sum-${result.personId}`}
+                      className={`cursor-pointer transition-colors ${selected?.personId === result.personId ? 'bg-[#f0f6ff] dark:bg-blue-950/20' : 'hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/40'}`}
+                      onClick={() => setSelectedPersonId(result.personId)}
+                    >
+                      <td className="border border-[#e9e9e7] p-2.5 dark:border-neutral-600">
+                        <div className="font-black">{result.name}</div>
+                        <div className="mt-0.5 truncate text-[11px] font-medium text-[#9b9a97] dark:text-neutral-400">{getNameContext(result, tree)}</div>
+                      </td>
+                      <td className="border border-[#e9e9e7] p-2.5 font-black text-[#3f5f8a] dark:border-neutral-600 dark:text-blue-300">{formatShare(result.total)}</td>
+                      <td className="truncate border border-[#e9e9e7] p-2.5 font-bold text-[#504f4c] dark:border-neutral-600 dark:text-neutral-300">{renderFormula(result)}</td>
+                      <td className="border border-[#e9e9e7] p-2.5 text-center dark:border-neutral-600">
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-black ${isMultiPath(result) ? 'bg-[#fff5e6] text-[#8a5a1f] dark:bg-yellow-950/30 dark:text-yellow-300' : 'bg-[#f1f1ef] text-[#787774] dark:bg-neutral-800 dark:text-neutral-300'}`}>
+                          {isMultiPath(result) ? '복수경로' : '단일경로'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </div>
+          </>
         )}
-      </aside>
+      </main>
     </section>
   );
 }
