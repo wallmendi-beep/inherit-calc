@@ -9,6 +9,9 @@ const lawLabel = (era) => {
 };
 
 const formatShare = (share) => `${share?.n ?? 0}/${share?.d ?? 1}`;
+const getPersonKey = (person) => person?.personId || person?.id || null;
+const getStepEventDate = (step) => step?.distributionDate || step?.dec?.deathDate || '';
+const sameShare = (a, b) => Number(a?.n) === Number(b?.n) && Number(a?.d) === Number(b?.d);
 
 const addShares = (sources = []) => sources.reduce(
   (sum, source) => {
@@ -20,7 +23,7 @@ const addShares = (sources = []) => sources.reduce(
 
 const buildHeirMap = (calcSteps = []) => {
   const map = new Map();
-  calcSteps.forEach((step) => {
+  calcSteps.forEach((step, stepIndex) => {
     const eventDate = step.distributionDate || step.dec?.deathDate;
     (step.dists || []).forEach((dist) => {
       if (dist.n <= 0 || dist.ex) return;
@@ -36,6 +39,7 @@ const buildHeirMap = (calcSteps = []) => {
         });
       }
       map.get(personId).sources.push({
+        stepIndex,
         decPersonId: step.dec?.personId || step.dec?.id,
         decName: step.dec?.name || '사건 미상',
         decDeathDate: eventDate,
@@ -87,6 +91,195 @@ const buildResults = ({ calcSteps = [], finalShares = null, tree = null, query =
   })));
 };
 
+const buildStepIndexes = (calcSteps = []) => {
+  const steps = calcSteps.map((step, index) => ({ ...step, __index: index })).filter((step) => step?.dec);
+  const byIndex = new Map(steps.map((step) => [step.__index, step]));
+  return { steps, byIndex };
+};
+
+const getBreakdownShares = (step, personId, fallbackShare) => {
+  const sourceBreakdowns = Array.isArray(step?.sourceBreakdowns) ? step.sourceBreakdowns : [];
+  const rows = sourceBreakdowns.flatMap((breakdown) => (
+    (breakdown.dists || [])
+      .filter((dist) => dist.personId === personId && dist.n > 0 && !dist.ex)
+      .map((dist) => ({
+        share: { n: dist.n, d: dist.d },
+        breakdown,
+      }))
+  ));
+  if (rows.length > 0) return rows;
+  return [{ share: fallbackShare, breakdown: null }];
+};
+
+const findParentLinks = (steps, childStep, requiredIncomingShare = null) => {
+  const childKey = getPersonKey(childStep?.dec);
+  if (!childKey) return [];
+  return steps.flatMap((step) => {
+    if (step.__index === childStep.__index) return [];
+    return (step.dists || [])
+      .filter((dist) => {
+        if (dist.ex || dist.n <= 0) return false;
+        if (getPersonKey(dist.h) !== childKey) return false;
+        if (requiredIncomingShare && !sameShare({ n: dist.n, d: dist.d }, requiredIncomingShare)) return false;
+        return true;
+      })
+      .map((dist) => ({
+        parentStep: step,
+        dist,
+      }));
+  });
+};
+
+const getFlowLabel = (parentStep, person) => {
+  if (!parentStep) return '원상속';
+  const eventDate = getStepEventDate(parentStep);
+  const deathDate = person?.deathDate || '';
+  if (deathDate && eventDate && deathDate < eventDate) return '대습상속';
+  return '재상속';
+};
+
+const buildPrefixPaths = (steps, step, incomingShare = null, visited = new Set()) => {
+  if (!step) return [[]];
+  const stepKey = `${step.__index}:${getPersonKey(step.dec) || ''}:${incomingShare?.n || ''}/${incomingShare?.d || ''}`;
+  if (visited.has(stepKey)) return [[]];
+  const nextVisited = new Set(visited);
+  nextVisited.add(stepKey);
+
+  const isRootStep = step.dec?.id === 'root' || step.dec?.personId === 'root';
+  if (isRootStep) {
+    return [[{
+      id: `event-root-${step.__index}`,
+      personId: getPersonKey(step.dec),
+      name: step.dec?.name || '피상속인',
+      share: { n: step.inN || 1, d: step.inD || 1 },
+      label: '원상속',
+      relation: '피상속인',
+      lawEra: step.lawEra,
+    }]];
+  }
+
+  const requiredShare = incomingShare || { n: step.inN || 0, d: step.inD || 1 };
+  const parentLinks = findParentLinks(steps, step, requiredShare);
+  if (parentLinks.length === 0) {
+    return [[{
+      id: `event-${step.__index}`,
+      personId: getPersonKey(step.dec),
+      name: step.dec?.name || '이름 미상',
+      share: requiredShare,
+      label: '취득',
+      relation: '상위 사건',
+      lawEra: step.lawEra,
+    }]];
+  }
+
+  return parentLinks.flatMap(({ parentStep, dist }) => (
+    buildPrefixPaths(steps, parentStep, null, nextVisited).map((prefix) => ([
+      ...prefix,
+      {
+        id: `event-${step.__index}-${dist.h?.personId || dist.h?.id}`,
+        personId: getPersonKey(step.dec),
+        name: step.dec?.name || dist.h?.name || '이름 미상',
+        share: { n: dist.n, d: dist.d },
+        label: getFlowLabel(parentStep, dist.h),
+        relation: getRelStr(dist.h?._origRelation || dist.h?.relation, getStepEventDate(parentStep)) || dist.h?.relation || '상속인',
+        lawEra: step.lawEra,
+      },
+    ]))
+  ));
+};
+
+const buildLineagePaths = (calcSteps, selected) => {
+  if (!selected) return [];
+  const { steps, byIndex } = buildStepIndexes(calcSteps);
+  return selected.sources.flatMap((source, sourceIndex) => {
+    const step = byIndex.get(source.stepIndex);
+    if (!step) {
+      return [{
+        id: `source-${sourceIndex}`,
+        source,
+        cards: [{
+          id: `selected-${selected.personId}-${sourceIndex}`,
+          personId: selected.personId,
+          name: selected.name,
+          share: source,
+          label: '최종 취득',
+          relation: getRelStr(source.relation, source.decDeathDate) || source.relation || '상속인',
+          lawEra: source.lawEra,
+        }],
+      }];
+    }
+
+    return getBreakdownShares(step, selected.personId, source).flatMap(({ share, breakdown }, breakdownIndex) => {
+      const prefixPaths = buildPrefixPaths(
+        steps,
+        step,
+        breakdown ? { n: breakdown.inN, d: breakdown.inD } : null
+      );
+      return prefixPaths.map((prefix, pathIndex) => ({
+        id: `${sourceIndex}-${breakdownIndex}-${pathIndex}`,
+        source: { ...source, ...share },
+        cards: [
+          ...prefix,
+          {
+            id: `selected-${selected.personId}-${sourceIndex}-${breakdownIndex}-${pathIndex}`,
+            personId: selected.personId,
+            name: selected.name,
+            share,
+            label: '최종 취득',
+            relation: getRelStr(source.relation, source.decDeathDate) || source.relation || '상속인',
+            lawEra: source.lawEra,
+          },
+        ],
+      }));
+    });
+  });
+};
+
+const LineagePath = ({ path, pathIndex, showTitle, handleNavigate }) => (
+  <div className="space-y-2">
+    {showTitle && (
+      <div className="px-1 text-[11px] font-black text-[#9b9a97] dark:text-neutral-400">
+        경로 {pathIndex + 1}
+      </div>
+    )}
+    <div className="space-y-1.5">
+      {path.cards.map((card, index) => (
+        <React.Fragment key={`${path.id}-${card.id}-${index}`}>
+          <div className={`rounded-lg border px-3 py-2 ${
+            index === path.cards.length - 1
+              ? 'border-[#37352f] bg-white dark:border-neutral-100 dark:bg-neutral-900'
+              : 'border-[#e9e9e7] bg-white dark:border-neutral-700 dark:bg-neutral-900'
+          }`}>
+            <div className="flex items-baseline justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => card.personId && handleNavigate?.(card.personId)}
+                className="min-w-0 truncate text-left text-[13px] font-black hover:text-blue-700 hover:underline dark:hover:text-blue-300"
+              >
+                {card.name}
+              </button>
+              <span className="shrink-0 text-[13px] font-black text-[#3f5f8a] dark:text-blue-300">
+                {formatShare(card.share)}
+              </span>
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-[#787774] dark:text-neutral-400">
+              <span>{card.label}</span>
+              {card.relation && <span>· {card.relation}</span>}
+              {lawLabel(card.lawEra) && <span>· {lawLabel(card.lawEra)}</span>}
+            </div>
+          </div>
+          {index < path.cards.length - 1 && (
+            <div className="flex items-center gap-2 pl-4 text-[11px] font-bold text-[#9b9a97] dark:text-neutral-500">
+              <span className="h-4 w-px bg-[#d9d6d0] dark:bg-neutral-700" />
+              <span>아래로 승계</span>
+            </div>
+          )}
+        </React.Fragment>
+      ))}
+    </div>
+  </div>
+);
+
 export default function AcquisitionSumPanel({
   calcSteps = [],
   finalShares = null,
@@ -102,6 +295,10 @@ export default function AcquisitionSumPanel({
   const [selectedPersonId, setSelectedPersonId] = React.useState('');
 
   const selected = results.find((result) => result.personId === selectedPersonId) || results[0] || null;
+  const lineagePaths = React.useMemo(
+    () => buildLineagePaths(calcSteps, selected),
+    [calcSteps, selected]
+  );
   React.useEffect(() => {
     if (!selected && selectedPersonId) {
       setSelectedPersonId('');
@@ -125,7 +322,7 @@ export default function AcquisitionSumPanel({
   }
 
   return (
-    <section className="grid grid-cols-[1fr_320px] gap-0 overflow-hidden rounded-xl border border-[#e9e9e7] bg-white text-[#37352f] dark:border-neutral-600 dark:bg-neutral-900/95 dark:text-neutral-200">
+    <section className="grid grid-cols-[1fr_340px] gap-0 rounded-xl border border-[#e9e9e7] bg-white text-[#37352f] dark:border-neutral-600 dark:bg-neutral-900/95 dark:text-neutral-200">
       <main className="space-y-6 p-5">
         <div>
           <h2 className="text-[18px] font-black">취득 합산</h2>
@@ -203,7 +400,7 @@ export default function AcquisitionSumPanel({
 
       <aside className="border-l border-[#e9e9e7] bg-[#fbfbfa] p-4 dark:border-neutral-600 dark:bg-neutral-950/30">
         {selected && (
-          <>
+          <div className="sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto pr-1">
             <div className="border-b border-[#e9e9e7] pb-3 dark:border-neutral-700">
               <div className="flex items-baseline justify-between gap-3">
                 <button
@@ -215,29 +412,25 @@ export default function AcquisitionSumPanel({
                 </button>
                 <span className="shrink-0 text-[18px] font-black text-[#3f5f8a] dark:text-blue-300">{formatShare(selected.total)}</span>
               </div>
-              <div className="mt-1 text-[12px] text-[#787774] dark:text-neutral-400">선택한 상속인의 취득분 합산 명세</div>
+              <div className="mt-1 text-[12px] text-[#787774] dark:text-neutral-400">최초 피상속인부터 선택자까지 내려온 취득 계보</div>
             </div>
 
-            <div className="mt-4 space-y-2">
-              {selected.sources.map((source, index) => (
-                <div key={`${selected.personId}-${source.decPersonId}-${index}`} className="rounded-lg border border-[#e9e9e7] bg-white p-3 dark:border-neutral-700 dark:bg-neutral-900">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={() => source.decPersonId && handleNavigate?.(source.decPersonId)}
-                      className="min-w-0 truncate text-left text-[13px] font-black hover:text-blue-700 hover:underline dark:hover:text-blue-300"
-                    >
-                      {source.decName} 사건
-                    </button>
-                    <span className="shrink-0 text-[13px] font-black text-[#3f5f8a] dark:text-blue-300">{formatShare(source)}</span>
-                  </div>
-                  <div className="mt-1 text-[11px] text-[#787774] dark:text-neutral-400">
-                    {getRelStr(source.relation, source.decDeathDate) || source.relation || '상속인'}
-                    {source.modifier ? ` · ${source.modifier}` : ''}
-                    {lawLabel(source.lawEra) ? ` · ${lawLabel(source.lawEra)}` : ''}
-                  </div>
+            <div className="mt-4 space-y-4">
+              {lineagePaths.length > 0 ? (
+                lineagePaths.map((path, index) => (
+                  <LineagePath
+                    key={path.id}
+                    path={path}
+                    pathIndex={index}
+                    showTitle={lineagePaths.length > 1}
+                    handleNavigate={handleNavigate}
+                  />
+                ))
+              ) : (
+                <div className="rounded-lg border border-dashed border-[#d9d6d0] bg-white p-3 text-[12px] text-[#787774] dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
+                  표시할 취득 계보가 없습니다.
                 </div>
-              ))}
+              )}
             </div>
 
             <div className="mt-3 rounded-lg border-2 border-[#37352f] bg-white p-3 dark:border-neutral-100 dark:bg-neutral-900">
@@ -248,9 +441,9 @@ export default function AcquisitionSumPanel({
             </div>
 
             <div className="mt-3 rounded-lg border border-dashed border-[#d9d6d0] bg-[#f7f6f3] p-3 text-[12px] leading-relaxed text-[#787774] dark:border-neutral-700 dark:bg-neutral-900/60 dark:text-neutral-400">
-              분기 판단은 사건 검토에서 확인하고, 여기서는 최종 상속인별로 산출된 취득분을 더하는 과정만 검산합니다.
+              여기서는 지분이 누구를 거쳐 내려왔는지만 표시합니다. 각 사건의 분배 판단은 사건 검토에서 확인합니다.
             </div>
-          </>
+          </div>
         )}
       </aside>
     </section>
