@@ -56,7 +56,7 @@ function App() {
   const [isDirty, setIsDirty] = useState(false);
   const [changeLog, setChangeLog] = useState([]);
   const [treeViewMode, setTreeViewMode] = useState('flow');
-  const [acquisitionViewMode, setAcquisitionViewMode] = useState('card');
+  const [acquisitionViewMode, setAcquisitionViewMode] = useState('flow');
   const [navigationSignal, setNavigationSignal] = useState(null);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1.0);
