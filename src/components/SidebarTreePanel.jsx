@@ -13,6 +13,16 @@ function PanelActionButton({ children, onClick, title }) {
   );
 }
 
+function PanelIcon({ open }) {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3.5" y="4" width="17" height="16" rx="2.5" />
+      <path d="M9 4v16" />
+      {open ? <path d="m14 12 3-3m-3 3 3 3" /> : <path d="m17 12-3-3m3 3-3 3" />}
+    </svg>
+  );
+}
+
 export default function SidebarTreePanel({
   sidebarOpen = false,
   sidebarWidth = 240,
@@ -23,6 +33,7 @@ export default function SidebarTreePanel({
   handleSidebarPrevMatch = () => {},
   handleSidebarNextMatch = () => {},
   setSidebarToggleSignal = () => {},
+  setSidebarOpen = () => {},
   sidebarToggleSignal = 0,
   tree = null,
   handleNavigate = () => {},
@@ -30,21 +41,47 @@ export default function SidebarTreePanel({
   handleResizeMouseDown = () => {},
   removeHeir = () => {},
 }) {
-  if (!sidebarOpen) return null;
-
   const matchCount = (sidebarMatchIds || []).length;
   const safeSidebarWidth = Math.max(250, sidebarWidth);
 
+  if (!sidebarOpen) {
+    return (
+      <aside className="fixed left-0 top-[60px] z-30 flex h-[calc(100vh-60px)] w-[42px] flex-col items-center border-r border-[#e9e9e7] bg-white/95 py-3 shadow-sm backdrop-blur no-print dark:border-neutral-700 dark:bg-neutral-900/95">
+        <button
+          type="button"
+          onClick={() => setSidebarOpen(true)}
+          className="grid h-8 w-8 place-items-center rounded-lg border border-[#e9e9e7] bg-[#fafaf9] text-[#3b5f8a] transition-colors hover:bg-[#f0f6ff] dark:border-neutral-700 dark:bg-neutral-800 dark:text-blue-300"
+          title="가계도 요약 열기"
+          aria-label="가계도 요약 열기"
+        >
+          <PanelIcon open={false} />
+        </button>
+        <div className="mt-3 [writing-mode:vertical-rl] text-[11px] font-black tracking-[0.08em] text-[#787774] dark:text-neutral-400">
+          가계도 요약
+        </div>
+      </aside>
+    );
+  }
+
   return (
     <aside className="fixed left-0 top-[60px] z-30 flex h-[calc(100vh-60px)] items-stretch no-print" style={{ width: safeSidebarWidth + 10 }}>
-      <div className="flex flex-col overflow-hidden border-r border-[#e9e9e7] bg-white dark:border-neutral-600 dark:bg-neutral-800" style={{ width: safeSidebarWidth, minWidth: 250 }}>
-        <div className="shrink-0 border-b border-[#e9e9e7] bg-[#faf9f6] px-3 py-3 dark:border-neutral-600 dark:bg-neutral-900/60">
-          <div className="mb-2 flex items-center justify-between gap-2">
+      <div className="flex flex-col overflow-hidden border-r border-[#e9e9e7] bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-900" style={{ width: safeSidebarWidth, minWidth: 250 }}>
+        <div className="shrink-0 border-b border-[#e9e9e7] bg-white/95 px-3 py-3 backdrop-blur dark:border-neutral-700 dark:bg-neutral-900/95">
+          <div className="mb-3 flex items-start justify-between gap-2">
             <div>
-              <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#9a988f] dark:text-neutral-400">가계도 요약</div>
-              <div className="mt-0.5 text-[13px] font-semibold text-[#37352f] dark:text-neutral-100">상속인 구조 탐색</div>
+              <div className="text-[12px] font-black tracking-[0.08em] text-[#3b5f8a] dark:text-blue-300">가계도 요약</div>
+              <div className="mt-1 text-[12px] font-bold text-[#787774] dark:text-neutral-300">상속인 구조 탐색</div>
             </div>
             <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(false)}
+                className="grid h-7 w-7 place-items-center rounded-lg border border-[#e9e9e7] bg-white text-[#787774] transition-colors hover:bg-[#f3f2ef] hover:text-[#37352f] dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
+                title="가계도 요약 닫기"
+                aria-label="가계도 요약 닫기"
+              >
+                <PanelIcon open />
+              </button>
               <PanelActionButton onClick={() => setSidebarToggleSignal((signal) => Math.abs(signal) + 1)} title="모두 펼치기">
                 펼치기
               </PanelActionButton>
@@ -55,7 +92,7 @@ export default function SidebarTreePanel({
           </div>
 
           <div className="flex items-center gap-1.5">
-            <div className="flex w-[150px] items-center gap-1.5 rounded-xl border border-[#e9e9e7] bg-white px-2 py-2 shadow-[0_1px_0_rgba(255,255,255,0.9)] dark:border-neutral-600 dark:bg-neutral-800">
+            <div className="flex w-full items-center gap-1.5 rounded-lg border border-[#e9e9e7] bg-[#fafaf9] px-2 py-2 dark:border-neutral-700 dark:bg-neutral-800">
               <svg className="h-3.5 w-3.5 shrink-0 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>

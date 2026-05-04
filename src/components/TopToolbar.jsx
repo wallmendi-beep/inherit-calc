@@ -38,6 +38,8 @@ function InlineMeta({ label, value, tone = 'neutral', minWidth = '' }) {
 export default function TopToolbarBalanced({
   sidebarOpen,
   setSidebarOpen,
+  sidebarToggleDisabled = false,
+  showSidebarToggle = true,
   tree,
   setAiTargetId,
   setIsAiModalOpen,
@@ -82,13 +84,16 @@ export default function TopToolbarBalanced({
     <div className="sticky top-0 z-50 no-print w-full border-b border-[#e9e9e7] bg-white/94 shadow-sm backdrop-blur-md transition-all duration-300 dark:border-neutral-600 dark:bg-neutral-800/94">
       <div className="mx-auto flex min-h-[56px] w-full max-w-[1400px] items-center gap-4 px-5 py-2">
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          <button
-            onClick={() => setSidebarOpen((open) => !open)}
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-all ${sidebarOpen ? 'border-[#cfe2fb] bg-[#eef5ff] text-[#2383e2] dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300' : 'border-[#eceae4] bg-[#fbfaf7] text-[#787774] hover:border-[#e1dfd8] hover:bg-[#f2f1ee] dark:border-neutral-600 dark:bg-neutral-800/80 dark:text-neutral-300 dark:hover:border-neutral-600 dark:hover:bg-neutral-700'}`}
-            title={sidebarOpen ? '좌측 가계도 패널 닫기' : '좌측 가계도 패널 열기'}
-          >
-            <PanelToggleIcon open={sidebarOpen} />
-          </button>
+          {showSidebarToggle && (
+            <button
+              onClick={() => setSidebarOpen((open) => !open)}
+              disabled={sidebarToggleDisabled}
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-all disabled:cursor-not-allowed disabled:opacity-45 ${sidebarOpen ? 'border-[#cfe2fb] bg-[#eef5ff] text-[#2383e2] dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300' : 'border-[#eceae4] bg-[#fbfaf7] text-[#787774] hover:border-[#e1dfd8] hover:bg-[#f2f1ee] dark:border-neutral-600 dark:bg-neutral-800/80 dark:text-neutral-300 dark:hover:border-neutral-600 dark:hover:bg-neutral-700'}`}
+              title={sidebarToggleDisabled ? '사건 검토에서는 사건 보고서가 좌측 패널에 표시됩니다.' : (sidebarOpen ? '좌측 가계도 패널 닫기' : '좌측 가계도 패널 열기')}
+            >
+              <PanelToggleIcon open={sidebarOpen} />
+            </button>
+          )}
 
           <div className="flex min-w-0 items-center gap-3 overflow-hidden rounded-2xl border border-[#eceae4] bg-[#fbfaf7] px-3 py-1.5 shadow-[0_1px_0_rgba(255,255,255,0.9)] dark:border-neutral-600 dark:bg-neutral-800/80">
             <div className="flex min-w-0 items-center gap-2 pr-1">

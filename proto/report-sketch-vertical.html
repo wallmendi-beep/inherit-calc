@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>김명수 사건 보고서 세로형 스케치</title>
+  <style>
+    :root{
+      --bg:#f4f3ee;
+      --paper:#ffffff;
+      --line:#e6e1d8;
+      --ink:#2f2a24;
+      --muted:#6d665d;
+      --blue:#3b5f8a;
+      --blue-bg:#edf4fd;
+      --green:#2f6f4d;
+      --green-bg:#edf8f1;
+      --amber:#7a6240;
+      --amber-bg:#fbf3e4;
+      --rose:#8a5a5f;
+      --rose-bg:#fcf0f2;
+      --shadow:0 12px 30px rgba(55,53,47,.08);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);background:
+      radial-gradient(circle at 1px 1px, rgba(59,95,138,.08) 1px, transparent 0) 0 0/24px 24px,
+      var(--bg);}
+    .app{min-height:100vh;padding:20px}
+    .topbar{
+      display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+      background:rgba(255,255,255,.88);backdrop-filter:blur(10px);
+      border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:16px;box-shadow:var(--shadow);
+    }
+    .brand{font-size:15px;font-weight:950;letter-spacing:0}
+    .desc{font-size:12px;color:var(--muted);line-height:1.5}
+    .legend{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+    .pill{
+      display:inline-flex;align-items:center;justify-content:center;
+      min-width:64px;padding:6px 10px;border-radius:999px;
+      border:1px solid var(--line);background:#fff;font-size:11px;font-weight:900;color:#4d463f;
+    }
+    .pill.active{background:#37352f;color:#fff;border-color:#37352f}
+    .shell{
+      display:grid;grid-template-columns:minmax(0,1fr) 388px;gap:16px;align-items:start;
+      min-height:calc(100vh - 96px);
+    }
+    .canvas,.report{
+      background:var(--paper);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    .canvas{min-height:780px;position:relative}
+    .canvas-head,.report-head{
+      padding:16px 18px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#fff,#fbfaf7);
+    }
+    .eyebrow{font-size:10px;font-weight:900;letter-spacing:.08em;color:var(--blue)}
+    .title{margin:6px 0 0;font-size:20px;font-weight:950;line-height:1.2}
+    .sub{margin:6px 0 0;font-size:12px;color:var(--muted);line-height:1.55}
+    .canvas-body{position:absolute;inset:86px 0 0 0;padding:18px}
+    .mock-stage{
+      height:100%;border:1px dashed #d7d2c7;border-radius:14px;background:
+        linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,255,255,.56));
+      position:relative;overflow:hidden;
+    }
+    .mock-stage:before{
+      content:"";position:absolute;inset:0;
+      background:
+        linear-gradient(90deg, transparent 49.5%, rgba(59,95,138,.08) 50%, transparent 50.5%) 0 0/100% 100%,
+        radial-gradient(circle at 50% 22%, rgba(59,95,138,.10) 0 2px, transparent 3px),
+        radial-gradient(circle at 22% 52%, rgba(47,111,77,.10) 0 2px, transparent 3px),
+        radial-gradient(circle at 78% 52%, rgba(122,98,64,.10) 0 2px, transparent 3px);
+      opacity:.72;
+    }
+    .canvas-note{
+      position:absolute;left:18px;right:18px;bottom:18px;
+      display:grid;grid-template-columns:1fr 1fr;gap:12px;
+    }
+    .note-card{
+      border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.9);
+      padding:12px 13px;font-size:12px;line-height:1.55;color:#564f46;
+    }
+    .note-card b{display:block;margin-bottom:4px;font-size:12px;color:#3f3831}
+    .report{width:388px;max-height:calc(100vh - 96px);display:flex;flex-direction:column}
+    .report-body{padding:14px 16px 18px;overflow:auto}
+    .section{margin-bottom:14px}
+    .section h3{
+      margin:0 0 8px;font-size:11px;font-weight:950;color:#514a42;letter-spacing:.02em;
+    }
+    .summary{
+      display:grid;grid-template-columns:1fr 1fr;gap:8px;
+    }
+    .summary .box{
+      border:1px solid var(--line);background:#faf8f4;border-radius:10px;padding:9px 10px;min-height:54px;
+    }
+    .label{font-size:10px;color:var(--muted);font-weight:900;margin-bottom:4px}
+    .value{font-size:13px;font-weight:950;line-height:1.35;word-break:keep-all}
+    .law-strip{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+    .law{
+      display:inline-flex;align-items:center;justify-content:center;
+      min-width:72px;padding:5px 9px;border-radius:999px;border:1px solid var(--line);background:#fff;
+      font-size:11px;font-weight:900;color:#4a433a;
+    }
+    .law.active{background:#37352f;color:#fff;border-color:#37352f}
+    .raw-list{display:grid;gap:8px}
+    .person-row{
+      display:grid;grid-template-columns:minmax(0,1.1fr) 92px 72px;gap:8px;align-items:center;
+      border:1px solid var(--line);border-radius:10px;background:#fff;padding:9px 10px;font-size:12px;
+    }
+    .person-row .name{font-weight:950}
+    .person-row .meta{color:var(--muted)}
+    .tag{
+      display:inline-flex;align-items:center;justify-content:center;
+      padding:4px 7px;border-radius:999px;border:1px solid transparent;font-size:10px;font-weight:900;white-space:nowrap;
+    }
+    .tag.blue{background:var(--blue-bg);color:var(--blue);border-color:#d9e7f8}
+    .tag.green{background:var(--green-bg);color:var(--green);border-color:#cde5d6}
+    .tag.amber{background:var(--amber-bg);color:var(--amber);border-color:#e8d8be}
+    .tag.rose{background:var(--rose-bg);color:var(--rose);border-color:#ead3d6}
+    .result-list{display:grid;gap:8px}
+    .result-card{
+      border:1px solid var(--line);border-radius:12px;background:#fff;padding:11px 12px;
+    }
+    .result-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+    .branch{font-size:12px;font-weight:950}
+    .branch-sub{font-size:10px;color:var(--muted);font-weight:800}
+    .mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .mini{
+      border:1px solid var(--line);background:#faf8f4;border-radius:10px;padding:8px 9px;
+    }
+    .mini .value{font-size:12px}
+    .spec{
+      width:100%;border-collapse:separate;border-spacing:0;overflow:hidden;border:1px solid var(--line);border-radius:10px;
+      font-size:11px;
+    }
+    .spec th,.spec td{padding:8px 7px;border-bottom:1px solid #efe9df;text-align:left;vertical-align:top}
+    .spec th{background:#faf8f4;color:#675f56;font-size:10px;font-weight:950}
+    .spec tr:last-child td{border-bottom:0}
+    .chip{
+      display:inline-flex;align-items:center;justify-content:center;min-width:44px;
+      padding:4px 7px;border-radius:999px;border:1px solid transparent;font-size:10px;font-weight:900;white-space:nowrap;
+    }
+    .chip.green{background:var(--green-bg);color:var(--green);border-color:#cde5d6}
+    .chip.amber{background:var(--amber-bg);color:var(--amber);border-color:#e8d8be}
+    .chip.rose{background:var(--rose-bg);color:var(--rose);border-color:#ead3d6}
+    .chip.blue{background:var(--blue-bg);color:var(--blue);border-color:#d9e7f8}
+    .reason{
+      border-left:4px solid #d9d0c1;background:#faf8f3;border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.6;color:#5b5248;
+    }
+    .muted{color:var(--muted)}
+    @media (max-width: 1120px){
+      .shell{grid-template-columns:1fr}
+      .report{width:100%;max-height:none}
+      .canvas{min-height:460px}
+      .canvas-note{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div>
+        <div class="brand">김명수 사건 보고서 세로형 스케치</div>
+        <div class="desc">보고서는 세로 문서처럼 고정 폭으로 두고, 왼쪽의 상속마인드맵과 화면을 나누어 쓰는 배치 초안이다.</div>
+      </div>
+      <div class="legend" aria-label="적용법 약칭">
+        <span class="pill">구민법</span>
+        <span class="pill active">79'민법</span>
+        <span class="pill">현행민법</span>
+      </div>
+    </header>
+
+    <main class="shell">
+      <section class="canvas" aria-label="상속마인드맵 영역">
+        <div class="canvas-head">
+          <div class="eyebrow">상속마인드맵</div>
+          <div class="title">왼쪽은 분기 구조, 오른쪽은 판정 문서</div>
+          <div class="sub">세부 설명은 보고서로 보내고, 마인드맵은 분기와 이동만 담당한다. 화면 폭을 문서가 독점하지 않게 하는 배치다.</div>
+        </div>
+        <div class="canvas-body">
+          <div class="mock-stage"></div>
+        </div>
+        <div class="canvas-note">
+          <div class="note-card">
+            <b>마인드맵 역할</b>
+            누가 어디로 분기되는지만 보여 준다. 사람 설명, 제외 사유, 가감산 상세는 여기서 빼는 쪽이 읽기 쉽다.
+          </div>
+          <div class="note-card">
+            <b>공간 원칙</b>
+            보고서는 폭을 넓히지 않고 세로로 늘어난다. 마인드맵이 넓어져도 보고서가 같이 밀려나지 않는다.
+          </div>
+        </div>
+      </section>
+
+      <aside class="report" aria-label="세로형 보고서">
+        <div class="report-head">
+          <div class="eyebrow">사건 보고서</div>
+          <div class="title">김명수 사건</div>
+          <div class="sub">상단은 두 줄짜리 기본정보, 아래는 판정대상과 분배명세를 세로로 이어 붙인 문서형 초안</div>
+        </div>
+
+        <div class="report-body">
+          <section class="section">
+            <h3>기본정보</h3>
+            <div class="summary">
+              <div class="box">
+                <div class="label">피상속인</div>
+                <div class="value">김명수</div>
+              </div>
+              <div class="box">
+                <div class="label">상속지분</div>
+                <div class="value">1/1</div>
+              </div>
+              <div class="box">
+                <div class="label">사망일</div>
+                <div class="value">1967-10-27</div>
+              </div>
+              <div class="box">
+                <div class="label">적용법</div>
+                <div class="value">79'민법</div>
+              </div>
+            </div>
+            <div class="law-strip" aria-label="법령 약칭">
+              <span class="law">구민법</span>
+              <span class="law active">79'민법</span>
+              <span class="law">현행민법</span>
+            </div>
+          </section>
+
+          <section class="section">
+            <h3>입력원본 기준 대상</h3>
+            <div class="raw-list">
+              <div class="person-row">
+                <div class="name">정문자</div>
+                <div class="meta">김명수의 자녀</div>
+                <div><span class="tag rose">선사망</span></div>
+              </div>
+              <div class="person-row">
+                <div class="name">구수명</div>
+                <div class="meta">김명수의 자녀</div>
+                <div><span class="tag green">재상속</span></div>
+              </div>
+              <div class="person-row">
+                <div class="name">정옥재</div>
+                <div class="meta">딸</div>
+                <div><span class="tag amber">출가x1/4</span></div>
+              </div>
+              <div class="person-row">
+                <div class="name">정인숙</div>
+                <div class="meta">딸</div>
+                <div><span class="tag amber">출가x1/4</span></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="section">
+            <h3>분배 명세</h3>
+            <table class="spec" aria-label="분배 명세">
+              <thead>
+                <tr>
+                  <th>상속인</th>
+                  <th>관계</th>
+                  <th>통분지분</th>
+                  <th>가산·감산</th>
+                  <th>판정</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>정대윤</td>
+                  <td>아들</td>
+                  <td>4/1485</td>
+                  <td><span class="chip green">균분</span></td>
+                  <td><span class="chip green">상속</span></td>
+                </tr>
+                <tr>
+                  <td>정옥재</td>
+                  <td>딸</td>
+                  <td>1/1485</td>
+                  <td><span class="chip amber">출가x1/4</span></td>
+                  <td><span class="chip green">상속</span></td>
+                </tr>
+                <tr>
+                  <td>정문자</td>
+                  <td>딸</td>
+                  <td>-</td>
+                  <td><span class="chip rose">선사망</span></td>
+                  <td><span class="chip rose">상속 아님</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section class="section">
+            <h3>판정 사유</h3>
+            <div class="reason">
+              정문자는 김명수의 자녀이지만, 구수명보다 먼저 사망했으므로 이 사건의 상속인은 아니다.<br />
+              정옥재와 정인숙은 출가 감산을 적용해 짧은 표기로만 보여 주고, 상세 계산은 아래 설명으로 넘긴다.
+            </div>
+          </section>
+
+          <section class="section">
+            <h3>가지 스케치</h3>
+            <div class="result-list">
+              <div class="result-card">
+                <div class="result-head">
+                  <div>
+                    <div class="branch">김혁조 가지</div>
+                    <div class="branch-sub">원상속 판정 문서</div>
+                  </div>
+                  <span class="tag blue">구민법</span>
+                </div>
+                <div class="mini-grid">
+                  <div class="mini">
+                    <div class="label">피상속인</div>
+                    <div class="value">김혁조</div>
+                  </div>
+                  <div class="mini">
+                    <div class="label">적용법</div>
+                    <div class="value">구민법</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="result-card">
+                <div class="result-head">
+                  <div>
+                    <div class="branch">구수명 가지</div>
+                    <div class="branch-sub">재상속 판정 문서</div>
+                  </div>
+                  <span class="tag blue">79'민법</span>
+                </div>
+                <div class="mini-grid">
+                  <div class="mini">
+                    <div class="label">피상속인</div>
+                    <div class="value">구수명</div>
+                  </div>
+                  <div class="mini">
+                    <div class="label">적용법</div>
+                    <div class="value">79'민법</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </aside>
+    </main>
+  </div>
+</body>
+</html>

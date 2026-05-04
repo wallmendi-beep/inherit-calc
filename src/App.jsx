@@ -61,6 +61,7 @@ function App() {
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1.0);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   const { deceasedTabs, activeDeceasedTab, setActiveDeceasedTab, activeTabObj, getBriefingInfo } = useDeceasedTabs(tree);
 
@@ -93,6 +94,17 @@ function App() {
   const [aiInputText, setAiInputText] = useState("");
   const [aiTargetId, setAiTargetId] = useState('root');
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scroller = document.scrollingElement || document.documentElement;
+      const scrollTop = Math.max(window.scrollY || 0, scroller?.scrollTop || 0);
+      setShowScrollTop(scrollTop > 180);
+    };
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
   const [matchIds, setMatchIds] = useState([]);
   const [currentMatchIdx, setCurrentMatchIdx] = useState(0);
   const [propertyValue, setPropertyValue] = useState(''); 
@@ -678,6 +690,8 @@ function App() {
   };
 
   const effectiveSidebarWidth = Math.max(SIDEBAR_MIN_WIDTH, sidebarWidth);
+  const showTreeSidebar = activeTab !== 'tree';
+  const leftPanelOffset = showTreeSidebar ? (sidebarOpen ? effectiveSidebarWidth + 10 : 52) : 0;
 
   return (
     <>
@@ -698,6 +712,7 @@ function App() {
         />
         <TopToolbar
           sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} tree={tree}
+          showSidebarToggle={false}
           setAiTargetId={setAiTargetId} setIsAiModalOpen={setIsAiModalOpen}
           setShowNavigator={setShowNavigator}
           hasActionItems={guideInfo?.hasActionItems}
@@ -715,17 +730,19 @@ function App() {
           handlePrint={() => printCurrentTab({ activeTab, tree })}
           zoomLevel={zoomLevel} setZoomLevel={setZoomLevel} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode}
         />
-        <SidebarTreePanel
-          sidebarOpen={sidebarOpen} sidebarWidth={effectiveSidebarWidth} tree={tree} handleNavigate={handleNavigate}
-          sidebarSearchQuery={sidebarSearchQuery} setSidebarSearchQuery={setSidebarSearchQuery}
-          sidebarMatchIds={sidebarMatchIds} sidebarCurrentMatchIdx={sidebarCurrentMatchIdx}
-          handleSidebarPrevMatch={handleSidebarPrevMatch} handleSidebarNextMatch={handleSidebarNextMatch}
-          sidebarToggleSignal={sidebarToggleSignal} setSidebarToggleSignal={setSidebarToggleSignal}
-          handleResizeMouseDown={handleResizeMouseDown}
-          removeHeir={removeHeir}
-        />
-        <main className={`flex-1 flex w-full transition-all duration-300 ${sidebarOpen ? 'justify-start' : 'justify-center'}`} style={{ paddingLeft: sidebarOpen ? (effectiveSidebarWidth + 10) : 0, paddingRight: showNavigator ? (navigatorWidth + 10) : 0 }}>
-          <div style={{ zoom: zoomLevel, width: '100%', display: 'flex', justifyContent: (sidebarOpen || showNavigator) ? 'flex-start' : 'center' }}>
+        {showTreeSidebar && (
+          <SidebarTreePanel
+            sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} sidebarWidth={effectiveSidebarWidth} tree={tree} handleNavigate={handleNavigate}
+            sidebarSearchQuery={sidebarSearchQuery} setSidebarSearchQuery={setSidebarSearchQuery}
+            sidebarMatchIds={sidebarMatchIds} sidebarCurrentMatchIdx={sidebarCurrentMatchIdx}
+            handleSidebarPrevMatch={handleSidebarPrevMatch} handleSidebarNextMatch={handleSidebarNextMatch}
+            sidebarToggleSignal={sidebarToggleSignal} setSidebarToggleSignal={setSidebarToggleSignal}
+            handleResizeMouseDown={handleResizeMouseDown}
+            removeHeir={removeHeir}
+          />
+        )}
+        <main className={`flex-1 flex w-full transition-all duration-300 ${leftPanelOffset ? 'justify-start' : 'justify-center'}`} style={{ paddingLeft: leftPanelOffset, paddingRight: showNavigator ? (navigatorWidth + 10) : 0 }}>
+          <div style={{ zoom: activeTab === 'tree' ? 1 : zoomLevel, width: '100%', display: 'flex', justifyContent: (leftPanelOffset || showNavigator) ? 'flex-start' : 'center' }}>
             <div
                 className={`flex flex-col shrink-0 mt-6 print-compact relative z-10 transition-all duration-300 ${
                 activeTab === 'tree' ? 'w-full px-2' : 'w-[1080px] min-w-[1080px] px-6'
@@ -806,6 +823,16 @@ function App() {
             </div>
           </div>
         </main>
+        {showScrollTop && (
+          <button
+            type="button"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-full border border-[#d8d5cf] bg-white px-5 py-2.5 text-[13px] font-black text-[#37352f] shadow-[0_8px_24px_rgba(55,53,47,0.18)] transition-all hover:-translate-y-0.5 hover:bg-[#f7f7f5] dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700"
+            aria-label="위로 가기"
+          >
+            위로
+          </button>
+        )}
       </div>
       <AiImportModal
         isOpen={isAiModalOpen}

@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>김명수 사건 보고서 스케치</title>
+  <style>
+    :root{
+      --bg:#f6f4ef;
+      --paper:#ffffff;
+      --line:#e6e1d8;
+      --text:#2f2a24;
+      --muted:#6d665d;
+      --blue:#3b5f8a;
+      --blue-bg:#eef5ff;
+      --green:#2f6f4d;
+      --green-bg:#edf8f1;
+      --rose:#8a5a5f;
+      --rose-bg:#fcf1f2;
+      --amber:#7a6240;
+      --amber-bg:#fbf4e7;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(circle at 1px 1px, rgba(59,95,138,.09) 1px, transparent 0) 0 0/24px 24px,
+        var(--bg);
+    }
+    .wrap{max-width:1480px;margin:0 auto;padding:28px}
+    .hero{
+      display:grid;
+      grid-template-columns: 1.35fr .95fr;
+      gap:18px;
+      align-items:start;
+      margin-bottom:18px;
+    }
+    .panel{
+      background:var(--paper);
+      border:1px solid var(--line);
+      border-radius:14px;
+      box-shadow:0 1px 0 rgba(0,0,0,.03);
+    }
+    .panel .head{
+      padding:14px 16px 10px;
+      border-bottom:1px solid var(--line);
+    }
+    .title{
+      font-size:18px;
+      font-weight:900;
+      letter-spacing:-.01em;
+      margin:0 0 4px;
+    }
+    .sub{
+      margin:0;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.5;
+    }
+    .body{padding:14px 16px}
+    .summary-grid{
+      display:grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap:8px;
+    }
+    .summary-box{
+      border:1px solid var(--line);
+      background:#faf9f6;
+      border-radius:10px;
+      padding:10px 11px;
+      min-height:64px;
+    }
+    .label{
+      font-size:10px;
+      color:var(--muted);
+      font-weight:800;
+      letter-spacing:.02em;
+      margin-bottom:6px;
+    }
+    .value{
+      font-size:14px;
+      font-weight:900;
+      line-height:1.35;
+      word-break:keep-all;
+    }
+    .section{
+      margin-top:16px;
+      border-top:1px solid var(--line);
+      padding-top:14px;
+    }
+    .section h2{
+      margin:0 0 10px;
+      font-size:13px;
+      font-weight:900;
+      color:#4d463f;
+    }
+    .columns{
+      display:grid;
+      grid-template-columns: 1fr 1.3fr;
+      gap:18px;
+      margin-top:18px;
+    }
+    .stack{display:grid;gap:16px}
+    .list{
+      display:grid;
+      gap:8px;
+    }
+    .row{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr .8fr .9fr;
+      gap:8px;
+      align-items:center;
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius:10px;
+      padding:10px 12px;
+      font-size:12px;
+    }
+    .row .name{font-weight:900}
+    .row .muted{color:var(--muted)}
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:4px 8px;
+      border-radius:999px;
+      border:1px solid transparent;
+      font-size:11px;
+      font-weight:900;
+      white-space:nowrap;
+    }
+    .chip.blue{background:var(--blue-bg); color:var(--blue); border-color:#d6e4f6}
+    .chip.green{background:var(--green-bg); color:var(--green); border-color:#cfe5d7}
+    .chip.rose{background:var(--rose-bg); color:var(--rose); border-color:#ead1d4}
+    .chip.amber{background:var(--amber-bg); color:var(--amber); border-color:#e7d8bf}
+    .report-card{
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius:14px;
+      overflow:hidden;
+    }
+    .report-card .top{
+      padding:12px 14px;
+      border-bottom:1px solid var(--line);
+      background:linear-gradient(180deg, #fff, #fbfaf7);
+    }
+    .report-card .top .mini{
+      display:grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap:8px;
+      margin-top:10px;
+    }
+    .mini .box{
+      background:#faf9f6;
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:9px 10px;
+    }
+    .mini .box .value{font-size:13px}
+    .divider{
+      margin:16px 0 10px;
+      font-size:12px;
+      font-weight:900;
+      color:#4d463f;
+    }
+    table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:12px;
+    }
+    thead th{
+      text-align:left;
+      padding:10px 10px;
+      background:#faf9f6;
+      border-bottom:1px solid var(--line);
+      color:#6a635a;
+      font-size:10px;
+      font-weight:900;
+    }
+    tbody td{
+      padding:10px 10px;
+      border-bottom:1px solid #efe9df;
+      vertical-align:top;
+    }
+    .note{
+      border-left:4px solid #d9d0c1;
+      background:#faf8f3;
+      padding:10px 12px;
+      border-radius:10px;
+      font-size:12px;
+      color:#5b5248;
+      line-height:1.55;
+    }
+    .branches{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:18px;
+    }
+    .branch-title{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      margin-bottom:8px;
+      font-size:13px;
+      font-weight:900;
+    }
+    .branch-title span:last-child{font-size:11px;color:var(--muted);font-weight:800}
+    .flow{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:10px;
+    }
+    .flow .step{
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius:999px;
+      padding:6px 10px;
+      font-size:11px;
+      font-weight:900;
+      color:#4a433a;
+    }
+    .flow .arrow{
+      color:#9d9589;
+      font-size:11px;
+      align-self:center;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <section class="panel">
+        <div class="head">
+          <p class="title">김명수 사건 보고서 스케치</p>
+          <p class="sub">원자료는 전부 보여 주고, 엔진 판정은 따로 표시하는 형태의 초안이다. 이 화면은 실제 계산 화면이 아니라 구조 설명용이다.</p>
+        </div>
+        <div class="body">
+          <div class="summary-grid">
+            <div class="summary-box">
+              <div class="label">피상속인</div>
+              <div class="value">김명수</div>
+            </div>
+            <div class="summary-box">
+              <div class="label">상속지분</div>
+              <div class="value">1/1</div>
+            </div>
+            <div class="summary-box">
+              <div class="label">사망일</div>
+              <div class="value">1967-10-27</div>
+            </div>
+            <div class="summary-box">
+              <div class="label">적용법</div>
+              <div class="value">1960년 제정민법</div>
+            </div>
+          </div>
+
+          <div class="section">
+            <h2>표시 원칙</h2>
+            <div class="note">
+              원자료 목록은 입력된 사람 전부를 보여 준다.<br />
+              엔진 판정은 그중에서 실제 상속인, 선사망, 제외, 대습 여부를 따로 붙인다.<br />
+              보고서는 노드 해설이 아니라, <strong>왜 보이는지</strong>와 <strong>왜 제외되는지</strong>를 설명하는 문서다.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="head">
+          <p class="title">판정 흐름</p>
+          <p class="sub">김혁조 가지와 구수명 가지로 어떻게 나뉘는지 한눈에 보여 주는 스케치</p>
+        </div>
+        <div class="body">
+          <div class="flow">
+            <span class="step">원자료 입력</span>
+            <span class="arrow">→</span>
+            <span class="step">김혁조 사건</span>
+            <span class="arrow">→</span>
+            <span class="step">구수명 사건</span>
+            <span class="arrow">→</span>
+            <span class="step">정문자 판정</span>
+          </div>
+          <div class="section">
+            <div class="note">
+              정문자는 김명수의 자녀로서 원자료에는 보이지만, 구수명보다 먼저 사망했다면 이 사건의 상속인은 아니다.<br />
+              그래서 보고서에는 <strong>관계 사실</strong>과 <strong>제외 이유</strong>를 함께 적는다.
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="columns">
+      <section class="panel">
+        <div class="head">
+          <p class="title">원자료 목록</p>
+          <p class="sub">입력 raw 파일 기준. 엔진 판정 전의 사람 전체를 보여 주는 영역</p>
+        </div>
+        <div class="body">
+          <div class="list">
+            <div class="row">
+              <div class="name">김혁조</div>
+              <div class="muted">피상속인</div>
+              <div class="muted">1/1</div>
+              <div><span class="chip.blue">사건 기준점</span></div>
+            </div>
+            <div class="row">
+              <div class="name">구수명</div>
+              <div class="muted">자녀</div>
+              <div class="muted">2/15</div>
+              <div><span class="chip.green">재상속 경로</span></div>
+            </div>
+            <div class="row">
+              <div class="name">정문자</div>
+              <div class="muted">자녀</div>
+              <div class="muted">-</div>
+              <div><span class="chip.rose">선사망 후보</span></div>
+            </div>
+            <div class="row">
+              <div class="name">정옥재</div>
+              <div class="muted">딸</div>
+              <div class="muted">1/1485</div>
+              <div><span class="chip.amber">출가 감산</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="head">
+          <p class="title">엔진 판정 예시</p>
+          <p class="sub">같은 raw 자료를 기준으로, 김혁조 가지와 구수명 가지가 보고서에서 어떻게 달라 보이는지</p>
+        </div>
+        <div class="body">
+          <div class="branches">
+            <div class="report-card">
+              <div class="top">
+                <div class="branch-title"><span>김혁조 가지</span><span>원자료 → 사건 판정</span></div>
+                <div class="mini">
+                  <div class="box">
+                    <div class="label">피상속인</div>
+                    <div class="value">김혁조</div>
+                  </div>
+                  <div class="box">
+                    <div class="label">상속지분</div>
+                    <div class="value">1/1</div>
+                  </div>
+                  <div class="box">
+                    <div class="label">사망일</div>
+                    <div class="value">1967-10-27</div>
+                  </div>
+                  <div class="box">
+                    <div class="label">적용법</div>
+                    <div class="value">1960년 제정민법</div>
+                  </div>
+                </div>
+              </div>
+              <div style="padding:12px 14px">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>상속인</th>
+                      <th>관계</th>
+                      <th>통분지분</th>
+                      <th>가산·감산</th>
+                      <th>판정</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>구수명</td>
+                      <td>자녀</td>
+                      <td>2/15</td>
+                      <td><span class="chip.green">균분</span></td>
+                      <td><span class="chip.green">상속</span></td>
+                    </tr>
+                    <tr>
+                      <td>정문자</td>
+                      <td>자녀</td>
+                      <td>-</td>
+                      <td><span class="chip.rose">제외</span></td>
+                      <td><span class="chip.rose">상속 아님</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div class="divider">판정 사유</div>
+                <div class="note">
+                  정문자는 김명수의 자녀이지만, 구수명보다 먼저 사망했기 때문에 이 사건의 상속인으로는 계산되지 않는다.
+                </div>
+              </div>
+            </div>
+
+            <div class="report-card">
+              <div class="top">
+                <div class="branch-title"><span>구수명 가지</span><span>재상속 사건 판정</span></div>
+                <div class="mini">
+                  <div class="box">
+                    <div class="label">피상속인</div>
+                    <div class="value">구수명</div>
+                  </div>
+                  <div class="box">
+                    <div class="label">상속지분</div>
+                    <div class="value">2/15</div>
+                  </div>
+                  <div class="box">
+                    <div class="label">사망일</div>
+                    <div class="value">1990-07-03</div>
+                  </div>
+                  <div class="box">
+                    <div class="label">적용법</div>
+                    <div class="value">1979년 개정민법</div>
+                  </div>
+                </div>
+              </div>
+              <div style="padding:12px 14px">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>상속인</th>
+                      <th>관계</th>
+                      <th>통분지분</th>
+                      <th>가산·감산</th>
+                      <th>판정</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>정옥재</td>
+                      <td>딸</td>
+                      <td>1/1485</td>
+                      <td><span class="chip.amber">출가x1/4</span></td>
+                      <td><span class="chip.green">상속</span></td>
+                    </tr>
+                    <tr>
+                      <td>정인숙</td>
+                      <td>딸</td>
+                      <td>1/1485</td>
+                      <td><span class="chip.amber">출가x1/4</span></td>
+                      <td><span class="chip.green">상속</span></td>
+                    </tr>
+                    <tr>
+                      <td>정문자</td>
+                      <td>자녀</td>
+                      <td>-</td>
+                      <td><span class="chip.rose">선사망</span></td>
+                      <td><span class="chip.rose">상속 아님</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div class="divider">판정 사유</div>
+                <div class="note">
+                  정문자는 자녀 관계는 맞지만 구수명보다 먼저 사망했으므로, 이 가지에서는 상속인으로 이어지지 않는다.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</body>
+</html>
