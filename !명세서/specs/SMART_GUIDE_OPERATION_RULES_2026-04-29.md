@@ -1,6 +1,7 @@
 # 스마트 가이드 운용 규칙
 
 작성일: 2026-04-29  
+최종 업데이트: 2026-05-03 (v4.85 — 네비게이션 모드 정리, 중복 억제 규칙, 사건 맥락 기반 판정 반영)  
 관련 파일: `src/hooks/useSmartGuide.js`, `src/hooks/smartGuideHelpers.js`,  
 `src/utils/importValidationV2.js`, `src/App.jsx` (handleGuideNavigate)
 
@@ -26,9 +27,10 @@ SmartGuidePanel.jsx       → 가이드 렌더링 UI
 
 | 모드 | 동작 |
 |---|---|
-| `hasTargetNodes == true` | input 탭으로 이동 + 해당 노드 하이라이트 (400ms 대기 후 2.5초간) |
-| `navigationMode: 'event'` | tree 탭(사건 검토)으로 이동 + 해당 사건 포커스 |
-| default (auto) | 현재 input 탭이면 스크롤+하이라이트, 다른 탭이면 편집 모달 오픈 |
+| `hasTargetNodes == true` | **input 탭으로 이동** + `targetTabId` 사건 탭 열기 + 해당 노드 하이라이트 (400ms 대기 후 2.5초간). `navigationMode` 값과 무관하게 이 분기가 우선한다. |
+| `navigationMode: 'input'` | input 탭으로 이동 + `targetTabId` 사건 탭 열기. targetNodeIds가 있으면 하이라이트도 함께. |
+| `navigationMode: 'event'` | tree 탭(사건 검토)으로 이동 + 해당 사건 포커스. targetNodeIds가 없을 때 적용. |
+| `navigationMode: 'auto'` (default) | 현재 input 탭이면 스크롤+하이라이트, 다른 탭이면 편집 모달 오픈 |
 
 ---
 
@@ -134,6 +136,7 @@ SmartGuidePanel.jsx       → 가이드 렌더링 UI
 | **ID** | `verify-marriage-{personId}` |
 | **분류** | recommended |
 | **트리거** | 구법 여성 상속인(`daughter`) + `marriageDate` 미입력 + `isSameRegister !== false` + `successorStatus` 미확정 |
+| **억제 조건** | 같은 인물에 대해 `grouped-direct-missing`(후속상속 미확정)이 이미 생성된 경우 표시하지 않음. 후속상속 처리가 우선이기 때문 |
 | **텍스트** | 혼인 정보 확인 — [이름] (구법 적용 여성). 혼인·이혼·복적 날짜를 입력하면 정확한 지분이 계산됩니다. |
 | **이동** | `targetTabId` = parentTabId |
 | **후속작업** | 혼인·이혼·복적 날짜 입력 |
@@ -146,11 +149,13 @@ SmartGuidePanel.jsx       → 가이드 렌더링 UI
 |---|---|
 | **ID** | `grouped-missing-substitution-{groupKey}` |
 | **분류** | mandatory |
-| **트리거** | 선사망 자녀/형제 + 하위 상속인 없음 + `successorStatus` 미확정 + 상속 기준일보다 먼저 사망 |
-| **그룹화** | 동일 부모 사건 단위로 묶음 |
-| **텍스트** | 대습상속 미확정 — [부모] 사건의 선사망자: [이름1], [이름2]. 대습상속인 입력 또는 '없음 확정'을 눌러 주세요. |
-| **이동** | `navigationMode: 'event'` → tree 탭, `targetNodeIds`로 선사망자 노드 하이라이트 |
-| **후속작업** | 대습상속인 입력 또는 해당 노드에서 '후속 상속인 없음' 확정 |
+| **트리거** | 선사망 자녀(son/daughter) + 하위 상속인 없음 + `successorStatus` 미확정 + `contextDate`보다 먼저 사망 |
+| **그룹 키** | `contextNode + 직접부모` 단위. 서로 다른 계통의 선사망자는 별도 카드로 분리 |
+| **텍스트 (직접 자녀)** | 대습상속 미확정 — [직접부모] 사건의 선사망자: [이름1], [이름2]. 대습상속인 입력 또는 '없음 확정'을 눌러 주세요. |
+| **텍스트 (계통 경유)** | 대습상속 미확정 — [contextNode이름] 사건의 [직접부모이름] 계통 선사망자: [이름1]. 대습상속인 입력 또는 '없음 확정'을 눌러 주세요. |
+| **이동** | `targetTabId` = 직접부모 탭, `targetNodeIds` = 선사망자 nodeId/personId 목록. `hasTargetNodes`가 true이므로 **input 탭**으로 이동하여 해당 행 하이라이트 |
+| **중복 방지** | `directMissingPersonKeys`에 포함된 인원(후속상속 미확정 대상)은 이 목록에서 제외 |
+| **후속작업** | 해당 행에서 대습상속인 입력 또는 '대습상속인 없음' 확정 |
 
 ---
 
@@ -160,12 +165,13 @@ SmartGuidePanel.jsx       → 가이드 렌더링 UI
 |---|---|
 | **ID** | `grouped-direct-missing-{groupKey}` |
 | **분류** | mandatory |
-| **트리거** | 사망자인데 후속 상속인 없음 + `successorStatus` 미확정 + 상속 기준일 이후(또는 동일) 사망 |
-| **그룹화** | 동일 부모 사건 + 배우자/일반 그룹으로 분리 |
-| **텍스트 (일반)** | 후속 상속 미확정 — [부모] 사건: [이름1], [이름2]. 후속 상속인 입력 또는 '없음 확정'을 눌러 주세요. |
+| **트리거** | 사망자인데 후속 상속인 없음 + `successorStatus` 미확정 + `contextDate` 이후(또는 동일) 사망 |
+| **그룹화** | 동일 contextNode 사건 + 배우자/일반 그룹으로 분리 |
+| **텍스트 (일반)** | 후속 상속 미확정 — [contextNode이름] 사건: [이름1], [이름2]. 후속 상속인 입력 또는 '없음 확정'을 눌러 주세요. |
 | **텍스트 (배우자)** | → `buildSpouseDirectGuideText` 참고 |
-| **이동** | `navigationMode: 'event'` → tree 탭 |
-| **후속작업** | 후속 상속인 입력 또는 '없음 확정' |
+| **이동 — 단일 인원 또는 배우자 그룹** | `navigationMode: 'input'`, `targetTabId` = 본인 personId → input 탭에서 해당 인물 사건 탭 열기 |
+| **이동 — 복수 비-배우자** | `navigationMode: 'input'`, `targetTabId` = contextNode 탭 |
+| **후속작업** | 해당 인물 입력 탭에서 후속 상속인 입력 또는 '없음 확정' |
 
 #### grouped-direct-missing 배우자 텍스트 규칙
 
@@ -245,13 +251,16 @@ SmartGuidePanel.jsx       → 가이드 렌더링 UI
 | `missing-name` | mandatory | `!node.name?.trim()` | 이름 누락 — 이름 없이 등록된 상속인이 있습니다. 이름을 입력해 주세요. |
 | `invalid-relation` | mandatory | `!VALID_RELATIONS.has(node.relation)` | 관계 오류 — [이름]의 관계가 올바르지 않습니다. 관계를 다시 선택해 주세요. |
 | `missing-death-date` | mandatory | `node.isDeceased && !node.deathDate` | 사망일 누락 — [이름]. 사망일을 입력해야 계산이 가능합니다. |
-| `missing-descendants` | mandatory | 사망자 + 하위상속인 없음 + 선사망 배우자 아님 | 후속 상속 미확정 — [이름]. 후속 상속인 입력 또는 '없음 확정'을 눌러 주세요. |
+| `missing-descendants` | mandatory | 후사망자(contextDate 이후 사망) + 하위상속인 없음 + successorStatus 미확정. 선사망자와 선사망 배우자는 제외 | 후속 상속 미확정 — [이름]. 후속 상속인 입력 또는 '없음 확정'을 눌러 주세요. |
 | `multiple-spouses` | mandatory | 유효 배우자 2명 이상 | 배우자 중복 — [이름] 아래에 유효 배우자가 둘 이상 있습니다. 1명만 남기고 나머지를 제외해 주세요. |
 | `duplicate-name` | warning | 같은 부모 아래 동일 성명 2명 이상 | 성명 중복 — [부모] 아래에 [이름]이 N명 입력되어 있습니다. 동일인이면 1명만 남기고 삭제해 주세요. |
 
 **네비게이션:**  
 - `targetNodeIds: [issue.nodeId]` → hasTargetNodes = true → input 탭 + 노드 하이라이트  
 - legacy hoju 케이스: `navigationMode: 'event'` → tree 탭
+
+**억제 조건:**  
+- `missing-descendants` 이슈는 `grouped-direct-missing`(후속상속 미확정)이 이미 생성된 personId에 대해서는 중복 생성하지 않음
 
 ---
 
@@ -262,6 +271,7 @@ SmartGuidePanel.jsx       → 가이드 렌더링 UI
 | **ID** | `engine-auto-sibling-redistribution-{personId}` |
 | **분류** | recommended |
 | **트리거** | 엔진 경고 `code: 'auto-sibling-redistribution'` 발생 |
+| **억제 조건** | 같은 personId에 대해 `grouped-direct-missing`(후속상속 미확정)이 이미 생성된 경우 표시하지 않음. 같은 내용의 반복 제거 |
 | **텍스트** | (배우자면) [이름] 사건의 추가 자녀/자녀 범위를 다시 확인해 주세요. / (그 외) 엔진 경고 텍스트 그대로 |
 | **이동** | `targetTabId` → 해당 사건 |
 | **후속작업** | 해당 사건 재확인 후 필요시 후속 상속인 입력 |
@@ -275,18 +285,20 @@ SmartGuidePanel.jsx       → 가이드 렌더링 UI
 1. `struct-err` — 구조 오류 (최우선)
 2. `indep-excl` — 독립 제외 상태
 3. `multi-spouse` — 중복 배우자
-4. `checkGuideNode` 루프 — 누락/검토 필요 항목
+4. `checkGuideNode` 루프 — 누락/검토 필요 항목 (`contextDate/contextNode` 사건 맥락 전이 방식)
    - missing-death-date
    - next-order-female (그룹 축적)
    - missing-hoju
    - chained-hoju
-   - verify-marriage
-   - grouped-missing-substitution (그룹 축적)
-   - grouped-direct-missing (그룹 축적)
-5. `collectLegacyStepchildGuideEntries` — 계모자 관계
+   - verify-marriage (**directMissingPersonKeys에 없을 때만**)
+   - grouped-missing-substitution (그룹 축적, contextNode+직접부모 단위)
+   - grouped-direct-missing (그룹 축적, directMissingPersonKeys에 추가)
+5. `collectLegacyStepchildGuideEntries` — 계모자 관계(legacy-stepchild) + 후혼 가족관계(post-marriage-family)
 6. 그룹 Map 처리 — 축적된 그룹 가이드 생성
-7. `importIssues` 처리 — 데이터 검증 이슈
-8. 엔진 경고 변환 — auto-sibling-redistribution
+   - grouped-missing-substitution: directMissingPersonKeys에 있는 인원은 목록에서 제외
+   - grouped-direct-missing: uniqueNames.length === 1이면 targetNodeId 포함
+7. `importIssues` 처리 — 데이터 검증 이슈 (directMissingPersonKeys에 있는 missing-descendants는 건너뜀)
+8. 엔진 경고 변환 — auto-sibling-redistribution (**directMissingPersonKeys에 없을 때만**)
 
 ---
 
@@ -295,17 +307,33 @@ SmartGuidePanel.jsx       → 가이드 렌더링 UI
 - 같은 uniqueKey는 한 번만 set됨 (`uniqueGuidesMap.has(key)` 체크)
 - App.jsx에서 type+text 조합으로 2차 dedup 수행
 
+### 4.1 directMissingPersonKeys를 통한 억제
+
+`grouped-direct-missing` 에 추가된 인원의 nodeId/personId는 `directMissingPersonKeys` Set에 수집된다.
+이 Set에 포함된 인원에 대해서는 아래 가이드를 **생성하지 않는다**.
+
+| 억제 대상 | 이유 |
+|---|---|
+| `verify-marriage` | 후속상속 처리가 먼저이므로 혼인 정보 확인은 그 이후 |
+| `import missing-descendants` | grouped-direct-missing과 같은 내용의 중복 카드 방지 |
+| `engine-auto-sibling-redistribution` | 후속상속 미확정이 이미 표시되면 이 안내는 중복 |
+
+### 4.2 대습상속 목록에서 후속상속 대상 제거
+
+`grouped-missing-substitution` 생성 시 filteredItems 단계에서 `directMissingPersonKeys`에 있는 인원을 목록에서 제외한다. 같은 인물이 사건 맥락에 따라 후속상속 대상이기도 하고 대습 검토 대상이기도 할 때, 사용자 액션은 동일하므로 후속상속 카드만 표시한다.
+
 ---
 
 ## 5. 가이드 표시 조건 (탭별)
+
+현재 탭 구조: `input` / `tree` / `acquisition` / `summary`
 
 | 탭 | 가이드 패널 | 전역 경고 | Audit Action Items |
 |---|---|---|---|
 | `input` | ✅ 전체 표시 | ❌ | ❌ |
 | `tree` | ✅ 전체 표시 | ✅ (audit 이슈 있으면) | ✅ |
-| `calc` | ✅ 전체 표시 | ✅ | ✅ |
+| `acquisition` | ✅ 전체 표시 | ✅ | ✅ |
 | `summary` | ✅ 전체 표시 | ✅ | ✅ |
-| `amount` | ✅ 전체 표시 | ✅ | ✅ |
 
 > 전역 경고(`showGlobalWarning`)는 `!isInputMode && audit.issues.length > 0` 일 때 활성화
 
@@ -367,12 +395,21 @@ SmartGuidePanel.jsx       → 가이드 렌더링 UI
 |---|---|
 | 2026-04-29 | 초안 작성 — 전체 가이드 목록 정리, 안내문구 컴팩트화 적용, DateInput 검증 규칙 추가 |
 | 2026-04-29 | P1/P2 작업 반영 — duplicate-name 가이드 추가, 관계 무효화 감지 장치, 호주 상호배제, 수리 힌트 텍스트 추가 |
+| 2026-05-01 | v4.78 — isSpouseRelation() 통일, grouped-direct-missing 워프 수정(단일→본인탭), 취득경로 탭 카드/표 분리 |
+| 2026-05-01 | v4.78 — 배우자 재상속 자동불러오기 안내 원칙 추가, 후혼 가족관계(post-marriage-family) 가이드 추가 |
+| 2026-05-03 | v4.80 — 선사망/후사망 판정을 contextDate/contextNode 사건 맥락 기반으로 전환. 직접부모 사망일 방식 폐기 |
+| 2026-05-03 | v4.82 — grouped-missing-substitution 그룹 키를 contextNode+직접부모 단위로 변경, targetTabId=직접부모탭 |
+| 2026-05-03 | v4.83 — directMissingPersonKeys 기반 중복 억제 도입 (verify-marriage, import missing-descendants, auto-sibling-redistribution) |
+| 2026-05-03 | v4.84 — 후속상속 미확정이 있는 동안 verify-marriage 카드 억제, 선사망 뱃지 rose 계열로 변경 |
+| 2026-05-03 | v4.85 — grouped-direct-missing을 navigationMode:'input'으로 변경, 단일 인원은 targetNodeId 포함 |
 
 ---
 
 ## 10. 관련 문서
 
-- `GUIDE_RULES_AND_NAVIGATION.md` — 네비게이션 구현 기준 (구버전)
+- `PREDECEASE_REINHERITANCE_JUDGMENT_AND_WARP_RULES.md` ⭐ — 선사망/후사망/대습/재상속 판정 기준, contextDate/contextNode 규칙 SSOT (최신)
+- `TAB_STRUCTURE_RULES.md` ⭐ — 탭 구성 및 취득경로 뷰 모드, 인쇄 규칙 SSOT
+- `SPOUSE_REINHERITANCE_GUIDE_REVISION_PLAN_2026-05-01.md` — 배우자 재상속 유저 가이드 수정 원칙
+- `GUIDE_RULES_AND_NAVIGATION.md` — 네비게이션 구현 기준 (구버전, 참고용)
 - `GUIDE_AND_WARNING_SPLIT_RULES_2026-04-14.md` — 탭별 가이드/경고 분리 규칙
-- `GUIDE_LOGIC_AND_SUCCESSOR_CONFIRM_RULES_2026-04-14.md` — 빈 슬롯 안내 + 후속 상속인 확정 규칙
 - `IMPORT_GUIDE_FIRST_REVIEW_RULES_2026-04-13.md` — 파일 불러오기 후 가이드 규칙

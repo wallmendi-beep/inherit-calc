@@ -3,6 +3,8 @@ import { getLawEra, getRelStr, isBefore, math } from '../engine/utils';
 
 const NODE_W = 220;
 const NODE_H = 42;
+const EXPORT_NODE_W = 320;
+const EXPORT_NODE_H = 46;
 const TOGGLE_GAP = 10;
 const TOGGLE_SIZE = 24;
 const X_GAP = 118;
@@ -178,6 +180,205 @@ const buildContinuationSummary = (edge) => {
   const name = person.name || '이름 미상';
   const date = formatKoreanDate(person.deathDate);
   return `[${name}] ${date ? `${date} ` : ''}사망으로 ${edge.label}`;
+};
+
+const safeFilePart = (value) => String(value || '상속마인드맵').replace(/[\\/:*?"<>|]/g, '').trim() || '상속마인드맵';
+
+const downloadCanvasPng = (canvas, fileName) => {
+  const link = document.createElement('a');
+  link.href = canvas.toDataURL('image/png');
+  link.download = fileName;
+  link.click();
+};
+
+const drawRoundRect = (ctx, x, y, width, height, radius) => {
+  const r = Math.min(radius, width / 2, height / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + width - r, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+  ctx.lineTo(x + width, y + height - r);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+  ctx.lineTo(x + r, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+};
+
+const ellipsizeCanvasText = (ctx, text, maxWidth) => {
+  const raw = String(text || '');
+  if (ctx.measureText(raw).width <= maxWidth) return raw;
+  let clipped = raw;
+  while (clipped.length > 0 && ctx.measureText(`${clipped}...`).width > maxWidth) {
+    clipped = clipped.slice(0, -1);
+  }
+  return clipped ? `${clipped}...` : '';
+};
+
+const drawMindmapToCanvas = ({
+  graph,
+  layout,
+  nodeIds,
+  width,
+  height,
+  mapX,
+  mapY,
+  nodeW = NODE_W,
+  nodeH = NODE_H,
+}) => {
+  const pixelRatio = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.ceil(width * pixelRatio));
+  canvas.height = Math.max(1, Math.ceil(height * pixelRatio));
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(pixelRatio, pixelRatio);
+
+  ctx.fillStyle = '#f7f7f5';
+  ctx.fillRect(0, 0, width, height);
+  ctx.fillStyle = '#d7d5cf';
+  for (let x = 0; x < width; x += 24) {
+    for (let y = 0; y < height; y += 24) {
+      ctx.beginPath();
+      ctx.arc(x, y, 0.8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  const hasNode = (id) => nodeIds.has(id) && layout.positions.has(id);
+  graph.edges.forEach((edge) => {
+    if (!hasNode(edge.from) || !hasNode(edge.to)) return;
+    const from = layout.positions.get(edge.from);
+    const to = layout.positions.get(edge.to);
+    const sx = mapX(from.x) + nodeW;
+    const sy = mapY(from.y) + nodeH / 2;
+    const tx = mapX(to.x);
+    const ty = mapY(to.y) + nodeH / 2;
+    const mid = Math.max(32, (tx - sx) / 2);
+
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.bezierCurveTo(sx + mid, sy, tx - mid, ty, tx, ty);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = edge.blocked ? '#e6c6ca' : '#b8cce3';
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    if (edge.share) {
+      const label = shareText(edge.share.n, edge.share.d);
+      const lx = sx + mid;
+      const ly = sy + (ty - sy) / 2 - 7;
+      ctx.font = '900 11px sans-serif';
+      const textWidth = ctx.measureText(label).width;
+      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      drawRoundRect(ctx, lx - textWidth / 2 - 5, ly - 11, textWidth + 10, 15, 4);
+      ctx.fill();
+      ctx.fillStyle = '#3b5f8a';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, lx, ly - 3);
+    }
+  });
+
+  Array.from(nodeIds).forEach((id) => {
+    const node = graph.nodes.get(id);
+    const pos = layout.positions.get(id);
+    if (!node || !pos) return;
+    const x = mapX(pos.x);
+    const y = mapY(pos.y);
+    const tone = node.type === 'terminal' ? 'green' : node.type === 'blocked' ? 'rose' : 'blue';
+    const topColor = tone === 'green' ? '#2f6f4d' : tone === 'rose' ? '#8a5a5f' : '#3b5f8a';
+    const relation = node.type === 'event'
+      ? (getRelStr(node.step?.dec?.relation, '') || node.step?.dec?.relation || '-')
+      : (getRelStr(node.dist?.h?.relation, '') || node.dist?.h?.relation || node.subtitle);
+    const share = node.displayShare || node.share;
+    const shareLabel = nodeShareText(share);
+    const branchLabel = node.type === 'event' ? node.subtitle : node.subtitle;
+
+    ctx.save();
+    drawRoundRect(ctx, x, y, nodeW, nodeH, 8);
+    ctx.clip();
+
+    ctx.shadowColor = 'rgba(55,53,47,0.12)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 2;
+    ctx.fillStyle = '#ffffff';
+    drawRoundRect(ctx, x, y, nodeW, nodeH, 8);
+    ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#e4e2de';
+    ctx.stroke();
+    ctx.fillStyle = topColor;
+    drawRoundRect(ctx, x, y, nodeW, 6, 8);
+    ctx.fill();
+    ctx.fillRect(x, y + 4, nodeW, 3);
+
+    const relationX = x + 8;
+    const relationW = nodeW > NODE_W ? 48 : 36;
+    const branchW = nodeW > NODE_W ? 58 : 38;
+    const branchX = x + nodeW - 8 - branchW;
+    const shareW = nodeW > NODE_W ? 118 : 64;
+    const shareX = branchX - 6 - shareW;
+    const titleX = relationX + relationW + 6;
+    const titleW = Math.max(58, shareX - titleX - 6);
+    const centerY = y + nodeH / 2 + 2;
+
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    ctx.font = '900 10px sans-serif';
+    ctx.fillStyle = '#9b9a97';
+    ctx.fillText(ellipsizeCanvasText(ctx, relation, relationW), relationX, centerY);
+
+    ctx.font = '900 13px sans-serif';
+    ctx.fillStyle = '#37352f';
+    ctx.fillText(ellipsizeCanvasText(ctx, node.title, titleW), titleX, centerY);
+
+    ctx.font = '900 10px sans-serif';
+    ctx.fillStyle = '#f0f6ff';
+    ctx.strokeStyle = '#d7e5f9';
+    drawRoundRect(ctx, shareX, y + Math.round((nodeH - 20) / 2), shareW, 20, 5);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#3b5f8a';
+    ctx.textAlign = 'center';
+    ctx.fillText(ellipsizeCanvasText(ctx, shareLabel, shareW - 8), shareX + shareW / 2, centerY);
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = tone === 'green' ? '#2f6f4d' : tone === 'rose' ? '#8a5a5f' : '#7a6240';
+    ctx.fillText(ellipsizeCanvasText(ctx, branchLabel, branchW), branchX, centerY);
+
+    ctx.restore();
+  });
+
+  return canvas;
+};
+
+const getExportBounds = (layout, nodeIds, margin = 72, nodeW = NODE_W, nodeH = NODE_H, mapX = (x) => x, mapY = (y) => y) => {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  nodeIds.forEach((id) => {
+    const pos = layout.positions.get(id);
+    if (!pos) return;
+    const x = mapX(pos.x);
+    const y = mapY(pos.y);
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x + nodeW);
+    maxY = Math.max(maxY, y + nodeH);
+  });
+  if (!Number.isFinite(minX)) return { minX: 0, minY: 0, width: 800, height: 480, margin };
+  return {
+    minX,
+    minY,
+    width: Math.max(320, maxX - minX + margin * 2),
+    height: Math.max(220, maxY - minY + margin * 2),
+    margin,
+  };
 };
 
 const Tag = ({ children, tone = 'default' }) => {
@@ -710,6 +911,8 @@ export default function TreePanel({
   const [collapsed, setCollapsed] = React.useState(new Set());
   const [focusOnly, setFocusOnly] = React.useState(false);
   const [view, setView] = React.useState({ scale: 1, x: 0, y: 0 });
+  const [saveMenuOpen, setSaveMenuOpen] = React.useState(false);
+  const [isSaving, setIsSaving] = React.useState(false);
 
   React.useEffect(() => {
     if (!graph.rootId) {
@@ -792,6 +995,66 @@ export default function TreePanel({
     setFocusOnly(false);
     window.setTimeout(() => applyFit(graph.rootId), 0);
   }, [applyFit, graph]);
+
+  const saveMindmapPng = React.useCallback((mode) => {
+    if (!graph.rootId || isSaving) return;
+    setIsSaving(true);
+    setSaveMenuOpen(false);
+    window.setTimeout(() => {
+      try {
+        const datePart = new Date().toISOString().slice(0, 10);
+        const selectedName = selectedNode?.title || graph.nodes.get(graph.rootId)?.title || '상속마인드맵';
+        const baseName = safeFilePart(selectedName);
+
+        if (mode === 'viewport') {
+          const shell = shellRef.current;
+          if (!shell) return;
+          const width = Math.max(320, shell.clientWidth);
+          const height = Math.max(240, shell.clientHeight);
+          const nodeIds = new Set(Array.from(layout.positions.keys()));
+          const canvas = drawMindmapToCanvas({
+            graph,
+            layout,
+            nodeIds,
+            width,
+            height,
+            mapX: (x) => x * view.scale + view.x,
+            mapY: (y) => y * view.scale + view.y,
+          });
+          downloadCanvasPng(canvas, `${baseName}_현재화면_${datePart}.png`);
+          return;
+        }
+
+        const exportFocus = mode === 'focus';
+        const exportLayout = layoutGraph(
+          graph,
+          exportFocus ? new Set() : new Set(),
+          exportFocus,
+          exportFocus ? focusSet : new Set()
+        );
+        const nodeIds = exportFocus && focusSet.size > 0
+          ? new Set(Array.from(focusSet).filter((id) => exportLayout.positions.has(id)))
+          : new Set(Array.from(exportLayout.positions.keys()));
+        const exportMapX = (x) => PAD + ((x - PAD) / (NODE_W + X_GAP)) * (EXPORT_NODE_W + X_GAP);
+        const exportMapY = (y) => y;
+        const bounds = getExportBounds(exportLayout, nodeIds, 72, EXPORT_NODE_W, EXPORT_NODE_H, exportMapX, exportMapY);
+        const canvas = drawMindmapToCanvas({
+          graph,
+          layout: exportLayout,
+          nodeIds,
+          width: bounds.width,
+          height: bounds.height,
+          mapX: (x) => exportMapX(x) - bounds.minX + bounds.margin,
+          mapY: (y) => exportMapY(y) - bounds.minY + bounds.margin,
+          nodeW: EXPORT_NODE_W,
+          nodeH: EXPORT_NODE_H,
+        });
+        downloadCanvasPng(canvas, `${baseName}_${exportFocus ? '선택계통' : '전체마인드맵'}_${datePart}.png`);
+      } finally {
+        setIsSaving(false);
+      }
+    }, 0);
+  }, [focusSet, graph, isSaving, layout, selectedNode, view]);
 
   const onPointerDown = (event) => {
     if (event.target.closest('button') || event.target.closest('[data-flow-node="true"]')) return;
@@ -914,6 +1177,22 @@ export default function TreePanel({
           <button type="button" onClick={() => setView((prev) => ({ ...prev, scale: Math.max(0.32, prev.scale - 0.1) }))} className="border-r border-[#efeeeb] py-2 text-[18px] font-black dark:border-neutral-700">-</button>
           <button type="button" onClick={() => applyFit(selectedId)} className="border-r border-[#efeeeb] py-2 text-[16px] font-black dark:border-neutral-700">⌖</button>
           <button type="button" onClick={() => setView((prev) => ({ ...prev, scale: Math.min(1.8, prev.scale + 0.1) }))} className="py-2 text-[18px] font-black">+</button>
+        </div>
+        <div className="relative">
+          {saveMenuOpen && (
+            <div className="absolute bottom-[calc(100%+8px)] right-0 w-[168px] overflow-hidden rounded-xl border border-[#e9e9e7] bg-white p-1 text-[12px] font-bold text-[#37352f] shadow-[0_10px_30px_rgba(55,53,47,0.18)] dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100">
+              <button type="button" onClick={() => saveMindmapPng('viewport')} className="block w-full rounded-lg px-3 py-2 text-left hover:bg-[#f7f7f5] dark:hover:bg-neutral-800">현재 화면 저장</button>
+              <button type="button" onClick={() => saveMindmapPng('focus')} className="block w-full rounded-lg px-3 py-2 text-left hover:bg-[#f7f7f5] dark:hover:bg-neutral-800">선택 계통 저장</button>
+              <button type="button" onClick={() => saveMindmapPng('all')} className="block w-full rounded-lg px-3 py-2 text-left hover:bg-[#f7f7f5] dark:hover:bg-neutral-800">전체 마인드맵 저장</button>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setSaveMenuOpen((prev) => !prev)}
+            className="rounded-lg border border-[#e9e9e7] bg-white px-3 py-2 text-[12px] font-black text-[#55534d] shadow-sm dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300"
+          >
+            {isSaving ? '저장 중' : 'PNG 저장'}
+          </button>
         </div>
         <button
           type="button"

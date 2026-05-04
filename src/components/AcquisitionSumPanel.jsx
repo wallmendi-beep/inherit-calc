@@ -20,6 +20,10 @@ const normalizeShare = (share, denominator) => {
   return Number.isInteger(scale) ? { n: share.n * scale, d: denominator } : share;
 };
 
+const sharesEqual = (a, b) => (
+  Number(a?.n || 0) * Number(b?.d || 1) === Number(b?.n || 0) * Number(a?.d || 1)
+);
+
 const buildHeirMap = (calcSteps = []) => {
   const map = new Map();
   calcSteps.forEach((step, stepIndex) => {
@@ -373,6 +377,16 @@ export default function AcquisitionSumPanel({
     const total = result.total || addShares(pathShares(result));
     return total.n > 0 ? math.lcm(acc, total.d || 1) : acc;
   }, 1);
+  const totalShare = results.reduce(
+    (sum, result) => {
+      const total = result.total || addShares(pathShares(result));
+      const [n, d] = math.add(sum.n, sum.d, total.n, total.d);
+      return { n, d };
+    },
+    { n: 0, d: 1 }
+  );
+  const targetShare = { n: 1, d: 1 };
+  const totalMatchesTarget = totalShare.n > 0 && sharesEqual(totalShare, targetShare);
 
   if (results.length === 0) {
     return (
@@ -433,6 +447,24 @@ export default function AcquisitionSumPanel({
                     );
                   })}
                 </tbody>
+                <tfoot className="bg-[#fcfcfb] dark:bg-neutral-800/80">
+                  <tr>
+                    <td className="border border-[#e9e9e7] p-2.5 text-right font-medium text-[#787774] dark:border-neutral-600">
+                      합계 검증
+                    </td>
+                    <td className="border border-[#e9e9e7] p-2.5 font-bold text-[#504f4c] dark:border-neutral-600 dark:text-neutral-300">
+                      {formatShare(totalShare)}
+                    </td>
+                    <td className="border border-[#e9e9e7] p-2.5 font-bold text-[#504f4c] dark:border-neutral-600 dark:text-neutral-300">
+                      기준 {formatShare(targetShare)}
+                    </td>
+                    <td className="border border-[#e9e9e7] p-2.5 text-[12.5px] font-bold dark:border-neutral-600">
+                      {totalShare.n === 0 && <span className="text-[#787774]">최종 생존 상속인이 없습니다.</span>}
+                      {totalMatchesTarget && <span className="text-[#504f4c] dark:text-neutral-300">지분 합계가 일치합니다.</span>}
+                      {totalShare.n > 0 && !totalMatchesTarget && <span className="text-red-500">지분 합계가 일치하지 않습니다.</span>}
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </>

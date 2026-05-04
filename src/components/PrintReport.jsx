@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { getLawEra, getRelStr, formatKorDate, isBefore, math } from '../engine/utils';
+import { collectMissingHeirNames } from '../utils/missingHeirStatus';
 
 const lawLabel = (era) => {
   if (era === '1960') return '구민법(1960년 제정)';
@@ -36,20 +37,7 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
   }[activeTab] || '상속지분 계산 보고서';
 
   const missingHeirNames = useMemo(() => {
-    if (!tree) return [];
-    const names = [];
-    const check = (node) => {
-      if (
-        node.id !== 'root' &&
-        node.isDeceased &&
-        node.isExcluded !== true &&
-        node.successorStatus !== 'confirmed_no_substitute_heirs' &&
-        (!node.heirs || node.heirs.length === 0)
-      ) names.push(node.name || '이름미상');
-      if (node.heirs) node.heirs.forEach(check);
-    };
-    check(tree);
-    return names;
+    return collectMissingHeirNames(tree);
   }, [tree]);
   const hasMissingHeir = missingHeirNames.length > 0;
 
