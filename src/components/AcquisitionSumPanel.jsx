@@ -14,6 +14,12 @@ const addShares = (sources = []) => sources.reduce(
   { n: 0, d: 1 }
 );
 
+const normalizeShare = (share, denominator) => {
+  if (!share || !denominator || !share.d) return share;
+  const scale = denominator / share.d;
+  return Number.isInteger(scale) ? { n: share.n * scale, d: denominator } : share;
+};
+
 const buildHeirMap = (calcSteps = []) => {
   const map = new Map();
   calcSteps.forEach((step, stepIndex) => {
@@ -82,13 +88,6 @@ const buildResults = ({ calcSteps = [], finalShares = null, tree = null, query =
     groupLabel: group.label,
     total: addShares(member.sources),
   })));
-};
-
-const getNameContext = (result, tree) => {
-  const relation = getRelStr(result?.relation, tree?.deathDate) || result?.relation || '';
-  const sourceNames = Array.from(new Set((result?.sources || []).map((source) => source.decName).filter(Boolean)));
-  const sourceText = sourceNames.length > 0 ? `${sourceNames.slice(0, 2).join(', ')} 사건` : '';
-  return [relation, sourceText].filter(Boolean).join(' · ');
 };
 
 const buildStepIndexes = (calcSteps = []) => {
@@ -361,21 +360,19 @@ export default function AcquisitionSumPanel({
   }, [results, selected, selectedPersonId]);
 
   const getLineagePaths = (result) => lineagePathsByPersonId.get(result.personId) || [];
-  const isMultiPath = (result) => getLineagePaths(result).length > 1;
-  const renderFormula = (result) => {
+  const pathShares = (result) => {
     const paths = getLineagePaths(result);
-    if (paths.length > result.sources.length) {
-      return paths.map((path, index) => {
-        const names = path.cards.map((card) => card.name).filter(Boolean);
-        const finalShare = path.cards[path.cards.length - 1]?.share || path.source;
-        return `경로 ${index + 1} ${names.join('→')} ${formatShare(finalShare)}`;
-      }).join(' + ');
-    }
-    return result.sources
-      .map((source) => `${source.decName} ${formatShare(source)}`)
-      .join(' + ');
+    return (paths.length > 0 ? paths : result.sources.map((source) => ({ source, cards: [] })))
+      .map((path) => path.cards[path.cards.length - 1]?.share || path.source)
+      .filter(Boolean);
   };
-  const multiResults = results.filter(isMultiPath);
+  const renderFormula = (result) => {
+    return pathShares(result).map(formatShare).join(' + ');
+  };
+  const commonDenominator = results.reduce((acc, result) => {
+    const total = result.total || addShares(pathShares(result));
+    return total.n > 0 ? math.lcm(acc, total.d || 1) : acc;
+  }, 1);
 
   if (results.length === 0) {
     return (
@@ -405,74 +402,36 @@ export default function AcquisitionSumPanel({
               </p>
             </div>
 
-            {multiResults.length > 0 && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between px-1 text-[13px] font-black">
-                  <span>복수경로 취득자</span>
-                  <span className="text-[11px] font-bold text-[#9b9a97] dark:text-neutral-400">{multiResults.length}명</span>
-                </div>
-                <table className="w-full table-fixed border-collapse text-[13px]">
-                  <thead className="bg-[#fcfcfb] dark:bg-neutral-800/80">
-                    <tr>
-                      <th className="w-[18%] border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">상속인</th>
-                      <th className="w-[18%] border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">최종지분</th>
-                      <th className="border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">합산식</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {multiResults.map((result) => (
-                      <tr
-                        key={`multi-${result.personId}`}
-                        className={`cursor-pointer transition-colors ${selected?.personId === result.personId ? 'bg-[#f0f6ff] dark:bg-blue-950/20' : 'hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/40'}`}
-                        onClick={() => setSelectedPersonId(result.personId)}
-                      >
-                        <td className="border border-[#e9e9e7] p-2.5 dark:border-neutral-600">
-                          <div className="font-black">{result.name}</div>
-                          <div className="mt-0.5 truncate text-[11px] font-medium text-[#9b9a97] dark:text-neutral-400">{getNameContext(result, tree)}</div>
-                        </td>
-                        <td className="border border-[#e9e9e7] p-2.5 font-black text-[#3f5f8a] dark:border-neutral-600 dark:text-blue-300">{formatShare(result.total)}</td>
-                        <td className="truncate border border-[#e9e9e7] p-2.5 font-bold text-[#504f4c] dark:border-neutral-600 dark:text-neutral-300">{renderFormula(result)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
             <div className="space-y-2">
               <div className="flex items-center justify-between px-1 text-[13px] font-black">
-                <span>전체 취득자</span>
+                <span>취득합산표</span>
                 <span className="text-[11px] font-bold text-[#9b9a97] dark:text-neutral-400">{results.length}명</span>
               </div>
               <table className="w-full table-fixed border-collapse text-[13px]">
                 <thead className="bg-[#fcfcfb] dark:bg-neutral-800/80">
                   <tr>
-                    <th className="w-[18%] border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">상속인</th>
+                    <th className="w-[22%] border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">상속인</th>
+                    <th className="border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">경로합산</th>
                     <th className="w-[18%] border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">최종지분</th>
-                    <th className="border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">취득 명세</th>
-                    <th className="w-[14%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-600">구분</th>
+                    <th className="w-[18%] border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">통분지분</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {results.map((result) => (
-                    <tr
-                      key={`sum-${result.personId}`}
-                      className={`cursor-pointer transition-colors ${selected?.personId === result.personId ? 'bg-[#f0f6ff] dark:bg-blue-950/20' : 'hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/40'}`}
-                      onClick={() => setSelectedPersonId(result.personId)}
-                    >
-                      <td className="border border-[#e9e9e7] p-2.5 dark:border-neutral-600">
-                        <div className="font-black">{result.name}</div>
-                        <div className="mt-0.5 truncate text-[11px] font-medium text-[#9b9a97] dark:text-neutral-400">{getNameContext(result, tree)}</div>
-                      </td>
-                      <td className="border border-[#e9e9e7] p-2.5 font-black text-[#3f5f8a] dark:border-neutral-600 dark:text-blue-300">{formatShare(result.total)}</td>
-                      <td className="truncate border border-[#e9e9e7] p-2.5 font-bold text-[#504f4c] dark:border-neutral-600 dark:text-neutral-300">{renderFormula(result)}</td>
-                      <td className="border border-[#e9e9e7] p-2.5 text-center dark:border-neutral-600">
-                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-black ${isMultiPath(result) ? 'bg-[#fff5e6] text-[#8a5a1f] dark:bg-yellow-950/30 dark:text-yellow-300' : 'bg-[#f1f1ef] text-[#787774] dark:bg-neutral-800 dark:text-neutral-300'}`}>
-                          {isMultiPath(result) ? '복수경로' : '단일경로'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {results.map((result) => {
+                    const normalized = normalizeShare(result.total, commonDenominator);
+                    return (
+                      <tr
+                        key={`sum-${result.personId}`}
+                        className={`cursor-pointer transition-colors ${selected?.personId === result.personId ? 'bg-[#f0f6ff] dark:bg-blue-950/20' : 'hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/40'}`}
+                        onClick={() => setSelectedPersonId(result.personId)}
+                      >
+                        <td className="border border-[#e9e9e7] p-2.5 font-black dark:border-neutral-600">{result.name}</td>
+                        <td className="border border-[#e9e9e7] p-2.5 font-bold text-[#504f4c] dark:border-neutral-600 dark:text-neutral-300">{renderFormula(result)}</td>
+                        <td className="border border-[#e9e9e7] p-2.5 font-black text-[#3f5f8a] dark:border-neutral-600 dark:text-blue-300">{formatShare(result.total)}</td>
+                        <td className="border border-[#e9e9e7] p-2.5 font-black text-[#3f5f8a] dark:border-neutral-600 dark:text-blue-300">{formatShare(normalized)}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
