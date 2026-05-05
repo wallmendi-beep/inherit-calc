@@ -1,0 +1,57 @@
+{
+  "caseId": "2020_modern_spouse_two_children",
+  "caseName": "1991 이후 배우자 + 자녀 2명 기준 사건",
+  "verificationStatus": "baseline",
+  "verifiedBy": "",
+  "verifiedAt": "",
+  "notes": "현행 민법 기준: 배우자 1.5, 자녀 각 1.0",
+  "tree": {
+    "id": "root",
+    "personId": "root",
+    "name": "피상속인",
+    "isDeceased": true,
+    "deathDate": "2020-01-01",
+    "shareN": 1,
+    "shareD": 1,
+    "heirs": [
+      {
+        "id": "spouse",
+        "personId": "spouse",
+        "name": "배우자",
+        "relation": "wife",
+        "isDeceased": false,
+        "heirs": []
+      },
+      {
+        "id": "son",
+        "personId": "son",
+        "name": "장남",
+        "relation": "son",
+        "isDeceased": false,
+        "heirs": []
+      },
+      {
+        "id": "daughter",
+        "personId": "daughter",
+        "name": "차녀",
+        "relation": "daughter",
+        "isDeceased": false,
+        "heirs": []
+      }
+    ]
+  },
+  "expected": {
+    "status": "success",
+    "appliedLaws": ["1991"],
+    "finalShares": [
+      { "personId": "spouse", "name": "배우자", "share": "3/7" },
+      { "personId": "son", "name": "장남", "share": "2/7" },
+      { "personId": "daughter", "name": "차녀", "share": "2/7" }
+    ],
+    "warningCodes": [],
+    "integrity": {
+      "total": "1/1",
+      "hasTotalMismatch": false
+    }
+  }
+}

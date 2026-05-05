@@ -1,0 +1,69 @@
+{
+  "caseId": "1975_legacy_hoju_married_daughter",
+  "caseName": "1975년 호주상속 및 출가녀 감산 기준 사건",
+  "verificationStatus": "baseline",
+  "verifiedBy": "",
+  "verifiedAt": "",
+  "notes": "1960년 제정 민법 기준: 처 감산, 호주상속 5할 가산, 비동일가적 딸 감산",
+  "tree": {
+    "id": "root",
+    "personId": "root",
+    "name": "KimGapSu",
+    "isDeceased": true,
+    "deathDate": "1975-06-01",
+    "shareN": 1,
+    "shareD": 1,
+    "isHoju": true,
+    "heirs": [
+      {
+        "id": "w1",
+        "personId": "w1",
+        "name": "LeeSoonJa",
+        "relation": "wife",
+        "isDeceased": false,
+        "heirs": []
+      },
+      {
+        "id": "s1",
+        "personId": "s1",
+        "name": "KimDaeHan",
+        "relation": "son",
+        "isHoju": true,
+        "isDeceased": false,
+        "heirs": []
+      },
+      {
+        "id": "s2",
+        "personId": "s2",
+        "name": "KimMinGuk",
+        "relation": "son",
+        "isDeceased": false,
+        "heirs": []
+      },
+      {
+        "id": "d1",
+        "personId": "d1",
+        "name": "KimYoungHee",
+        "relation": "daughter",
+        "isDeceased": false,
+        "isSameRegister": false,
+        "heirs": []
+      }
+    ]
+  },
+  "expected": {
+    "status": "success",
+    "appliedLaws": ["1960"],
+    "finalShares": [
+      { "personId": "w1", "name": "LeeSoonJa", "share": "2/13" },
+      { "personId": "s1", "name": "KimDaeHan", "share": "6/13" },
+      { "personId": "s2", "name": "KimMinGuk", "share": "4/13" },
+      { "personId": "d1", "name": "KimYoungHee", "share": "1/13" }
+    ],
+    "warningCodes": [],
+    "integrity": {
+      "total": "1/1",
+      "hasTotalMismatch": false
+    }
+  }
+}

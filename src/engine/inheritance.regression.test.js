@@ -140,6 +140,54 @@ describe('inheritance regression guardrails', () => {
     expect(result.integrity.hasTotalMismatch).toBe(false);
   });
 
+  it('does not exclude living heirs when a stale empty exclusion flag remains', () => {
+    const tree = {
+      id: 'root',
+      name: 'KimMyungNam',
+      isDeceased: true,
+      deathDate: '1978-08-05',
+      shareN: 1,
+      shareD: 1,
+      heirs: [
+        { id: 'h1', personId: 'h1', name: 'YoonJongOk', relation: 'husband', isDeceased: false, heirs: [] },
+        { id: 's1', personId: 's1', name: 'YoonWooYoung', relation: 'son', isDeceased: false, heirs: [] },
+        {
+          id: 'd1',
+          personId: 'd1',
+          name: 'YoonJungHee',
+          relation: 'daughter',
+          isDeceased: false,
+          isExcluded: true,
+          exclusionOption: '',
+          isSameRegister: false,
+          heirs: [],
+        },
+        {
+          id: 's2',
+          personId: 's2',
+          name: 'YoonWooSung',
+          relation: 'son',
+          isDeceased: false,
+          isExcluded: true,
+          exclusionOption: '',
+          isHoju: true,
+          heirs: [],
+        },
+      ],
+    };
+
+    const result = calculateInheritance(tree, 0, { includeCalcSteps: true });
+    const allShares = flattenShares(result);
+
+    expect(allShares.map((share) => `${share.name}:${share.n}/${share.d}`)).toEqual([
+      'YoonJongOk:4/15',
+      'YoonWooYoung:4/15',
+      'YoonJungHee:1/15',
+      'YoonWooSung:2/5',
+    ]);
+    expect(result.integrity.hasTotalMismatch).toBe(false);
+  });
+
   it('keeps separate substitution groups for personId-less branches', () => {
     const tree = {
       id: 'root',

@@ -16,6 +16,8 @@
     "test:logic": "node src/engine/check_logic.js",
     "test:utf8": "node tools/check-utf8.mjs",
     "test": "vitest run",
+    "test:golden": "vitest run src/engine/inheritance.golden.test.js",
+    "test:invariants": "vitest run src/engine/inheritance.invariants.test.js",
     "test:watch": "vitest"
   },
   "dependencies": {

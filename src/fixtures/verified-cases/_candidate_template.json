@@ -1,0 +1,28 @@
+{
+  "caseId": "replace_with_case_id",
+  "caseName": "검산 대기 사건명",
+  "verificationStatus": "candidate",
+  "verifiedBy": "",
+  "verifiedAt": "",
+  "notes": "실제 사건 JSON을 tree에 넣고 expected를 검산 결과로 채운 뒤 verified로 바꿉니다.",
+  "tree": {
+    "id": "root",
+    "personId": "root",
+    "name": "",
+    "isDeceased": true,
+    "deathDate": "",
+    "shareN": 1,
+    "shareD": 1,
+    "heirs": []
+  },
+  "expected": {
+    "status": "success",
+    "appliedLaws": [],
+    "finalShares": [],
+    "warningCodes": [],
+    "integrity": {
+      "total": "1/1",
+      "hasTotalMismatch": false
+    }
+  }
+}

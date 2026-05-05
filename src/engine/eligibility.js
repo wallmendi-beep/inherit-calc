@@ -43,8 +43,9 @@ export const isRenouncedHeir = (
 
   const isPredeceasedOption = heir?.isExcluded && heir.exclusionOption === 'predeceased';
   const isDisqualified = heir?.isExcluded && (heir.exclusionOption === 'lost' || heir.exclusionOption === 'disqualified');
+  const hasExplicitExclusion = heir?.isExcluded && !!heir.exclusionOption;
 
-  if (heir?.isExcluded && !isDisqualified && !isPredeceasedOption) return true;
+  if (hasExplicitExclusion && !isDisqualified && !isPredeceasedOption) return true;
   if (isDivorcedAuto || isRemarriedAuto) return true;
 
   const isPre = heir?.isDeceased && heir?.deathDate && contextDate && isBefore(heir.deathDate, contextDate);
