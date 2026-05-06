@@ -7,6 +7,82 @@ const flattenShares = (result) => [
 ];
 
 describe('inheritance regression guardrails', () => {
+  it('filters predeceased heirs without valid substitutes when borrowing a repeated decedent subtree', () => {
+    const tree = {
+      id: 'root',
+      personId: 'root',
+      name: 'Root',
+      isDeceased: true,
+      deathDate: '1967-01-01',
+      shareN: 1,
+      shareD: 1,
+      heirs: [
+        {
+          id: 'm-empty',
+          personId: 'm',
+          name: 'M',
+          relation: 'daughter',
+          isDeceased: true,
+          deathDate: '1978-01-01',
+          heirs: [],
+        },
+        {
+          id: 'carrier',
+          personId: 'carrier',
+          name: 'Carrier',
+          relation: 'wife',
+          isDeceased: false,
+          isExcluded: true,
+          exclusionOption: 'renounce',
+          heirs: [
+            {
+              id: 'm-full',
+              personId: 'm',
+              name: 'M',
+              relation: 'daughter',
+              isDeceased: true,
+              deathDate: '1978-01-01',
+              heirs: [
+                {
+                  id: 'pre-child',
+                  personId: 'pre-child',
+                  name: 'PreChild',
+                  relation: 'son',
+                  isDeceased: true,
+                  deathDate: '1940-01-01',
+                  isExcluded: true,
+                  exclusionOption: 'predeceased',
+                  heirs: [],
+                },
+                {
+                  id: 'alive-child',
+                  personId: 'alive-child',
+                  name: 'AliveChild',
+                  relation: 'son',
+                  isDeceased: false,
+                  heirs: [],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const result = calculateInheritance(tree, 0, { includeCalcSteps: true });
+    const shares = [
+      ...(result.finalShares.direct || []),
+      ...(result.finalShares.subGroups || []).flatMap((group) => group.shares || []),
+    ];
+    const aliveChild = shares.find((share) => share.personId === 'alive-child');
+    const preChild = shares.find((share) => share.personId === 'pre-child');
+
+    expect(aliveChild).toBeDefined();
+    expect(`${aliveChild.n}/${aliveChild.d}`).toBe('1/1');
+    expect(preChild).toBeUndefined();
+    expect(`${result.integrity.total.n}/${result.integrity.total.d}`).toBe('1/1');
+  });
+
   it('keeps the 1975 legacy family distribution stable', () => {
     const tree = {
       id: 'root',

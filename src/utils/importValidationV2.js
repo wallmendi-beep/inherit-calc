@@ -58,6 +58,38 @@ const collectDuplicatePersonIds = (tree) => {
   return duplicates;
 };
 
+const collectDuplicateNamesWithDifferentPersonIds = (tree) => {
+  const byName = new Map();
+
+  const walk = (node, parentName = '') => {
+    if (!node) return;
+    const name = node.name?.trim();
+    if (node.id !== 'root' && name) {
+      if (!byName.has(name)) byName.set(name, []);
+      byName.get(name).push({
+        name,
+        personId: node.personId || node.id || '',
+        nodeId: node.id || '',
+        parentName,
+      });
+    }
+    (node.heirs || []).forEach((child) => walk(child, name || parentName));
+  };
+
+  walk(tree);
+
+  return Array.from(byName.entries())
+    .map(([name, entries]) => {
+      const uniquePersonIds = Array.from(new Set(entries.map((entry) => entry.personId).filter(Boolean)));
+      if (uniquePersonIds.length <= 1) return null;
+      const firstByPersonId = uniquePersonIds
+        .map((personId) => entries.find((entry) => entry.personId === personId))
+        .filter(Boolean);
+      return { name, entries: firstByPersonId, count: uniquePersonIds.length };
+    })
+    .filter(Boolean);
+};
+
 export const collectImportValidationIssues = (tree) => {
   const issues = [];
 
@@ -72,6 +104,24 @@ export const collectImportValidationIssues = (tree) => {
       severity: 'warning',
       code: 'duplicate-person',
       message: `인물 중복 — [${name || '이름 미상'}]이(가) 트리 내 ${count}곳에 입력되어 있습니다. 동일인이면 한 곳만 남기고 삭제해 주세요.`,
+    });
+  });
+
+  const duplicateNames = collectDuplicateNamesWithDifferentPersonIds(tree);
+  duplicateNames.forEach(({ name, entries, count }) => {
+    const first = entries[0] || {};
+    const locations = entries
+      .map((entry) => entry.parentName ? `${entry.parentName} 아래` : '위치 미상')
+      .slice(0, 3)
+      .join(', ');
+    issues.push({
+      personId: first.personId || '',
+      nodeId: first.nodeId || 'root',
+      targetTabId: first.personId || first.nodeId || 'root',
+      personName: name,
+      severity: 'warning',
+      code: 'duplicate-name',
+      message: `동명이인 확인 — [${name}] 이름이 서로 다른 인물 ${count}명에게 사용되었습니다${locations ? ` (${locations})` : ''}. 같은 사람이면 동일 인물로 정리하고, 실제로 다른 사람이면 이름을 [${name}(A)], [${name}(B)]처럼 구분해 주세요.`,
     });
   });
 
@@ -164,7 +214,7 @@ export const collectImportValidationIssues = (tree) => {
         issues.push(buildIssue(node, {
           code: 'duplicate-name',
           severity: 'warning',
-          message: `성명 중복 — [${node.name || '피상속인'}] 아래에 [${name}]이(가) ${count}명 입력되어 있습니다. 동일인이면 삭제하고, 실제로 다른 사람이면 '확인 (다른 사람)'을 눌러 주세요.`,
+          message: `성명 중복 — [${node.name || '피상속인'}] 아래에 [${name}]이(가) ${count}명 입력되어 있습니다. 동일인이면 삭제하고, 실제로 다른 사람이면 이름을 [${name}(A)], [${name}(B)]처럼 구분해 주세요.`,
         }));
       }
     });

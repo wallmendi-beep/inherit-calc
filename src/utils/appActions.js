@@ -10,8 +10,8 @@ const sanitizeAiFacts = (node, isRoot = true) => {
   if (!node || typeof node !== 'object') return node;
   const src = Array.isArray(node) ? { heirs: node } : node;
   const allowed = isRoot
-    ? ['name', 'isDeceased', 'deathDate', 'marriageDate', 'remarriageDate', 'divorceDate', 'restoreDate', 'gender', 'isHoju', 'isSameRegister', 'caseNo', 'shareN', 'shareD', 'heirs']
-    : ['name', 'relation', 'isDeceased', 'deathDate', 'marriageDate', 'remarriageDate', 'divorceDate', 'restoreDate', 'gender', 'isHoju', 'isSameRegister', 'heirs'];
+    ? ['personId', 'name', 'isDeceased', 'deathDate', 'marriageDate', 'remarriageDate', 'divorceDate', 'restoreDate', 'gender', 'isHoju', 'isSameRegister', 'caseNo', 'shareN', 'shareD', 'heirs']
+    : ['personId', 'name', 'relation', 'isDeceased', 'deathDate', 'marriageDate', 'remarriageDate', 'divorceDate', 'restoreDate', 'gender', 'isHoju', 'isSameRegister', 'heirs'];
   const next = {};
   allowed.forEach((key) => {
     if (key === 'heirs') {
@@ -21,6 +21,64 @@ const sanitizeAiFacts = (node, isRoot = true) => {
     }
   });
   return next;
+};
+
+const stripDisambiguationLabel = (name) => String(name || '').trim().replace(/\([A-Z]+\)$/i, '').trim();
+
+const duplicateLabelForIndex = (index) => {
+  let value = index;
+  let label = '';
+  do {
+    label = String.fromCharCode(65 + (value % 26)) + label;
+    value = Math.floor(value / 26) - 1;
+  } while (value >= 0);
+  return label;
+};
+
+const applyDuplicateNameLabels = (tree) => {
+  const byBaseName = new Map();
+  const fallbackPersonKeys = new WeakMap();
+
+  const getPersonKey = (node, baseName, byPersonId) => {
+    if (node.personId) return node.personId;
+    if (!fallbackPersonKeys.has(node)) {
+      fallbackPersonKeys.set(node, `name-only:${baseName}:${byPersonId.size}`);
+    }
+    return fallbackPersonKeys.get(node);
+  };
+
+  const collect = (node, isRoot = true) => {
+    if (!node || typeof node !== 'object') return;
+    const baseName = stripDisambiguationLabel(node.name);
+    if (!isRoot && baseName) {
+      if (!byBaseName.has(baseName)) byBaseName.set(baseName, new Map());
+      const byPersonId = byBaseName.get(baseName);
+      const personId = getPersonKey(node, baseName, byPersonId);
+      if (!byPersonId.has(personId)) byPersonId.set(personId, byPersonId.size);
+    }
+    (node.heirs || []).forEach((child) => collect(child, false));
+  };
+
+  const rename = (node, isRoot = true) => {
+    if (!node || typeof node !== 'object') return node;
+    const baseName = stripDisambiguationLabel(node.name);
+    let nextName = node.name;
+    if (!isRoot && baseName) {
+      const byPersonId = byBaseName.get(baseName);
+      const personId = byPersonId ? getPersonKey(node, baseName, byPersonId) : '';
+      if (byPersonId && byPersonId.size > 1 && byPersonId.has(personId)) {
+        nextName = `${baseName}(${duplicateLabelForIndex(byPersonId.get(personId))})`;
+      }
+    }
+    return {
+      ...node,
+      name: nextName,
+      heirs: (node.heirs || []).map((child) => rename(child, false)),
+    };
+  };
+
+  collect(tree);
+  return rename(tree);
 };
 
 /**
@@ -178,7 +236,7 @@ export function ingestAiJsonInput({
 
   try {
     const cleanJson = input.replace(/```json/g, '').replace(/```/g, '').trim();
-    const parsedTree = sanitizeAiFacts(JSON.parse(cleanJson));
+    const parsedTree = applyDuplicateNameLabels(sanitizeAiFacts(JSON.parse(cleanJson)));
 
     if (aiTargetId === 'root') {
       setTree(normalizeImportedTree({ ...parsedTree, id: 'root' }));

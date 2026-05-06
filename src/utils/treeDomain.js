@@ -91,6 +91,55 @@ const toSafeName = (value) => (typeof value === 'string' ? value.trim() : '');
 const createPersonId = () => generateId('p');
 const createNodeId = () => generateId('n');
 
+const stripDisambiguationLabel = (name) => String(name || '').trim().replace(/\([A-Z]+\)$/i, '').trim();
+
+const duplicateLabelForIndex = (index) => {
+  let value = index;
+  let label = '';
+  do {
+    label = String.fromCharCode(65 + (value % 26)) + label;
+    value = Math.floor(value / 26) - 1;
+  } while (value >= 0);
+  return label;
+};
+
+const applyDuplicateNameLabels = (tree) => {
+  const byBaseName = new Map();
+
+  const collect = (node, isRoot = true) => {
+    if (!node) return;
+    const baseName = stripDisambiguationLabel(node.name);
+    if (!isRoot && baseName) {
+      if (!byBaseName.has(baseName)) byBaseName.set(baseName, new Map());
+      const byPersonId = byBaseName.get(baseName);
+      const personId = node.personId || node.id || '';
+      if (personId && !byPersonId.has(personId)) byPersonId.set(personId, byPersonId.size);
+    }
+    (node.heirs || []).forEach((child) => collect(child, false));
+  };
+
+  const rename = (node, isRoot = true) => {
+    if (!node) return node;
+    const baseName = stripDisambiguationLabel(node.name);
+    let name = node.name;
+    if (!isRoot && baseName) {
+      const byPersonId = byBaseName.get(baseName);
+      const personId = node.personId || node.id || '';
+      if (byPersonId && byPersonId.size > 1 && byPersonId.has(personId)) {
+        name = `${baseName}(${duplicateLabelForIndex(byPersonId.get(personId))})`;
+      }
+    }
+    return {
+      ...node,
+      name,
+      heirs: (node.heirs || []).map((child) => rename(child, false)),
+    };
+  };
+
+  collect(tree);
+  return rename(tree);
+};
+
 const shouldDefaultHojuOn = (relation, refDate, isRoot) => {
   if (isRoot) return false;
   if (relation !== 'husband') return false;
@@ -117,7 +166,9 @@ export const normalizeImportedTree = (rawTree) => {
     // personId 절대 보존: 파일에 있으면 그대로 쓰고, 없으면 새로 생성
     const personId = base.personId || (isRoot ? 'root' : generateId('p'));
     
-    // 이미 처리된 ID가 또 나오면 (루트 제외) 자식 목록 생성을 중단
+    // 이미 처리된 ID가 또 나오면 (루트 제외) 자식 목록만 중단한다.
+    // 같은 사람이 여러 상속사건에 반복 등장하는 것은 정상적인 재상속 흐름이므로
+    // 반복 등장 자체를 상속 제외 사유로 바꾸면 안 된다.
     const isDuplicate = !isRoot && visitedPersonIds.has(personId);
     if (personId) visitedPersonIds.add(personId);
 
@@ -130,7 +181,8 @@ export const normalizeImportedTree = (rawTree) => {
     const refDate = parentDate || deathDate;
     const relation = isRoot ? 'root' : normalizeRelation(base.relation);
     
-    // 중복 노드인 경우 heirs를 비워둠으로써 Vault 엔진이 기존 personId의 하위 구조를 재사용하게 함
+    // 중복 노드인 경우 heirs를 비워둠으로써 순환/중복 하위 전개를 막고,
+    // 엔진의 전역 탐색이 기존 personId/name의 하위 구조를 재사용하게 함
     let heirs = (Array.isArray(base.heirs) && !isDuplicate)
       ? base.heirs.map((child) => sanitizeNode(child, deathDate || refDate, false)).filter(Boolean)
       : [];
@@ -195,8 +247,8 @@ export const normalizeImportedTree = (rawTree) => {
       successorStatus: base.successorStatus || '',
       isHoju: base.isHoju === true ? true : shouldDefaultHojuOn(relation, refDate, isRoot),
       isPrimaryHojuSuccessor: !!base.isPrimaryHojuSuccessor,
-      isExcluded: isDuplicate ? true : isExcluded,
-      exclusionOption: isDuplicate ? 'duplicate' : exclusionOption,
+      isExcluded,
+      exclusionOption,
       isSameRegister: base.isSameRegister !== false,
       heirs,
     };
@@ -211,7 +263,7 @@ export const normalizeImportedTree = (rawTree) => {
     return normalized;
   };
 
-  return sanitizeNode(rawTree, normalizeDateField(rawTree?.deathDate), true);
+  return applyDuplicateNameLabels(sanitizeNode(rawTree, normalizeDateField(rawTree?.deathDate), true));
 };
 
 const cloneTree = (tree) => JSON.parse(JSON.stringify(tree));

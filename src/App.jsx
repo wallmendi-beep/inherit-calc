@@ -748,7 +748,25 @@ function App() {
                   />
                 )}
                   {activeTab === 'tree' && (
-                    <div className="flex-1 min-h-0">
+                    <div className="flex-1 min-h-0 space-y-6">
+                      <div className="no-print flex items-center justify-start gap-3 pl-[390px]">
+                        <div className="flex items-center gap-1 rounded-full border border-[#dcdcd9] bg-[#f1f1ef] px-1.5 py-1 dark:border-neutral-600 dark:bg-neutral-900">
+                          <button
+                            type="button"
+                            onClick={() => setTreeViewMode('flow')}
+                            className={`rounded-full px-3 py-1.5 text-[12px] font-bold transition-colors ${treeViewMode !== 'table' ? 'bg-[#37352f] text-white dark:bg-neutral-100 dark:text-neutral-900' : 'text-[#787774] hover:bg-[#efefed] dark:text-neutral-300 dark:hover:bg-neutral-700'}`}
+                          >
+                            마인드맵
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setTreeViewMode('table')}
+                            className={`rounded-full px-3 py-1.5 text-[12px] font-bold transition-colors ${treeViewMode === 'table' ? 'bg-[#37352f] text-white dark:bg-neutral-100 dark:text-neutral-900' : 'text-[#787774] hover:bg-[#efefed] dark:text-neutral-300 dark:hover:bg-neutral-700'}`}
+                          >
+                            상속흐름표
+                          </button>
+                        </div>
+                      </div>
                       <TreePanel 
                         tree={tree} 
                         treeToggleSignal={treeToggleSignal} 

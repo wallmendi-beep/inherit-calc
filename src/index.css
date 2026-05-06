@@ -129,7 +129,31 @@ body {
 }
 
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    width: auto !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
   .no-print {
     display: none !important;
+  }
+
+  table {
+    width: calc(100% - 1px) !important;
+    max-width: calc(100% - 1px) !important;
   }
 }

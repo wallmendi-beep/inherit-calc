@@ -191,9 +191,9 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
       targetHeirs = targetHeirs.filter(h => !isSpouseRelation(h.relation));
     }
     const originalChildren = (node.heirs || []).filter(h => h.relation === 'son' || h.relation === 'daughter');
-    const renouncedChildrenCount = originalChildren.filter(isRenounced).length;
+    const renouncedChildrenCount = originalChildren.filter((child) => isRenounced(child, distributionDate)).length;
     const isAllChildrenRenounced = originalChildren.length > 0 && renouncedChildrenCount === originalChildren.length;
-    const spouseInHeirs = (node.heirs || []).find(h => (h.relation === 'wife' || h.relation === 'husband' || h.relation === 'spouse') && !isRenounced(h));
+    const spouseInHeirs = (node.heirs || []).find(h => (h.relation === 'wife' || h.relation === 'husband' || h.relation === 'spouse') && !isRenounced(h, distributionDate));
 
     if (isAllChildrenRenounced) {
       if (spouseInHeirs && law === '1991') {
@@ -201,7 +201,7 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
       } else if (!spouseInHeirs) {
         let grandchildren = [];
         originalChildren.forEach(child => {
-           if (child.heirs) grandchildren = grandchildren.concat(child.heirs.filter(h => !isRenounced(h)));
+           if (child.heirs) grandchildren = grandchildren.concat(child.heirs.filter(h => !isRenounced(h, distributionDate)));
         });
         if (grandchildren.length > 0) targetHeirs = grandchildren;
       }
@@ -210,7 +210,7 @@ export const calculateInheritance = (tree, _propertyValue, options = {}) => {
     if (targetHeirs.length === 0 && isSubstitutionTrigger(node, { isSpouseRelation }) && node.id !== 'root') {
       const borrowed = findHeirsByName(tree, node.name, node.id);
       if (borrowed && borrowed.length > 0) {
-        targetHeirs = borrowed.filter(h => !isRenounced(h));
+        targetHeirs = borrowed.filter(h => !isRenounced(h, distributionDate));
       }
     }
 

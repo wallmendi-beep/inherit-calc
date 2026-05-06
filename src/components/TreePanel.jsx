@@ -92,6 +92,16 @@ const getConnectedEventEdges = (eventNode, graph) => {
   });
 };
 
+const findEdgeForDist = (eventNodeId, dist, graph) => {
+  const personKey = getPersonKey(dist?.h);
+  return graph.edges.find((edge) => {
+    if (edge.from !== eventNodeId) return false;
+    if (!personKey || getPersonKey(edge.dist?.h) !== personKey) return false;
+    return Number(edge.dist?.n || 0) === Number(dist?.n || 0)
+      && Number(edge.dist?.d || 1) === Number(dist?.d || 1);
+  });
+};
+
 const buildNoRightSummary = (dist, eventDate) => {
   const person = dist?.h || {};
   const name = person.name || '이름 미상';
@@ -826,7 +836,7 @@ const ReportPanel = ({ node, graph, onJump, reviewContext, onCompleteReview, onO
                 <tbody className="divide-y divide-[#efeeeb] text-[12px] dark:divide-neutral-700">
                   {tableRows.map((dist, index) => {
                     const personKey = getPersonKey(dist.h);
-                    const related = graph.edges.find((edge) => edge.from === reportNode.id && edge.dist === dist);
+                    const related = findEdgeForDist(reportNode.id, dist, graph);
                     const canJump = related?.to && graph.nodes.has(related.to);
                     const displayShare = dist.n > 0 ? normalizeShare({ n: dist.n, d: dist.d }, tableDenom) : null;
                     return (
@@ -897,8 +907,172 @@ const ReportPanel = ({ node, graph, onJump, reviewContext, onCompleteReview, onO
   );
 };
 
+const FlowTablePanel = ({ graph, selectedId, onSelect }) => {
+  const eventNodes = graph.stepEntries
+    .map((entry) => graph.nodes.get(entry.id))
+    .filter((node) => node?.type === 'event');
+
+  const selectedEventId = getEventReportNode(graph.nodes.get(selectedId), graph)?.id || graph.rootId;
+
+  if (eventNodes.length === 0) {
+    return (
+      <div className="flex h-60 items-center justify-center rounded-xl border border-dashed border-[#d9d9d5] bg-white text-[14px] text-[#787774] dark:border-neutral-600 dark:bg-neutral-900/70 dark:text-neutral-300">
+        표시할 상속 흐름이 없습니다.
+      </div>
+    );
+  }
+
+  return (
+    <section className="flex min-h-[640px] overflow-visible rounded-xl border border-[#e9e9e7] bg-white text-[#37352f] dark:border-neutral-600 dark:bg-neutral-900/95 dark:text-neutral-200">
+      <aside className="w-[340px] shrink-0 border-r border-[#e9e9e7] bg-[#fafaf9] p-4 dark:border-neutral-700 dark:bg-neutral-900">
+        <div className="sticky top-24">
+          <div className="text-[12px] font-black tracking-[0.08em] text-[#3b5f8a] dark:text-blue-300">상속 흐름</div>
+          <p className="mt-2 text-[12px] leading-relaxed text-[#787774] dark:text-neutral-400">
+            사건별 분배와 다음 상속으로 이어지는 지분 이동을 단계 순서로 확인합니다.
+          </p>
+          <div className="mt-4 space-y-2">
+            {eventNodes.map((node, index) => {
+              const active = node.id === selectedEventId;
+              return (
+                <button
+                  key={node.id}
+                  type="button"
+                  onClick={() => onSelect(node.id)}
+                  className={`block w-full rounded-lg border px-3 py-2 text-left transition-colors ${
+                    active
+                      ? 'border-[#d7e5f9] bg-[#f0f6ff] text-[#3b5f8a] dark:border-blue-900/40 dark:bg-blue-900/30 dark:text-blue-300'
+                      : 'border-[#e9e9e7] bg-white text-[#55534d] hover:bg-[#f7f7f5] dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-800'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-black text-[#9b9a97] dark:text-neutral-400">제{index + 1}사건</span>
+                    <span className="text-[10px] font-black">{node.subtitle}</span>
+                  </div>
+                  <div className="mt-1 truncate text-[13px] font-black">망 {node.step?.dec?.name || '이름 미상'}</div>
+                  <div className="mt-1 text-[11px] font-bold text-[#787774] dark:text-neutral-400">
+                    {nodeShareText(node.share)} · {lawEraLabel(node.lawEra)}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </aside>
+
+      <main className="min-w-0 flex-1 space-y-5 p-5">
+        <div>
+          <h2 className="text-[18px] font-black">상속 흐름표</h2>
+          <p className="mt-1 text-[12px] text-[#787774] dark:text-neutral-400">
+            각 사건에서 산출된 지분이 생존 상속인에게 확정되거나, 후속 사건으로 넘어가는 과정을 보여줍니다.
+          </p>
+        </div>
+
+        <div className="space-y-5">
+          {eventNodes.map((node, index) => {
+            const eventDate = getStepEventDate(node.step);
+            const tableRows = buildReportRows(node, eventDate);
+            const activeDists = tableRows.filter((dist) => !dist.ex && dist.n > 0);
+            const tableDenom = getCommonDenominator(activeDists);
+            const connectedEventEdges = getConnectedEventEdges(node, graph);
+            const active = node.id === selectedEventId;
+
+            return (
+              <section
+                key={node.id}
+                className={`rounded-xl border bg-white p-4 shadow-sm transition-colors dark:bg-neutral-900 ${
+                  active
+                    ? 'border-[#d7e5f9] ring-2 ring-[#d7e5f9]/70 dark:border-blue-900/40 dark:ring-blue-900/30'
+                    : 'border-[#e9e9e7] dark:border-neutral-700'
+                }`}
+              >
+                <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3 border-b border-[#efeeeb] pb-2 dark:border-neutral-700">
+                  <div className="flex flex-wrap items-baseline gap-3">
+                    <span className="text-[11px] font-black text-[#9b9a97] dark:text-neutral-400">제{index + 1}사건</span>
+                    <span className="text-[15px] font-black text-[#37352f] dark:text-neutral-100">망 {node.step?.dec?.name || '이름 미상'}</span>
+                    <span className="text-[12px] font-bold text-[#787774] dark:text-neutral-400">{formatKoreanDate(eventDate) || '사망일 미상'}</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Tag tone="blue">{nodeShareText(node.share)}</Tag>
+                    <Tag>{lawEraLabel(node.lawEra)}</Tag>
+                  </div>
+                </div>
+
+                <div className="overflow-hidden rounded-lg border border-[#e9e9e7] dark:border-neutral-700">
+                  <table className="w-full table-fixed border-collapse text-[13px]">
+                    <thead className="bg-[#fcfcfb] text-[12px] text-[#787774] dark:bg-neutral-800/80 dark:text-neutral-400">
+                      <tr>
+                        <th className="w-[20%] border border-[#e9e9e7] p-2.5 text-left font-medium dark:border-neutral-600">상속인</th>
+                        <th className="w-[13%] border border-[#e9e9e7] p-2.5 text-left font-medium dark:border-neutral-600">관계</th>
+                        <th className="w-[15%] border border-[#e9e9e7] p-2.5 text-left font-medium dark:border-neutral-600">취득지분</th>
+                        <th className="w-[20%] border border-[#e9e9e7] p-2.5 text-left font-medium dark:border-neutral-600">흐름</th>
+                        <th className="border border-[#e9e9e7] p-2.5 text-left font-medium dark:border-neutral-600">판정 요소</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tableRows.map((dist, rowIndex) => {
+                        const related = findEdgeForDist(node.id, dist, graph);
+                        const relatedNode = related?.to ? graph.nodes.get(related.to) : null;
+                        const displayShare = dist.n > 0 ? normalizeShare({ n: dist.n, d: dist.d }, tableDenom) : null;
+                        const flowLabel = relatedNode?.type === 'event'
+                          ? related.label
+                          : dist.ex
+                            ? '상속권 없음'
+                            : '최종 취득';
+                        const flowTone = relatedNode?.type === 'event' ? 'blue' : dist.ex ? 'rose' : 'green';
+                        return (
+                          <tr
+                            key={`${getPersonKey(dist.h) || rowIndex}-${rowIndex}`}
+                            className="hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/40"
+                          >
+                            <td className="border border-[#e9e9e7] p-2.5 font-black dark:border-neutral-600">{dist.h?.name || '이름 미상'}</td>
+                            <td className="border border-[#e9e9e7] p-2.5 font-bold text-[#787774] dark:border-neutral-600 dark:text-neutral-300">{getRelStr(dist.h?.relation, eventDate) || dist.h?.relation || '-'}</td>
+                            <td className="border border-[#e9e9e7] p-2.5 font-black text-[#3b5f8a] dark:border-neutral-600 dark:text-blue-300">{displayShare ? shareText(displayShare.n, displayShare.d) : '-'}</td>
+                            <td className="border border-[#e9e9e7] p-2.5 dark:border-neutral-600">
+                              <Tag tone={flowTone}>{flowLabel}</Tag>
+                              {relatedNode?.type === 'event' && (
+                                <button
+                                  type="button"
+                                  onClick={() => onSelect(relatedNode.id)}
+                                  className="ml-2 text-[11px] font-black text-[#3b5f8a] hover:underline dark:text-blue-300"
+                                >
+                                  제{eventNodes.findIndex((item) => item.id === relatedNode.id) + 1}사건
+                                </button>
+                              )}
+                            </td>
+                            <td className="border border-[#e9e9e7] p-2.5 text-[12.5px] font-bold text-[#504f4c] dark:border-neutral-600 dark:text-neutral-300">
+                              {dist.ex || dist.mod || formatModifierShort(dist) || '균분'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {connectedEventEdges.length > 0 && (
+                  <div className="mt-3 space-y-1.5">
+                    {connectedEventEdges.map((edge, edgeIndex) => {
+                      const target = graph.nodes.get(edge.to);
+                      return (
+                        <div key={`${node.id}-next-${edgeIndex}`} className="rounded-lg border border-[#d7e5f9] bg-[#f0f6ff] px-3 py-2 text-[12px] font-bold text-[#3b5f8a] dark:border-blue-900/40 dark:bg-blue-900/30 dark:text-blue-300">
+                          {buildContinuationSummary(edge)} · {nodeShareText(target?.share)} 지분이 다음 사건으로 이어집니다.
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+            );
+          })}
+        </div>
+      </main>
+    </section>
+  );
+};
+
 export default function TreePanel({
   calcSteps = [],
+  viewMode = 'flow',
   navigationSignal,
   reviewContext = null,
   onCompleteReview,
@@ -1090,6 +1264,16 @@ export default function TreePanel({
       onOpenInInput={onOpenInInput}
     />
   );
+
+  if (viewMode === 'table') {
+    return (
+      <FlowTablePanel
+        graph={graph}
+        selectedId={selectedId}
+        onSelect={selectNode}
+      />
+    );
+  }
 
   const canvas = (
     <div
