@@ -165,13 +165,17 @@ export default function SummaryPanelFixed({
     return math.simplify(tn, td);
   })();
 
-  const renderShareRow = (share, depth, groupAncestorId = null) => {
+  const renderShareRow = (share, depth, groupAncestorId = null, groupDenom = null) => {
     const paddingLeft = `${12 + depth * 16}px`;
     const rowId = groupAncestorId ? `summary-row-${share.personId}-${groupAncestorId}` : `summary-row-${share.personId}`;
     const isCurrentMatch = matchIds[currentMatchIdx] === rowId;
     const personIssues = issueMap.get(share.personId) || issueMap.get(share.id) || [];
     const hojuApplied = hojuBonusMap.has(share.personId);
     const navigateTarget = personIssues[0]?.targetTabId || share.personId || share.id;
+    const groupShare = groupDenom ? {
+      n: share.n * (groupDenom / share.d),
+      d: groupDenom,
+    } : { n: share.n, d: share.d };
 
     return (
       <tr
@@ -206,26 +210,32 @@ export default function SummaryPanelFixed({
           ))}
         </td>
         <td className="border border-[#e9e9e7] p-2.5 text-center text-[#504f4c] dark:border-neutral-600">{share.n} / {share.d}</td>
+        <td className="border border-[#e9e9e7] p-2.5 text-center font-medium text-[#3b5f8a] dark:border-neutral-600 dark:text-blue-300">{groupShare.n} / {groupShare.d}</td>
         <td className="border border-[#e9e9e7] p-2.5 text-center font-medium dark:border-neutral-600">{share.un} / {share.ud}</td>
       </tr>
     );
   };
 
-  const renderGroup = (group, depth) => (
-    <React.Fragment key={`summary-group-${group.ancestor.id}`}>
-      <tr className="bg-[#fcfcfb] dark:bg-neutral-800/80">
-        <td
-          colSpan={3}
-          className="border border-[#e9e9e7] p-2.5 text-left text-[#504f4c] dark:border-neutral-600 dark:text-neutral-300"
-          style={{ paddingLeft: `${12 + depth * 16}px` }}
-        >
-          [{group.ancestor.name}] {formatKorDate(group.ancestor.deathDate)} 사망으로 인한 {group.type} 그룹
-        </td>
-      </tr>
-      {group.directShares.map((share) => renderShareRow(share, depth + 1, group.ancestor.id))}
-      {group.subGroups.map((subGroup) => renderGroup(subGroup, depth + 1))}
-    </React.Fragment>
-  );
+  const getGroupDenom = (shares = []) => shares.reduce((acc, share) => math.lcm(acc || 1, share.d || 1), 1) || 1;
+
+  const renderGroup = (group, depth) => {
+    const groupDenom = getGroupDenom(group.directShares || []);
+    return (
+      <React.Fragment key={`summary-group-${group.ancestor.id}`}>
+        <tr className="bg-[#fcfcfb] dark:bg-neutral-800/80">
+          <td
+            colSpan={4}
+            className="border border-[#e9e9e7] p-2.5 text-left text-[#504f4c] dark:border-neutral-600 dark:text-neutral-300"
+            style={{ paddingLeft: `${12 + depth * 16}px` }}
+          >
+            [{group.ancestor.name}] {formatKorDate(group.ancestor.deathDate)} 사망으로 인한 {group.type} 그룹
+          </td>
+        </tr>
+        {group.directShares.map((share) => renderShareRow(share, depth + 1, group.ancestor.id, groupDenom))}
+        {group.subGroups.map((subGroup) => renderGroup(subGroup, depth + 1))}
+      </React.Fragment>
+    );
+  };
 
   const sumVal = totalSumD ? totalSumN / totalSumD : 0;
   const targetVal = simpleTargetD ? simpleTargetN / simpleTargetD : 1;
@@ -319,20 +329,21 @@ export default function SummaryPanelFixed({
       <table className="w-full border-collapse text-[13px]">
         <thead className="bg-[#fcfcfb] dark:bg-neutral-800/80">
           <tr>
-            <th className="w-[40%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-600">상속인 성명</th>
-            <th className="w-[30%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-600">{hasMissingHeir ? '현재 지분' : '최종 지분'}</th>
-            <th className="w-[30%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-600">통분 지분</th>
+            <th className="w-[34%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-600">상속인 성명</th>
+            <th className="w-[22%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-600">{hasMissingHeir ? '현재 지분' : '최종 지분'}</th>
+            <th className="w-[22%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-600">그룹통분 지분</th>
+            <th className="w-[22%] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-600">전체통분 지분</th>
           </tr>
         </thead>
         <tbody>
-          {visibleTopDirect.map((share) => renderShareRow(share, 0))}
+          {visibleTopDirect.map((share) => renderShareRow(share, 0, null, getGroupDenom(visibleTopDirect)))}
           {visibleTopGroups.map((group) => renderGroup(group, 0))}
         </tbody>
         <tfoot className="bg-[#fcfcfb] dark:bg-neutral-800/80">
           <tr>
             <td className="border border-[#e9e9e7] p-2.5 text-right font-medium text-[#787774] dark:border-neutral-600">합계 검증</td>
             <td className="border border-[#e9e9e7] p-2.5 text-center font-medium dark:border-neutral-600">{totalSumN} / {totalSumD}</td>
-            <td className="border border-[#e9e9e7] p-2.5 text-left text-[12.5px] dark:border-neutral-600">
+            <td colSpan={2} className="border border-[#e9e9e7] p-2.5 text-left text-[12.5px] dark:border-neutral-600">
               {totalSumN === 0 && <span className="font-bold text-[#787774]">최종 생존 상속인이 없습니다.</span>}
               {totalSumN > 0 && sumVal === targetVal && <span className="text-[#504f4c] dark:text-neutral-300">법정상속분 합계와 일치합니다.</span>}
               {totalSumN > 0 && sumVal !== targetVal && <span className="font-bold text-red-500">지분 합계가 일치하지 않습니다.</span>}

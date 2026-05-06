@@ -766,7 +766,7 @@ const ReportPanel = ({ node, graph, onJump, reviewContext, onCompleteReview, onO
   const reasonRows = tableRows.filter((dist) => dist.ex || dist.mod);
 
   return (
-    <aside className="z-20 w-[390px] shrink-0 self-stretch border-r border-[#e9e9e7] bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
+    <aside className="hover-scrollbar z-20 max-h-[calc(100vh-190px)] w-[390px] shrink-0 self-stretch overflow-y-auto border-r border-[#e9e9e7] bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
       <div className="sticky top-0 z-10 border-b border-[#e9e9e7] bg-white/95 px-4 py-3 backdrop-blur dark:border-neutral-700 dark:bg-neutral-900/95">
         <div className="flex items-center justify-between gap-3">
           <div className="text-[12px] font-black tracking-[0.08em] text-[#3b5f8a] dark:text-blue-300">사건 보고서</div>
@@ -908,11 +908,36 @@ const ReportPanel = ({ node, graph, onJump, reviewContext, onCompleteReview, onO
 };
 
 const FlowTablePanel = ({ graph, selectedId, onSelect }) => {
+  const listRefs = React.useRef(new Map());
+  const sectionRefs = React.useRef(new Map());
   const eventNodes = graph.stepEntries
     .map((entry) => graph.nodes.get(entry.id))
     .filter((node) => node?.type === 'event');
 
   const selectedEventId = getEventReportNode(graph.nodes.get(selectedId), graph)?.id || graph.rootId;
+  const setListRef = (id) => (element) => {
+    if (element) listRefs.current.set(id, element);
+    else listRefs.current.delete(id);
+  };
+  const setSectionRef = (id) => (element) => {
+    if (element) sectionRefs.current.set(id, element);
+    else sectionRefs.current.delete(id);
+  };
+  const scrollLinkedPanels = React.useCallback((id, behavior = 'smooth') => {
+    window.setTimeout(() => {
+      listRefs.current.get(id)?.scrollIntoView({ behavior, block: 'nearest' });
+      sectionRefs.current.get(id)?.scrollIntoView({ behavior, block: 'center' });
+    }, 0);
+  }, []);
+  const handleSelect = React.useCallback((id) => {
+    onSelect(id);
+    scrollLinkedPanels(id);
+  }, [onSelect, scrollLinkedPanels]);
+
+  React.useEffect(() => {
+    if (!selectedEventId) return;
+    scrollLinkedPanels(selectedEventId, 'auto');
+  }, [selectedEventId, scrollLinkedPanels]);
 
   if (eventNodes.length === 0) {
     return (
@@ -923,9 +948,9 @@ const FlowTablePanel = ({ graph, selectedId, onSelect }) => {
   }
 
   return (
-    <section className="flex min-h-[640px] overflow-visible rounded-xl border border-[#e9e9e7] bg-white text-[#37352f] dark:border-neutral-600 dark:bg-neutral-900/95 dark:text-neutral-200">
-      <aside className="w-[340px] shrink-0 border-r border-[#e9e9e7] bg-[#fafaf9] p-4 dark:border-neutral-700 dark:bg-neutral-900">
-        <div className="sticky top-24">
+    <section className="flex max-h-[calc(100vh-190px)] min-h-[640px] overflow-hidden rounded-xl border border-[#e9e9e7] bg-white text-[#37352f] dark:border-neutral-600 dark:bg-neutral-900/95 dark:text-neutral-200">
+      <aside className="hover-scrollbar w-[340px] shrink-0 overflow-y-auto border-r border-[#e9e9e7] bg-[#fafaf9] p-4 dark:border-neutral-700 dark:bg-neutral-900">
+        <div>
           <div className="text-[12px] font-black tracking-[0.08em] text-[#3b5f8a] dark:text-blue-300">상속 흐름</div>
           <p className="mt-2 text-[12px] leading-relaxed text-[#787774] dark:text-neutral-400">
             사건별 분배와 다음 상속으로 이어지는 지분 이동을 단계 순서로 확인합니다.
@@ -936,8 +961,9 @@ const FlowTablePanel = ({ graph, selectedId, onSelect }) => {
               return (
                 <button
                   key={node.id}
+                  ref={setListRef(node.id)}
                   type="button"
-                  onClick={() => onSelect(node.id)}
+                  onClick={() => handleSelect(node.id)}
                   className={`block w-full rounded-lg border px-3 py-2 text-left transition-colors ${
                     active
                       ? 'border-[#d7e5f9] bg-[#f0f6ff] text-[#3b5f8a] dark:border-blue-900/40 dark:bg-blue-900/30 dark:text-blue-300'
@@ -959,7 +985,7 @@ const FlowTablePanel = ({ graph, selectedId, onSelect }) => {
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 space-y-5 p-5">
+      <main className="hover-scrollbar min-w-0 flex-1 space-y-5 overflow-y-auto p-5">
         <div>
           <h2 className="text-[18px] font-black">상속 흐름표</h2>
           <p className="mt-1 text-[12px] text-[#787774] dark:text-neutral-400">
@@ -979,6 +1005,7 @@ const FlowTablePanel = ({ graph, selectedId, onSelect }) => {
             return (
               <section
                 key={node.id}
+                ref={setSectionRef(node.id)}
                 className={`rounded-xl border bg-white p-4 shadow-sm transition-colors dark:bg-neutral-900 ${
                   active
                     ? 'border-[#d7e5f9] ring-2 ring-[#d7e5f9]/70 dark:border-blue-900/40 dark:ring-blue-900/30'
@@ -1032,7 +1059,7 @@ const FlowTablePanel = ({ graph, selectedId, onSelect }) => {
                               {relatedNode?.type === 'event' && (
                                 <button
                                   type="button"
-                                  onClick={() => onSelect(relatedNode.id)}
+                                  onClick={() => handleSelect(relatedNode.id)}
                                   className="ml-2 text-[11px] font-black text-[#3b5f8a] hover:underline dark:text-blue-300"
                                 >
                                   제{eventNodes.findIndex((item) => item.id === relatedNode.id) + 1}사건
