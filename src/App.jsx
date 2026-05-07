@@ -18,7 +18,7 @@ import PersonEditModal from './components/PersonEditModal';
 import SmartGuidePanel from './components/SmartGuidePanel';
 import SidebarTreePanel from './components/SidebarTreePanel';
 import TopToolbar from './components/TopToolbar';
-import TabHelpDrawer, { getHelpTopicForTab } from './components/TabHelpDrawer';
+import TabHelpModal, { getHelpTopicForTab } from './components/TabHelpModal';
 import { math, getRelStr } from './engine/utils';
 import { AI_PROMPT } from './utils/aiPromptUtf8';
 import { updateDeathInfo, updateHistoryInfo, updateRelationInfo, setHojuStatus, setPrimaryHojuSuccessor, applyNodeUpdates, appendQuickHeirs } from './utils/treeDomain';
@@ -386,6 +386,14 @@ function App() {
     }, 150);
   };
 
+  const handleReviewNavigate = (targetId) => {
+    if (!targetId) return;
+    setActiveTab('tree');
+    setTreeViewMode('flow');
+    setReviewContext(null);
+    setNavigationSignal({ targetId, at: Date.now(), source: 'summary-lineage' });
+  };
+
   const handleSidebarPrevMatch = () => {
     if (sidebarMatchIds.length === 0) return;
     setSidebarCurrentMatchIdx((prev) => (prev - 1 + sidebarMatchIds.length) % sidebarMatchIds.length);
@@ -746,7 +754,7 @@ function App() {
   return (
     <>
       <PrintReport tree={tree} activeTab={activeTab} activeDeceasedTab={activeDeceasedTab} finalShares={finalShares} calcSteps={calcSteps} amountCalculations={amountCalculations} propertyValue={propertyValue} summaryViewMode={summaryViewMode} />
-      <TabHelpDrawer
+      <TabHelpModal
         isOpen={isHelpOpen}
         onClose={() => setIsHelpOpen(false)}
         activeTopic={helpTopic}
@@ -906,7 +914,7 @@ function App() {
                       tree={tree}
                       calcSteps={calcSteps}
                       finalShares={finalShares}
-                      handleNavigate={handleNavigate}
+                      handleNavigate={handleReviewNavigate}
                       viewMode={summaryViewMode}
                       finalContent={(
                         <SummaryPanel tree={tree} finalShares={finalShares} calcSteps={calcSteps} issues={blockingIssues} handleNavigate={handleNavigate} matchIds={matchIds} currentMatchIdx={currentMatchIdx} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />

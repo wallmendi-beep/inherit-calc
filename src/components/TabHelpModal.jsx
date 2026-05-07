@@ -1,5 +1,5 @@
 import React from 'react';
-import ContextualDrawer from './ui/ContextualDrawer';
+import { IconX } from './Icons';
 
 const TOPIC_BY_TAB = {
   input: 'input',
@@ -205,47 +205,85 @@ const Section = ({ section }) => (
 
 export const getHelpTopicForTab = (tabId) => TOPIC_BY_TAB[tabId] || 'input';
 
-export default function TabHelpDrawer({ isOpen, onClose, activeTopic, onTopicChange }) {
+export default function TabHelpModal({ isOpen, onClose, activeTopic, onTopicChange }) {
   const topic = HELP_TOPICS[activeTopic] || HELP_TOPICS.input;
 
+  React.useEffect(() => {
+    if (!isOpen) return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') onClose?.();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
   return (
-    <ContextualDrawer isOpen={isOpen} onClose={onClose} title="도움말">
-      <div className="space-y-4 p-4">
-        <div className="flex flex-wrap gap-1.5">
-          {topicOrder.map((id) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => onTopicChange(id)}
-              className={`rounded-full px-3 py-1.5 text-[12px] font-bold transition-colors ${
-                activeTopic === id
-                  ? 'bg-[#37352f] text-white dark:bg-neutral-100 dark:text-neutral-900'
-                  : 'bg-[#f1f1ef] text-[#787774] hover:bg-[#e9e9e7] dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'
-              }`}
-            >
-              {HELP_TOPICS[id].label}
-            </button>
-          ))}
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/35 px-8 py-8 print:hidden"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose?.();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tab-help-title"
+        className="flex max-h-[82vh] w-[860px] flex-col overflow-hidden rounded-xl border border-[#dcdcd9] bg-white shadow-2xl dark:border-neutral-600 dark:bg-neutral-900"
+      >
+        <div className="flex shrink-0 items-center justify-between border-b border-[#e9e9e7] px-5 py-4 dark:border-neutral-700">
+          <div>
+            <div className="text-[12px] font-bold text-[#787774] dark:text-neutral-400">도움말</div>
+            <h2 id="tab-help-title" className="mt-0.5 text-[18px] font-black text-[#37352f] dark:text-neutral-100">{topic.title}</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            title="도움말 닫기"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[#787774] transition-colors hover:bg-[#f1f1ef] hover:text-[#37352f] dark:text-neutral-300 dark:hover:bg-neutral-800 dark:hover:text-neutral-100"
+          >
+            <IconX className="h-4 w-4" />
+          </button>
         </div>
 
-        <div>
-          <h2 className="text-[17px] font-black text-[#37352f] dark:text-neutral-100">{topic.title}</h2>
-          <p className="mt-1 text-[12.5px] leading-relaxed text-[#787774] dark:text-neutral-300">{topic.summary}</p>
+        <div className="shrink-0 border-b border-[#e9e9e7] px-5 py-3 dark:border-neutral-700">
+          <div className="flex gap-1.5">
+            {topicOrder.map((id) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => onTopicChange(id)}
+                className={`rounded-full px-3 py-1.5 text-[12px] font-bold transition-colors ${
+                  activeTopic === id
+                    ? 'bg-[#37352f] text-white dark:bg-neutral-100 dark:text-neutral-900'
+                    : 'bg-[#f1f1ef] text-[#787774] hover:bg-[#e9e9e7] dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'
+                }`}
+              >
+                {HELP_TOPICS[id].label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="space-y-3">
-          {topic.sections.map((section) => <Section key={section.title} section={section} />)}
-        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+          <p className="mb-4 text-[13px] leading-relaxed text-[#787774] dark:text-neutral-300">{topic.summary}</p>
 
-        {topic.checklist && (
-          <section className="rounded-lg border border-[#d7e5f9] bg-[#f7fbff] p-3 dark:border-blue-900/60 dark:bg-blue-950/20">
-            <h3 className="text-[13px] font-bold text-[#3b5f8a] dark:text-blue-300">확인 체크리스트</h3>
-            <ul className="mt-2 space-y-1 text-[12.5px] leading-relaxed text-[#4f6075] dark:text-blue-100">
-              {topic.checklist.map((item) => <li key={item}>- {item}</li>)}
-            </ul>
-          </section>
-        )}
+          <div className="space-y-3">
+            {topic.sections.map((section) => <Section key={section.title} section={section} />)}
+          </div>
+
+          {topic.checklist && (
+            <section className="mt-3 rounded-lg border border-[#d7e5f9] bg-[#f7fbff] p-3 dark:border-blue-900/60 dark:bg-blue-950/20">
+              <h3 className="text-[13px] font-bold text-[#3b5f8a] dark:text-blue-300">확인 체크리스트</h3>
+              <ul className="mt-2 space-y-1 text-[12.5px] leading-relaxed text-[#4f6075] dark:text-blue-100">
+                {topic.checklist.map((item) => <li key={item}>- {item}</li>)}
+              </ul>
+            </section>
+          )}
+        </div>
       </div>
-    </ContextualDrawer>
+    </div>
   );
 }

@@ -430,10 +430,10 @@ export default function AcquisitionSumPanel({
               <table className="w-full table-fixed border-collapse text-[13px]">
                 <thead className="bg-[#fcfcfb] dark:bg-neutral-800/80">
                   <tr>
-                    <th className="w-[120px] border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">상속인</th>
-                    <th className="border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">경로합산</th>
-                    <th className="w-[200px] border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">최종지분</th>
-                    <th className="w-[240px] border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">통분지분</th>
+                    <th className="w-[120px] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-600">상속인</th>
+                    <th className="border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-600">경로합산</th>
+                    <th className="w-[200px] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-600">최종지분</th>
+                    <th className="w-[240px] border border-[#e9e9e7] p-2.5 text-center font-medium text-[#787774] dark:border-neutral-600">통분지분</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -447,8 +447,8 @@ export default function AcquisitionSumPanel({
                       >
                         <td className="truncate border border-[#e9e9e7] p-2.5 font-medium dark:border-neutral-600">{result.name}</td>
                         <td className="truncate border border-[#e9e9e7] p-2.5 font-medium text-[#504f4c] dark:border-neutral-600 dark:text-neutral-300" title={renderFormula(result)}>{renderFormula(result)}</td>
-                        <td className="border border-[#e9e9e7] p-2.5 font-mono font-semibold text-[#3f5f8a] dark:border-neutral-600 dark:text-blue-300">{formatShare(result.total)}</td>
-                        <td className="border border-[#e9e9e7] p-2.5 font-mono font-semibold text-[#3f5f8a] dark:border-neutral-600 dark:text-blue-300">{formatShare(normalized)}</td>
+                        <td className="border border-[#e9e9e7] p-2.5 text-center font-mono font-semibold text-[#3f5f8a] dark:border-neutral-600 dark:text-blue-300">{formatShare(result.total)}</td>
+                        <td className="border border-[#e9e9e7] p-2.5 text-center font-mono font-semibold text-[#3f5f8a] dark:border-neutral-600 dark:text-blue-300">{formatShare(normalized)}</td>
                       </tr>
                     );
                   })}
@@ -461,10 +461,10 @@ export default function AcquisitionSumPanel({
                     <td className="border border-[#e9e9e7] p-2.5 font-bold text-[#504f4c] dark:border-neutral-600 dark:text-neutral-300">
                       {formatShare(totalShare)}
                     </td>
-                    <td className="border border-[#e9e9e7] p-2.5 font-bold text-[#504f4c] dark:border-neutral-600 dark:text-neutral-300">
+                    <td className="border border-[#e9e9e7] p-2.5 text-center font-bold text-[#504f4c] dark:border-neutral-600 dark:text-neutral-300">
                       기준 {formatShare(targetShare)}
                     </td>
-                    <td className="border border-[#e9e9e7] p-2.5 text-[12.5px] font-bold dark:border-neutral-600">
+                    <td className="border border-[#e9e9e7] p-2.5 text-center text-[12.5px] font-bold dark:border-neutral-600">
                       {totalShare.n === 0 && <span className="text-[#787774]">최종 생존 상속인이 없습니다.</span>}
                       {totalMatchesTarget && <span className="text-[#504f4c] dark:text-neutral-300">지분 합계가 일치합니다.</span>}
                       {totalShare.n > 0 && !totalMatchesTarget && <span className="text-red-500">지분 합계가 일치하지 않습니다.</span>}
