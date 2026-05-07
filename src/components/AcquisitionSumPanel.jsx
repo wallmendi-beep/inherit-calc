@@ -432,8 +432,8 @@ export default function AcquisitionSumPanel({
                   <tr>
                     <th className="w-[120px] border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">상속인</th>
                     <th className="border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">경로합산</th>
-                    <th className="w-[160px] border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">최종지분</th>
-                    <th className="w-[160px] border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">통분지분</th>
+                    <th className="w-[200px] border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">최종지분</th>
+                    <th className="w-[240px] border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">통분지분</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -447,8 +447,8 @@ export default function AcquisitionSumPanel({
                       >
                         <td className="truncate border border-[#e9e9e7] p-2.5 font-medium dark:border-neutral-600">{result.name}</td>
                         <td className="truncate border border-[#e9e9e7] p-2.5 font-medium text-[#504f4c] dark:border-neutral-600 dark:text-neutral-300" title={renderFormula(result)}>{renderFormula(result)}</td>
-                        <td className="border border-[#e9e9e7] p-2.5 font-semibold text-[#3f5f8a] dark:border-neutral-600 dark:text-blue-300">{formatShare(result.total)}</td>
-                        <td className="border border-[#e9e9e7] p-2.5 font-semibold text-[#3f5f8a] dark:border-neutral-600 dark:text-blue-300">{formatShare(normalized)}</td>
+                        <td className="border border-[#e9e9e7] p-2.5 font-mono font-semibold text-[#3f5f8a] dark:border-neutral-600 dark:text-blue-300">{formatShare(result.total)}</td>
+                        <td className="border border-[#e9e9e7] p-2.5 font-mono font-semibold text-[#3f5f8a] dark:border-neutral-600 dark:text-blue-300">{formatShare(normalized)}</td>
                       </tr>
                     );
                   })}

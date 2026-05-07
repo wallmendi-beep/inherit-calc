@@ -3,7 +3,8 @@ import {
   IconCalculator, IconUserPlus, IconSave, IconFolderOpen,
   IconPrinter, IconNetwork, IconTable, IconList,
   IconReset, IconFileText, IconXCircle, IconX, IconChevronRight,
-  IconSun, IconMoon, IconUndo, IconRedo, IconUserGroup, IconTrash2, IconSparkles
+  IconSun, IconMoon, IconUndo, IconRedo, IconUserGroup, IconTrash2, IconSparkles,
+  IconCircleHelp
 } from './components/Icons';
 import PrintReport from './components/PrintReport';
 import SummaryPanel from './components/SummaryPanel';
@@ -17,6 +18,7 @@ import PersonEditModal from './components/PersonEditModal';
 import SmartGuidePanel from './components/SmartGuidePanel';
 import SidebarTreePanel from './components/SidebarTreePanel';
 import TopToolbar from './components/TopToolbar';
+import TabHelpDrawer, { getHelpTopicForTab } from './components/TabHelpDrawer';
 import { math, getRelStr } from './engine/utils';
 import { AI_PROMPT } from './utils/aiPromptUtf8';
 import { updateDeathInfo, updateHistoryInfo, updateRelationInfo, setHojuStatus, setPrimaryHojuSuccessor, applyNodeUpdates, appendQuickHeirs } from './utils/treeDomain';
@@ -127,6 +129,8 @@ function App() {
   const [changeLog, setChangeLog] = useState([]);
   const [treeViewMode, setTreeViewMode] = useState('flow');
   const [summaryViewMode, setSummaryViewMode] = useState('sum');
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [helpTopic, setHelpTopic] = useState('input');
   const [navigationSignal, setNavigationSignal] = useState(null);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1.0);
@@ -527,6 +531,10 @@ function App() {
 
     handleNavigate(targetId);
   };
+  const openHelpForActiveTab = () => {
+    setHelpTopic(getHelpTopicForTab(activeTab));
+    setIsHelpOpen(true);
+  };
   const dismissGuide = (key) => {
     setHiddenGuideKeys(prev => {
       const next = new Set(prev);
@@ -738,6 +746,12 @@ function App() {
   return (
     <>
       <PrintReport tree={tree} activeTab={activeTab} activeDeceasedTab={activeDeceasedTab} finalShares={finalShares} calcSteps={calcSteps} amountCalculations={amountCalculations} propertyValue={propertyValue} summaryViewMode={summaryViewMode} />
+      <TabHelpDrawer
+        isOpen={isHelpOpen}
+        onClose={() => setIsHelpOpen(false)}
+        activeTopic={helpTopic}
+        onTopicChange={setHelpTopic}
+      />
       <div className="w-full min-h-screen relative flex flex-col items-start pb-24 transition-colors duration-200 bg-[#f7f7f5] dark:bg-neutral-900 min-w-[1280px] print:hidden">
         <SmartGuidePanel
           showNavigator={showNavigator} setShowNavigator={setShowNavigator} navigatorWidth={navigatorWidth}
@@ -790,12 +804,22 @@ function App() {
                 ['tree', 'summary'].includes(activeTab) ? 'w-full px-2' : 'w-[1080px] min-w-[1080px] px-6'
                 }`}
             >
-              <div className="flex items-end pl-[48px] gap-1 no-print relative z-20">
-                {['input', 'tree', 'summary'].map(id => (
-                  <button key={id} onClick={() => handleTabChange(id)} className={`px-6 py-2.5 rounded-t-xl font-bold text-[14px] border-2 border-b-0 transition-all ${activeTab === id ? 'bg-white dark:bg-neutral-800 border-[#37352f] text-[#37352f]' : 'bg-transparent border-transparent text-[#9b9a97]'}`}>
-                    {id === 'input' ? '데이터 입력' : id === 'tree' ? '사건 검토' : '상속지분'}
-                  </button>
-                ))}
+              <div className="flex items-end justify-between pl-[48px] pr-2 no-print relative z-20">
+                <div className="flex items-end gap-1">
+                  {['input', 'tree', 'summary'].map(id => (
+                    <button key={id} onClick={() => handleTabChange(id)} className={`px-6 py-2.5 rounded-t-xl font-bold text-[14px] border-2 border-b-0 transition-all ${activeTab === id ? 'bg-white dark:bg-neutral-800 border-[#37352f] text-[#37352f]' : 'bg-transparent border-transparent text-[#9b9a97]'}`}>
+                      {id === 'input' ? '데이터 입력' : id === 'tree' ? '사건 검토' : '상속지분'}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={openHelpForActiveTab}
+                  title="현재 탭 도움말"
+                  className="mb-1 inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#dcdcd9] bg-white text-[#787774] shadow-sm transition-colors hover:border-[#b8b8b4] hover:bg-[#f7f7f5] hover:text-[#37352f] dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700 dark:hover:text-neutral-100"
+                >
+                  <IconCircleHelp className="h-4 w-4" />
+                </button>
               </div>
               <div className={`border border-[#e9e9e7] dark:border-neutral-600 rounded-xl shadow-sm min-h-[600px] bg-white dark:bg-neutral-800 flex flex-col relative z-0 ${['tree', 'summary'].includes(activeTab) ? 'p-5' : 'p-10'}`}>
                 {activeTab === 'input' && (
