@@ -1,6 +1,7 @@
 ﻿import React from 'react';
 import { getRelStr, formatKorDate, math } from '../engine/utils';
 import { extractHojuBonusNotices, buildHojuBonusPersonMap } from '../utils/hojuBonusNotice';
+import { formatExclusionLabel, formatModifierLabel } from '../utils/judgmentLabels';
 
 const buildIssueMap = (issues = []) => {
   const map = new Map();
@@ -111,11 +112,11 @@ export default function CalcPanelFinal({ calcSteps, issues = [], handleNavigate,
                     const hojuApplied = hojuBonusMap.has(personKey);
                     const memo = [];
 
-                    if (dist.ex) memo.push(`상속권 없음(${dist.ex})`);
+                    if (dist.ex) memo.push(`상속권 없음(${formatExclusionLabel(dist.ex, dist.h, step.dec?.deathDate)})`);
                     if (dist.h.isDeceased && !(dist.ex && (dist.ex.includes('후사망') || dist.ex.includes('선사망')))) {
                       memo.push('망인');
                     }
-                    if (dist.mod) memo.push(...dist.mod.split(',').map((item) => item.trim()).filter(Boolean));
+                    if (dist.mod) memo.push(formatModifierLabel(dist.mod, dist.h));
                     personIssues.forEach((issue) => memo.push(issue.text));
 
                     // 통분된 값 계산

@@ -117,6 +117,7 @@ export const collectImportValidationIssues = (tree) => {
     issues.push({
       personId: first.personId || '',
       nodeId: first.nodeId || 'root',
+      nodeIds: entries.map((entry) => entry.nodeId).filter(Boolean),
       targetTabId: first.personId || first.nodeId || 'root',
       personName: name,
       severity: 'warning',

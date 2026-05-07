@@ -1,5 +1,11 @@
 import React from 'react';
 import { getLawEra, getRelStr, isBefore, math } from '../engine/utils';
+import {
+  formatExclusionLabel,
+  formatJudgmentLabel,
+  formatJudgmentSummary,
+  formatModifierLabel,
+} from '../utils/judgmentLabels';
 
 const NODE_W = 220;
 const NODE_H = 42;
@@ -32,6 +38,20 @@ const getContinuationEventDate = (step, heir) => {
 
 const shareText = (n, d) => `${n || 0}/${d || 1}`;
 const nodeShareText = (share) => (share ? `${share.n || 0}/${share.d || 1}` : '-');
+const getEventCaseLabel = (node) => {
+  const step = node?.step || {};
+  const caseNo = Number.isInteger(step.canonicalIndex) ? step.canonicalIndex + 1 : 1;
+  const sourceCount = step.visualSourceCount || 1;
+  if (sourceCount > 1) return `제${caseNo}사건 · 흐름 ${step.visualSourceIndex + 1}`;
+  return `제${caseNo}사건`;
+};
+const getEventFlowLine = (node) => {
+  const step = node?.step || {};
+  const from = step.parentDecName;
+  const to = step.dec?.name;
+  if (!from || !to) return '';
+  return `${from} → ${to} · ${nodeShareText(node?.share)}`;
+};
 const reportHeaderShareText = (share) => {
   if (!share) return '-';
   return `${share.d || 1}분의 ${share.n || 0}`;
@@ -58,17 +78,14 @@ const getEdgeShare = (dist) => ({
 const formatModifierShort = (dist) => {
   if (!dist) return '-';
   if (dist.ex) return '상속권 없음';
-  const text = dist.mod || '';
-  if (!text) {
-    if (dist.h?.relation === 'son' || dist.h?._origRelation === 'son') return '';
-    return dist.h?.isSameRegister === false ? '비동일가적' : '동일가적';
-  }
+  const text = formatModifierLabel(dist.mod, dist.h);
+  if (!text) return '';
   if (text.includes('호주')) return '호주상속';
-  if (text.includes('처') && text.includes('가산')) return '처(가산)';
-  if (text.includes('처') && text.includes('감산')) return '처(감산)';
-  if (text.includes('출가') && text.includes('감산')) return '출가감산';
-  if (text.includes('남편') && text.includes('가산')) return '남편(가산)';
-  if (text.includes('여자') && text.includes('감산')) return '여자감산';
+  if (text.includes('처') && text.includes('가산')) return '처 가산';
+  if (text.includes('처') && text.includes('감산')) return '처 감산';
+  if (text.includes('비동일가적') && text.includes('감산')) return '비동일가적 감산';
+  if (text.includes('남편') && text.includes('가산')) return '남편 가산';
+  if (text.includes('동일가적 여자') && text.includes('감산')) return '여자 감산';
   if (text.includes('가산')) return '가산';
   if (text.includes('감산')) return '감산';
   return text.replace(/\s*\(.*\)$/, '');
@@ -103,38 +120,27 @@ const findEdgeForDist = (eventNodeId, dist, graph) => {
 };
 
 const buildNoRightSummary = (dist, eventDate) => {
-  const person = dist?.h || {};
-  const name = person.name || '이름 미상';
-  if (person.remarriageDate) return `[${name}] ${formatKoreanDate(person.remarriageDate)} 재혼으로 상속권 없음`;
-  if (person.marriageDate && (dist?.ex || '').includes('혼인')) return `[${name}] ${formatKoreanDate(person.marriageDate)} 혼인으로 상속권 없음`;
-  if (person.deathDate && eventDate && isBefore(person.deathDate, eventDate)) return `[${name}] ${formatKoreanDate(person.deathDate)} 사망으로 상속권 없음`;
-  if (dist?.ex) return `[${name}] ${dist.ex}`;
-  return `[${name}] 상속권 없음`;
+  return formatJudgmentSummary(dist, eventDate);
 };
 
 const getRawExclusionReason = (person, eventDate) => {
   if (!person) return '';
-  if (person.exclusionOption === 'renounce') return '상속포기로 상속권 없음';
-  if (person.exclusionOption === 'remarried') {
-    const date = formatKoreanDate(person.remarriageDate);
-    return `${date ? `${date} ` : ''}재혼으로 상속권 없음`;
-  }
-  if (person.exclusionOption === 'blocked_husband_substitution') return '구민법상 사위 대습상속권 없음';
-  if (person.exclusionOption === 'lost') return '상속권 상실로 상속권 없음';
-  if (person.exclusionOption === 'disqualified') return '상속결격으로 상속권 없음';
-  if (person.isExcluded && person.exclusionOption && person.exclusionOption !== 'predeceased') return '상속권 없음';
+  if (person.exclusionOption === 'renounce') return formatExclusionLabel('', person, eventDate);
+  if (person.exclusionOption === 'remarried') return formatExclusionLabel('', person, eventDate);
+  if (person.exclusionOption === 'blocked_husband_substitution') return formatExclusionLabel('', person, eventDate);
+  if (person.exclusionOption === 'lost') return formatExclusionLabel('', person, eventDate);
+  if (person.exclusionOption === 'disqualified') return formatExclusionLabel('', person, eventDate);
+  if (person.isExcluded && person.exclusionOption && person.exclusionOption !== 'predeceased') return formatExclusionLabel('', person, eventDate);
   if (['wife', 'husband', 'spouse'].includes(person.relation)) {
     if (person.divorceDate && eventDate && !isBefore(eventDate, person.divorceDate)) {
-      const date = formatKoreanDate(person.divorceDate);
-      return `${date ? `${date} ` : ''}이혼으로 상속권 없음`;
+      return formatExclusionLabel('', person, eventDate);
     }
     if (person.remarriageDate && eventDate && !isBefore(eventDate, person.remarriageDate)) {
-      const date = formatKoreanDate(person.remarriageDate);
-      return `${date ? `${date} ` : ''}재혼으로 상속권 없음`;
+      return formatExclusionLabel('', person, eventDate);
     }
   }
   if (person.isExcluded && person.exclusionOption === 'predeceased' && person.deathDate && eventDate && isBefore(person.deathDate, eventDate)) {
-    return `${formatKoreanDate(person.deathDate)} 사망으로 상속권 없음`;
+    return formatExclusionLabel('', person, eventDate);
   }
   return '';
 };
@@ -168,28 +174,15 @@ const buildReportRows = (reportNode, eventDate) => {
 };
 
 const buildModifierSummary = (dist) => {
-  const person = dist?.h || {};
-  const name = person.name || '이름 미상';
-  const text = dist?.mod || '';
-  if (!text) return '';
-  if (text.includes('출가') || (person.isSameRegister === false && text.includes('감산'))) {
-    const date = formatKoreanDate(person.marriageDate);
-    return `[${name}] ${date ? `${date} ` : ''}출가로 감산`;
-  }
-  if (text.includes('호주')) return `[${name}] 호주상속으로 가산`;
-  if (text.includes('처') && text.includes('가산')) return `[${name}] 처 지위로 가산`;
-  if (text.includes('처') && text.includes('감산')) return `[${name}] 처 지위로 감산`;
-  if (text.includes('남편') && text.includes('가산')) return `[${name}] 남편 지위로 가산`;
-  if (text.includes('가산')) return `[${name}] 가산`;
-  if (text.includes('감산')) return `[${name}] 감산`;
-  return `[${name}] ${text}`;
+  if (!dist?.mod) return '';
+  return formatJudgmentSummary(dist);
 };
 
 const buildContinuationSummary = (edge) => {
   const person = edge?.dist?.h || {};
   const name = person.name || '이름 미상';
   const date = formatKoreanDate(person.deathDate);
-  return `[${name}] ${date ? `${date} ` : ''}사망으로 ${edge.label}`;
+  return [name, date ? `${date} 사망` : '', edge.label].filter(Boolean).join(' · ');
 };
 
 const safeFilePart = (value) => String(value || '상속마인드맵').replace(/[\\/:*?"<>|]/g, '').trim() || '상속마인드맵';
@@ -432,7 +425,7 @@ const sameShare = (leftN, leftD, rightN, rightD) => (
 const buildVisualStepEntries = (calcSteps = []) => {
   const entries = [];
 
-  calcSteps.filter((step) => step?.dec).forEach((step) => {
+  calcSteps.filter((step) => step?.dec).forEach((step, stepIndex) => {
     const sourceBreakdowns = Array.isArray(step.sourceBreakdowns) ? step.sourceBreakdowns : [];
     const activeDists = (step.dists || []).filter((dist) => !dist.ex && dist.n > 0);
     const cardDenom = getCommonDenominator(activeDists);
@@ -442,7 +435,9 @@ const buildVisualStepEntries = (calcSteps = []) => {
         ...step,
         dists: step.dists || [],
         cardDenom: getCommonDenominator((step.dists || []).filter((dist) => !dist.ex && dist.n > 0)),
+        canonicalIndex: stepIndex,
         visualSourceIndex: 0,
+        visualSourceCount: 1,
       };
       entries.push({ step: visualStep, index: entries.length, id: getStepKey(visualStep, entries.length) });
       return;
@@ -478,7 +473,9 @@ const buildVisualStepEntries = (calcSteps = []) => {
         parentDecName: breakdown.from || step.parentDecName,
         dists,
         cardDenom,
+        canonicalIndex: stepIndex,
         visualSourceIndex: sourceIndex,
+        visualSourceCount: sourceBreakdowns.length,
         visualSourceKey: `${breakdown.from || step.parentDecName || ''}:${breakdown.inN || 0}/${breakdown.inD || 1}:${breakdown.inheritedDate || ''}:${breakdown.distributionDate || ''}`,
       };
       entries.push({ step: visualStep, index: entries.length, id: getStepKey(visualStep, entries.length) });
@@ -766,7 +763,7 @@ const ReportPanel = ({ node, graph, onJump, reviewContext, onCompleteReview, onO
   const reasonRows = tableRows.filter((dist) => dist.ex || dist.mod);
 
   return (
-    <aside className="hover-scrollbar z-20 max-h-[calc(100vh-190px)] w-[390px] shrink-0 self-stretch overflow-y-auto border-r border-[#e9e9e7] bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
+    <aside className="hover-scrollbar z-20 w-[390px] shrink-0 self-stretch overflow-y-auto border-r border-[#e9e9e7] bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-900">
       <div className="sticky top-0 z-10 border-b border-[#e9e9e7] bg-white/95 px-4 py-3 backdrop-blur dark:border-neutral-700 dark:bg-neutral-900/95">
         <div className="flex items-center justify-between gap-3">
           <div className="text-[12px] font-black tracking-[0.08em] text-[#3b5f8a] dark:text-blue-300">사건 보고서</div>
@@ -823,8 +820,8 @@ const ReportPanel = ({ node, graph, onJump, reviewContext, onCompleteReview, onO
         {isEvent && (
           <section>
             <div className="mb-2 text-[12px] font-black text-[#55534d] dark:text-neutral-300">사건 관계인</div>
-            <div className="overflow-hidden rounded-lg border border-[#e9e9e7] dark:border-neutral-700">
-              <table className="w-full border-collapse text-left">
+            <div className="hover-scrollbar overflow-x-auto rounded-lg border border-[#e9e9e7] dark:border-neutral-700">
+              <table className="min-w-[400px] w-full border-collapse text-left">
                 <thead className="bg-[#fafaf9] text-[10px] font-black text-[#787774] dark:bg-neutral-800 dark:text-neutral-400">
                   <tr>
                     <th className="px-2 py-2">성명</th>
@@ -841,7 +838,7 @@ const ReportPanel = ({ node, graph, onJump, reviewContext, onCompleteReview, onO
                     const displayShare = dist.n > 0 ? normalizeShare({ n: dist.n, d: dist.d }, tableDenom) : null;
                     return (
                       <tr key={`${personKey || index}-${index}`}>
-                        <td className="px-2 py-2">
+                        <td className="min-w-[88px] px-2 py-2">
                           {canJump ? (
                             <button type="button" onClick={() => onJump(related.to)} className="font-black text-[#3b5f8a] hover:underline dark:text-blue-300">
                               {dist.h?.name || '이름 미상'}
@@ -850,9 +847,9 @@ const ReportPanel = ({ node, graph, onJump, reviewContext, onCompleteReview, onO
                             <span className="font-black text-[#37352f] dark:text-neutral-100">{dist.h?.name || '이름 미상'}</span>
                           )}
                         </td>
-                        <td className="px-2 py-2 text-[#787774] dark:text-neutral-300">{getRelStr(dist.h?.relation, eventDate) || dist.h?.relation || '-'}</td>
-                        <td className="px-2 py-2 font-black text-[#3b5f8a] dark:text-blue-300">{displayShare ? shareText(displayShare.n, displayShare.d) : '-'}</td>
-                        <td className="px-2 py-2">
+                        <td className="min-w-[62px] px-2 py-2 text-[#787774] dark:text-neutral-300">{getRelStr(dist.h?.relation, eventDate) || dist.h?.relation || '-'}</td>
+                        <td className="min-w-[70px] px-2 py-2 font-black text-[#3b5f8a] dark:text-blue-300">{displayShare ? shareText(displayShare.n, displayShare.d) : '-'}</td>
+                        <td className="min-w-[150px] px-2 py-2">
                           {dist.ex ? (
                             <Tag tone="rose">{formatModifierShort(dist)}</Tag>
                           ) : dist.mod ? (
@@ -894,7 +891,7 @@ const ReportPanel = ({ node, graph, onJump, reviewContext, onCompleteReview, onO
             <div className="mb-2 text-[12px] font-black text-[#55534d] dark:text-neutral-300">판정 요약</div>
             <div className="space-y-1.5">
               {reasonRows.map((dist, index) => (
-                <div key={`${getPersonKey(dist.h) || index}-reason`} className="text-[12px] leading-relaxed text-[#5d5b57] dark:text-neutral-300">
+                <div key={`${getPersonKey(dist.h) || index}-reason`} className="break-keep text-[12px] leading-relaxed text-[#5d5b57] dark:text-neutral-300">
                   <span className="font-black text-[#37352f] dark:text-neutral-100">[{dist.h?.name || '이름 미상'}]</span>{' '}
                   {dist.ex || dist.mod}
                 </div>
@@ -948,7 +945,7 @@ const FlowTablePanel = ({ graph, selectedId, onSelect }) => {
   }
 
   return (
-    <section className="flex max-h-[calc(100vh-190px)] min-h-[640px] overflow-hidden rounded-xl border border-[#e9e9e7] bg-white text-[#37352f] dark:border-neutral-600 dark:bg-neutral-900/95 dark:text-neutral-200">
+    <section className="flex min-h-[640px] overflow-visible rounded-xl border border-[#e9e9e7] bg-white text-[#37352f] dark:border-neutral-600 dark:bg-neutral-900/95 dark:text-neutral-200">
       <aside className="hover-scrollbar w-[340px] shrink-0 overflow-y-auto border-r border-[#e9e9e7] bg-[#fafaf9] p-4 dark:border-neutral-700 dark:bg-neutral-900">
         <div>
           <div className="text-[12px] font-black tracking-[0.08em] text-[#3b5f8a] dark:text-blue-300">상속 흐름</div>
@@ -956,8 +953,9 @@ const FlowTablePanel = ({ graph, selectedId, onSelect }) => {
             사건별 분배와 다음 상속으로 이어지는 지분 이동을 단계 순서로 확인합니다.
           </p>
           <div className="mt-4 space-y-2">
-            {eventNodes.map((node, index) => {
+            {eventNodes.map((node) => {
               const active = node.id === selectedEventId;
+              const flowLine = getEventFlowLine(node);
               return (
                 <button
                   key={node.id}
@@ -971,12 +969,12 @@ const FlowTablePanel = ({ graph, selectedId, onSelect }) => {
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-black text-[#9b9a97] dark:text-neutral-400">제{index + 1}사건</span>
+                    <span className="text-[11px] font-black text-[#9b9a97] dark:text-neutral-400">{getEventCaseLabel(node)}</span>
                     <span className="text-[10px] font-black">{node.subtitle}</span>
                   </div>
                   <div className="mt-1 truncate text-[13px] font-black">망 {node.step?.dec?.name || '이름 미상'}</div>
                   <div className="mt-1 text-[11px] font-bold text-[#787774] dark:text-neutral-400">
-                    {nodeShareText(node.share)} · {lawEraLabel(node.lawEra)}
+                    {flowLine ? `${flowLine} · ` : ''}{lawEraLabel(node.lawEra)}
                   </div>
                 </button>
               );
@@ -994,13 +992,14 @@ const FlowTablePanel = ({ graph, selectedId, onSelect }) => {
         </div>
 
         <div className="space-y-5">
-          {eventNodes.map((node, index) => {
+          {eventNodes.map((node) => {
             const eventDate = getStepEventDate(node.step);
             const tableRows = buildReportRows(node, eventDate);
             const activeDists = tableRows.filter((dist) => !dist.ex && dist.n > 0);
             const tableDenom = getCommonDenominator(activeDists);
             const connectedEventEdges = getConnectedEventEdges(node, graph);
             const active = node.id === selectedEventId;
+            const flowLine = getEventFlowLine(node);
 
             return (
               <section
@@ -1014,9 +1013,12 @@ const FlowTablePanel = ({ graph, selectedId, onSelect }) => {
               >
                 <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3 border-b border-[#efeeeb] pb-2 dark:border-neutral-700">
                   <div className="flex flex-wrap items-baseline gap-3">
-                    <span className="text-[11px] font-black text-[#9b9a97] dark:text-neutral-400">제{index + 1}사건</span>
+                    <span className="text-[11px] font-black text-[#9b9a97] dark:text-neutral-400">{getEventCaseLabel(node)}</span>
                     <span className="text-[15px] font-black text-[#37352f] dark:text-neutral-100">망 {node.step?.dec?.name || '이름 미상'}</span>
                     <span className="text-[12px] font-bold text-[#787774] dark:text-neutral-400">{formatKoreanDate(eventDate) || '사망일 미상'}</span>
+                    {flowLine && (
+                      <span className="text-[12px] font-bold text-[#5d5b57] dark:text-neutral-300">흐름: {flowLine}</span>
+                    )}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <Tag tone="blue">{nodeShareText(node.share)}</Tag>
@@ -1062,12 +1064,12 @@ const FlowTablePanel = ({ graph, selectedId, onSelect }) => {
                                   onClick={() => handleSelect(relatedNode.id)}
                                   className="ml-2 text-[11px] font-black text-[#3b5f8a] hover:underline dark:text-blue-300"
                                 >
-                                  제{eventNodes.findIndex((item) => item.id === relatedNode.id) + 1}사건
+                                  {getEventCaseLabel(relatedNode)}
                                 </button>
                               )}
                             </td>
                             <td className="border border-[#e9e9e7] p-2.5 text-[12.5px] font-bold text-[#504f4c] dark:border-neutral-600 dark:text-neutral-300">
-                              {dist.ex || dist.mod || formatModifierShort(dist) || '균분'}
+                              {formatJudgmentLabel(dist, eventDate)}
                             </td>
                           </tr>
                         );
@@ -1077,15 +1079,18 @@ const FlowTablePanel = ({ graph, selectedId, onSelect }) => {
                 </div>
 
                 {connectedEventEdges.length > 0 && (
-                  <div className="mt-3 space-y-1.5">
+                  <div className="mt-3 border-t border-[#efeeeb] pt-2 dark:border-neutral-700">
+                    <div className="mb-1.5 text-[11px] font-black text-[#9b9a97] dark:text-neutral-400">후속 흐름</div>
+                    <div className="space-y-1">
                     {connectedEventEdges.map((edge, edgeIndex) => {
                       const target = graph.nodes.get(edge.to);
                       return (
-                        <div key={`${node.id}-next-${edgeIndex}`} className="rounded-lg border border-[#d7e5f9] bg-[#f0f6ff] px-3 py-2 text-[12px] font-bold text-[#3b5f8a] dark:border-blue-900/40 dark:bg-blue-900/30 dark:text-blue-300">
-                          {buildContinuationSummary(edge)} · {nodeShareText(target?.share)} 지분이 다음 사건으로 이어집니다.
+                        <div key={`${node.id}-next-${edgeIndex}`} className="text-[12px] font-bold text-[#6f6d68] dark:text-neutral-300">
+                          {buildContinuationSummary(edge)} · {nodeShareText(target?.share)}
                         </div>
                       );
                     })}
+                    </div>
                   </div>
                 )}
               </section>
@@ -1305,7 +1310,7 @@ export default function TreePanel({
   const canvas = (
     <div
       ref={shellRef}
-      className="relative min-h-[760px] flex-1 overflow-hidden bg-[#f7f7f5] dark:bg-neutral-950"
+      className="relative flex-1 overflow-hidden bg-[#f7f7f5] dark:bg-neutral-950"
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -1375,7 +1380,7 @@ export default function TreePanel({
   );
 
   return (
-    <div className="relative flex flex-row items-stretch overflow-visible rounded-xl border border-[#e9e9e7] bg-[#f7f7f5] dark:border-neutral-600 dark:bg-neutral-900">
+    <div className="relative flex min-h-[520px] flex-row items-stretch overflow-visible rounded-xl border border-[#e9e9e7] bg-[#f7f7f5] dark:border-neutral-600 dark:bg-neutral-900">
       {report}
       {canvas}
       <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2">

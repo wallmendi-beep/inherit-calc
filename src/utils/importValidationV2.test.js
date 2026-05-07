@@ -56,6 +56,7 @@ describe('collectImportValidationIssues', () => {
 
     expect(issue).toBeTruthy();
     expect(issue.message).toContain('서로 다른 인물 2명');
+    expect(issue.nodeIds).toEqual(['same-name-1', 'same-name-2']);
   });
 
   it('does not warn when repeated same names share the same personId', () => {

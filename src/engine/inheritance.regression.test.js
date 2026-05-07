@@ -147,7 +147,7 @@ describe('inheritance regression guardrails', () => {
         decedent: 'KimGapSu',
         lawEra: '1960',
         dists: [
-          { name: 'LeeSoonJa', share: '2/13', mod: '처 감산 (직계비속의 1/2)', ex: '' },
+          { name: 'LeeSoonJa', share: '2/13', mod: '처 감산 (남자의 1/2)', ex: '' },
           { name: 'KimDaeHan', share: '6/13', mod: '호주상속 5할 가산', ex: '' },
           { name: 'KimMinGuk', share: '4/13', mod: '', ex: '' },
           { name: 'KimYoungHee', share: '1/13', mod: '출가녀 감산 (남자의 1/4)', ex: '' },

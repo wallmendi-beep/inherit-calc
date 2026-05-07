@@ -1,4 +1,9 @@
+import { kimHyeokjoAnonymizedTestData } from './kimHyeokjoAnonymizedTestData';
+
 export const getInitialTree = () => {
+  if (import.meta.env.VITE_TEST_DATA === 'kimhyeokjo') {
+    return structuredClone(kimHyeokjoAnonymizedTestData);
+  }
   return getEmptyTree();
 };
 

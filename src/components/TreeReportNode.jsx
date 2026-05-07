@@ -112,7 +112,7 @@ const TreeReportNode = ({ node, level, treeToggleSignal, rootDeathDate, onDelete
               <>
                 {lawEra === '1960' && node.relation === 'wife' && (
                   <span className="px-1.5 py-0.5 rounded border border-[#e5e5e5] bg-white text-[11px] text-[#787774] whitespace-nowrap">
-                    처 x 1/2
+                    처 감산
                   </span>
                 )}
                 {node.relation === 'son' && node.isHoju && (
@@ -124,10 +124,10 @@ const TreeReportNode = ({ node, level, treeToggleSignal, rootDeathDate, onDelete
                   let m = '';
                   let l = '';
                   if (lawEra === '1960') {
-                    l = node.isSameRegister !== false ? '여자' : '출가';
+                    l = node.isSameRegister !== false ? '동일가적녀' : '비동일가적';
                     m = node.isSameRegister !== false ? 'x 1/2' : 'x 1/4';
                   } else if (lawEra === '1979' && node.isSameRegister === false) {
-                    l = '출가';
+                    l = '비동일가적';
                     m = 'x 1/4';
                   }
                   return m ? (

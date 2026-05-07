@@ -1,6 +1,11 @@
 import React, { useMemo } from 'react';
 import { getLawEra, getRelStr, formatKorDate, isBefore, math } from '../engine/utils';
 import { collectMissingHeirNames } from '../utils/missingHeirStatus';
+import { formatExclusionLabel, formatJudgmentLabel, formatModifierLabel, formatRegisterNote } from '../utils/judgmentLabels';
+
+const formatShare = (share) => `${share?.n ?? 0}/${share?.d ?? 1}`;
+const CIRCLED_NUMBERS = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩', '⑪', '⑫', '⑬', '⑭', '⑮', '⑯', '⑰', '⑱', '⑲', '⑳'];
+const formatPathNo = (index) => CIRCLED_NUMBERS[index] || `${index + 1}`;
 
 const lawLabel = (era) => {
   if (era === '1960') return '구민법(1960년 제정)';
@@ -25,7 +30,23 @@ const exclusionDict = {
   remarried:                    '재혼으로 인한 대습권 소멸',
   blocked_husband_substitution: '구민법상 사위 대습 불가',
 };
-const translateExclusion = (val) => exclusionDict[val] || val || '제외';
+const translateExclusion = (val, person, eventDate) => (
+  formatExclusionLabel(val, person, eventDate) || exclusionDict[val] || val || '제외'
+);
+
+const getGroupDenom = (shares = []) => shares.reduce((acc, share) => math.lcm(acc || 1, share?.d || 1), 1) || 1;
+const normalizeShare = (share, denominator) => {
+  if (!share || !denominator || !share.d) return share;
+  const scale = denominator / share.d;
+  return Number.isInteger(scale) ? { n: share.n * scale, d: denominator } : share;
+};
+const addShares = (sources = []) => sources.reduce(
+  (sum, source) => {
+    const [n, d] = math.add(sum.n, sum.d, source.n, source.d);
+    return { n, d };
+  },
+  { n: 0, d: 1 }
+);
 
 const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculations, summaryViewMode = 'structure' }) => {
   const reportTitle = {
@@ -54,6 +75,48 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
     };
     return flatten(tree);
   }, [tree]);
+
+  const acquisitionPrintRows = useMemo(() => {
+    if (!finalShares || !Array.isArray(calcSteps)) return [];
+    const finalMap = new Map();
+    const registerFinalShare = (share) => {
+      const key = share?.personId || share?.id;
+      if (!key || share?.isDeceased) return;
+      finalMap.set(key, { ...share, sources: [] });
+    };
+    (finalShares.direct || []).forEach(registerFinalShare);
+    (finalShares.subGroups || []).forEach((group) => (group.shares || []).forEach(registerFinalShare));
+
+    calcSteps.forEach((step, stepIndex) => {
+      (step.dists || []).forEach((dist) => {
+        if (dist.ex || dist.n <= 0) return;
+        const key = dist.h?.personId || dist.h?.id;
+        const row = finalMap.get(key);
+        if (!row) return;
+        row.sources.push({
+          stepIndex,
+          decName: step.dec?.name || '사건 미상',
+          n: dist.n,
+          d: dist.d,
+        });
+      });
+    });
+
+    return Array.from(finalMap.values()).map((row) => {
+      const sources = row.sources.length > 0 ? row.sources : [{ n: row.n, d: row.d }];
+      return {
+        ...row,
+        sources,
+        total: addShares(sources),
+      };
+    });
+  }, [calcSteps, finalShares]);
+
+  const acquisitionCommonDenom = useMemo(() => {
+    return acquisitionPrintRows.reduce((acc, row) => (
+      row?.total?.n > 0 ? math.lcm(acc || 1, row.total.d || 1) : acc
+    ), 1) || 1;
+  }, [acquisitionPrintRows]);
 
   return (
     <div className="hidden print:block w-full bg-white text-black font-sans text-[12px] leading-relaxed">
@@ -127,9 +190,9 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
                     {!h.marriageDate && !h.remarriageDate && !h.divorceDate && !h.restoreDate && '—'}
                   </td>
                   <td className="border border-black py-1.5 px-2 text-center text-[10px]">
-                    {h.isExcluded && <span className="text-red-600 font-bold">상속권 없음 ({translateExclusion(h.exclusionOption)})</span>}
+                    {h.isExcluded && <span className="text-red-600 font-bold">상속권 없음 ({translateExclusion(h.exclusionOption, h, tree.deathDate)})</span>}
                     {h.isHoju && <div className="text-blue-700 font-bold">호주상속인</div>}
-                    {h.isSameRegister === false && <div className="text-orange-600">비동일가적(출가)</div>}
+                    {h.isSameRegister === false && <div className="text-orange-600">{formatRegisterNote(h)}</div>}
                     {!h.isExcluded && !h.isHoju && h.isSameRegister !== false && '—'}
                   </td>
                 </tr>
@@ -151,6 +214,7 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
               const activeDists = (s.dists || []).filter(d => !d.ex && d.n > 0);
               const excludedDists = (s.dists || []).filter(d => (d.ex || d.n === 0) && d.h?.name);
               const innerLCM = activeDists.reduce((acc, d) => (d.sd ? math.lcm(acc, d.sd) : acc), 1);
+              const outerLCM = activeDists.reduce((acc, d) => (d.d ? math.lcm(acc, d.d) : acc), 1);
               return (
                 <div key={`tree-step-${i}`} className="break-inside-avoid">
                   <div className="mb-1.5 flex flex-wrap items-baseline gap-3 border-b-2 border-black pb-1">
@@ -180,13 +244,14 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
                           : '';
                         const innerScale = innerLCM && d.sd && innerLCM !== d.sd ? innerLCM / d.sd : 1;
                         const formula = `${s.inN}/${s.inD} × ${(d.sn || 0) * innerScale}/${innerLCM || d.sd || 1}`;
-                        const notes = [d.mod, continuationNote].filter(Boolean);
+                        const normalizedShare = normalizeShare({ n: d.n, d: d.d }, outerLCM);
+                        const notes = [formatModifierLabel(d.mod, d.h), continuationNote].filter(Boolean);
                         return (
                           <tr key={`a-${di}`} className="break-inside-avoid">
                             <td className="border border-black py-1.5 px-2 text-center font-bold">{d.h?.name}</td>
                             <td className="border border-black py-1.5 px-2 text-center">{getRelStr(d.h?.relation, s.dec?.deathDate)}</td>
                             <td className="border border-black py-1.5 px-2 text-center font-mono">{formula}</td>
-                            <td className="border border-black py-1.5 px-2 text-center font-bold">{d.n}/{d.d}</td>
+                            <td className="border border-black py-1.5 px-2 text-center font-bold">{formatShare(normalizedShare)}</td>
                             <td className="border border-black py-1.5 px-2 text-left">{notes.join('  ·  ') || '균분'}</td>
                           </tr>
                         );
@@ -197,7 +262,7 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
                           <td className="border border-black py-1.5 px-2 text-center">{getRelStr(d.h?.relation, s.dec?.deathDate)}</td>
                           <td className="border border-black py-1.5 px-2 text-center">—</td>
                           <td className="border border-black py-1.5 px-2 text-center">—</td>
-                          <td className="border border-black py-1.5 px-2 text-left text-[10px]">{translateExclusion(d.ex)}</td>
+                          <td className="border border-black py-1.5 px-2 text-left text-[10px]">{formatJudgmentLabel(d, s.dec?.deathDate)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -230,9 +295,9 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
                 <tbody>
                   {s.dists.map((d, di) => {
                     const notes = [];
-                    if (d.ex) notes.push(translateExclusion(d.ex));
+                    if (d.ex) notes.push(translateExclusion(d.ex, d.h, s.dec?.deathDate));
                     else if (d.h.isDeceased) notes.push('망인');
-                    if (d.mod) notes.push(d.mod);
+                    if (d.mod) notes.push(formatModifierLabel(d.mod, d.h));
                     return (
                       <tr key={di} className="break-inside-avoid">
                         <td className="border border-black py-1.5 px-2 text-center font-bold">{d.h.name}</td>
@@ -250,45 +315,88 @@ const PrintReport = ({ tree, activeTab, finalShares, calcSteps, amountCalculatio
         </div>
       )}
 
-      {/* 지분 요약 — 구조형 */}
-      {activeTab === 'summary' && summaryViewMode === 'structure' && finalShares && (
+      {/* 지분 요약 — 취득합산 */}
+      {activeTab === 'summary' && summaryViewMode === 'sum' && finalShares && (
         <div className="mb-8">
           <table className="w-full border-collapse border border-black text-[12px]">
             <thead className="bg-gray-100 text-center font-bold">
               <tr>
-                <th className="border border-black py-2 px-3 w-[40%]">상속인</th>
-                <th className="border border-black py-2 px-3 w-[30%]">{hasMissingHeir ? '산출 지분' : '법정 지분'}</th>
-                <th className="border border-black py-2 px-3 w-[30%]">{hasMissingHeir ? '산출 지분 (통분)' : '법정 지분 (통분)'}</th>
+                <th className="border border-black py-2 px-3 w-[16%]">상속인</th>
+                <th className="border border-black py-2 px-3">경로합산</th>
+                <th className="border border-black py-2 px-3 w-[22%]">최종지분</th>
+                <th className="border border-black py-2 px-3 w-[22%]">통분지분</th>
               </tr>
             </thead>
             <tbody>
-              {finalShares.direct && finalShares.direct.map(f => (
-                <tr key={f.id} className="break-inside-avoid">
-                  <td className="border border-black py-2 px-3 font-bold">
-                    {f.name} <span className="font-normal text-gray-600">[{getRelStr(f.relation, tree.deathDate)}]</span>
-                  </td>
-                  <td className="border border-black py-2 px-3 text-center">{f.n} / {f.d}</td>
-                  <td className="border border-black py-2 px-3 text-center font-bold">{f.un} / {f.ud}</td>
-                </tr>
-              ))}
-              {finalShares.subGroups && finalShares.subGroups.map((g, gi) => (
+              {acquisitionPrintRows.map((row) => {
+                const normalized = normalizeShare(row.total, acquisitionCommonDenom);
+                const formula = row.sources.map((source, index) => `${formatPathNo(index)} ${source.n}/${source.d}`).join(' + ');
+                return (
+                  <tr key={`acq-${row.personId || row.id}`} className="break-inside-avoid">
+                    <td className="border border-black py-2 px-3 font-bold">{row.name}</td>
+                    <td className="border border-black py-2 px-3 font-mono">{formula}</td>
+                    <td className="border border-black py-2 px-3 text-center font-bold">{formatShare(row.total)}</td>
+                    <td className="border border-black py-2 px-3 text-center font-bold">{formatShare(normalized)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* 지분 요약 — 최종지분표 */}
+      {activeTab === 'summary' && summaryViewMode !== 'sum' && finalShares && (
+        <div className="mb-8">
+          <table className="w-full border-collapse border border-black text-[12px]">
+            <thead className="bg-gray-100 text-center font-bold">
+              <tr>
+                <th className="border border-black py-2 px-3 w-[34%]">상속인</th>
+                <th className="border border-black py-2 px-3 w-[22%]">{hasMissingHeir ? '현재 지분' : '최종 지분'}</th>
+                <th className="border border-black py-2 px-3 w-[22%]">그룹통분 지분</th>
+                <th className="border border-black py-2 px-3 w-[22%]">전체통분 지분</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(() => {
+                const directDenom = getGroupDenom(finalShares.direct || []);
+                return finalShares.direct && finalShares.direct.map(f => {
+                  const groupShare = normalizeShare(f, directDenom);
+                  return (
+                  <tr key={f.id} className="break-inside-avoid">
+                    <td className="border border-black py-2 px-3 font-bold">
+                      {f.name} <span className="font-normal text-gray-600">[{getRelStr(f.relation, tree.deathDate)}]</span>
+                    </td>
+                    <td className="border border-black py-2 px-3 text-center">{f.n} / {f.d}</td>
+                    <td className="border border-black py-2 px-3 text-center font-bold">{formatShare(groupShare)}</td>
+                    <td className="border border-black py-2 px-3 text-center font-bold">{f.un} / {f.ud}</td>
+                  </tr>
+                );});
+              })()}
+              {finalShares.subGroups && finalShares.subGroups.map((g, gi) => {
+                const groupDenom = getGroupDenom(g.shares || []);
+                return (
                 <React.Fragment key={`sg-${gi}`}>
                   <tr className="bg-gray-50 break-inside-avoid">
-                    <td colSpan="3" className="border border-black py-1.5 px-3 font-bold text-gray-700">
+                    <td colSpan="4" className="border border-black py-1.5 px-3 font-bold text-gray-700">
                       [{g.ancestor.name}] {formatKorDate(g.ancestor.deathDate)} 사망 — 대습·재상속 지분
                     </td>
                   </tr>
-                  {g.shares.map(f => (
-                    <tr key={f.id} className="break-inside-avoid">
-                      <td className="border border-black py-2 px-3 pl-6 font-bold">
-                        └ {f.name} <span className="font-normal text-gray-600">[{getRelStr(f.relation, g.ancestor.deathDate)}]</span>
-                      </td>
-                      <td className="border border-black py-2 px-3 text-center">{f.n} / {f.d}</td>
-                      <td className="border border-black py-2 px-3 text-center font-bold">{f.un} / {f.ud}</td>
-                    </tr>
-                  ))}
+                  {g.shares.map(f => {
+                    const groupShare = normalizeShare(f, groupDenom);
+                    return (
+                      <tr key={f.id} className="break-inside-avoid">
+                        <td className="border border-black py-2 px-3 pl-6 font-bold">
+                          └ {f.name} <span className="font-normal text-gray-600">[{getRelStr(f.relation, g.ancestor.deathDate)}]</span>
+                        </td>
+                        <td className="border border-black py-2 px-3 text-center">{f.n} / {f.d}</td>
+                        <td className="border border-black py-2 px-3 text-center font-bold">{formatShare(groupShare)}</td>
+                        <td className="border border-black py-2 px-3 text-center font-bold">{f.un} / {f.ud}</td>
+                      </tr>
+                    );
+                  })}
                 </React.Fragment>
-              ))}
+              );})}
             </tbody>
           </table>
         </div>

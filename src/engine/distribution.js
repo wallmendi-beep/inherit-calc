@@ -87,7 +87,7 @@ export const assignHeirShare = (
     if (activeRank === 2) {
       return { shareWeight: 1.0, exclusionReason: '', modifierReason: '처 균분 (직계존속과 동순위)' };
     }
-    return { shareWeight: 0.5, exclusionReason: '', modifierReason: '처 감산 (직계비속의 1/2)' };
+    return { shareWeight: 0.5, exclusionReason: '', modifierReason: '처 감산 (남자의 1/2)' };
   }
 
   if (heir.relation === 'husband' || (heir.relation === 'spouse' && node.relation === 'daughter')) {

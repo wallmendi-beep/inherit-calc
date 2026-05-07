@@ -405,7 +405,7 @@ export const useSmartGuide = (tree, finalShares, activeTab, warnings, transitSha
       const key = `import-${issue.code}-${personKey}`;
       if (!uniqueGuidesMap.has(key)) {
         uniqueGuidesMap.set(key, {
-          id: issue.nodeId || personKey, uniqueKey: key, personId: issue.personId || '', targetTabId: issue.targetTabId || personKey, targetNodeId: issue.nodeId || undefined, targetNodeIds: [issue.nodeId].filter(Boolean), name: issue.personName || null,
+          id: issue.nodeId || personKey, uniqueKey: key, personId: issue.personId || '', targetTabId: issue.targetTabId || personKey, targetNodeId: issue.nodeId || undefined, targetNodeIds: (issue.nodeIds || [issue.nodeId]).filter(Boolean), name: issue.personName || null,
           code: issue.code,
           type: issue.severity === 'error' ? 'mandatory' : 'recommended',
           navigationMode: isLegacyHojuInputCase ? 'event' : 'auto',

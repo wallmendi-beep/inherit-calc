@@ -84,12 +84,14 @@ export default function SmartGuidePanel({
   showAutoCalcNotice = false,
   autoCalculatedNames = [],
   removeHeir = () => {},
+  confirmGuide = null,
 }) {
   const resolveGuideTarget = (item) =>
     item?.targetNodeId || item?.targetTabId || item?.personId || item?.id || null;
   const getGuideActionLabel = (guide) => {
     if (guide?.actionLabel) return guide.actionLabel;
-    if (guide?.code === 'duplicate-name' || guide?.code === 'duplicate-person') return '확인 (다른 사람)';
+    if (guide?.code === 'duplicate-name') return 'A/B 구분';
+    if (guide?.code === 'duplicate-person') return '검토 완료';
     if (guide?.navigationMode === 'event' && activeTab !== 'input') return '사건 열기';
     return '확인';
   };
@@ -307,6 +309,7 @@ export default function SmartGuidePanel({
                                     handleGuideNavigate(guide);
                                     return;
                                   }
+                                  if (confirmGuide && confirmGuide(guide)) return;
                                   toggleGuideChecked(guide.uniqueKey);
                                 }}
                               />
@@ -351,6 +354,7 @@ export default function SmartGuidePanel({
                               handleGuideNavigate(guide);
                               return;
                             }
+                            if (confirmGuide && confirmGuide(guide)) return;
                             toggleGuideChecked(guide.uniqueKey);
                           }}
                         />

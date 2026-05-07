@@ -67,6 +67,56 @@ const applySoftFocusCue = (element, duration = 1800) => {
   }, duration);
 };
 
+const stripDisambiguationLabel = (name) => String(name || '').trim().replace(/\([A-Z]+\)$/i, '').trim();
+
+const duplicateLabelForIndex = (index) => {
+  let value = index;
+  let label = '';
+  do {
+    label = String.fromCharCode(65 + (value % 26)) + label;
+    value = Math.floor(value / 26) - 1;
+  } while (value >= 0);
+  return label;
+};
+
+const applyDuplicateNameLabelsForGuide = (tree, guide) => {
+  const guideName = stripDisambiguationLabel(guide?.name || '');
+  const targetNodeIds = new Set(guide?.targetNodeIds || [guide?.targetNodeId].filter(Boolean));
+  if (!guideName || targetNodeIds.size === 0) return tree;
+
+  const targetPersonIds = new Map();
+  const collectTargets = (node) => {
+    if (!node) return;
+    const baseName = stripDisambiguationLabel(node.name);
+    if (baseName === guideName && targetNodeIds.has(node.id)) {
+      const personId = node.personId || node.id || '';
+      if (personId && !targetPersonIds.has(personId)) {
+        targetPersonIds.set(personId, targetPersonIds.size);
+      }
+    }
+    (node.heirs || []).forEach(collectTargets);
+  };
+
+  collectTargets(tree);
+  if (targetPersonIds.size <= 1) return tree;
+
+  const rename = (node) => {
+    if (!node) return node;
+    const personId = node.personId || node.id || '';
+    const baseName = stripDisambiguationLabel(node.name);
+    const shouldRename = baseName === guideName && targetPersonIds.has(personId);
+    return {
+      ...node,
+      name: shouldRename
+        ? `${guideName}(${duplicateLabelForIndex(targetPersonIds.get(personId))})`
+        : node.name,
+      heirs: (node.heirs || []).map(rename),
+    };
+  };
+
+  return rename(tree);
+};
+
 function App() {
 
   const { tree, setTree, setVault, undoTree, redoTree, canUndo, canRedo } = useVaultState();
@@ -368,6 +418,20 @@ function App() {
       else next.add(key);
       return next;
     });
+  };
+  const confirmGuide = (guide) => {
+    if (guide?.code !== 'duplicate-name') return false;
+    appendChangeLog({
+      type: 'resolveDuplicateName',
+      name: guide.name || '',
+      nodeIds: guide.targetNodeIds || [guide.targetNodeId].filter(Boolean),
+    });
+    setTree((prev) => {
+      const next = applyDuplicateNameLabelsForGuide(prev, guide);
+      setImportIssues(collectImportValidationIssues(next));
+      return next;
+    });
+    return true;
   };
   const handleGuideNavigate = (guide) => {
     if (!guide) return;
@@ -673,7 +737,7 @@ function App() {
 
   return (
     <>
-      <PrintReport tree={tree} activeTab={activeTab} activeDeceasedTab={activeDeceasedTab} finalShares={finalShares} calcSteps={calcSteps} amountCalculations={amountCalculations} propertyValue={propertyValue} />
+      <PrintReport tree={tree} activeTab={activeTab} activeDeceasedTab={activeDeceasedTab} finalShares={finalShares} calcSteps={calcSteps} amountCalculations={amountCalculations} propertyValue={propertyValue} summaryViewMode={summaryViewMode} />
       <div className="w-full min-h-screen relative flex flex-col items-start pb-24 transition-colors duration-200 bg-[#f7f7f5] dark:bg-neutral-900 min-w-[1280px] print:hidden">
         <SmartGuidePanel
           showNavigator={showNavigator} setShowNavigator={setShowNavigator} navigatorWidth={navigatorWidth}
@@ -686,7 +750,7 @@ function App() {
           globalMismatchReasons={guideInfo?.globalMismatchReasons} auditActionItems={guideInfo?.auditActionItems}
           repairHints={guideInfo?.repairHints} handleNavigate={handleNavigate} handleGuideNavigate={handleGuideNavigate}
           showAutoCalcNotice={guideInfo?.showAutoCalcNotice} autoCalculatedNames={guideInfo?.autoCalculatedNames}
-          removeHeir={removeHeir}
+          removeHeir={removeHeir} confirmGuide={confirmGuide}
         />
         <TopToolbar
           sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} tree={tree}

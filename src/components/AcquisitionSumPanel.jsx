@@ -2,6 +2,8 @@ import React from 'react';
 import { math, getRelStr } from '../engine/utils';
 
 const formatShare = (share) => `${share?.n ?? 0}/${share?.d ?? 1}`;
+const CIRCLED_NUMBERS = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩', '⑪', '⑫', '⑬', '⑭', '⑮', '⑯', '⑰', '⑱', '⑲', '⑳'];
+const formatPathNo = (index) => CIRCLED_NUMBERS[index] || `${index + 1}`;
 const getPersonKey = (person) => person?.personId || person?.id || null;
 const getStepEventDate = (step) => step?.distributionDate || step?.dec?.deathDate || '';
 const sameShare = (a, b) => Number(a?.n) === Number(b?.n) && Number(a?.d) === Number(b?.d);
@@ -245,17 +247,18 @@ const LineagePanel = ({
 }) => (
   <aside className="w-[360px] shrink-0 border-r border-[#e9e9e7] bg-[#fbfbfa] p-4 dark:border-neutral-600 dark:bg-neutral-950/30">
     {selected ? (
-      <div className="sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto pr-1">
+      <div className="pr-1">
         <div className="border-b border-[#e9e9e7] pb-3 dark:border-neutral-700">
+          <div className="mb-2 text-[12px] font-bold text-[#3b5f8a] dark:text-blue-300">취득계보</div>
           <div className="flex items-baseline justify-between gap-3">
             <button
               type="button"
               onClick={() => handleNavigate?.(selected.personId)}
-              className="min-w-0 truncate text-left text-[20px] font-black hover:text-blue-700 hover:underline dark:hover:text-blue-300"
+              className="min-w-0 truncate text-left text-[20px] font-bold hover:text-blue-700 hover:underline dark:hover:text-blue-300"
             >
               {selected.name}
             </button>
-            <span className="shrink-0 text-[18px] font-black text-[#3f5f8a] dark:text-blue-300">{formatShare(selected.total)}</span>
+            <span className="shrink-0 text-[18px] font-bold text-[#3f5f8a] dark:text-blue-300">{formatShare(selected.total)}</span>
           </div>
           <div className="mt-1 text-[12px] text-[#787774] dark:text-neutral-400">최초 피상속인부터 선택자까지 내려온 취득 계보</div>
         </div>
@@ -280,6 +283,7 @@ const LineagePanel = ({
       </div>
     ) : (
       <div className="rounded-lg border border-dashed border-[#d9d6d0] bg-white p-4 text-[12px] text-[#787774] dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400">
+        <div className="mb-2 text-[12px] font-bold text-[#3b5f8a] dark:text-blue-300">취득계보</div>
         상속인을 선택하면 취득 계보가 표시됩니다.
       </div>
     )}
@@ -289,27 +293,34 @@ const LineagePanel = ({
 const LineagePath = ({ path, pathIndex, showTitle, handleNavigate }) => (
   <div className="space-y-2">
     {showTitle && (
-      <div className="px-1 text-[11px] font-black text-[#9b9a97] dark:text-neutral-400">
-        경로 {pathIndex + 1}
+      <div className="px-1 text-[11px] font-bold text-[#3b5f8a] dark:text-blue-300">
+        {formatPathNo(pathIndex)} 경로
       </div>
     )}
     <div className="space-y-1.5">
-      {path.cards.map((card, index) => (
+      {path.cards.map((card, index) => {
+        const isFinal = index === path.cards.length - 1;
+        return (
         <React.Fragment key={`${path.id}-${card.id}-${index}`}>
           <div className={`rounded-lg border px-3 py-2 ${
-            index === path.cards.length - 1
-              ? 'border-[#37352f] bg-white dark:border-neutral-100 dark:bg-neutral-900'
+            isFinal
+              ? 'border-[#b9d2f3] border-l-4 border-l-[#3b5f8a] bg-[#f0f6ff] dark:border-blue-900/60 dark:border-l-blue-500 dark:bg-blue-950/30'
               : 'border-[#e9e9e7] bg-white dark:border-neutral-700 dark:bg-neutral-900'
           }`}>
+            {isFinal && (
+              <div className="mb-1 inline-flex rounded-full border border-[#b9d2f3] bg-white px-2 py-0.5 text-[10px] font-bold text-[#3b5f8a] dark:border-blue-800 dark:bg-blue-950/60 dark:text-blue-300">
+                최종 취득
+              </div>
+            )}
             <div className="flex items-baseline justify-between gap-2">
               <button
                 type="button"
                 onClick={() => card.personId && handleNavigate?.(card.personId)}
-                className="min-w-0 truncate text-left text-[13px] font-black hover:text-blue-700 hover:underline dark:hover:text-blue-300"
+                className={`min-w-0 truncate text-left text-[13px] hover:text-blue-700 hover:underline dark:hover:text-blue-300 ${isFinal ? 'font-semibold' : 'font-medium'}`}
               >
                 {card.name}
               </button>
-              <span className="shrink-0 text-[13px] font-black text-[#3f5f8a] dark:text-blue-300">
+              <span className={`shrink-0 text-[13px] text-[#3f5f8a] dark:text-blue-300 ${isFinal ? 'font-bold' : 'font-medium'}`}>
                 {formatShare(card.share)}
               </span>
             </div>
@@ -321,7 +332,7 @@ const LineagePath = ({ path, pathIndex, showTitle, handleNavigate }) => (
             </div>
           )}
         </React.Fragment>
-      ))}
+      );})}
     </div>
   </div>
 );
@@ -371,7 +382,7 @@ export default function AcquisitionSumPanel({
       .filter(Boolean);
   };
   const renderFormula = (result) => {
-    return pathShares(result).map(formatShare).join(' + ');
+    return pathShares(result).map((share, index) => `${formatPathNo(index)} ${formatShare(share)}`).join(' + ');
   };
   const commonDenominator = results.reduce((acc, result) => {
     const total = result.total || addShares(pathShares(result));
@@ -410,24 +421,24 @@ export default function AcquisitionSumPanel({
         ) : (
           <>
             <div>
-              <h2 className="text-[18px] font-black">취득 합산</h2>
+              <h2 className="text-[18px] font-bold">취득 합산</h2>
               <p className="mt-1 text-[12px] text-[#787774] dark:text-neutral-400">
                 사건 검토에서 산출된 취득분을 최종 상속인별로 더해 보여줍니다.
               </p>
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between px-1 text-[13px] font-black">
+              <div className="flex items-center justify-between px-1 text-[13px] font-semibold">
                 <span>취득합산표</span>
                 <span className="text-[11px] font-bold text-[#9b9a97] dark:text-neutral-400">{results.length}명</span>
               </div>
               <table className="w-full table-fixed border-collapse text-[13px]">
                 <thead className="bg-[#fcfcfb] dark:bg-neutral-800/80">
                   <tr>
-                    <th className="w-[22%] border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">상속인</th>
+                    <th className="w-[120px] border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">상속인</th>
                     <th className="border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">경로합산</th>
-                    <th className="w-[18%] border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">최종지분</th>
-                    <th className="w-[18%] border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">통분지분</th>
+                    <th className="w-[160px] border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">최종지분</th>
+                    <th className="w-[160px] border border-[#e9e9e7] p-2.5 text-left font-medium text-[#787774] dark:border-neutral-600">통분지분</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -439,10 +450,10 @@ export default function AcquisitionSumPanel({
                         className={`cursor-pointer transition-colors ${selected?.personId === result.personId ? 'bg-[#f0f6ff] dark:bg-blue-950/20' : 'hover:bg-[#fcfcfb] dark:hover:bg-neutral-800/40'}`}
                         onClick={() => setSelectedPersonId(result.personId)}
                       >
-                        <td className="border border-[#e9e9e7] p-2.5 font-black dark:border-neutral-600">{result.name}</td>
-                        <td className="border border-[#e9e9e7] p-2.5 font-bold text-[#504f4c] dark:border-neutral-600 dark:text-neutral-300">{renderFormula(result)}</td>
-                        <td className="border border-[#e9e9e7] p-2.5 font-black text-[#3f5f8a] dark:border-neutral-600 dark:text-blue-300">{formatShare(result.total)}</td>
-                        <td className="border border-[#e9e9e7] p-2.5 font-black text-[#3f5f8a] dark:border-neutral-600 dark:text-blue-300">{formatShare(normalized)}</td>
+                        <td className="truncate border border-[#e9e9e7] p-2.5 font-medium dark:border-neutral-600">{result.name}</td>
+                        <td className="truncate border border-[#e9e9e7] p-2.5 font-medium text-[#504f4c] dark:border-neutral-600 dark:text-neutral-300" title={renderFormula(result)}>{renderFormula(result)}</td>
+                        <td className="border border-[#e9e9e7] p-2.5 font-semibold text-[#3f5f8a] dark:border-neutral-600 dark:text-blue-300">{formatShare(result.total)}</td>
+                        <td className="border border-[#e9e9e7] p-2.5 font-semibold text-[#3f5f8a] dark:border-neutral-600 dark:text-blue-300">{formatShare(normalized)}</td>
                       </tr>
                     );
                   })}
