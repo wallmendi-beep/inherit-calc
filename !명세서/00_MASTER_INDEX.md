@@ -30,7 +30,7 @@
 |---|---|---|
 | 법 규칙 | `!명세서/specs/CORE_LOGIC_SPECS.md`, `INHERITANCE_SHARE_RULES.md` | 시대별 상속분, 대습·재상속, 예외 규칙 |
 | 입력 정규화 | `IMPORT_PRECHECK_AND_REENTRY_RULES_2026-04-13.md`, `HEIR_IMPORT_SUBTREE_AND_CYCLE_PREVENTION_RULES_2026-04-13.md` | import 전처리, 트리 정규화, 중복/순환 방지 |
-| AI 입력 | `AI_RELIABILITY_AND_CORRECTION_PRINCIPLES_2026-04-14.md`, `IMPORT_GUIDE_FIRST_REVIEW_RULES_2026-04-13.md` | AI JSON 신뢰성, 허용 필드, 후속 검토 흐름 |
+| AI 입력 | `AI_AUTOINPUT_USER_FLOW_2026-05-07.md`, `AI_RELIABILITY_AND_CORRECTION_PRINCIPLES_2026-04-14.md`, `IMPORT_GUIDE_FIRST_REVIEW_RULES_2026-04-13.md` | AI 자동입력 사용자 절차, AI JSON 신뢰성, 허용 필드, 후속 검토 흐름 |
 | 가이드 UX | `SMART_GUIDE_OPERATION_RULES_2026-04-29.md` ⭐ | 가이드 전체 목록, 트리거, 텍스트, 네비게이션 동작 (최신) |
 | 판정 규칙 | `PREDECEASE_REINHERITANCE_JUDGMENT_AND_WARP_RULES.md` ⭐ | 선사망/후사망/대습/재상속 판정 기준 + 워프 네비게이션 SSOT (2026-05-01) |
 | 탭 구성 | `TAB_STRUCTURE_RULES.md` ⭐ | 3탭 역할 정의, 사건 검토 보고서 사이드패널, 상속지분 취득합산/최종지분표 구조 SSOT (2026-05-04) |
@@ -62,10 +62,11 @@
 
 ## 5. 현재 문서 상태 메모
 
-2026-05-04 기준:
+2026-05-07 기준:
 
 - 계산 엔진과 audit 관련 핵심 철학 문서는 1차 최신화 진행됨
-- import/AI/smart guide 관련 세부 문서는 추가 최신화 필요
+- AI 자동입력 사용자 절차는 `AI_AUTOINPUT_USER_FLOW_2026-05-07.md`로 정식 명세화됨
+- import/smart guide 관련 세부 문서는 추가 최신화 필요
 - 사건 검토 탭은 상속지분 마인드맵과 좌측 사건 보고서 사이드패널 구조로 재정의 중
 - 과거 `_UTF8` 문서명을 전제로 적힌 목록은 실제 저장소 파일명과 일부 다를 수 있으므로, 파일 존재 여부를 먼저 확인한다
 
