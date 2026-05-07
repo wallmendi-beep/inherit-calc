@@ -307,11 +307,6 @@ const LineagePath = ({ path, pathIndex, showTitle, handleNavigate }) => (
               ? 'border-[#b9d2f3] border-l-4 border-l-[#3b5f8a] bg-[#f0f6ff] dark:border-blue-900/60 dark:border-l-blue-500 dark:bg-blue-950/30'
               : 'border-[#e9e9e7] bg-white dark:border-neutral-700 dark:bg-neutral-900'
           }`}>
-            {isFinal && (
-              <div className="mb-1 inline-flex rounded-full border border-[#b9d2f3] bg-white px-2 py-0.5 text-[10px] font-bold text-[#3b5f8a] dark:border-blue-800 dark:bg-blue-950/60 dark:text-blue-300">
-                최종 취득
-              </div>
-            )}
             <div className="flex items-baseline justify-between gap-2">
               <button
                 type="button"
